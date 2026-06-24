@@ -3,12 +3,13 @@ import { Inter } from 'next/font/google'
 import '../styles/globals.css'
 import { Toaster } from '../components/ui/sonner'
 import { GlobalLoadingProvider } from '../components/GlobalLoading'
+import { AuthProvider } from '../lib/context/AuthContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'KIM Project Management System — KIM Communications',
-  description: 'Project management systems by KIM Communications, powered by KIM Technology',
+  title: 'KIM CRM & Lead Management System — KIM Communications',
+  description: 'CRM and Lead Management System by KIM Communications, powered by KIM Technology',
 }
 
 export default function RootLayout({
@@ -19,10 +20,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <GlobalLoadingProvider>
-          {children}
-          <Toaster />
-        </GlobalLoadingProvider>
+        <AuthProvider>
+          <GlobalLoadingProvider>
+            {children}
+            <Toaster />
+          </GlobalLoadingProvider>
+        </AuthProvider>
       </body>
     </html>
   )

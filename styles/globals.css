@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -13,10 +13,10 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   /* Kim Communications primary palette */
-  --primary: #283387; /* deep indigo blue */
+  --primary: #283387; /* deep blue blue */
   --primary-foreground: #ffffff;
   /* soft supportive tones */
-  --secondary: #eef1fb; /* light indigo wash */
+  --secondary: #eef1fb; /* light blue wash */
   --secondary-foreground: #1f265f;
   --muted: #eef0f6;
   --muted-foreground: #6b7280;
@@ -193,3 +193,4 @@
 html {
   font-size: var(--font-size);
 }
+
