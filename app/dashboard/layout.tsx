@@ -89,10 +89,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (item.path === '/dashboard/settings' || item.path === '/dashboard/users') {
       return isAdmin;
     }
-    if (item.path === '/dashboard/flagged') {
-      const isManager = user?.roles?.includes('MANAGER') || false;
-      return isAdmin || isManager;
-    }
     return true;
   });
 

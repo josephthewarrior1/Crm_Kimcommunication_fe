@@ -114,6 +114,8 @@ export default function ContactsPage() {
 
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importPhase, setImportPhase] = useState('');
   const [importPreview, setImportPreview] = useState<{
     totalRows: number;
     newCount: number;
@@ -327,17 +329,47 @@ export default function ContactsPage() {
     }
 
     setImportingExcel(true);
+    setImportProgress(0);
+    setImportPhase('Mengirim data ke server...');
+
+    // Simulate progress: slowly climb to 90% while request is in-flight
+    const phases = [
+      { pct: 10, label: 'Mengirim file ke server...' },
+      { pct: 25, label: 'Membaca baris Excel...' },
+      { pct: 40, label: 'Memvalidasi data kontak...' },
+      { pct: 55, label: 'Menyinkronkan group & perusahaan...' },
+      { pct: 70, label: 'Menyimpan kontak baru...' },
+      { pct: 82, label: 'Memeriksa duplikasi & tikus...' },
+      { pct: 90, label: 'Hampir selesai...' },
+    ];
+    let phaseIdx = 0;
+    const ticker = setInterval(() => {
+      if (phaseIdx < phases.length) {
+        setImportProgress(phases[phaseIdx].pct);
+        setImportPhase(phases[phaseIdx].label);
+        phaseIdx++;
+      }
+    }, 600);
+
     try {
       const res = await crmService.importContactsExcel(selectedImportFile);
+      clearInterval(ticker);
+      setImportProgress(100);
+      setImportPhase('Import selesai!');
+      await new Promise(r => setTimeout(r, 600));
       toast.success(res.message || `Successfully imported ${res.count} contact(s)!`);
       setIsImportModalOpen(false);
       setSelectedImportFile(null);
       setImportPreview(null);
       loadData();
     } catch (err: any) {
+      clearInterval(ticker);
+      setImportProgress(0);
       toast.error(err.message || 'Failed to import Excel data');
     } finally {
       setImportingExcel(false);
+      setImportProgress(0);
+      setImportPhase('');
     }
   };
 
@@ -349,14 +381,40 @@ export default function ContactsPage() {
     }
 
     setLoadingPreview(true);
+    setImportProgress(0);
+    setImportPhase('Membaca file Excel...');
+
+    const previewPhases = [
+      { pct: 20, label: 'Membaca file Excel...' },
+      { pct: 50, label: 'Mengurai baris data...' },
+      { pct: 75, label: 'Mencocokkan dengan database...' },
+      { pct: 90, label: 'Menyiapkan preview...' },
+    ];
+    let pi = 0;
+    const ticker = setInterval(() => {
+      if (pi < previewPhases.length) {
+        setImportProgress(previewPhases[pi].pct);
+        setImportPhase(previewPhases[pi].label);
+        pi++;
+      }
+    }, 500);
+
     try {
       const data = await crmService.previewContactsExcel(selectedImportFile);
+      clearInterval(ticker);
+      setImportProgress(100);
+      setImportPhase('Preview siap!');
+      await new Promise(r => setTimeout(r, 400));
       setImportPreview(data);
       toast.success('Excel file parsed successfully! Review the preview below.');
     } catch (err: any) {
+      clearInterval(ticker);
+      setImportProgress(0);
       toast.error(err.message || 'Failed to preview Excel file');
     } finally {
       setLoadingPreview(false);
+      setImportProgress(0);
+      setImportPhase('');
     }
   };
 
@@ -2364,6 +2422,22 @@ export default function ContactsPage() {
                     )}
                   </div>
 
+                  {/* Progress Bar - Preview */}
+                  {loadingPreview && (
+                    <div className="mt-4 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold text-slate-600">{importPhase}</span>
+                        <span className="text-xs font-black text-blue-600 tabular-nums">{importProgress}%</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${importProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
                     <button
                       type="button"
@@ -2475,6 +2549,32 @@ export default function ContactsPage() {
                   </div>
                 </div>
 
+                {/* Progress Bar - Import */}
+                {importingExcel && (
+                  <div className="space-y-2 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-semibold text-blue-700">{importPhase}</span>
+                      <span className="text-xs font-black text-blue-600 tabular-nums">{importProgress}%</span>
+                    </div>
+                    <div className="w-full h-3 bg-blue-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500 ease-out"
+                        style={{
+                          width: `${importProgress}%`,
+                          background: importProgress === 100
+                            ? 'linear-gradient(90deg, #10b981, #34d399)'
+                            : 'linear-gradient(90deg, #2563eb, #60a5fa)'
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-blue-500 font-medium">
+                      {importProgress < 100
+                        ? 'Jangan tutup jendela ini sampai import selesai.'
+                        : '✓ Data berhasil diimport!'}
+                    </p>
+                  </div>
+                )}
+
                 {/* Footer Controls */}
                 <div className="flex gap-3 justify-between pt-4 border-t border-slate-100 mt-6">
                   <button
@@ -2508,7 +2608,7 @@ export default function ContactsPage() {
                       className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
                     >
                       {importingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      Confirm & Import
+                      {importingExcel ? 'Importing...' : 'Confirm & Import'}
                     </button>
                   </div>
                 </div>

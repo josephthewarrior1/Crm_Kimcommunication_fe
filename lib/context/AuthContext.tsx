@@ -89,9 +89,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (isSettingsRoute && !hasAdmin) {
               toast.error('Access Denied: Only ADMIN accounts can access Removal Requests.');
               router.push('/dashboard');
-            } else if (isFlaggedRoute && !hasAdmin && !hasManager) {
-              toast.error('Access Denied: Only ADMIN or MANAGER accounts can access Flagged Watchlist.');
-              router.push('/dashboard');
             }
           } catch (e) {
             // Ignore parse errors
