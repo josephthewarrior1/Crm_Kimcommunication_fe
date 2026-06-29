@@ -933,8 +933,13 @@ export default function ContactsPage() {
                     <tr key={c.id} className={`hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
                     <td className="py-4 px-6">
                       <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                        <span className="text-slate-400 font-normal mr-0.5">{c.salutation}</span>
-                        <span>{c.firstName} {c.lastName}</span>
+                        <span 
+                          className="truncate max-w-[180px] inline-block align-middle"
+                          title={`${c.salutation ? `${c.salutation} ` : ''}${c.firstName} ${c.lastName}`}
+                        >
+                          {c.salutation && <span className="text-slate-400 font-normal mr-1">{c.salutation}</span>}
+                          {c.firstName} {c.lastName}
+                        </span>
                         {isFlaggedTikus && (
                           <span
                             className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md shrink-0 transition-colors"

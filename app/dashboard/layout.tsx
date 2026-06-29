@@ -15,7 +15,8 @@ import {
   X,
   User,
   Loader2,
-  ShieldAlert
+  ShieldAlert,
+  UserX
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -44,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Contacts', path: '/dashboard/contacts', icon: Users },
     { name: 'Events', path: '/dashboard/events', icon: CalendarDays },
     { name: 'Flagged Identities', path: '/dashboard/flagged', icon: ShieldAlert },
-    { name: 'Settings & Log', path: '/dashboard/settings', icon: Settings },
+    { name: 'Removal Requests', path: '/dashboard/settings', icon: UserX },
   ];
 
   const handleNav = (path: string) => {
