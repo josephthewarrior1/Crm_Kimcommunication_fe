@@ -16,6 +16,11 @@ export default function CompaniesPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterIndustry, setFilterIndustry] = useState('');
+  
+  // Infinite Scroll state and ref
+  const [visibleCount, setVisibleCount] = useState(20);
+  const observerTarget = React.useRef<HTMLDivElement | null>(null);
   
   // Create Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,6 +70,31 @@ export default function CompaniesPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Intersection Observer for Infinite Scroll
+  useEffect(() => {
+    const target = observerTarget.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && filteredCompanies.length > visibleCount) {
+          setVisibleCount((prev) => prev + 20);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(target);
+    return () => {
+      observer.unobserve(target);
+    };
+  }, [companies, searchQuery, filterIndustry, visibleCount]);
+
+  // Reset visible items when query or industry filters change
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [searchQuery, filterIndustry]);
 
   async function loadData() {
     setLoading(true);
@@ -209,12 +239,27 @@ export default function CompaniesPage() {
 
   const filteredCompanies = companies.filter((c) => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
       c.name.toLowerCase().includes(query) ||
       (c.brandName && c.brandName.toLowerCase().includes(query)) ||
       (c.city && c.city.toLowerCase().includes(query)) ||
-      (c.group?.name && c.group.name.toLowerCase().includes(query))
-    );
+      (c.group?.name && c.group.name.toLowerCase().includes(query));
+
+    const matchesIndustry = !filterIndustry || (() => {
+      if (!c.industry) return false;
+      const normalize = (str: string) => {
+        return str
+          .trim()
+          .toLowerCase()
+          .replace(/mm/g, 'm')
+          .replace(/s$/, ''); // singularize
+      };
+      const dbInd = normalize(c.industry);
+      const filterInd = normalize(filterIndustry);
+      return dbInd === filterInd || dbInd.includes(filterInd) || filterInd.includes(dbInd);
+    })();
+
+    return matchesSearch && matchesIndustry;
   });
 
   return (
@@ -237,15 +282,44 @@ export default function CompaniesPage() {
       </div>
 
       {/* Control Bar */}
-      <div className="flex items-center max-w-md bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
-        <Search className="w-5 h-5 text-slate-400 mr-2" />
-        <input
-          type="text"
-          placeholder="Search by name, brand, city or group..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
-        />
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+        {/* Search Input */}
+        <div className="flex items-center flex-1 max-w-md bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+          <Search className="w-5 h-5 text-slate-400 mr-2" />
+          <input
+            type="text"
+            placeholder="Search by name, brand, city or group..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
+          />
+        </div>
+
+        {/* Industry Filter Dropdown */}
+        <div className="w-full sm:w-64">
+          <select
+            value={filterIndustry}
+            onChange={(e) => setFilterIndustry(e.target.value)}
+            className="w-full px-3 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer"
+          >
+            <option value="">All Industries</option>
+            {INDUSTRIES.map((ind) => (
+              <option key={ind} value={ind}>
+                {ind}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Reset Filter Button */}
+        {filterIndustry && (
+          <button
+            onClick={() => setFilterIndustry('')}
+            className="px-3.5 py-2.5 text-xs font-bold text-red-650 hover:text-red-500 bg-red-50 hover:bg-red-100/55 rounded-xl border border-red-200 transition-all self-start sm:self-auto"
+          >
+            Clear Industry
+          </button>
+        )}
       </div>
 
       {/* Companies List Table */}
@@ -276,7 +350,7 @@ export default function CompaniesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCompanies.map((c) => (
+                {filteredCompanies.slice(0, visibleCount).map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-all">
                     <td className="py-4 px-6">
                       <p className="text-sm font-bold text-slate-900">{c.name}</p>
@@ -381,6 +455,13 @@ export default function CompaniesPage() {
           </div>
         </div>
       )}
+
+      {/* Infinite Scroll Trigger */}
+      <div ref={observerTarget} className="h-10 flex items-center justify-center">
+        {filteredCompanies.length > visibleCount && (
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+        )}
+      </div>
 
       {/* Add Company Modal Overlay */}
       {isModalOpen && (

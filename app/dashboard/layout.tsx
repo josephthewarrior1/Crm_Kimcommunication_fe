@@ -141,7 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-lg font-bold text-slate-900 md:text-xl">
+            <h1 className="text-lg font-bold text-slate-900 md:hidden">
               {filteredMenuItems.find((i) => pathname === i.path)?.name || 'Dashboard'}
             </h1>
           </div>

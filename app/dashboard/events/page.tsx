@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Event, EventLead, Contact } from '../../../lib/types';
-import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Eye, Edit2, Trash2 } from 'lucide-react';
+import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Eye, Edit2, Trash2, Download, Check, Square, CheckSquare, RefreshCw, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
+import * as XLSX from 'xlsx';
 
 export default function EventsPage() {
   const { isAdmin, isManager, isUser } = useAuth();
@@ -18,6 +19,8 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [leads, setLeads] = useState<EventLead[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
 
   // Modals state
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
@@ -187,6 +190,7 @@ export default function EventsPage() {
   const handleSelectEvent = async (event: Event) => {
     setSelectedEvent(event);
     setLoadingLeads(true);
+    setSelectedLeadIds([]); // reset selection
     try {
       const allLeads = await crmService.getEventLeads();
       const filteredLeads = allLeads.filter((l) => l.event.id === event.id);
@@ -195,6 +199,129 @@ export default function EventsPage() {
       toast.error('Failed to fetch leads for this event');
     } finally {
       setLoadingLeads(false);
+    }
+  };
+
+  const handleExportLeads = () => {
+    if (!selectedEvent || leads.length === 0) {
+      toast.error("Tidak ada data lead untuk di-export.");
+      return;
+    }
+    
+    // Format data leads untuk Excel
+    const dataToExport = leads.map((l, index) => ({
+      'No': index + 1,
+      'Name': `${l.contact.firstName} ${l.contact.lastName}`,
+      'Salutation': l.contact.salutation || '',
+      'Job Title': l.contact.jobTitle || '',
+      'Company Name': l.contact.company?.name || '',
+      'Holding Group': l.contact.company?.group?.name || '',
+      'Email': l.contact.emails?.[0]?.email || '',
+      'Phone': l.contact.mobilePhone || '',
+      'Lead Status': l.leadStatus.toUpperCase(),
+      'Attendance': l.attendanceStatus.toUpperCase(),
+      'Notes': l.notes || ''
+    }));
+
+    // Generate Sheet
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads');
+    
+    // Auto fit column width
+    const maxLens = dataToExport.reduce((acc, row) => {
+      Object.keys(row).forEach((key) => {
+        const valStr = String(row[key as keyof typeof row]);
+        acc[key] = Math.max(acc[key] || 10, valStr.length);
+      });
+      return acc;
+    }, {} as Record<string, number>);
+    
+    worksheet['!cols'] = Object.keys(maxLens).map(key => ({
+      wch: maxLens[key] + 3
+    }));
+
+    // Trigger Download
+    const fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Leads.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    toast.success('Daftar leads berhasil di-export ke Excel!');
+  };
+
+  const handleBatchUpdateAttendance = async (status: string) => {
+    if (selectedLeadIds.length === 0) return;
+    setIsBatchUpdating(true);
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    // Lakukan update untuk status attendance secara massal
+    await Promise.all(selectedLeadIds.map(async (leadId) => {
+      try {
+        const lead = leads.find(l => l.id === leadId);
+        if (lead) {
+          await crmService.updateLeadStatus(
+            leadId,
+            lead.leadStatus,
+            status,
+            lead.notes
+          );
+          successCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }));
+
+    setIsBatchUpdating(false);
+    setSelectedLeadIds([]);
+    
+    if (failCount > 0) {
+      toast.warning(`Berhasil mengupdate ${successCount} leads, gagal ${failCount} leads.`);
+    } else {
+      toast.success(`Berhasil mengupdate status ${successCount} leads!`);
+    }
+
+    if (selectedEvent) {
+      handleSelectEvent(selectedEvent); // Reload list leads
+    }
+  };
+
+  const handleBatchUpdateLeadStatus = async (status: string) => {
+    if (selectedLeadIds.length === 0) return;
+    setIsBatchUpdating(true);
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    // Lakukan update untuk lead status secara massal
+    await Promise.all(selectedLeadIds.map(async (leadId) => {
+      try {
+        const lead = leads.find(l => l.id === leadId);
+        if (lead) {
+          await crmService.updateLeadStatus(
+            leadId,
+            status,
+            lead.attendanceStatus,
+            lead.notes
+          );
+          successCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }));
+
+    setIsBatchUpdating(false);
+    setSelectedLeadIds([]);
+    
+    if (failCount > 0) {
+      toast.warning(`Berhasil mengupdate ${successCount} leads, gagal ${failCount} leads.`);
+    } else {
+      toast.success(`Berhasil mengupdate lead status ${successCount} leads!`);
+    }
+
+    if (selectedEvent) {
+      handleSelectEvent(selectedEvent); // Reload list leads
     }
   };
 
@@ -420,22 +547,13 @@ export default function EventsPage() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-                  {!isUser && (
+                  {leads.length > 0 && (
                     <button
-                      onClick={() => openEditEventModal(selectedEvent)}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                      onClick={handleExportLeads}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      Edit
-                    </button>
-                  )}
-                  {isAdmin && (
-                    <button
-                      onClick={() => openDeleteEventConfirm(selectedEvent)}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 text-xs font-bold rounded-xl transition-all shadow-sm"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Delete
+                      <Download className="w-3.5 h-3.5" />
+                      Export Excel
                     </button>
                   )}
                   <button
@@ -447,6 +565,59 @@ export default function EventsPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Batch Action Panel */}
+              {selectedLeadIds.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-150 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-extrabold text-blue-800">
+                      {selectedLeadIds.length} lead(s) terpilih
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={isBatchUpdating}
+                      onClick={() => handleBatchUpdateAttendance('attended')}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[11px] font-bold rounded-lg shadow-sm transition-all"
+                    >
+                      {isBatchUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      Set Attended
+                    </button>
+                    <button
+                      disabled={isBatchUpdating}
+                      onClick={() => handleBatchUpdateAttendance('no_show')}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-[11px] font-bold rounded-lg shadow-sm transition-all"
+                    >
+                      {isBatchUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                      Set No Show
+                    </button>
+                    <select
+                      disabled={isBatchUpdating}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleBatchUpdateLeadStatus(e.target.value);
+                          e.target.value = ''; // reset dropdown
+                        }
+                      }}
+                      className="px-2 py-1.5 bg-white border border-slate-200 text-slate-700 text-[11px] font-bold rounded-lg cursor-pointer focus:outline-none"
+                    >
+                      <option value="">Set Lead Status...</option>
+                      <option value="white">WHITE</option>
+                      <option value="yellow">YELLOW</option>
+                      <option value="green">GREEN</option>
+                      <option value="red">RED</option>
+                    </select>
+                    <button
+                      disabled={isBatchUpdating}
+                      onClick={() => setSelectedLeadIds([])}
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[11px] font-bold rounded-lg transition-all"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Leads Table */}
               {loadingLeads ? (
@@ -464,6 +635,20 @@ export default function EventsPage() {
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/50 text-slate-500 uppercase tracking-wider font-semibold">
+                        <th className="py-3 px-4 w-10">
+                          <input
+                            type="checkbox"
+                            className="w-3.5 h-3.5 text-blue-600 bg-slate-50 border-slate-200 rounded focus:ring-blue-500 cursor-pointer"
+                            checked={leads.length > 0 && selectedLeadIds.length === leads.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedLeadIds(leads.map(l => l.id));
+                              } else {
+                                setSelectedLeadIds([]);
+                              }
+                            }}
+                          />
+                        </th>
                         <th className="py-3 px-4">Contact</th>
                         <th className="py-3 px-4">Company</th>
                         <th className="py-3 px-4">Lead Status</th>
@@ -483,6 +668,20 @@ export default function EventsPage() {
 
                         return (
                           <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
+                            <td className="py-3.5 px-4 w-10">
+                              <input
+                                type="checkbox"
+                                className="w-3.5 h-3.5 text-blue-600 bg-slate-50 border-slate-200 rounded focus:ring-blue-500 cursor-pointer"
+                                checked={selectedLeadIds.includes(l.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedLeadIds(prev => [...prev, l.id]);
+                                  } else {
+                                    setSelectedLeadIds(prev => prev.filter(id => id !== l.id));
+                                  }
+                                }}
+                              />
+                            </td>
                             <td className="py-3.5 px-4 font-bold text-slate-900">
                               {l.contact.firstName} {l.contact.lastName}
                             </td>
