@@ -50,7 +50,7 @@ export default function EventsPage() {
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
 
   // Form inputs for adding a Lead
-  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   const [leadContactSearch, setLeadContactSearch] = useState('');
   const [leadStatus, setLeadStatus] = useState('white');
   const [attendanceStatus, setAttendanceStatus] = useState('invited');

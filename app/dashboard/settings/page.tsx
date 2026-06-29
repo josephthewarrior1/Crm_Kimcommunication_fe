@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
@@ -69,7 +69,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleUpdateRemovalStatus = async (id: string, status: string) => {
+  const handleUpdateRemovalStatus = async (id: number, status: string) => {
     try {
       await crmService.updateRemovalRequestStatus(id, status);
       toast.success(`Request status updated to ${status}.`);
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                             <p className="font-bold text-slate-900">
                               {rem.contact.firstName} {rem.contact.lastName}
                             </p>
-                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{rem.contact.id.substring(0, 8)}</p>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{rem.contact.id}</p>
                           </td>
                           <td className="py-4 px-4 font-semibold text-slate-700 capitalize">{rem.reason.replace(/_/g, ' ')}</td>
                           <td className="py-4 px-4 text-slate-600">{rem.requestedBy || '-'}</td>

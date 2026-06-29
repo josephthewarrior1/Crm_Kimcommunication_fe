@@ -5,7 +5,7 @@ import { crmService } from '../../../lib/services/crmService';
 import { Company, Group } from '../../../lib/types';
 import { Building2, Search, Plus, X, Loader2, Globe, Phone, MapPin, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { INDUSTRIES } from '../../../lib/constants';
+import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../lib/constants';
 
 
 export default function CompaniesPage() {
@@ -92,7 +92,7 @@ export default function CompaniesPage() {
           companyHardware: companyHardware.trim() || undefined,
           city: city.trim() || undefined
         },
-        selectedGroupId || undefined
+        selectedGroupId ? Number(selectedGroupId) : undefined
       );
 
       toast.success('Company created successfully!');
@@ -122,7 +122,7 @@ export default function CompaniesPage() {
     setEditingCompany(company);
     setEditName(company.name);
     setEditBrandName(company.brandName || '');
-    setEditSelectedGroupId(company.group?.id || '');
+    setEditSelectedGroupId(company.group?.id ? company.group.id.toString() : '');
     setEditAddress(company.address || '');
     setEditOfficePhone(company.officePhone || '');
     setEditWebsite(company.website || '');
@@ -158,7 +158,7 @@ export default function CompaniesPage() {
           companyHardware: editCompanyHardware.trim() || undefined,
           city: editCity.trim() || undefined
         },
-        editSelectedGroupId || undefined
+        editSelectedGroupId ? Number(editSelectedGroupId) : undefined
       );
 
       toast.success('Company updated successfully!');
@@ -437,24 +437,30 @@ export default function CompaniesPage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Size (Employees)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 500-1000 employees"
+                  <select
                     value={companySizeEmployee}
                     onChange={(e) => setCompanySizeEmployee(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  />
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
+                  >
+                    <option value="">Select Employee Size</option>
+                    {EMPLOYEE_SIZES.map((sz) => (
+                      <option key={sz} value={sz}>{sz}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Size (Revenue)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Large / Medium / Small"
+                  <select
                     value={companySizeRevenue}
                     onChange={(e) => setCompanySizeRevenue(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  />
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
+                  >
+                    <option value="">Select Revenue Size</option>
+                    {REVENUE_SIZES.map((sz) => (
+                      <option key={sz} value={sz}>{sz}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -610,24 +616,30 @@ export default function CompaniesPage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Size (Employees)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 500-1000 employees"
+                  <select
                     value={editCompanySizeEmployee}
                     onChange={(e) => setEditCompanySizeEmployee(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  />
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
+                  >
+                    <option value="">Select Employee Size</option>
+                    {EMPLOYEE_SIZES.map((sz) => (
+                      <option key={sz} value={sz}>{sz}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Size (Revenue)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Large / Medium / Small"
+                  <select
                     value={editCompanySizeRevenue}
                     onChange={(e) => setEditCompanySizeRevenue(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  />
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
+                  >
+                    <option value="">Select Revenue Size</option>
+                    {REVENUE_SIZES.map((sz) => (
+                      <option key={sz} value={sz}>{sz}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

@@ -1,5 +1,5 @@
 export interface AppUser {
-  id: string;
+  id: number;
   username: string;
   email: string;
   fullName?: string;
@@ -7,14 +7,14 @@ export interface AppUser {
 }
 
 export interface SessionToken {
-  id: string;
+  id: number;
   user: AppUser;
   createdAt: string;
   expiresAt: string;
 }
 
 export interface Group {
-  id: string;
+  id: number;
   name: string;
   notes?: string;
   createdAt?: string;
@@ -22,7 +22,7 @@ export interface Group {
 }
 
 export interface Company {
-  id: string;
+  id: number;
   group?: Group | null;
   brandName?: string;
   name: string;
@@ -39,7 +39,7 @@ export interface Company {
 }
 
 export interface Contact {
-  id: string;
+  id: number;
   company?: Company | null;
   salutation?: string;
   firstName: string;
@@ -59,7 +59,7 @@ export interface Contact {
 }
 
 export interface ContactEmail {
-  id: string;
+  id: number;
   contact?: Contact;
   email: string;
   emailType: string; // company | personal | other
@@ -71,7 +71,7 @@ export interface ContactEmail {
 }
 
 export interface Event {
-  id: string;
+  id: number;
   name: string;
   eventType: string; // partner | end_user | internal | other
   clientName?: string;
@@ -83,7 +83,7 @@ export interface Event {
 }
 
 export interface EventLead {
-  id: string;
+  id: number;
   event: Event;
   contact: Contact;
   leadStatus: string; // white | yellow | green | red
@@ -96,7 +96,7 @@ export interface EventLead {
 }
 
 export interface RemovalRequest {
-  id: string;
+  id: number;
   contact: Contact;
   reason: string; // resign | pensiun | meninggal | requested_takeout | pindah_kerja | lainnya
   requestedBy?: string;
@@ -108,14 +108,14 @@ export interface RemovalRequest {
 }
 
 export interface PersonalEmailDomain {
-  id: string;
+  id: number;
   domain: string;
   riskLevel?: string;
   notes?: string;
 }
 
 export interface FlaggedIdentity {
-  id: string;
+  id: number;
   contact?: Contact | null;
   event?: Event | null;
   nameUsed?: string;

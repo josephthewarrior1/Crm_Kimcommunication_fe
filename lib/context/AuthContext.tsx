@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('session', response.token);
       
       const userData: AppUser = {
-        id: response.token, // temporarily using token as ID or customize
+        id: response.userId || 0,
         username: response.username,
         email: response.email,
         fullName: response.fullName

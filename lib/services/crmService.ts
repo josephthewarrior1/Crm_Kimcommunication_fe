@@ -25,11 +25,11 @@ export class CrmService extends ApiService {
     return this.post<Group>('/api/groups', group);
   }
 
-  async updateGroup(id: string, group: Partial<Group>): Promise<Group> {
+  async updateGroup(id: number, group: Partial<Group>): Promise<Group> {
     return this.put<Group>(`/api/groups/${id}`, group);
   }
 
-  async deleteGroup(id: string): Promise<void> {
+  async deleteGroup(id: number): Promise<void> {
     return this.delete<void>(`/api/groups/${id}`);
   }
 
@@ -38,17 +38,17 @@ export class CrmService extends ApiService {
     return this.get<Company[]>('/api/companies');
   }
 
-  async createCompany(company: Partial<Company>, groupId?: string): Promise<Company> {
+  async createCompany(company: Partial<Company>, groupId?: number): Promise<Company> {
     const url = groupId ? `/api/companies?groupId=${groupId}` : '/api/companies';
     return this.post<Company>(url, company);
   }
 
-  async updateCompany(id: string, company: Partial<Company>, groupId?: string): Promise<Company> {
+  async updateCompany(id: number, company: Partial<Company>, groupId?: number): Promise<Company> {
     const url = groupId ? `/api/companies/${id}?groupId=${groupId}` : `/api/companies/${id}`;
     return this.put<Company>(url, company);
   }
 
-  async deleteCompany(id: string): Promise<void> {
+  async deleteCompany(id: number): Promise<void> {
     return this.delete<void>(`/api/companies/${id}`);
   }
 
@@ -57,34 +57,38 @@ export class CrmService extends ApiService {
     return this.get<Contact[]>('/api/contacts');
   }
 
-  async createContact(contact: Partial<Contact>, companyId?: string): Promise<Contact> {
+  async createContact(contact: Partial<Contact>, companyId?: number): Promise<Contact> {
     const url = companyId ? `/api/contacts?companyId=${companyId}` : '/api/contacts';
     return this.post<Contact>(url, contact);
   }
 
-  async updateContact(id: string, contact: Partial<Contact>, companyId?: string): Promise<Contact> {
+  async updateContact(id: number, contact: Partial<Contact>, companyId?: number): Promise<Contact> {
     const url = companyId ? `/api/contacts/${id}?companyId=${companyId}` : `/api/contacts/${id}`;
     return this.put<Contact>(url, contact);
   }
 
-  async deleteContact(id: string): Promise<void> {
+  async deleteContact(id: number): Promise<void> {
     return this.delete<void>(`/api/contacts/${id}`);
   }
 
-  async addContactEmail(contactId: string, email: Partial<ContactEmail>): Promise<ContactEmail> {
+  async addContactEmail(contactId: number, email: Partial<ContactEmail>): Promise<ContactEmail> {
     return this.post<ContactEmail>(`/api/contacts/${contactId}/emails`, email);
   }
 
-  async getContactEmails(contactId: string): Promise<ContactEmail[]> {
+  async getContactEmails(contactId: number): Promise<ContactEmail[]> {
     return this.get<ContactEmail[]>(`/api/contacts/${contactId}/emails`);
   }
 
-  async updateContactEmail(contactId: string, emailId: string, email: Partial<ContactEmail>): Promise<ContactEmail> {
+  async updateContactEmail(contactId: number, emailId: number, email: Partial<ContactEmail>): Promise<ContactEmail> {
     return this.put<ContactEmail>(`/api/contacts/${contactId}/emails/${emailId}`, email);
   }
 
-  async deleteContactEmail(contactId: string, emailId: string): Promise<void> {
+  async deleteContactEmail(contactId: number, emailId: number): Promise<void> {
     return this.delete<void>(`/api/contacts/${contactId}/emails/${emailId}`);
+  }
+
+  async getContactEventLeads(contactId: number): Promise<EventLead[]> {
+    return this.get<EventLead[]>(`/api/contacts/${contactId}/event-leads`);
   }
 
   // --- EVENTS ---
@@ -96,11 +100,11 @@ export class CrmService extends ApiService {
     return this.post<Event>('/api/events', event);
   }
 
-  async updateEvent(id: string, event: Partial<Event>): Promise<Event> {
+  async updateEvent(id: number, event: Partial<Event>): Promise<Event> {
     return this.put<Event>(`/api/events/${id}`, event);
   }
 
-  async deleteEvent(id: string): Promise<void> {
+  async deleteEvent(id: number): Promise<void> {
     return this.delete<void>(`/api/events/${id}`);
   }
 
@@ -110,9 +114,9 @@ export class CrmService extends ApiService {
   }
 
   async createEventLead(lead: {
-    eventId: string;
-    contactId?: string;
-    contactIds?: string[];
+    eventId: number;
+    contactId?: number;
+    contactIds?: number[];
     leadStatus?: string;
     attendanceStatus?: string;
     notes?: string;
@@ -121,7 +125,7 @@ export class CrmService extends ApiService {
   }
 
   async updateLeadStatus(
-    leadId: string,
+    leadId: number,
     leadStatus?: string,
     attendanceStatus?: string,
     notes?: string
@@ -134,7 +138,7 @@ export class CrmService extends ApiService {
     return this.put<EventLead>(`/api/event-leads/${leadId}/status?${params.toString()}`);
   }
 
-  async deleteEventLead(id: string): Promise<void> {
+  async deleteEventLead(id: number): Promise<void> {
     return this.delete<void>(`/api/event-leads/${id}`);
   }
 
@@ -144,7 +148,7 @@ export class CrmService extends ApiService {
   }
 
   async createRemovalRequest(request: {
-    contactId: string;
+    contactId: number;
     reason?: string;
     requestedBy?: string;
     sourceDb?: string;
@@ -154,7 +158,7 @@ export class CrmService extends ApiService {
     return this.post<RemovalRequest>('/api/removal-requests', request);
   }
 
-  async updateRemovalRequestStatus(id: string, status: string): Promise<RemovalRequest> {
+  async updateRemovalRequestStatus(id: number, status: string): Promise<RemovalRequest> {
     return this.put<RemovalRequest>(`/api/removal-requests/${id}/status?status=${encodeURIComponent(status)}`);
   }
 
@@ -176,15 +180,57 @@ export class CrmService extends ApiService {
     return this.post<FlaggedIdentity>('/api/flagged-identities', identity);
   }
 
-  async updateFlaggedIdentity(id: string, identity: Partial<FlaggedIdentity>): Promise<FlaggedIdentity> {
+  async updateFlaggedIdentity(id: number, identity: Partial<FlaggedIdentity>): Promise<FlaggedIdentity> {
     return this.put<FlaggedIdentity>(`/api/flagged-identities/${id}`, identity);
   }
 
-  async deleteFlaggedIdentity(id: string): Promise<void> {
+  async deleteFlaggedIdentity(id: number): Promise<void> {
     return this.delete<void>(`/api/flagged-identities/${id}`);
   }
 
   // --- EXCEL IMPORT ---
+  async previewContactsExcel(file: File): Promise<{
+    totalRows: number;
+    newCount: number;
+    duplicateCount: number;
+    rows: Array<{
+      rowNum: number;
+      groupName: string;
+      companyName: string;
+      firstName: string;
+      lastName: string;
+      jobTitle: string;
+      email: string;
+      status: 'NEW' | 'DUPLICATE';
+      message: string;
+    }>;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const response = await fetch(`${this.baseUrl}/api/contacts/import/preview`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+
+    if (!response.ok) {
+      let message = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          message = errorData.message;
+        }
+      } catch {}
+      throw new Error(message);
+    }
+
+    return response.json();
+  }
+
   async importContactsExcel(file: File): Promise<{ message: string; count: number }> {
     const formData = new FormData();
     formData.append('file', file);

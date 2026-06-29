@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Contact, Company, ContactEmail, Group } from '../../../lib/types';
-import { Users, Search, Plus, X, Loader2, Mail, Phone, ExternalLink, ShieldAlert, Trash2, Edit2, Eye, Building2, FolderTree, Globe, MapPin, CheckCircle, AlertCircle, RefreshCw, Upload, Download } from 'lucide-react';
+import { Contact, Company, ContactEmail, Group, EventLead, FlaggedIdentity } from '../../../lib/types';
+import { Users, Search, Plus, X, Loader2, Mail, Phone, ExternalLink, ShieldAlert, Trash2, Edit2, Eye, Building2, FolderTree, Globe, MapPin, CheckCircle, AlertCircle, RefreshCw, Upload, Download, Calendar, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { INDUSTRIES } from '../../../lib/constants';
 
 
 const checkContactCompleteness = (c: Contact) => {
   const missing: string[] = [];
-  
+
   if (!c.company?.group?.name?.trim()) missing.push("Nama Group Holding");
   if (!c.company?.brandName?.trim()) missing.push("Nama Brand");
   if (!c.company?.name?.trim()) missing.push("Company Name");
@@ -22,14 +22,14 @@ const checkContactCompleteness = (c: Contact) => {
   if (!c.company?.address?.trim()) missing.push("Address");
   if (!c.company?.officePhone?.trim()) missing.push("Office Phone");
   if (!c.mobilePhone?.trim()) missing.push("Mobile Phone");
-  
+
   const emails = c.emails || [];
   const hasCompanyEmail = emails.some(e => e.isCorporate || e.emailType === 'company');
   const hasPersonalEmail = emails.some(e => !e.isCorporate && e.emailType === 'personal');
-  
+
   if (!hasCompanyEmail) missing.push("Company Email");
   if (!hasPersonalEmail) missing.push("Personal Email");
-  
+
   if (!c.company?.industry?.trim()) missing.push("Industry");
   if (!c.linkedinUrl?.trim()) missing.push("LinkedIn Link");
   if (!c.company?.city?.trim()) missing.push("City");
@@ -55,7 +55,7 @@ const checkFormCompleteness = (
   companiesList: Company[]
 ) => {
   const missing: string[] = [];
-  const selectedComp = companiesList.find(comp => comp.id === compSelectedId);
+  const selectedComp = companiesList.find(comp => comp.id.toString() === compSelectedId);
 
   if (!selectedComp?.group?.name?.trim()) missing.push("Nama Group Holding");
   if (!selectedComp?.brandName?.trim()) missing.push("Nama Brand");
@@ -95,6 +95,11 @@ export default function ContactsPage() {
   const [filterJobTitle, setFilterJobTitle] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
 
+  // Infinite Scroll state and ref
+  const [visibleCount, setVisibleCount] = useState(20);
+  const observerTarget = useRef<HTMLDivElement | null>(null);
+  const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
+
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -107,16 +112,36 @@ export default function ContactsPage() {
 
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
+  const [importPreview, setImportPreview] = useState<{
+    totalRows: number;
+    newCount: number;
+    duplicateCount: number;
+    rows: Array<{
+      rowNum: number;
+      groupName: string;
+      companyName: string;
+      firstName: string;
+      lastName: string;
+      jobTitle: string;
+      email: string;
+      status: 'NEW' | 'DUPLICATE';
+      message: string;
+    }>;
+  } | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   // Focus contact state
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contactEmails, setContactEmails] = useState<ContactEmail[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
+  const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
 
   // Focus detail state
   const [detailContact, setDetailContact] = useState<Contact | null>(null);
   const [detailEmails, setDetailEmails] = useState<ContactEmail[]>([]);
   const [loadingDetailEmails, setLoadingDetailEmails] = useState(false);
+  const [detailEvents, setDetailEvents] = useState<EventLead[]>([]);
+  const [loadingDetailEvents, setLoadingDetailEvents] = useState(false);
 
   // Form inputs for Contact creation
   const [firstName, setFirstName] = useState('');
@@ -176,19 +201,22 @@ export default function ContactsPage() {
     loadData();
   }, []);
 
+
   async function loadData() {
     setLoading(true);
     try {
-      const [conList, compList, groupList] = await Promise.all([
+      const [conList, compList, groupList, flagList] = await Promise.all([
         crmService.getContacts(),
         crmService.getCompanies(),
-        crmService.getGroups()
+        crmService.getGroups(),
+        crmService.getFlaggedIdentities()
       ]);
       setContacts(conList);
       setCompanies(compList);
       setGroups(groupList);
+      setFlags(flagList || []);
     } catch (err) {
-      toast.error('Failed to load contacts, companies or groups');
+      toast.error('Failed to load contacts, companies, groups or flags');
     } finally {
       setLoading(false);
     }
@@ -197,7 +225,7 @@ export default function ContactsPage() {
   const handleCreateContact = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitAttempted(true);
-    
+
     // Check all required fields on submit
     const missing: string[] = [];
     if (!firstName.trim()) missing.push("First Name");
@@ -233,7 +261,7 @@ export default function ContactsPage() {
           source,
           isActive: true
         },
-        selectedCompanyId || undefined
+        selectedCompanyId ? Number(selectedCompanyId) : undefined
       );
 
       // Save Company Email if filled
@@ -269,7 +297,7 @@ export default function ContactsPage() {
       toast.success('Contact created successfully!');
       setIsCreateModalOpen(false);
       setSubmitAttempted(false);
-      
+
       // Reset form
       setFirstName('');
       setLastName('');
@@ -302,6 +330,7 @@ export default function ContactsPage() {
       toast.success(res.message || `Successfully imported ${res.count} contact(s)!`);
       setIsImportModalOpen(false);
       setSelectedImportFile(null);
+      setImportPreview(null);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to import Excel data');
@@ -310,12 +339,31 @@ export default function ContactsPage() {
     }
   };
 
+  const handlePreviewExcel = async (e: React.MouseEvent | React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedImportFile) {
+      toast.error('Please select an Excel file first');
+      return;
+    }
+
+    setLoadingPreview(true);
+    try {
+      const data = await crmService.previewContactsExcel(selectedImportFile);
+      setImportPreview(data);
+      toast.success('Excel file parsed successfully! Review the preview below.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to preview Excel file');
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const openEditModal = async (contact: Contact) => {
     setEditingContact(contact);
     setEditFirstName(contact.firstName);
     setEditLastName(contact.lastName);
     setEditSalutation(contact.salutation || 'Mr');
-    setEditSelectedCompanyId(contact.company?.id || '');
+    setEditSelectedCompanyId(contact.company?.id ? contact.company.id.toString() : '');
     setEditPositionLevel(contact.positionLevel || 'unknown');
     setEditSpecialityDivision(contact.specialityDivision || '');
     setEditJobTitle(contact.jobTitle || '');
@@ -337,12 +385,12 @@ export default function ContactsPage() {
         const compEmail = emails.find(e => e.isCorporate || e.emailType === 'company');
         if (compEmail) {
           setEditContactCompanyEmail(compEmail.email);
-          setEditContactCompanyEmailId(compEmail.id);
+          setEditContactCompanyEmailId(compEmail.id.toString());
         }
         const persEmail = emails.find(e => !e.isCorporate && e.emailType === 'personal');
         if (persEmail) {
           setEditContactPersonalEmail(persEmail.email);
-          setEditContactPersonalEmailId(persEmail.id);
+          setEditContactPersonalEmailId(persEmail.id.toString());
         }
       }
     } catch (err) {
@@ -393,7 +441,7 @@ export default function ContactsPage() {
           source: editSource,
           isActive: editIsActive
         },
-        editSelectedCompanyId || undefined
+        editSelectedCompanyId ? Number(editSelectedCompanyId) : undefined
       );
 
       // Handle Company Email
@@ -401,7 +449,7 @@ export default function ContactsPage() {
         if (editContactCompanyEmailId) {
           // Update existing company email
           try {
-            await crmService.updateContactEmail(editingContact.id, editContactCompanyEmailId, {
+            await crmService.updateContactEmail(editingContact.id, Number(editContactCompanyEmailId), {
               email: editContactCompanyEmail.trim().toLowerCase()
             });
           } catch (emailErr: any) {
@@ -424,7 +472,7 @@ export default function ContactsPage() {
       } else if (editContactCompanyEmailId) {
         // Delete company email if cleared
         try {
-          await crmService.deleteContactEmail(editingContact.id, editContactCompanyEmailId);
+          await crmService.deleteContactEmail(editingContact.id, Number(editContactCompanyEmailId));
         } catch (emailErr: any) {
           toast.warning(`Contact updated, but failed to clear company email: ${emailErr.message}`);
         }
@@ -435,7 +483,7 @@ export default function ContactsPage() {
         if (editContactPersonalEmailId) {
           // Update existing personal email
           try {
-            await crmService.updateContactEmail(editingContact.id, editContactPersonalEmailId, {
+            await crmService.updateContactEmail(editingContact.id, Number(editContactPersonalEmailId), {
               email: editContactPersonalEmail.trim().toLowerCase()
             });
           } catch (emailErr: any) {
@@ -458,7 +506,7 @@ export default function ContactsPage() {
       } else if (editContactPersonalEmailId) {
         // Delete personal email if cleared
         try {
-          await crmService.deleteContactEmail(editingContact.id, editContactPersonalEmailId);
+          await crmService.deleteContactEmail(editingContact.id, Number(editContactPersonalEmailId));
         } catch (emailErr: any) {
           toast.warning(`Contact updated, but failed to clear personal email: ${emailErr.message}`);
         }
@@ -505,6 +553,7 @@ export default function ContactsPage() {
     setDetailContact(contact);
     setIsDetailModalOpen(true);
     setLoadingDetailEmails(true);
+    setLoadingDetailEvents(true);
     try {
       const emails = await crmService.getContactEmails(contact.id);
       setDetailEmails(emails);
@@ -512,6 +561,15 @@ export default function ContactsPage() {
       toast.error('Failed to load contact emails');
     } finally {
       setLoadingDetailEmails(false);
+    }
+
+    try {
+      const events = await crmService.getContactEventLeads(contact.id);
+      setDetailEvents(events);
+    } catch (err) {
+      toast.error('Failed to load contact event participation history');
+    } finally {
+      setLoadingDetailEvents(false);
     }
   };
 
@@ -546,7 +604,7 @@ export default function ContactsPage() {
       toast.success('Email added successfully!');
       setNewEmailStr('');
       setIsPrimary(false);
-      
+
       // Reload emails list
       const emails = await crmService.getContactEmails(selectedContact.id);
       setContactEmails(emails);
@@ -610,7 +668,7 @@ export default function ContactsPage() {
     // 1. General search query
     const query = searchQuery.toLowerCase();
     const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       !query ||
       fullName.includes(query) ||
       (c.company?.name && c.company.name.toLowerCase().includes(query)) ||
@@ -619,10 +677,10 @@ export default function ContactsPage() {
       (c.source && c.source.toLowerCase().includes(query));
 
     // 2. Company filter
-    const matchesCompany = !filterCompanyId || (c.company?.id === filterCompanyId);
+    const matchesCompany = !filterCompanyId || (c.company?.id?.toString() === filterCompanyId);
 
     // 3. Group filter
-    const matchesGroup = !filterGroupId || (c.company?.group?.id === filterGroupId);
+    const matchesGroup = !filterGroupId || (c.company?.group?.id?.toString() === filterGroupId);
 
     // 4. Position Level filter
     const matchesPositionLevel = !filterPositionLevel || (c.positionLevel === filterPositionLevel);
@@ -633,7 +691,7 @@ export default function ContactsPage() {
     // 6. Industry filter
     const matchesIndustry = !filterIndustry || (() => {
       if (!c.company?.industry) return false;
-      
+
       const normalize = (str: string) => {
         return str
           .trim()
@@ -644,12 +702,35 @@ export default function ContactsPage() {
 
       const dbInd = normalize(c.company.industry);
       const filterInd = normalize(filterIndustry);
-      
+
       return dbInd === filterInd || dbInd.includes(filterInd) || filterInd.includes(dbInd);
     })();
 
     return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesJobTitle && matchesIndustry;
   });
+
+  useEffect(() => {
+    const target = observerTarget.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && filteredContacts.length > visibleCount) {
+          setVisibleCount((prev) => prev + 20);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(target);
+    return () => {
+      observer.unobserve(target);
+    };
+  }, [filteredContacts, visibleCount]);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterJobTitle, filterIndustry]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -731,6 +812,20 @@ export default function ContactsPage() {
           </div>
 
           <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
+            <select
+              value={filterIndustry}
+              onChange={(e) => setFilterIndustry(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+            >
+              <option value="">All Industries</option>
+              {INDUSTRIES.map((ind) => (
+                <option key={ind} value={ind}>{ind}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Position Level</label>
             <select
               value={filterPositionLevel}
@@ -754,20 +849,6 @@ export default function ContactsPage() {
               onChange={(e) => setFilterJobTitle(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all placeholder-slate-450 focus:bg-white"
             />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
-            <select
-              value={filterIndustry}
-              onChange={(e) => setFilterIndustry(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
-            >
-              <option value="">All Industries</option>
-              {INDUSTRIES.map((ind) => (
-                <option key={ind} value={ind}>{ind}</option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
@@ -800,14 +881,71 @@ export default function ContactsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredContacts.map((c) => (
-                  <tr key={c.id} className={`hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
+                {filteredContacts.slice(0, visibleCount).map((c, idx, slicedArray) => {
+                  const isNearBottom = idx >= slicedArray.length - 2;
+                  
+                  // 1. Get flags from database
+                  const dbFlags = flags.filter(f => f.contact?.id === c.id && f.status !== 'cleared');
+                  
+                  // 2. Compute dynamic client-side duplicate indications (e.g. for existing duplicates or unflagged records)
+                  const localFlags: any[] = [];
+                  
+                  if (c.mobilePhone) {
+                    const normCurrent = "+62" + c.mobilePhone.trim().replace(/^0/, '');
+                    const matchingContacts = contacts.filter(other => 
+                      other.id !== c.id && 
+                      other.isActive && 
+                      other.mobilePhone && 
+                      ("+62" + other.mobilePhone.trim().replace(/^0/, '')) === normCurrent &&
+                      (other.firstName !== c.firstName || other.lastName !== c.lastName)
+                    );
+                    if (matchingContacts.length > 0) {
+                      localFlags.push({
+                        flagReason: 'duplicate_phone',
+                        evidenceNotes: `Nomor telepon sama dengan ${matchingContacts.map(m => `${m.firstName} ${m.lastName}`).join(', ')}`
+                      });
+                    }
+                  }
+                  
+                  if (c.emails && c.emails.length > 0) {
+                    c.emails.forEach(ce => {
+                      if (!ce.email) return;
+                      const matchingContacts = contacts.filter(other => 
+                        other.id !== c.id && 
+                        other.isActive && 
+                        other.emails && 
+                        other.emails.some(oe => oe.email && oe.email.toLowerCase() === ce.email.toLowerCase()) &&
+                        (other.firstName !== c.firstName || other.lastName !== c.lastName)
+                      );
+                      if (matchingContacts.length > 0) {
+                        localFlags.push({
+                          flagReason: 'duplicate_email',
+                          evidenceNotes: `Email ${ce.email} sama dengan ${matchingContacts.map(m => `${m.firstName} ${m.lastName}`).join(', ')}`
+                        });
+                      }
+                    });
+                  }
+                  
+                  const allFlags = [...dbFlags, ...localFlags];
+                  const isFlaggedTikus = allFlags.length > 0;
+
+                  return (
+                    <tr key={c.id} className={`hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
                     <td className="py-4 px-6">
-                      <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                      <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                         <span className="text-slate-400 font-normal mr-0.5">{c.salutation}</span>
                         <span>{c.firstName} {c.lastName}</span>
+                        {isFlaggedTikus && (
+                          <span
+                            className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md shrink-0 transition-colors"
+                            title={`Mencurigakan / Terdeteksi Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
+                          >
+                            <ShieldAlert className="w-2.5 h-2.5 text-red-500" />
+                            Tikus
+                          </span>
+                        )}
                         {checkContactCompleteness(c).isIncomplete && (
-                          <span 
+                          <span
                             className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
                             title={`Semua kolom wajib diisi kecuali Division/Speciality, Contact Type, dan Data Source.\n\nKolom kosong:\n• ${checkContactCompleteness(c).missingFields.join("\n• ")}`}
                           >
@@ -854,42 +992,93 @@ export default function ContactsPage() {
                         </a>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-sm text-right space-x-1">
-                      <button
-                        onClick={() => handleOpenDetailModal(c)}
-                        className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
-                        title="View Details (Excel Layout)"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openEditModal(c)}
-                        className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
-                        title="Edit Contact"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      {c.isActive && (
+                    <td className="py-4 px-6 text-sm text-right relative">
+                      <div className="inline-block text-left">
                         <button
-                          onClick={() => handleOpenTakeoutModal(c)}
-                          className="inline-flex p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                          title="Request Takeout (Soft Delete)"
+                          onClick={() => setActiveDropdownId(activeDropdownId === c.id ? null : c.id)}
+                          className="inline-flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
+                          title="Actions"
                         >
-                          <ShieldAlert className="w-4 h-4" />
+                          <MoreVertical className="w-4 h-4" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => openDeleteConfirm(c)}
-                        className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Hard Delete Contact"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+
+                        {activeDropdownId === c.id && (
+                          <>
+                            {/* Overlay to close when clicking outside */}
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={() => setActiveDropdownId(null)}
+                            />
+                            <div className={`absolute right-6 ${isNearBottom ? 'bottom-full mb-1 origin-bottom animate-in fade-in slide-in-from-bottom-2' : 'mt-1 origin-top animate-in fade-in slide-in-from-top-2'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1.5 duration-100 text-left`}>
+                              <button
+                                onClick={() => {
+                                  setActiveDropdownId(null);
+                                  handleOpenDetailModal(c);
+                                }}
+                                className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                View Details
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setActiveDropdownId(null);
+                                  openEditModal(c);
+                                }}
+                                className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
+                              >
+                                <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                                Edit Contact
+                              </button>
+
+
+                              {c.isActive && (
+                                <button
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    handleOpenTakeoutModal(c);
+                                  }}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 hover:text-amber-900 transition-colors flex items-center gap-2"
+                                >
+                                  <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                                  Request Takeout
+                                </button>
+                              )}
+
+                              <div className="border-t border-slate-100 my-1" />
+
+                              <button
+                                onClick={() => {
+                                  setActiveDropdownId(null);
+                                  openDeleteConfirm(c);
+                                }}
+                                className="w-full px-4 py-2 text-xs font-semibold text-red-650 hover:bg-red-50 hover:text-red-900 transition-colors flex items-center gap-2"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                Delete
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
+
+            {/* Infinite Scroll Trigger */}
+            {filteredContacts.length > visibleCount && (
+              <div 
+                ref={observerTarget} 
+                className="py-4 text-center border-t border-slate-100 bg-slate-50/50 flex items-center justify-center gap-2"
+              >
+                <Loader2 className="w-4 h-4 animate-spin text-slate-450" />
+                <span className="text-xs text-slate-500 font-medium animate-pulse">Loading more contacts...</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -903,6 +1092,7 @@ export default function ContactsPage() {
                 setIsDetailModalOpen(false);
                 setDetailContact(null);
                 setDetailEmails([]);
+                setDetailEvents([]);
               }}
               className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
             >
@@ -931,7 +1121,7 @@ export default function ContactsPage() {
                   detailEmails.find(e => e.isCorporate || e.emailType === 'company')?.email || '',
                   detailEmails.find(e => !e.isCorporate && e.emailType === 'personal')?.email || '',
                   detailContact.linkedinUrl || '',
-                  detailContact.company?.id || '',
+                  detailContact.company?.id?.toString() || '',
                   companies
                 );
                 if (comp.isIncomplete) {
@@ -1144,6 +1334,93 @@ export default function ContactsPage() {
                   </div>
                 )}
               </div>
+
+              {/* SECTION D: Event Participation History */}
+              <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-5">
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+                  <Calendar className="w-4 h-4 text-slate-500" />
+                  Event Participation History
+                </h4>
+                {loadingDetailEvents ? (
+                  <div className="py-8 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                  </div>
+                ) : detailEvents.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2">No event participation history recorded for this contact.</p>
+                ) : (
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50/70 text-slate-550 font-semibold border-b border-slate-200">
+                          <th className="py-2.5 px-3">Event Name</th>
+                          <th className="py-2.5 px-3">Client / Partner</th>
+                          <th className="py-2.5 px-3">Event Dates</th>
+                          <th className="py-2.5 px-3">Lead Status</th>
+                          <th className="py-2.5 px-3">Attendance</th>
+                          <th className="py-2.5 px-3">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {detailEvents.map((l) => {
+                          const statusColors: Record<string, string> = {
+                            white: 'bg-slate-100 border-slate-250 text-slate-700',
+                            yellow: 'bg-amber-50 border-amber-200 text-amber-700',
+                            green: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                            red: 'bg-red-50 border-red-200 text-red-700',
+                          };
+
+                          const attendanceStatusColors: Record<string, string> = {
+                            invited: 'bg-blue-50 border-blue-200 text-blue-700',
+                            registered: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+                            attended: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                            no_show: 'bg-red-50 border-red-200 text-red-700',
+                            cancelled: 'bg-slate-100 border-slate-250 text-slate-700',
+                          };
+
+                          return (
+                            <tr key={l.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-3">
+                                <span className="font-bold text-slate-900 block">{l.event.name}</span>
+                                <span className="text-[10px] text-slate-400 capitalize">{l.event.eventType} Event</span>
+                              </td>
+                              <td className="py-3 px-3 font-medium">
+                                {l.event.clientName || '-'}
+                              </td>
+                              <td className="py-3 px-3 text-slate-500">
+                                {l.event.dateStart ? (
+                                  <>
+                                    <span>{new Date(l.event.dateStart).toLocaleDateString()}</span>
+                                    {l.event.dateEnd && l.event.dateEnd !== l.event.dateStart && (
+                                      <span className="block text-[10px] text-slate-400">
+                                        to {new Date(l.event.dateEnd).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  '-'
+                                )}
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] ${statusColors[l.leadStatus] || statusColors.white}`}>
+                                  {l.leadStatus}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] capitalize ${attendanceStatusColors[l.attendanceStatus] || 'bg-slate-100 border-slate-250 text-slate-700'}`}>
+                                  {l.attendanceStatus}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 max-w-[200px] truncate" title={l.notes}>
+                                {l.notes || <span className="text-slate-400 italic">-</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end mt-8 pt-4 border-t border-slate-100">
@@ -1153,6 +1430,7 @@ export default function ContactsPage() {
                   setIsDetailModalOpen(false);
                   setDetailContact(null);
                   setDetailEmails([]);
+                  setDetailEvents([]);
                 }}
                 className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-150 text-slate-700 text-sm font-bold rounded-xl transition-all shadow-sm"
               >
@@ -1178,7 +1456,7 @@ export default function ContactsPage() {
 
             {/* DYNAMIC FORM COMPLETENESS WARNING */}
             {(() => {
-              const isCreateFormIncomplete = 
+              const isCreateFormIncomplete =
                 !salutation.trim() ||
                 !firstName.trim() ||
                 !lastName.trim() ||
@@ -1217,11 +1495,10 @@ export default function ContactsPage() {
                   <select
                     value={salutation}
                     onChange={(e) => setSalutation(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${
-                      submitAttempted && !salutation.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${submitAttempted && !salutation.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   >
                     <option value="Mr">Mr</option>
                     <option value="Mrs">Mrs</option>
@@ -1235,11 +1512,10 @@ export default function ContactsPage() {
                   <select
                     value={selectedCompanyId}
                     onChange={(e) => setSelectedCompanyId(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${
-                      submitAttempted && !selectedCompanyId
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${submitAttempted && !selectedCompanyId
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   >
                     <option value="">Select a Company</option>
                     {companies.map((comp) => (
@@ -1260,11 +1536,10 @@ export default function ContactsPage() {
                     placeholder="e.g. John"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      submitAttempted && !firstName.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !firstName.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {submitAttempted && !firstName.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">First Name wajib diisi</p>
@@ -1278,11 +1553,10 @@ export default function ContactsPage() {
                     placeholder="e.g. Doe"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      submitAttempted && !lastName.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !lastName.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {submitAttempted && !lastName.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Last Name wajib diisi</p>
@@ -1296,11 +1570,10 @@ export default function ContactsPage() {
                     placeholder="e.g. Senior Manager IT"
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      submitAttempted && !jobTitle.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !jobTitle.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {submitAttempted && !jobTitle.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Job Title wajib diisi</p>
@@ -1312,11 +1585,10 @@ export default function ContactsPage() {
                   <select
                     value={positionLevel}
                     onChange={(e) => setPositionLevel(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${
-                      submitAttempted && (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim())
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${submitAttempted && (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim())
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   >
                     <option value="unknown">unknown</option>
                     <option value="C-level//GM/Director">C-level//GM/Director</option>
@@ -1346,11 +1618,10 @@ export default function ContactsPage() {
                     placeholder="e.g. 0812345678"
                     value={mobilePhone}
                     onChange={(e) => setMobilePhone(e.target.value.replace(/\D/g, ''))}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-mono ${
-                      submitAttempted && !mobilePhone.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-mono ${submitAttempted && !mobilePhone.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {submitAttempted && !mobilePhone.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Mobile Phone wajib diisi</p>
@@ -1364,11 +1635,10 @@ export default function ContactsPage() {
                     placeholder="e.g. name@company.com"
                     value={contactCompanyEmail}
                     onChange={(e) => setContactCompanyEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      submitAttempted && !contactCompanyEmail.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !contactCompanyEmail.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {submitAttempted && !contactCompanyEmail.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Company Email wajib diisi</p>
@@ -1382,11 +1652,10 @@ export default function ContactsPage() {
                     placeholder="e.g. name@gmail.com"
                     value={contactPersonalEmail}
                     onChange={(e) => setContactPersonalEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      submitAttempted && !contactPersonalEmail.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !contactPersonalEmail.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {submitAttempted && !contactPersonalEmail.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Personal Email wajib diisi</p>
@@ -1400,11 +1669,10 @@ export default function ContactsPage() {
                     placeholder="e.g. https://linkedin.com/..."
                     value={linkedinUrl}
                     onChange={(e) => setLinkedinUrl(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      submitAttempted && !linkedinUrl.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !linkedinUrl.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {submitAttempted && !linkedinUrl.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">LinkedIn Profile URL wajib diisi</p>
@@ -1482,7 +1750,7 @@ export default function ContactsPage() {
 
             {/* DYNAMIC FORM COMPLETENESS WARNING */}
             {(() => {
-              const isEditFormIncomplete = 
+              const isEditFormIncomplete =
                 !editSalutation.trim() ||
                 !editFirstName.trim() ||
                 !editLastName.trim() ||
@@ -1521,11 +1789,10 @@ export default function ContactsPage() {
                   <select
                     value={editSalutation}
                     onChange={(e) => setEditSalutation(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${
-                      editSubmitAttempted && !editSalutation.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${editSubmitAttempted && !editSalutation.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   >
                     <option value="Mr">Mr</option>
                     <option value="Mrs">Mrs</option>
@@ -1539,11 +1806,10 @@ export default function ContactsPage() {
                   <select
                     value={editSelectedCompanyId}
                     onChange={(e) => setEditSelectedCompanyId(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${
-                      editSubmitAttempted && !editSelectedCompanyId
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${editSubmitAttempted && !editSelectedCompanyId
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   >
                     <option value="">Select a Company</option>
                     {companies.map((comp) => (
@@ -1564,11 +1830,10 @@ export default function ContactsPage() {
                     placeholder="e.g. John"
                     value={editFirstName}
                     onChange={(e) => setEditFirstName(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      editSubmitAttempted && !editFirstName.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editFirstName.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {editSubmitAttempted && !editFirstName.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">First Name wajib diisi</p>
@@ -1582,11 +1847,10 @@ export default function ContactsPage() {
                     placeholder="e.g. Doe"
                     value={editLastName}
                     onChange={(e) => setEditLastName(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      editSubmitAttempted && !editLastName.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editLastName.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {editSubmitAttempted && !editLastName.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Last Name wajib diisi</p>
@@ -1600,11 +1864,10 @@ export default function ContactsPage() {
                     placeholder="e.g. Senior Manager IT"
                     value={editJobTitle}
                     onChange={(e) => setEditJobTitle(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      editSubmitAttempted && !editJobTitle.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editJobTitle.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {editSubmitAttempted && !editJobTitle.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Job Title wajib diisi</p>
@@ -1616,11 +1879,10 @@ export default function ContactsPage() {
                   <select
                     value={editPositionLevel}
                     onChange={(e) => setEditPositionLevel(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${
-                      editSubmitAttempted && (!editPositionLevel || editPositionLevel === 'unknown' || !editPositionLevel.trim())
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${editSubmitAttempted && (!editPositionLevel || editPositionLevel === 'unknown' || !editPositionLevel.trim())
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   >
                     <option value="unknown">unknown</option>
                     <option value="C-level//GM/Director">C-level//GM/Director</option>
@@ -1650,11 +1912,10 @@ export default function ContactsPage() {
                     placeholder="e.g. 0812345678"
                     value={editMobilePhone}
                     onChange={(e) => setEditMobilePhone(e.target.value.replace(/\D/g, ''))}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-mono ${
-                      editSubmitAttempted && !editMobilePhone.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-mono ${editSubmitAttempted && !editMobilePhone.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {editSubmitAttempted && !editMobilePhone.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Mobile Phone wajib diisi</p>
@@ -1668,11 +1929,10 @@ export default function ContactsPage() {
                     placeholder="e.g. name@company.com"
                     value={editContactCompanyEmail}
                     onChange={(e) => setEditContactCompanyEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      editSubmitAttempted && !editContactCompanyEmail.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editContactCompanyEmail.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {editSubmitAttempted && !editContactCompanyEmail.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Company Email wajib diisi</p>
@@ -1686,11 +1946,10 @@ export default function ContactsPage() {
                     placeholder="e.g. name@gmail.com"
                     value={editContactPersonalEmail}
                     onChange={(e) => setEditContactPersonalEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      editSubmitAttempted && !editContactPersonalEmail.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editContactPersonalEmail.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {editSubmitAttempted && !editContactPersonalEmail.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Personal Email wajib diisi</p>
@@ -1704,11 +1963,10 @@ export default function ContactsPage() {
                     placeholder="e.g. https://linkedin.com/..."
                     value={editLinkedinUrl}
                     onChange={(e) => setEditLinkedinUrl(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                      editSubmitAttempted && !editLinkedinUrl.trim()
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editLinkedinUrl.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                    }`}
+                      }`}
                   />
                   {editSubmitAttempted && !editLinkedinUrl.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">LinkedIn Profile URL wajib diisi</p>
@@ -1833,7 +2091,7 @@ export default function ContactsPage() {
             {/* Add new email form */}
             <form onSubmit={handleAddEmail} className="space-y-4 border-t border-slate-100 pt-4">
               <h4 className="font-bold text-sm text-slate-900">Add New Email Address</h4>
-              
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label>
                 <input
@@ -1996,7 +2254,7 @@ export default function ContactsPage() {
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
             <h3 className="text-lg font-bold text-slate-900 mb-2">Hard Delete Contact</h3>
             <p className="text-sm text-slate-500 mb-6">
-              Are you sure you want to permanently delete contact <span className="font-semibold text-slate-800">"{deletingContact.firstName} {deletingContact.lastName}"</span>? 
+              Are you sure you want to permanently delete contact <span className="font-semibold text-slate-800">"{deletingContact.firstName} {deletingContact.lastName}"</span>?
               This will completely erase the contact and all associated emails, event leads, and removal request logs. This action is irreversible.
             </p>
 
@@ -2029,88 +2287,220 @@ export default function ContactsPage() {
       {/* Excel Import Modal Overlay */}
       {isImportModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+          <div className={`w-full ${importPreview ? 'max-w-3xl' : 'max-w-md'} bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 text-slate-900 transition-all`}>
             <button
               onClick={() => {
                 setIsImportModalOpen(false);
                 setSelectedImportFile(null);
+                setImportPreview(null);
               }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-605 rounded-lg transition-colors"
+              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="text-center mb-6">
-              <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
-                <Upload className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-extrabold text-slate-900">Import Contacts from Excel</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Upload your database template spreadsheet to bulk import groups, companies, and contacts.
-              </p>
-              <div className="mt-3">
-                <a
-                  href="/Database_Template.xlsx"
-                  download="Database_Template.xlsx"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Download Database Template (.xlsx)
-                </a>
-              </div>
-            </div>
-
-            <form onSubmit={handleImportExcel} className="space-y-4">
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer relative group">
-                <input
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setSelectedImportFile(e.target.files[0]);
-                    }
-                  }}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  disabled={importingExcel}
-                />
-                <div className="p-2.5 bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-600 text-slate-500 rounded-xl transition-all">
-                  <Upload className="w-5 h-5" />
-                </div>
-                {selectedImportFile ? (
-                  <div className="text-center">
-                    <p className="text-sm font-bold text-slate-800 break-all">{selectedImportFile.name}</p>
-                    <p className="text-xs text-slate-500">{(selectedImportFile.size / 1024).toFixed(1)} KB</p>
+            {!importPreview ? (
+              // Step 1: Upload File
+              <div>
+                <div className="text-center mb-6">
+                  <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
+                    <Upload className="w-6 h-6" />
                   </div>
-                ) : (
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-slate-700">Click or drag Excel template here</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Supports .xlsx and .xls formats</p>
+                  <h3 className="text-xl font-extrabold text-slate-900">Import Contacts from Excel</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Upload your database template spreadsheet to bulk import groups, companies, and contacts.
+                  </p>
+                  <div className="mt-3">
+                    <a
+                      href="/Database_Template.xlsx"
+                      download="Database_Template.xlsx"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download Database Template (.xlsx)
+                    </a>
+                  </div>
+                </div>
+
+                <form onSubmit={handlePreviewExcel} className="space-y-4">
+                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer relative group">
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          setSelectedImportFile(e.target.files[0]);
+                        }
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      disabled={loadingPreview}
+                    />
+                    <div className="p-2.5 bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-600 text-slate-500 rounded-xl transition-all">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    {selectedImportFile ? (
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-slate-800 break-all">{selectedImportFile.name}</p>
+                        <p className="text-xs text-slate-500">{(selectedImportFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-slate-700">Click or drag Excel template here</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Supports .xlsx and .xls formats</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsImportModalOpen(false);
+                        setSelectedImportFile(null);
+                      }}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+                      disabled={loadingPreview}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loadingPreview || !selectedImportFile}
+                      className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+                    >
+                      {loadingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      Preview Excel Data
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              // Step 2: Preview & Confirm Import
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900">Excel Import Preview</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Review parsed rows and synchronization details before importing.
+                  </p>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                    <span className="block text-2xl font-black text-slate-900">{importPreview.totalRows}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mt-0.5">Total Rows</span>
+                  </div>
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
+                    <span className="block text-2xl font-black text-emerald-600">{importPreview.newCount}</span>
+                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block mt-0.5">New Contacts</span>
+                  </div>
+                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-center">
+                    <span className="block text-2xl font-black text-amber-600">{importPreview.duplicateCount}</span>
+                    <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider block mt-0.5">Duplicates</span>
+                  </div>
+                </div>
+
+                {/* Warning Alert Banner for Duplicates */}
+                {importPreview.duplicateCount > 0 && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-800">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Duplicate Warning: </span>
+                      {importPreview.duplicateCount} existing contacts/emails detected. These entries will be <span className="font-bold underline">synchronized (details updated)</span> in the database rather than creating duplicate contacts.
+                    </div>
                   </div>
                 )}
-              </div>
 
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsImportModalOpen(false);
-                    setSelectedImportFile(null);
-                  }}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                  disabled={importingExcel}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={importingExcel || !selectedImportFile}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {importingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Import Data
-                </button>
+                {/* Preview Table */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Preview Table (First 10 Rows)</h4>
+                    {importPreview.totalRows > 10 && (
+                      <span className="text-[10px] font-semibold text-slate-500 italic">
+                        * Showing first 10 of {importPreview.totalRows} total rows.
+                      </span>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white max-h-[30vh]">
+                    <table className="w-full text-left border-collapse text-[11px]">
+                      <thead>
+                        <tr className="bg-slate-50/70 text-slate-550 font-semibold border-b border-slate-200 sticky top-0 z-10">
+                          <th className="py-2 px-3 w-12 text-center">Row</th>
+                          <th className="py-2 px-3">Name</th>
+                          <th className="py-2 px-3">Group / Company</th>
+                          <th className="py-2 px-3">Email</th>
+                          <th className="py-2 px-3">Status</th>
+                          <th className="py-2 px-3">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {importPreview.rows.slice(0, 10).map((r) => (
+                          <tr key={r.rowNum} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-2 px-3 font-semibold text-slate-500 text-center">{r.rowNum}</td>
+                            <td className="py-2 px-3 font-bold text-slate-900">{r.firstName} {r.lastName}</td>
+                            <td className="py-2 px-3">
+                              <span className="block text-slate-800 font-medium">{r.companyName || '-'}</span>
+                              {r.groupName && <span className="text-[9px] text-slate-400 block">Holding: {r.groupName}</span>}
+                            </td>
+                            <td className="py-2 px-3 font-mono">{r.email || '-'}</td>
+                            <td className="py-2 px-3">
+                              {r.status === 'NEW' ? (
+                                <span className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-600 text-[9px] font-bold rounded">
+                                  NEW
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-600 text-[9px] font-bold rounded">
+                                  DUPLICATE
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-slate-500 leading-tight">{r.message}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Footer Controls */}
+                <div className="flex gap-3 justify-between pt-4 border-t border-slate-100 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportPreview(null);
+                    }}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all"
+                    disabled={importingExcel}
+                  >
+                    Back to Upload
+                  </button>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsImportModalOpen(false);
+                        setSelectedImportFile(null);
+                        setImportPreview(null);
+                      }}
+                      className="px-4 py-2 hover:bg-slate-50 text-slate-600 text-sm font-semibold rounded-xl transition-all"
+                      disabled={importingExcel}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleImportExcel}
+                      disabled={importingExcel}
+                      className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+                    >
+                      {importingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      Confirm & Import
+                    </button>
+                  </div>
+                </div>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}

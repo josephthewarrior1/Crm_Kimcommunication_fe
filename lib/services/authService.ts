@@ -4,6 +4,7 @@ import { AppUser } from '../types';
 export interface LoginResponse {
   token: string;
   expiresAt: string;
+  userId?: number;
   username: string;
   email: string;
   fullName: string;

@@ -51,7 +51,7 @@ export class ApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        await this.handleErrorResponse(response);
       }
 
       return await response.json();
@@ -79,22 +79,7 @@ export class ApiService {
       });
 
       if (!response.ok) {
-        let message = `HTTP ${response.status}: ${response.statusText}`;
-
-        try {
-          const errorData = await response.json();
-          if (typeof errorData?.error === 'string' && errorData.error.trim()) {
-            message = errorData.error;
-          } else if (typeof errorData?.message === 'string' && errorData.message.trim()) {
-            message = errorData.message;
-          }
-        } catch {
-          // Keep the default HTTP status message when the response has no JSON body.
-        }
-
-        const error = new Error(message) as Error & { status?: number };
-        error.status = response.status;
-        throw error;
+        await this.handleErrorResponse(response);
       }
 
       return await response.json();
@@ -123,7 +108,7 @@ export class ApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        await this.handleErrorResponse(response);
       }
 
       return await response.json();
@@ -149,7 +134,7 @@ export class ApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        await this.handleErrorResponse(response);
       }
 
       // Handle 204 No Content - no body to parse
@@ -171,5 +156,44 @@ export class ApiService {
       console.error(`DELETE ${endpoint} failed:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Handle error responses and format readable error messages.
+   */
+  private async handleErrorResponse(response: Response): Promise<never> {
+    let message = `HTTP ${response.status}: ${response.statusText}`;
+
+    try {
+      const text = await response.text();
+      if (text && text.trim()) {
+        try {
+          const errorData = JSON.parse(text);
+          if (typeof errorData?.error === 'string' && errorData.error.trim()) {
+            message = errorData.error;
+          } else if (typeof errorData?.message === 'string' && errorData.message.trim()) {
+            message = errorData.message;
+          } else if (typeof errorData?.message === 'object' && errorData.message !== null) {
+            message = JSON.stringify(errorData.message);
+          }
+        } catch {
+          // If not JSON, use the raw response text
+          message = text;
+        }
+      }
+    } catch {
+      // Fallback to default message on error reading response text
+    }
+
+    // Friendly fallback for 401 Unauthorized
+    if (response.status === 401) {
+      if (!message || message.startsWith('HTTP 401') || message.toLowerCase() === 'unauthorized') {
+        message = 'Username/email atau password salah. Silakan coba lagi!';
+      }
+    }
+
+    const error = new Error(message) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
 }
