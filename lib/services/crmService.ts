@@ -134,6 +134,10 @@ export class CrmService extends ApiService {
     return this.put<EventLead>(`/api/event-leads/${leadId}/status?${params.toString()}`);
   }
 
+  async deleteEventLead(id: string): Promise<void> {
+    return this.delete<void>(`/api/event-leads/${id}`);
+  }
+
   // --- REMOVAL REQUESTS ---
   async getRemovalRequests(): Promise<RemovalRequest[]> {
     return this.get<RemovalRequest[]>('/api/removal-requests');

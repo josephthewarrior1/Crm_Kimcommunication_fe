@@ -5,6 +5,8 @@ import { crmService } from '../../../lib/services/crmService';
 import { Contact, Company, ContactEmail, Group } from '../../../lib/types';
 import { Users, Search, Plus, X, Loader2, Mail, Phone, ExternalLink, ShieldAlert, Trash2, Edit2, Eye, Building2, FolderTree, Globe, MapPin, CheckCircle, AlertCircle, RefreshCw, Upload, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { INDUSTRIES } from '../../../lib/constants';
+
 
 const checkContactCompleteness = (c: Contact) => {
   const missing: string[] = [];
@@ -91,6 +93,8 @@ export default function ContactsPage() {
   const [filterGroupId, setFilterGroupId] = useState('');
   const [filterPositionLevel, setFilterPositionLevel] = useState('');
   const [filterJobTitle, setFilterJobTitle] = useState('');
+  const [filterIndustry, setFilterIndustry] = useState('');
+
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -586,7 +590,7 @@ export default function ContactsPage() {
     }
   };
 
-  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterJobTitle;
+  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterJobTitle || filterIndustry;
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -594,7 +598,9 @@ export default function ContactsPage() {
     setFilterCompanyId('');
     setFilterPositionLevel('');
     setFilterJobTitle('');
+    setFilterIndustry('');
   };
+
 
   // Search and Advanced Filters
   const filteredContacts = contacts.filter((c) => {
@@ -624,7 +630,25 @@ export default function ContactsPage() {
     // 5. Job Title filter
     const matchesJobTitle = !filterJobTitle || (c.jobTitle && c.jobTitle.toLowerCase().includes(filterJobTitle.toLowerCase()));
 
-    return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesJobTitle;
+    // 6. Industry filter
+    const matchesIndustry = !filterIndustry || (() => {
+      if (!c.company?.industry) return false;
+      
+      const normalize = (str: string) => {
+        return str
+          .trim()
+          .toLowerCase()
+          .replace(/mm/g, 'm')       // normalize double m
+          .replace(/s$/, '');         // normalize trailing s (plural vs singular)
+      };
+
+      const dbInd = normalize(c.company.industry);
+      const filterInd = normalize(filterIndustry);
+      
+      return dbInd === filterInd || dbInd.includes(filterInd) || filterInd.includes(dbInd);
+    })();
+
+    return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesJobTitle && matchesIndustry;
   });
 
   return (
@@ -677,7 +701,7 @@ export default function ContactsPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by Group</label>
             <select
@@ -730,6 +754,20 @@ export default function ContactsPage() {
               onChange={(e) => setFilterJobTitle(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all placeholder-slate-450 focus:bg-white"
             />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
+            <select
+              value={filterIndustry}
+              onChange={(e) => setFilterIndustry(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+            >
+              <option value="">All Industries</option>
+              {INDUSTRIES.map((ind) => (
+                <option key={ind} value={ind}>{ind}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

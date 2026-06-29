@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
@@ -23,6 +23,10 @@ export default function EventsPage() {
   const [isDeleteEventConfirmOpen, setIsDeleteEventConfirmOpen] = useState(false);
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   const [isUpdateLeadModalOpen, setIsUpdateLeadModalOpen] = useState(false);
+  const [isDeleteLeadConfirmOpen, setIsDeleteLeadConfirmOpen] = useState(false);
+  const [deletingLead, setDeletingLead] = useState<EventLead | null>(null);
+  const [submittingLeadDelete, setSubmittingLeadDelete] = useState(false);
+
 
   // Form inputs for Event creation
   const [name, setName] = useState('');
@@ -258,6 +262,30 @@ export default function EventsPage() {
     }
   };
 
+  const openDeleteLeadConfirm = (lead: EventLead) => {
+    setDeletingLead(lead);
+    setIsDeleteLeadConfirmOpen(true);
+  };
+
+  const handleDeleteLead = async () => {
+    if (!selectedEvent || !deletingLead) return;
+    setSubmittingLeadDelete(true);
+
+    try {
+      await crmService.deleteEventLead(deletingLead.id);
+      toast.success('Participant removed from event successfully!');
+      setIsDeleteLeadConfirmOpen(false);
+      setDeletingLead(null);
+      handleSelectEvent(selectedEvent);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove participant');
+    } finally {
+      setSubmittingLeadDelete(false);
+    }
+  };
+
+
+
   // Filter events based on search
   const filteredEvents = events.filter((e) =>
     e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -359,8 +387,29 @@ export default function EventsPage() {
                     Client Target: <strong className="text-slate-700">{selectedEvent.clientName || '-'}</strong>
                     {selectedEvent.dateStart && ` | Duration: ${new Date(selectedEvent.dateStart).toLocaleDateString()} - ${selectedEvent.dateEnd ? new Date(selectedEvent.dateEnd).toLocaleDateString() : 'End'}`}
                   </p>
+                  
+                  {/* Attendance Statistics */}
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-center min-w-[80px]">
+                      <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total Leads</span>
+                      <span className="text-sm font-extrabold text-slate-700">{leads.length}</span>
+                    </div>
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-1.5 text-center min-w-[80px]">
+                      <span className="block text-[9px] font-bold text-emerald-500 uppercase tracking-wider">Hadir</span>
+                      <span className="text-sm font-extrabold text-emerald-700">
+                        {leads.filter(l => l.attendanceStatus === 'attended').length}
+                      </span>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-1.5 text-center min-w-[80px]">
+                      <span className="block text-[9px] font-bold text-amber-500 uppercase tracking-wider">Belum Hadir</span>
+                      <span className="text-sm font-extrabold text-amber-700">
+                        {leads.filter(l => l.attendanceStatus !== 'attended').length}
+                      </span>
+                    </div>
+                  </div>
+
                   {selectedEvent.notes && (
-                    <p className="text-xs text-slate-500 mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic">
+                    <p className="text-xs text-slate-500 mt-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic">
                       "{selectedEvent.notes}"
                     </p>
                   )}
@@ -443,13 +492,20 @@ export default function EventsPage() {
                             <td className="py-3.5 px-4 text-slate-500 max-w-[150px] truncate" title={l.notes}>
                               {l.notes || '-'}
                             </td>
-                            <td className="py-3.5 px-4 text-right">
+                            <td className="py-3.5 px-4 text-right space-x-1">
                               <button
                                 onClick={() => handleOpenUpdateLeadModal(l)}
                                 className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
                                 title="Update Status"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => openDeleteLeadConfirm(l)}
+                                className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg text-slate-400 hover:text-red-650 transition-all"
+                                title="Remove Participant"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </td>
                           </tr>
@@ -957,6 +1013,68 @@ export default function EventsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Lead Confirm Modal Overlay */}
+      {isDeleteLeadConfirmOpen && deletingLead && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+            <button
+              onClick={() => {
+                setIsDeleteLeadConfirmOpen(false);
+                setDeletingLead(null);
+              }}
+              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-extrabold text-slate-900 mb-1">Remove Participant from Event</h3>
+            <p className="text-xs text-slate-500 mb-6">
+              Are you sure you want to remove this person from the event?
+            </p>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 mb-6 text-sm">
+              <div>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Name</span>
+                <span className="font-bold text-slate-800">{deletingLead.contact.firstName} {deletingLead.contact.lastName}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Job Title</span>
+                <span className="font-semibold text-slate-700">{deletingLead.contact.jobTitle || '-'}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company</span>
+                <span className="font-semibold text-slate-700">{deletingLead.contact.company?.name || '-'}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Industry</span>
+                <span className="font-semibold text-slate-700">{deletingLead.contact.company?.industry || '-'}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteLeadConfirmOpen(false);
+                  setDeletingLead(null);
+                }}
+                className="px-4 py-2 bg-slate-105 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteLead}
+                disabled={submittingLeadDelete}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-750 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+              >
+                {submittingLeadDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Remove
+              </button>
+            </div>
           </div>
         </div>
       )}

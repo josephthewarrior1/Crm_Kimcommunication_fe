@@ -5,6 +5,8 @@ import { crmService } from '../../../lib/services/crmService';
 import { Company, Group } from '../../../lib/types';
 import { Building2, Search, Plus, X, Loader2, Globe, Phone, MapPin, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { INDUSTRIES } from '../../../lib/constants';
+
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -397,13 +399,18 @@ export default function CompaniesPage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Industry</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. FSI, Retail, Otomotif"
+                  <select
                     value={industry}
                     onChange={(e) => setIndustry(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  />
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
+                  >
+                    <option value="">Select Industry</option>
+                    {INDUSTRIES.map((ind) => (
+                      <option key={ind} value={ind}>
+                        {ind}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -565,13 +572,18 @@ export default function CompaniesPage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Industry</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. FSI, Retail, Otomotif"
+                  <select
                     value={editIndustry}
                     onChange={(e) => setEditIndustry(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  />
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
+                  >
+                    <option value="">Select Industry</option>
+                    {INDUSTRIES.map((ind) => (
+                      <option key={ind} value={ind}>
+                        {ind}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
