@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { authService, LoginResponse } from '../services/authService';
+import { authService } from '../services/authService';
 import { AppUser } from '../types';
 import { toast } from 'sonner';
 
@@ -13,6 +13,9 @@ interface AuthContextType {
   login: (data: any) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
+  isAdmin: boolean;
+  isManager: boolean;
+  isUser: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +45,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
+  // Compute role permissions
+  const isAdmin = user?.roles?.includes('ADMIN') || false;
+  const isManager = user?.roles?.includes('MANAGER') || false;
+  const isUser = user?.roles?.includes('USER') || false;
+
   // Protect routes
   useEffect(() => {
     if (isLoading) return;
@@ -52,8 +60,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token && isDashboardRoute) {
       toast.error('Please login first to access the dashboard.');
       router.push('/login');
-    } else if (token && isAuthRoute) {
-      router.push('/dashboard');
+    } else if (token) {
+      if (isAuthRoute) {
+        const savedUserJson = localStorage.getItem('user');
+        let hasAdmin = false;
+        if (savedUserJson) {
+          try {
+            hasAdmin = JSON.parse(savedUserJson).roles?.includes('ADMIN') || false;
+          } catch (e) {}
+        }
+        if (pathname === '/register' && hasAdmin) {
+          // Allow ADMIN to register/create accounts
+        } else {
+          router.push('/dashboard');
+        }
+      } else {
+        // Protect specific dashboard sub-routes
+        const isSettingsRoute = pathname === '/dashboard/settings';
+        const isFlaggedRoute = pathname === '/dashboard/flagged';
+
+        const savedUserJson = localStorage.getItem('user');
+        if (savedUserJson) {
+          try {
+            const parsedUser = JSON.parse(savedUserJson) as AppUser;
+            const hasAdmin = parsedUser.roles?.includes('ADMIN') || false;
+            const hasManager = parsedUser.roles?.includes('MANAGER') || false;
+
+            if (isSettingsRoute && !hasAdmin) {
+              toast.error('Access Denied: Only ADMIN accounts can access Removal Requests.');
+              router.push('/dashboard');
+            } else if (isFlaggedRoute && !hasAdmin && !hasManager) {
+              toast.error('Access Denied: Only ADMIN or MANAGER accounts can access Flagged Watchlist.');
+              router.push('/dashboard');
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
     }
   }, [token, pathname, isLoading, router]);
 
@@ -66,7 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: response.userId || 0,
         username: response.username,
         email: response.email,
-        fullName: response.fullName
+        fullName: response.fullName,
+        roles: response.roles || []
       };
       
       localStorage.setItem('user', JSON.stringify(userData));
@@ -84,8 +129,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: any) => {
     try {
       await authService.register(data);
-      toast.success('Registration successful! Please login.');
-      router.push('/login');
+      if (token) {
+        toast.success(`Account for "${data.username}" created successfully!`);
+        router.push('/dashboard');
+      } else {
+        toast.success('Registration successful! Please login.');
+        router.push('/login');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Registration failed.');
       throw err;
@@ -110,7 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, isAdmin, isManager, isUser }}>
       {children}
     </AuthContext.Provider>
   );

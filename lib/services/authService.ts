@@ -8,6 +8,7 @@ export interface LoginResponse {
   username: string;
   email: string;
   fullName: string;
+  roles?: string[];
 }
 
 export class AuthService extends ApiService {

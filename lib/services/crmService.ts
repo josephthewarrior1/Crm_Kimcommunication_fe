@@ -8,7 +8,8 @@ import {
   EventLead,
   RemovalRequest,
   PersonalEmailDomain,
-  FlaggedIdentity
+  FlaggedIdentity,
+  AppUser
 } from '../types';
 
 export class CrmService extends ApiService {
@@ -256,6 +257,19 @@ export class CrmService extends ApiService {
     }
 
     return response.json();
+  }
+
+  // --- USER MANAGEMENT ---
+  async getUsers(): Promise<AppUser[]> {
+    return this.get<AppUser[]>('/api/users');
+  }
+
+  async updateUserRole(id: number, role: string): Promise<AppUser> {
+    return this.put<AppUser>(`/api/users/${id}/role?role=${encodeURIComponent(role)}`);
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    return this.delete<void>(`/api/users/${id}`);
   }
 }
 

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/context/AuthContext';
@@ -108,16 +108,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 text-center text-sm text-slate-500 border-t border-slate-100 pt-6">
-          New here?{' '}
-          <button
-            onClick={() => router.push('/register')}
-            className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-          >
-            Create an account
-          </button>
+          Need an account? Please contact your system <span className="font-semibold text-blue-600">Administrator</span> to request credentials.
         </div>
       </div>
     </div>
   );
 }
-

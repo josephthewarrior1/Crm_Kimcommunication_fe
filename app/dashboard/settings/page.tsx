@@ -5,14 +5,18 @@ import { crmService } from '../../../lib/services/crmService';
 import { RemovalRequest } from '../../../lib/types';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../../../lib/context/AuthContext';
 
 export default function SettingsPage() {
+  const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [removals, setRemovals] = useState<RemovalRequest[]>([]);
 
   useEffect(() => {
-    loadTabDetails();
-  }, []);
+    if (isAdmin) {
+      loadTabDetails();
+    }
+  }, [isAdmin]);
 
   async function loadTabDetails() {
     setLoading(true);
@@ -35,6 +39,20 @@ export default function SettingsPage() {
       toast.error(err.message || 'Failed to update removal status');
     }
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-600 font-extrabold text-2xl mb-4 animate-bounce">
+          🛇
+        </div>
+        <h3 className="text-xl font-extrabold text-slate-900">Access Denied</h3>
+        <p className="text-sm text-slate-500 mt-2 max-w-sm">
+          Only users with the <span className="font-bold text-red-600">ADMIN</span> role have permissions to audit removal requests.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">

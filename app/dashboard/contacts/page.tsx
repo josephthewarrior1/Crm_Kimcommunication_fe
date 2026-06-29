@@ -6,6 +6,7 @@ import { Contact, Company, ContactEmail, Group, EventLead, FlaggedIdentity } fro
 import { Users, Search, Plus, X, Loader2, Mail, Phone, ExternalLink, ShieldAlert, Trash2, Edit2, Eye, Building2, FolderTree, Globe, MapPin, CheckCircle, AlertCircle, RefreshCw, Upload, Download, Calendar, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { INDUSTRIES } from '../../../lib/constants';
+import { useAuth } from '../../../lib/context/AuthContext';
 
 
 const checkContactCompleteness = (c: Contact) => {
@@ -82,6 +83,7 @@ const checkFormCompleteness = (
 };
 
 export default function ContactsPage() {
+  const { isAdmin, isManager, isUser } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -740,22 +742,24 @@ export default function ContactsPage() {
           <h2 className="text-2xl font-extrabold text-slate-900">Contacts</h2>
           <p className="text-sm text-slate-500 mt-1">Manage contact persons, corporate roles, and corporate vs personal emails.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl shadow-sm transition-all"
-          >
-            <Upload className="w-4 h-4 text-slate-500" />
-            Import Excel
-          </button>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            Add Contact
-          </button>
-        </div>
+        {!isUser && (
+          <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl shadow-sm transition-all"
+            >
+              <Upload className="w-4 h-4 text-slate-500" />
+              Import Excel
+            </button>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Add Contact
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Advanced Filters Area */}
@@ -1026,19 +1030,20 @@ export default function ContactsPage() {
                                 View Details
                               </button>
 
-                              <button
-                                onClick={() => {
-                                  setActiveDropdownId(null);
-                                  openEditModal(c);
-                                }}
-                                className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
-                              >
-                                <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-                                Edit Contact
-                              </button>
+                              {!isUser && (
+                                <button
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    openEditModal(c);
+                                  }}
+                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                                  Edit Contact
+                                </button>
+                              )}
 
-
-                              {c.isActive && (
+                              {c.isActive && !isUser && (
                                 <button
                                   onClick={() => {
                                     setActiveDropdownId(null);
@@ -1051,18 +1056,21 @@ export default function ContactsPage() {
                                 </button>
                               )}
 
-                              <div className="border-t border-slate-100 my-1" />
-
-                              <button
-                                onClick={() => {
-                                  setActiveDropdownId(null);
-                                  openDeleteConfirm(c);
-                                }}
-                                className="w-full px-4 py-2 text-xs font-semibold text-red-650 hover:bg-red-50 hover:text-red-900 transition-colors flex items-center gap-2"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                                Delete
-                              </button>
+                              {isAdmin && (
+                                <>
+                                  <div className="border-t border-slate-100 my-1" />
+                                  <button
+                                    onClick={() => {
+                                      setActiveDropdownId(null);
+                                      openDeleteConfirm(c);
+                                    }}
+                                    className="w-full px-4 py-2 text-xs font-semibold text-red-650 hover:bg-red-50 hover:text-red-900 transition-colors flex items-center gap-2"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                    Delete
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </>
                         )}

@@ -6,9 +6,11 @@ import { Company, Group, Contact } from '../../../lib/types';
 import { Building2, Search, Plus, X, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Eye, Users, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../lib/constants';
+import { useAuth } from '../../../lib/context/AuthContext';
 
 
 export default function CompaniesPage() {
+  const { isAdmin, isManager, isUser } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -223,13 +225,15 @@ export default function CompaniesPage() {
           <h2 className="text-2xl font-extrabold text-slate-900">Companies</h2>
           <p className="text-sm text-slate-500 mt-1">Manage partner companies and target corporate leads.</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Add Company
-        </button>
+        {!isUser && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            Add Company
+          </button>
+        )}
       </div>
 
       {/* Control Bar */}
@@ -276,9 +280,16 @@ export default function CompaniesPage() {
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-all">
                     <td className="py-4 px-6">
                       <p className="text-sm font-bold text-slate-900">{c.name}</p>
-                      {c.brandName && (
-                        <p className="text-xs text-blue-600 font-medium mt-0.5">Brand: {c.brandName}</p>
-                      )}
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {c.brandName && (
+                          <span className="text-xs text-blue-650 font-medium">Brand: {c.brandName}</span>
+                        )}
+                        {c.brandName && <span className="text-slate-300 text-[10px]">•</span>}
+                        <span className="text-[11px] text-slate-500 font-medium flex items-center gap-0.5">
+                          <Users className="w-3 h-3 text-slate-400" />
+                          {contacts.filter(contact => contact.company?.id === c.id && contact.isActive).length} Contacts
+                        </span>
+                      </div>
                     </td>
                     <td className="py-4 px-6 text-sm">
                       {c.group ? (
@@ -343,20 +354,24 @@ export default function CompaniesPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => openEditModal(c)}
-                          className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                          title="Edit Company"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openDeleteConfirm(c)}
-                          className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                          title="Delete Company"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!isUser && (
+                          <button
+                            onClick={() => openEditModal(c)}
+                            className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
+                            title="Edit Company"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => openDeleteConfirm(c)}
+                            className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
+                            title="Delete Company"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -843,8 +858,21 @@ export default function CompaniesPage() {
                         <p className="font-bold text-slate-800 mt-0.5">{detailCompany.companySizeRevenue || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-slate-400 font-medium">Employee Count</p>
+                        <p className="text-slate-400 font-medium">Employee Count (Est.)</p>
                         <p className="font-bold text-slate-800 mt-0.5">{detailCompany.companySizeEmployee || '-'}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                      <div>
+                        <p className="text-slate-400 font-medium">CRM Registered Contacts</p>
+                        <p className="font-bold text-blue-600 mt-0.5 flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5" />
+                          {associatedContacts.length} People
+                        </p>
+                      </div>
+                      <div>
+                        {/* Reserved */}
                       </div>
                     </div>
 

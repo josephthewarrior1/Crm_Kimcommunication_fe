@@ -5,8 +5,10 @@ import { crmService } from '../../../lib/services/crmService';
 import { Event, EventLead, Contact } from '../../../lib/types';
 import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Eye, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../../../lib/context/AuthContext';
 
 export default function EventsPage() {
+  const { isAdmin, isManager, isUser } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -312,13 +314,15 @@ export default function EventsPage() {
           <h2 className="text-2xl font-extrabold text-slate-900">Events & Lead Tracking</h2>
           <p className="text-sm text-slate-500 mt-1">Track event attendance, confirmation color statuses, and client targets.</p>
         </div>
-        <button
-          onClick={() => setIsCreateEventModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Create Event
-        </button>
+        {!isUser && (
+          <button
+            onClick={() => setIsCreateEventModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            Create Event
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -416,20 +420,24 @@ export default function EventsPage() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-                  <button
-                    onClick={() => openEditEventModal(selectedEvent)}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => openDeleteEventConfirm(selectedEvent)}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 text-xs font-bold rounded-xl transition-all shadow-sm"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete
-                  </button>
+                  {!isUser && (
+                    <button
+                      onClick={() => openEditEventModal(selectedEvent)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Edit
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => openDeleteEventConfirm(selectedEvent)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 text-xs font-bold rounded-xl transition-all shadow-sm"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  )}
                   <button
                     onClick={() => setIsAddLeadModalOpen(true)}
                     className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
@@ -500,13 +508,15 @@ export default function EventsPage() {
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                              <button
-                                onClick={() => openDeleteLeadConfirm(l)}
-                                className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg text-slate-400 hover:text-red-650 transition-all"
-                                title="Remove Participant"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {!isUser && (
+                                <button
+                                  onClick={() => openDeleteLeadConfirm(l)}
+                                  className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg text-slate-400 hover:text-red-650 transition-all"
+                                  title="Remove Participant"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );

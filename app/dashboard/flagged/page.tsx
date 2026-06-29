@@ -1,12 +1,14 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { FlaggedIdentity, Contact, Event } from '../../../lib/types';
 import { ShieldAlert, Plus, Search, X, Loader2, Edit2, Trash2, AlertTriangle, CheckCircle, RefreshCw, UserX } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../../../lib/context/AuthContext';
 
 export default function FlaggedPage() {
+  const { isAdmin, isManager, isUser } = useAuth();
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -119,8 +121,8 @@ export default function FlaggedPage() {
     setEditFlagReason(flg.flagReason || 'multiple_identity');
     setEditEvidenceNotes(flg.evidenceNotes || '');
     setEditStatus(flg.status || 'suspected');
-    setEditSelectedContactId(flg.contact?.id || '');
-    setEditSelectedEventId(flg.event?.id || '');
+    setEditSelectedContactId(flg.contact?.id?.toString() || '');
+    setEditSelectedEventId(flg.event?.id?.toString() || '');
     setIsEditModalOpen(true);
   };
 
@@ -217,13 +219,15 @@ export default function FlaggedPage() {
           </h2>
           <p className="text-sm text-slate-500 mt-1">Audit and manage flagged fraudulent attendees, fake company representations, and phone/email duplications.</p>
         </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-550 active:bg-red-700 text-white text-sm font-bold rounded-xl shadow-md shadow-red-600/10 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Flag New Profile
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-550 active:bg-red-700 text-white text-sm font-bold rounded-xl shadow-md shadow-red-600/10 transition-all self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            Flag New Profile
+          </button>
+        )}
       </div>
 
       {/* Control / Filter Bar */}
@@ -320,22 +324,24 @@ export default function FlaggedPage() {
                   )}
                 </div>
 
-                <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 mt-2">
-                  <button
-                    onClick={() => openEditModal(flg)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    Edit Status
-                  </button>
-                  <button
-                    onClick={() => openDeleteConfirm(flg)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-lg transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Remove
-                  </button>
-                </div>
+                {isAdmin && (
+                  <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 mt-2">
+                    <button
+                      onClick={() => openEditModal(flg)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Edit Status
+                    </button>
+                    <button
+                      onClick={() => openDeleteConfirm(flg)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
 
             </div>

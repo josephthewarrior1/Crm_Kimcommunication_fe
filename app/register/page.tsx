@@ -1,19 +1,20 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { UserPlus, User, Mail, Lock, ShieldCheck, Loader2, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, User, Mail, Lock, ShieldCheck, Loader2, Eye, EyeOff, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, token } = useAuth();
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState('USER');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,7 +37,8 @@ export default function RegisterPage() {
         username: username.trim(),
         email: email.trim(),
         fullName: fullName.trim() || undefined,
-        password
+        password,
+        roles: token ? [role] : undefined
       });
     } catch (err) {
       // Error handled inside AuthContext toast
@@ -57,8 +59,12 @@ export default function RegisterPage() {
           <div className="inline-flex p-2.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-2 shadow-sm">
             <UserPlus className="w-7 h-7" />
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Create Account</h2>
-          <p className="text-sm text-slate-500 mt-1">Get started with CRM Lead Management system.</p>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            {token ? 'Create User Account' : 'Create Admin Account'}
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            {token ? 'Provision a new user account with role permissions.' : 'Register the primary administrator account.'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -111,6 +117,27 @@ export default function RegisterPage() {
               />
             </div>
           </div>
+
+          {token && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">User Role *</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <Shield className="w-5 h-5" />
+                </span>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white text-sm"
+                  required
+                >
+                  <option value="USER">USER (Read-only Dashboard, Events Check-in)</option>
+                  <option value="MANAGER">MANAGER (Manage contacts, companies, events, groups)</option>
+                  <option value="ADMIN">ADMIN (Full permissions, watchlists, removals)</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">Password *</label>
@@ -170,25 +197,35 @@ export default function RegisterPage() {
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Creating account...
+                {token ? 'Creating Account...' : 'Registering Admin...'}
               </>
             ) : (
-              'Create Account'
+              token ? 'Create Account' : 'Register Admin'
             )}
           </button>
         </form>
 
         <div className="mt-5 text-center text-sm text-slate-500 border-t border-slate-100 pt-4">
-          Already have an account?{' '}
-          <button
-            onClick={() => router.push('/login')}
-            className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-          >
-            Sign in
-          </button>
+          {token ? (
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+            >
+              ← Back to Dashboard
+            </button>
+          ) : (
+            <>
+              Already have an account?{' '}
+              <button
+                onClick={() => router.push('/login')}
+                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+              >
+                Sign in
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

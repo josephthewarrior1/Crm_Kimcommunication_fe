@@ -1,12 +1,14 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Group } from '../../../lib/types';
 import { FolderTree, Search, Plus, X, Loader2, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../../../lib/context/AuthContext';
 
 export default function GroupsPage() {
+  const { isAdmin, isManager, isUser } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,13 +137,15 @@ export default function GroupsPage() {
           <h2 className="text-2xl font-extrabold text-slate-900">Groups (Holding Companies)</h2>
           <p className="text-sm text-slate-500 mt-1">Manage holding organizations and conglomerate groups.</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Add Group
-        </button>
+        {!isUser && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            Add Group
+          </button>
+        )}
       </div>
 
       {/* Control Bar */}
@@ -192,20 +196,24 @@ export default function GroupsPage() {
                       {g.createdAt ? new Date(g.createdAt).toLocaleDateString() : '-'}
                     </td>
                     <td className="py-4 px-6 text-sm text-right space-x-2">
-                      <button
-                        onClick={() => openEditModal(g)}
-                        className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
-                        title="Edit Group"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openDeleteConfirm(g)}
-                        className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete Group"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isUser && (
+                        <button
+                          onClick={() => openEditModal(g)}
+                          className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Edit Group"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => openDeleteConfirm(g)}
+                          className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Group"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

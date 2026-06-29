@@ -16,11 +16,12 @@ import {
   User,
   Loader2,
   ShieldAlert,
-  UserX
+  UserX,
+  UserPlus
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading, isAdmin } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -46,7 +47,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Events', path: '/dashboard/events', icon: CalendarDays },
     { name: 'Flagged Identities', path: '/dashboard/flagged', icon: ShieldAlert },
     { name: 'Removal Requests', path: '/dashboard/settings', icon: UserX },
+    { name: 'User Management', path: '/dashboard/users', icon: User },
   ];
+
+  // Filter based on user roles
+  const filteredMenuItems = menuItems.filter((item) => {
+    if (item.path === '/dashboard/settings' || item.path === '/dashboard/users') {
+      return isAdmin;
+    }
+    if (item.path === '/dashboard/flagged') {
+      const isManager = user?.roles?.includes('MANAGER') || false;
+      return isAdmin || isManager;
+    }
+    return true;
+  });
 
   const handleNav = (path: string) => {
     router.push(path);
@@ -65,7 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
+          {filteredMenuItems.map((item) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;
             return (
@@ -84,7 +98,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
         </nav>
-
       </aside>
 
       {/* 2. Main Content Area */}
@@ -99,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-lg font-bold text-slate-900 md:text-xl">
-              {menuItems.find((i) => pathname === i.path)?.name || 'Dashboard'}
+              {filteredMenuItems.find((i) => pathname === i.path)?.name || 'Dashboard'}
             </h1>
           </div>
 
@@ -129,7 +142,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <p className="text-sm font-bold text-slate-900 truncate">{user?.fullName || user?.username}</p>
                       <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                     </div>
-                    <div className="p-1.5">
+                    <div className="p-1.5 space-y-1">
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            router.push('/dashboard/users');
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-all"
+                        >
+                          <UserPlus className="w-4 h-4 text-slate-400" />
+                          Create User Account
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setDropdownOpen(false);
@@ -174,7 +199,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <nav className="flex-1 space-y-1">
-              {menuItems.map((item) => {
+              {filteredMenuItems.map((item) => {
                 const isActive = pathname === item.path;
                 const Icon = item.icon;
                 return (
@@ -218,4 +243,3 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 }
-
