@@ -27,6 +27,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  const getRoleBadge = (roleName?: string) => {
+    switch (roleName?.toUpperCase()) {
+      case 'ADMIN':
+        return 'bg-violet-50 text-violet-700 border-violet-200';
+      case 'MANAGER':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      default:
+        return 'bg-slate-50 text-slate-600 border-slate-200';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900">
@@ -127,6 +138,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {user?.fullName?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <span className="hidden sm:inline text-sm font-semibold text-slate-700">{user?.fullName || user?.username}</span>
+                {user?.roles?.[0] && (
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase border ${getRoleBadge(user.roles[0])}`}>
+                    {user.roles[0]}
+                  </span>
+                )}
                 <svg className={`w-4 h-4 text-slate-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -139,7 +155,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   
                   <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-20 animate-in fade-in slide-in-from-top-1 duration-100 text-slate-900">
                     <div className="px-4 py-2 border-b border-slate-100">
-                      <p className="text-sm font-bold text-slate-900 truncate">{user?.fullName || user?.username}</p>
+                      <div className="flex items-center gap-1.5 justify-between">
+                        <p className="text-sm font-bold text-slate-900 truncate">{user?.fullName || user?.username}</p>
+                        {user?.roles?.[0] && (
+                          <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded uppercase border ${getRoleBadge(user.roles[0])}`}>
+                            {user.roles[0]}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                     </div>
                     <div className="p-1.5 space-y-1">
