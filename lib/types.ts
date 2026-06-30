@@ -91,9 +91,27 @@ export interface EventLead {
   requestedAt?: string;
   respondedAt?: string;
   attendanceStatus: string; // invited | registered | attended | no_show | cancelled
+  leadCategory?: string; // HOT | WARM | COLD
+  callStatus?: string;
+  emailStatus?: string;
+  whatsappStatus?: string;
+  meetingStatus?: string;
+  businessChallenges?: string;
+  projectInfo?: string;
+  timeline?: string;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface EventLeadActivity {
+  id: number;
+  eventLead?: EventLead;
+  activityType: string; // CALL | EMAIL | WHATSAPP | MEETING
+  status: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt?: string;
 }
 
 export interface RemovalRequest {

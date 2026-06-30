@@ -6,6 +6,7 @@ import {
   ContactEmail,
   Event,
   EventLead,
+  EventLeadActivity,
   RemovalRequest,
   PersonalEmailDomain,
   FlaggedIdentity,
@@ -129,14 +130,45 @@ export class CrmService extends ApiService {
     leadId: number,
     leadStatus?: string,
     attendanceStatus?: string,
-    notes?: string
+    notes?: string,
+    leadCategory?: string,
+    callStatus?: string,
+    emailStatus?: string,
+    whatsappStatus?: string,
+    meetingStatus?: string,
+    businessChallenges?: string,
+    projectInfo?: string,
+    timeline?: string
   ): Promise<EventLead> {
     const params = new URLSearchParams();
     if (leadStatus) params.append('leadStatus', leadStatus);
     if (attendanceStatus) params.append('attendanceStatus', attendanceStatus);
     if (notes) params.append('notes', notes);
+    if (leadCategory) params.append('leadCategory', leadCategory);
+    if (callStatus) params.append('callStatus', callStatus);
+    if (emailStatus) params.append('emailStatus', emailStatus);
+    if (whatsappStatus) params.append('whatsappStatus', whatsappStatus);
+    if (meetingStatus) params.append('meetingStatus', meetingStatus);
+    if (businessChallenges) params.append('businessChallenges', businessChallenges);
+    if (projectInfo) params.append('projectInfo', projectInfo);
+    if (timeline) params.append('timeline', timeline);
 
     return this.put<EventLead>(`/api/event-leads/${leadId}/status?${params.toString()}`);
+  }
+
+  async addEventLeadActivity(
+    leadId: number,
+    activity: { activityType: string; status: string; notes?: string }
+  ): Promise<EventLeadActivity> {
+    return this.post<EventLeadActivity>(`/api/event-leads/${leadId}/activities`, activity);
+  }
+
+  async getEventLeadActivities(leadId: number): Promise<EventLeadActivity[]> {
+    return this.get<EventLeadActivity[]>(`/api/event-leads/${leadId}/activities`);
+  }
+
+  async getEventReport(eventId: number): Promise<any> {
+    return this.get<any>(`/api/event-leads/report/${eventId}`);
   }
 
   async deleteEventLead(id: number): Promise<void> {

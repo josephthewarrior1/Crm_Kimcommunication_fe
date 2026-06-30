@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Event, EventLead, Contact } from '../../../lib/types';
-import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Eye, Edit2, Trash2, Download, Check, Square, CheckSquare, RefreshCw, CheckCircle } from 'lucide-react';
+import { Event, EventLead, Contact, EventLeadActivity } from '../../../lib/types';
+import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Eye, Edit2, Trash2, Download, Check, Square, CheckSquare, RefreshCw, CheckCircle, Phone, Mail, MessageSquare, Calendar, Award, TrendingUp, BarChart3, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import * as XLSX from 'xlsx';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
 
 export default function EventsPage() {
   const { isAdmin, isManager, isUser } = useAuth();
@@ -68,6 +69,33 @@ export default function EventsPage() {
   const [updateAttendanceStatusStr, setUpdateAttendanceStatusStr] = useState('invited');
   const [updateLeadNotes, setUpdateLeadNotes] = useState('');
   const [submittingLeadUpdate, setSubmittingLeadUpdate] = useState(false);
+
+  // Lead qualification fields
+  const [updateLeadCategoryStr, setUpdateLeadCategoryStr] = useState('');
+  const [updateCallStatusStr, setUpdateCallStatusStr] = useState('NOT_CONTACTED');
+  const [updateEmailStatusStr, setUpdateEmailStatusStr] = useState('NOT_SENT');
+  const [updateWhatsappStatusStr, setUpdateWhatsappStatusStr] = useState('NOT_SENT');
+  const [updateMeetingStatusStr, setUpdateMeetingStatusStr] = useState('NONE');
+  const [updateBusinessChallengesStr, setUpdateBusinessChallengesStr] = useState('');
+  const [updateProjectInfoStr, setUpdateProjectInfoStr] = useState('');
+  const [updateTimelineStr, setUpdateTimelineStr] = useState('');
+
+  // Activity Log states
+  const [activities, setActivities] = useState<EventLeadActivity[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
+  const [newActivityType, setNewActivityType] = useState('CALL');
+  const [newActivityStatus, setNewActivityStatus] = useState('CONNECTED');
+  const [newActivityNotes, setNewActivityNotes] = useState('');
+  const [isLoggingActivity, setIsLoggingActivity] = useState(false);
+
+  // Email template copy states
+  const [isCopyEmailModalOpen, setIsCopyEmailModalOpen] = useState(false);
+  const [copiedEmailHTML, setCopiedEmailHTML] = useState('');
+
+  // Report states
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [eventReport, setEventReport] = useState<any>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -208,25 +236,32 @@ export default function EventsPage() {
       return;
     }
     
-    // Format data leads untuk Excel
+    // Format data leads untuk Excel sesuai Phase 7 Handover Ingram Micro
     const dataToExport = leads.map((l, index) => ({
       'No': index + 1,
-      'Name': `${l.contact.firstName} ${l.contact.lastName}`,
-      'Salutation': l.contact.salutation || '',
-      'Job Title': l.contact.jobTitle || '',
       'Company Name': l.contact.company?.name || '',
-      'Holding Group': l.contact.company?.group?.name || '',
-      'Email': l.contact.emails?.[0]?.email || '',
-      'Phone': l.contact.mobilePhone || '',
-      'Lead Status': l.leadStatus.toUpperCase(),
-      'Attendance': l.attendanceStatus.toUpperCase(),
+      'Contact Name': `${l.contact.salutation ? l.contact.salutation + ' ' : ''}${l.contact.firstName} ${l.contact.lastName}`,
+      'Job Title': l.contact.jobTitle || '',
+      'Email Address': l.contact.emails?.[0]?.email || '',
+      'Mobile Number': l.contact.mobilePhone || '',
+      'Industry': l.contact.company?.industry || '',
+      'Call Status': l.callStatus || 'NOT_CONTACTED',
+      'Email Status': l.emailStatus || 'NOT_SENT',
+      'WhatsApp Status': l.whatsappStatus || 'NOT_SENT',
+      'Lead Category': l.leadCategory || '-',
+      'Business Challenges': l.businessChallenges || '',
+      'Project Information': l.projectInfo || '',
+      'Timeline': l.timeline || '',
+      'Meeting Status': l.meetingStatus || 'NONE',
+      'Lead Status (Color)': l.leadStatus.toUpperCase(),
+      'Attendance Status': l.attendanceStatus.toUpperCase(),
       'Notes': l.notes || ''
     }));
 
     // Generate Sheet
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads Handover');
     
     // Auto fit column width
     const maxLens = dataToExport.reduce((acc, row) => {
@@ -242,9 +277,9 @@ export default function EventsPage() {
     }));
 
     // Trigger Download
-    const fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Leads.xlsx`;
+    const fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Handover_Report.xlsx`;
     XLSX.writeFile(workbook, fileName);
-    toast.success('Daftar leads berhasil di-export ke Excel!');
+    toast.success('Daftar leads berhasil di-export ke Excel dalam format Handover!');
   };
 
   const handleBatchUpdateAttendance = async (status: string) => {
@@ -357,12 +392,55 @@ export default function EventsPage() {
     }
   };
 
+  const handleOpenReportModal = async () => {
+    if (!selectedEvent) return;
+    setLoadingReport(true);
+    setIsReportModalOpen(true);
+    try {
+      const data = await crmService.getEventReport(selectedEvent.id);
+      setEventReport(data);
+    } catch (err) {
+      toast.error('Failed to load performance report');
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
+  const loadLeadActivities = async (leadId: number) => {
+    setLoadingActivities(true);
+    try {
+      const data = await crmService.getEventLeadActivities(leadId);
+      setActivities(data);
+    } catch (err) {
+      toast.error('Failed to load lead activities');
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
   const handleOpenUpdateLeadModal = (lead: EventLead) => {
     setActiveLead(lead);
     setUpdateLeadStatusStr(lead.leadStatus);
     setUpdateAttendanceStatusStr(lead.attendanceStatus);
     setUpdateLeadNotes(lead.notes || '');
+    
+    // Set qualification fields
+    setUpdateLeadCategoryStr(lead.leadCategory || '');
+    setUpdateCallStatusStr(lead.callStatus || 'NOT_CONTACTED');
+    setUpdateEmailStatusStr(lead.emailStatus || 'NOT_SENT');
+    setUpdateWhatsappStatusStr(lead.whatsappStatus || 'NOT_SENT');
+    setUpdateMeetingStatusStr(lead.meetingStatus || 'NONE');
+    setUpdateBusinessChallengesStr(lead.businessChallenges || '');
+    setUpdateProjectInfoStr(lead.projectInfo || '');
+    setUpdateTimelineStr(lead.timeline || '');
+
+    // Reset logging inputs
+    setNewActivityType('CALL');
+    setNewActivityStatus('CONNECTED');
+    setNewActivityNotes('');
+
     setIsUpdateLeadModalOpen(true);
+    loadLeadActivities(lead.id);
   };
 
   const handleUpdateLeadStatus = async (e: React.FormEvent) => {
@@ -375,19 +453,147 @@ export default function EventsPage() {
         activeLead.id,
         updateLeadStatusStr,
         updateAttendanceStatusStr,
-        updateLeadNotes.trim() || undefined
+        updateLeadNotes.trim() || undefined,
+        updateLeadCategoryStr || undefined,
+        updateCallStatusStr || undefined,
+        updateEmailStatusStr || undefined,
+        updateWhatsappStatusStr || undefined,
+        updateMeetingStatusStr || undefined,
+        updateBusinessChallengesStr.trim() || undefined,
+        updateProjectInfoStr.trim() || undefined,
+        updateTimelineStr.trim() || undefined
       );
 
-      toast.success('Lead status updated successfully!');
+      toast.success('Lead status and qualification updated successfully!');
       setIsUpdateLeadModalOpen(false);
       setActiveLead(null);
       
       // Reload leads
       handleSelectEvent(selectedEvent);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update lead status');
+      toast.error(err.message || 'Failed to update lead');
     } finally {
       setSubmittingLeadUpdate(false);
+    }
+  };
+
+  const handleAddActivity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeLead) return;
+
+    setIsLoggingActivity(true);
+    try {
+      await crmService.addEventLeadActivity(activeLead.id, {
+        activityType: newActivityType,
+        status: newActivityStatus,
+        notes: newActivityNotes.trim() || undefined
+      });
+
+      toast.success('Activity logged successfully!');
+      setNewActivityNotes('');
+      
+      // Reload activities history
+      loadLeadActivities(activeLead.id);
+      
+      // Update local states
+      if (newActivityType === 'CALL') setUpdateCallStatusStr(newActivityStatus);
+      else if (newActivityType === 'EMAIL') setUpdateEmailStatusStr(newActivityStatus);
+      else if (newActivityType === 'WHATSAPP') setUpdateWhatsappStatusStr(newActivityStatus);
+      else if (newActivityType === 'MEETING') setUpdateMeetingStatusStr(newActivityStatus);
+      
+      // Reload main lead list
+      if (selectedEvent) {
+        const allLeads = await crmService.getEventLeads();
+        const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
+        setLeads(filteredLeads);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to log activity');
+    } finally {
+      setIsLoggingActivity(false);
+    }
+  };
+
+  const triggerWhatsApp = async () => {
+    if (!activeLead) return;
+    const phone = activeLead.contact.mobilePhone;
+    if (!phone) {
+      toast.error("Contact has no phone number");
+      return;
+    }
+    
+    let formattedPhone = phone.replace(/[^0-9]/g, '');
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '62' + formattedPhone.slice(1);
+    }
+    
+    // Pre-filled template (Phase 6 Meeting reminder/outbound)
+    const template = `Halo ${activeLead.contact.salutation ? activeLead.contact.salutation + ' ' : ''}${activeLead.contact.firstName} ${activeLead.contact.lastName},\n\nSaya dari KIM Communication. Ingin mengonfirmasi mengenai project aktif dan ketertarikan Anda untuk berdiskusi dengan Ingram Micro mengenai AI Solutions.`;
+    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(template)}`;
+    
+    window.open(url, '_blank');
+    
+    try {
+      await crmService.addEventLeadActivity(activeLead.id, {
+        activityType: 'WHATSAPP',
+        status: 'SENT',
+        notes: 'Opened WhatsApp Chat Window.'
+      });
+      setUpdateWhatsappStatusStr('SENT');
+      loadLeadActivities(activeLead.id);
+      if (selectedEvent) {
+        const allLeads = await crmService.getEventLeads();
+        const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
+        setLeads(filteredLeads);
+      }
+      toast.success("WhatsApp chat opened and logged.");
+    } catch (e) {
+      toast.error("Failed to log WhatsApp activity");
+    }
+  };
+
+  const triggerEmail = async () => {
+    if (!activeLead) return;
+    const emails = activeLead.contact.emails;
+    if (!emails || emails.length === 0) {
+      toast.error("Contact has no email address");
+      return;
+    }
+    const emailAddr = emails[0].email;
+    
+    try {
+      const activity = await crmService.addEventLeadActivity(activeLead.id, {
+        activityType: 'EMAIL',
+        status: 'SENT',
+        notes: `Generated email tracking copy template.`
+      });
+      
+      setUpdateEmailStatusStr('SENT');
+      loadLeadActivities(activeLead.id);
+      if (selectedEvent) {
+        const allLeads = await crmService.getEventLeads();
+        const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
+        setLeads(filteredLeads);
+      }
+
+      // Generate tracking URL point to our backend public tracking endpoint
+      const trackingPixelUrl = `${window.location.protocol}//${window.location.host.replace(':3000', ':8080')}/api/event-leads/emails/track/${activity.id}`;
+      
+      setCopiedEmailHTML(`<div style="font-family: sans-serif; font-size: 14px; color: #333; line-height: 1.6;">
+  <p>Halo ${activeLead.contact.salutation ? activeLead.contact.salutation + ' ' : ''}${activeLead.contact.firstName} ${activeLead.contact.lastName},</p>
+  <p>Semoga pesan ini menemui Anda dalam keadaan baik.</p>
+  <p>Kami dari <strong>KIM Communication</strong> ingin mendiskusikan implementasi solusi kecerdasan buatan (AI) yang sedang dievaluasi di perusahaan Anda bersama tim <strong>Ingram Micro</strong>.</p>
+  <p>Apakah Anda bersedia untuk berdiskusi singkat atau melakukan meeting via Teams/Zoom?</p>
+  <br/>
+  <p>Salam hangat,</p>
+  <p><strong>CRM Agent</strong><br/>KIM Communication</p>
+  <img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" />
+</div>`);
+      
+      setIsCopyEmailModalOpen(true);
+      toast.success("Email log created. Copy the template to send!");
+    } catch (e) {
+      toast.error("Failed to log Email activity");
     }
   };
 
@@ -548,13 +754,22 @@ export default function EventsPage() {
                 
                 <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
                   {leads.length > 0 && (
-                    <button
-                      onClick={handleExportLeads}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Export Excel
-                    </button>
+                    <>
+                      <button
+                        onClick={handleOpenReportModal}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100/70 text-indigo-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        Campaign Stats
+                      </button>
+                      <button
+                        onClick={handleExportLeads}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Export Excel
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={() => setIsAddLeadModalOpen(true)}
@@ -651,6 +866,8 @@ export default function EventsPage() {
                         </th>
                         <th className="py-3 px-4">Contact</th>
                         <th className="py-3 px-4">Company</th>
+                        <th className="py-3 px-4">Category</th>
+                        <th className="py-3 px-4">Engagement</th>
                         <th className="py-3 px-4">Lead Status</th>
                         <th className="py-3 px-4">Attendance</th>
                         <th className="py-3 px-4">Notes</th>
@@ -689,6 +906,47 @@ export default function EventsPage() {
                               {l.contact.company?.name || '-'}
                             </td>
                             <td className="py-3.5 px-4">
+                              {l.leadCategory === 'HOT' ? (
+                                <span className="px-2 py-0.5 font-bold rounded-md bg-rose-50 border border-rose-100 text-rose-700 text-[10px] uppercase">
+                                  🔥 HOT
+                                </span>
+                              ) : l.leadCategory === 'WARM' ? (
+                                <span className="px-2 py-0.5 font-bold rounded-md bg-amber-50 border border-amber-100 text-amber-700 text-[10px] uppercase">
+                                  ☀️ WARM
+                                </span>
+                              ) : l.leadCategory === 'COLD' ? (
+                                <span className="px-2 py-0.5 font-bold rounded-md bg-sky-50 border border-sky-100 text-sky-700 text-[10px] uppercase">
+                                  ❄️ COLD
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-semibold text-[10px]">-</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-1.5 text-slate-400">
+                                <span title={`Call: ${l.callStatus || 'NOT_CONTACTED'}`}>
+                                  <Phone 
+                                    className={`w-3.5 h-3.5 ${l.callStatus === 'CONNECTED' ? 'text-sky-600 font-bold' : l.callStatus && l.callStatus !== 'NOT_CONTACTED' ? 'text-slate-600' : 'text-slate-300'}`} 
+                                  />
+                                </span>
+                                <span title={`Email: ${l.emailStatus || 'NOT_SENT'}`}>
+                                  <Mail 
+                                    className={`w-3.5 h-3.5 ${l.emailStatus === 'OPENED' ? 'text-emerald-500 font-bold' : l.emailStatus === 'RESPONDED' ? 'text-indigo-600 font-bold' : l.emailStatus === 'SENT' ? 'text-amber-550' : 'text-slate-300'}`} 
+                                  />
+                                </span>
+                                <span title={`WhatsApp: ${l.whatsappStatus || 'NOT_SENT'}`}>
+                                  <MessageSquare 
+                                    className={`w-3.5 h-3.5 ${l.whatsappStatus === 'RESPONDED' ? 'text-emerald-500 font-bold' : l.whatsappStatus === 'SENT' ? 'text-emerald-450' : 'text-slate-300'}`} 
+                                  />
+                                </span>
+                                <span title={`Meeting: ${l.meetingStatus || 'NONE'}`}>
+                                  <Calendar 
+                                    className={`w-3.5 h-3.5 ${l.meetingStatus === 'CONFIRMED' ? 'text-purple-600 font-bold' : l.meetingStatus === 'SCHEDULED' ? 'text-indigo-500' : 'text-slate-300'}`} 
+                                  />
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
                               <span className={`px-2 py-0.5 font-bold rounded-md border uppercase ${statusColors[l.leadStatus] || statusColors.white}`}>
                                 {l.leadStatus}
                               </span>
@@ -696,7 +954,7 @@ export default function EventsPage() {
                             <td className="py-3.5 px-4 text-slate-700 font-semibold capitalize">
                               {l.attendanceStatus}
                             </td>
-                            <td className="py-3.5 px-4 text-slate-500 max-w-[150px] truncate" title={l.notes}>
+                            <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={l.notes}>
                               {l.notes || '-'}
                             </td>
                             <td className="py-3.5 px-4 text-right space-x-1">
@@ -1145,83 +1403,514 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* Update Lead Status Modal Overlay */}
+      {/* Lead Details & Qualification Drawer Modal Overlay */}
       {isUpdateLeadModalOpen && activeLead && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-4xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900 my-8">
             <button
-              onClick={() => setIsUpdateLeadModalOpen(false)}
+              onClick={() => {
+                setIsUpdateLeadModalOpen(false);
+                setActiveLead(null);
+              }}
               className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Update Lead Status</h3>
+            <div className="border-b border-slate-100 pb-4 mb-6">
+              <h3 className="text-xl font-extrabold text-slate-900">Lead Detail & Qualification</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Manage contact: <strong className="text-slate-700">{activeLead.contact.firstName} {activeLead.contact.lastName}</strong> ({activeLead.contact.company?.name || 'No Company'})
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column: Qualification & Profile Info */}
+              <div className="space-y-4 border-r border-slate-100 pr-0 lg:pr-6">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 text-xs space-y-2 mb-4">
+                  <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[10px] mb-2">Profile Information</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-slate-400 font-medium">Job Title:</span>
+                      <p className="font-semibold text-slate-700 truncate">{activeLead.contact.jobTitle || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium">Industry:</span>
+                      <p className="font-semibold text-slate-700 truncate">{activeLead.contact.company?.industry || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium">Mobile Phone:</span>
+                      <p className="font-semibold text-slate-700 truncate">{activeLead.contact.mobilePhone || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium">Email:</span>
+                      <p className="font-semibold text-slate-700 truncate">{activeLead.contact.emails?.[0]?.email || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleUpdateLeadStatus} className="space-y-4">
+                  <h4 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-1">Phase 5 Lead Qualification</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Lead Category (HOT/WARM/COLD)</label>
+                      <select
+                        value={updateLeadCategoryStr}
+                        onChange={(e) => setUpdateLeadCategoryStr(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                      >
+                        <option value="">Not Categorized</option>
+                        <option value="HOT">🔥 HOT LEAD</option>
+                        <option value="WARM">☀️ WARM LEAD</option>
+                        <option value="COLD">❄️ COLD LEAD</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Status (Phase 6)</label>
+                      <select
+                        value={updateMeetingStatusStr}
+                        onChange={(e) => setUpdateMeetingStatusStr(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                      >
+                        <option value="NONE">None</option>
+                        <option value="SCHEDULED">Scheduled</option>
+                        <option value="CONFIRMED">Confirmed Meeting</option>
+                        <option value="CANCELLED">Cancelled</option>
+                        <option value="COMPLETED">Completed</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Confirmation Status (Color)</label>
+                      <select
+                        value={updateLeadStatusStr}
+                        onChange={(e) => setUpdateLeadStatusStr(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                      >
+                        <option value="white">White (No reply)</option>
+                        <option value="yellow">Yellow (Tentative)</option>
+                        <option value="green">Green (Confirmed)</option>
+                        <option value="red">Red (Rejected)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Attendance Status</label>
+                      <select
+                        value={updateAttendanceStatusStr}
+                        onChange={(e) => setUpdateAttendanceStatusStr(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                      >
+                        <option value="invited">Invited</option>
+                        <option value="registered">Registered</option>
+                        <option value="attended">Attended</option>
+                        <option value="no_show">No Show</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Project Information / AI Evaluation</label>
+                    <textarea
+                      placeholder="Evaluating what AI solutions? Project active details..."
+                      value={updateProjectInfoStr}
+                      onChange={(e) => setUpdateProjectInfoStr(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs placeholder-slate-400 focus:outline-none transition-all resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Business Challenges</label>
+                    <textarea
+                      placeholder="What business problems or challenges are they facing?"
+                      value={updateBusinessChallengesStr}
+                      onChange={(e) => setUpdateBusinessChallengesStr(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs placeholder-slate-400 focus:outline-none transition-all resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Project Timeline</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Next month, Q3 2026"
+                        value={updateTimelineStr}
+                        onChange={(e) => setUpdateTimelineStr(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Follow-up Notes</label>
+                    <textarea
+                      placeholder="Details on status update..."
+                      value={updateLeadNotes}
+                      onChange={(e) => setUpdateLeadNotes(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs placeholder-slate-400 focus:outline-none transition-all resize-none"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+                    <button
+                      type="submit"
+                      disabled={submittingLeadUpdate}
+                      className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+                    >
+                      {submittingLeadUpdate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                      Save Qualification Info
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Right Column: Outbound Engagement & History */}
+              <div className="space-y-6 flex flex-col h-full">
+                {/* Outbound Quick Channels */}
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-1 mb-3">Outbound Interaction Channels</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={triggerWhatsApp}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Send WhatsApp
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={triggerEmail}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                    >
+                      <Mail className="w-4 h-4" />
+                      Send Email (Tracked)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Log Manual Activity Form */}
+                <form onSubmit={handleAddActivity} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                  <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider text-[10px]">Log Interaction manually</h4>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">Activity Type</label>
+                      <select
+                        value={newActivityType}
+                        onChange={(e) => {
+                          setNewActivityType(e.target.value);
+                          if (e.target.value === 'CALL') setNewActivityStatus('CONNECTED');
+                          else if (e.target.value === 'EMAIL') setNewActivityStatus('SENT');
+                          else if (e.target.value === 'WHATSAPP') setNewActivityStatus('SENT');
+                          else if (e.target.value === 'MEETING') setNewActivityStatus('CONFIRMED');
+                        }}
+                        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-slate-900 text-xs focus:outline-none"
+                      >
+                        <option value="CALL">Call</option>
+                        <option value="EMAIL">Email</option>
+                        <option value="WHATSAPP">WhatsApp</option>
+                        <option value="MEETING">Meeting</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">Status</label>
+                      {newActivityType === 'CALL' ? (
+                        <select
+                          value={newActivityStatus}
+                          onChange={(e) => setNewActivityStatus(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-slate-900 text-xs focus:outline-none"
+                        >
+                          <option value="CONNECTED">Connected</option>
+                          <option value="BUSY">Busy</option>
+                          <option value="NO_ANSWER">No Answer</option>
+                          <option value="LEFT_VM">Left Voicemail</option>
+                        </select>
+                      ) : newActivityType === 'EMAIL' ? (
+                        <select
+                          value={newActivityStatus}
+                          onChange={(e) => setNewActivityStatus(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-slate-900 text-xs focus:outline-none"
+                        >
+                          <option value="SENT">Sent</option>
+                          <option value="OPENED">Opened</option>
+                          <option value="RESPONDED">Responded</option>
+                        </select>
+                      ) : newActivityType === 'WHATSAPP' ? (
+                        <select
+                          value={newActivityStatus}
+                          onChange={(e) => setNewActivityStatus(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-slate-900 text-xs focus:outline-none"
+                        >
+                          <option value="SENT">Sent</option>
+                          <option value="RESPONDED">Responded</option>
+                        </select>
+                      ) : (
+                        <select
+                          value={newActivityStatus}
+                          onChange={(e) => setNewActivityStatus(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-slate-900 text-xs focus:outline-none"
+                        >
+                          <option value="SCHEDULED">Scheduled</option>
+                          <option value="CONFIRMED">Confirmed Meeting</option>
+                          <option value="CANCELLED">Cancelled</option>
+                          <option value="COMPLETED">Completed</option>
+                        </select>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">Interaction Notes</label>
+                    <textarea
+                      placeholder="e.g. Contact interested but busy, ask to call back next Tuesday."
+                      value={newActivityNotes}
+                      onChange={(e) => setNewActivityNotes(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded text-xs placeholder-slate-400 focus:outline-none transition-all resize-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={isLoggingActivity}
+                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded flex items-center gap-1.5 transition-all disabled:opacity-50"
+                    >
+                      {isLoggingActivity ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                      Log Interaction
+                    </button>
+                  </div>
+                </form>
+
+                {/* Activity History Timeline */}
+                <div className="flex-1 flex flex-col min-h-[180px]">
+                  <h4 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-1 mb-3">Interaction History Log</h4>
+                  
+                  {loadingActivities ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                    </div>
+                  ) : activities.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center border border-dashed border-slate-200 rounded-xl py-6 bg-slate-50/50">
+                      <p className="text-xs text-slate-400 font-medium">No interaction logged yet.</p>
+                    </div>
+                  ) : (
+                    <div className="flex-1 overflow-y-auto max-h-[220px] space-y-3 pr-1">
+                      {activities.map((act) => {
+                        let typeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+                        if (act.activityType === 'CALL') typeColor = 'bg-sky-50 text-sky-700 border-sky-100';
+                        else if (act.activityType === 'EMAIL') typeColor = 'bg-indigo-50 text-indigo-700 border-indigo-100';
+                        else if (act.activityType === 'WHATSAPP') typeColor = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                        else if (act.activityType === 'MEETING') typeColor = 'bg-purple-50 text-purple-700 border-purple-100';
+
+                        return (
+                          <div key={act.id} className="p-3 border border-slate-100 bg-white hover:bg-slate-50/50 rounded-xl text-xs transition-all relative">
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className={`px-2 py-0.5 font-bold rounded border text-[9px] uppercase ${typeColor}`}>
+                                {act.activityType}
+                              </span>
+                              <span className="px-1.5 py-0.2 bg-slate-50 border border-slate-150 text-[9px] rounded font-semibold text-slate-500 capitalize">
+                                Status: {act.status}
+                              </span>
+                            </div>
+                            {act.notes && (
+                              <p className="text-slate-600 font-medium leading-relaxed bg-slate-50 p-2 rounded border border-slate-100">{act.notes}</p>
+                            )}
+                            <div className="flex items-center justify-between text-[9px] text-slate-400 mt-2 font-mono">
+                              <span>By: {act.createdBy || 'System'}</span>
+                              <span>{act.createdAt ? new Date(act.createdAt).toLocaleString() : '-'}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Copy Email Template Modal */}
+      {isCopyEmailModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+            <button
+              onClick={() => setIsCopyEmailModalOpen(false)}
+              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Copy Email Outbound Template</h3>
             <p className="text-xs text-slate-500 mb-4">
-              Updating status for: <strong>{activeLead.contact.firstName} {activeLead.contact.lastName}</strong>
+              Pesan ini mengandung email tracking pixel rahasia untuk melacak open-rate secara otomatis. Copy kode di bawah ini lalu paste sebagai HTML/RichText di aplikasi email Anda (Outlook/Gmail).
             </p>
 
-            <form onSubmit={handleUpdateLeadStatus} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Confirmation Status</label>
-                  <select
-                    value={updateLeadStatusStr}
-                    onChange={(e) => setUpdateLeadStatusStr(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="white">White (No reply)</option>
-                    <option value="yellow">Yellow (Tentative)</option>
-                    <option value="green">Green (Confirmed)</option>
-                    <option value="red">Red (Rejected)</option>
-                  </select>
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 max-h-[250px] overflow-y-auto font-mono text-[10px] text-slate-700 whitespace-pre-wrap select-all">
+              {copiedEmailHTML}
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(copiedEmailHTML);
+                  toast.success("HTML template copied to clipboard!");
+                }}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copy HTML Template
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCopyEmailModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Campaign Performance Report Modal */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900 my-8">
+            <button
+              onClick={() => {
+                setIsReportModalOpen(false);
+                setEventReport(null);
+              }}
+              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="border-b border-slate-100 pb-4 mb-6">
+              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-indigo-600" />
+                Campaign Performance Report
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Campaign KPI metrics & statistics for: <strong className="text-slate-700">{selectedEvent?.name}</strong>
+              </p>
+            </div>
+
+            {loadingReport || !eventReport ? (
+              <div className="py-16 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                <span className="text-xs font-bold text-slate-400">Calculating KPIs report...</span>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Metrik Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-center">
+                    <span className="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Email Terkirim</span>
+                    <span className="text-xl font-extrabold text-indigo-800">{eventReport.totalEmailSent}</span>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
+                    <span className="block text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Email Open Rate</span>
+                    <span className="text-xl font-extrabold text-emerald-800">{eventReport.emailOpenRate.toFixed(1)}%</span>
+                  </div>
+                  <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 text-center">
+                    <span className="block text-[10px] font-bold text-sky-500 uppercase tracking-wider">Call Connected</span>
+                    <span className="text-xl font-extrabold text-sky-800">
+                      {eventReport.connectedCalls}/{eventReport.totalCallsMade}
+                    </span>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 text-center">
+                    <span className="block text-[10px] font-bold text-purple-500 uppercase tracking-wider">Meetings Confirmed</span>
+                    <span className="text-xl font-extrabold text-purple-800">{eventReport.meetingsSecured}</span>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Attendance Status</label>
-                  <select
-                    value={updateAttendanceStatusStr}
-                    onChange={(e) => setUpdateAttendanceStatusStr(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
+                {/* Grafis Recharts */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider text-[10px] mb-4">Qualification & Activity Funnel</h4>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          { name: 'Emails Sent', count: eventReport.totalEmailSent, color: '#6366f1' },
+                          { name: 'Emails Opened', count: Math.round(eventReport.totalEmailSent * (eventReport.emailOpenRate / 100)), color: '#10b981' },
+                          { name: 'WA Sent', count: eventReport.whatsappSent, color: '#34d399' },
+                          { name: 'Calls Made', count: eventReport.totalCallsMade, color: '#38bdf8' },
+                          { name: 'Hot Leads', count: eventReport.hotLeads, color: '#f43f5e' },
+                          { name: 'Warm Leads', count: eventReport.warmLeads, color: '#fb923c' },
+                          { name: 'Meetings', count: eventReport.meetingsSecured, color: '#a855f7' }
+                        ]}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} stroke="#cbd5e1" />
+                        <YAxis tick={{ fill: '#64748b', fontSize: 10 }} stroke="#cbd5e1" />
+                        <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                          {[
+                            '#6366f1',
+                            '#10b981',
+                            '#34d399',
+                            '#38bdf8',
+                            '#f43f5e',
+                            '#fb923c',
+                            '#a855f7'
+                          ].map((entry, idx) => (
+                            <Cell key={`cell-${idx}`} fill={entry} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <h5 className="font-bold text-slate-700 mb-1.5">Communication Conversion</h5>
+                    <ul className="space-y-1 text-slate-600 font-medium">
+                      <li>WhatsApp Response Rate: <strong>{eventReport.whatsappResponseRate.toFixed(1)}%</strong></li>
+                      <li>Email Response Rate: <strong>{eventReport.emailResponseRate.toFixed(1)}%</strong></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-slate-700 mb-1.5">Lead Distribution</h5>
+                    <ul className="space-y-1 text-slate-600 font-medium">
+                      <li>Hot Leads: <strong className="text-rose-600">{eventReport.hotLeads}</strong></li>
+                      <li>Warm Leads: <strong className="text-amber-500">{eventReport.warmLeads}</strong></li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsReportModalOpen(false);
+                      setEventReport(null);
+                    }}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all"
                   >
-                    <option value="invited">Invited</option>
-                    <option value="registered">Registered</option>
-                    <option value="attended">Attended</option>
-                    <option value="no_show">No Show</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+                    Close Report
+                  </button>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Follow-up Notes</label>
-                <textarea
-                  placeholder="Details on status update..."
-                  value={updateLeadNotes}
-                  onChange={(e) => setUpdateLeadNotes(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-xs placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsUpdateLeadModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingLeadUpdate}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {submittingLeadUpdate ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Update Status
-                </button>
-              </div>
-            </form>
+            )}
           </div>
         </div>
       )}
