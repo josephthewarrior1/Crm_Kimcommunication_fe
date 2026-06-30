@@ -18,9 +18,9 @@ export default function CompaniesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
   
-  // Infinite Scroll state and ref
-  const [visibleCount, setVisibleCount] = useState(20);
-  const observerTarget = React.useRef<HTMLDivElement | null>(null);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Create Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,29 +71,9 @@ export default function CompaniesPage() {
     loadData();
   }, []);
 
-  // Intersection Observer for Infinite Scroll
+  // Reset current page when query or industry filters change
   useEffect(() => {
-    const target = observerTarget.current;
-    if (!target) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && filteredCompanies.length > visibleCount) {
-          setVisibleCount((prev) => prev + 20);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(target);
-    return () => {
-      observer.unobserve(target);
-    };
-  }, [companies, searchQuery, filterIndustry, visibleCount]);
-
-  // Reset visible items when query or industry filters change
-  useEffect(() => {
-    setVisibleCount(20);
+    setCurrentPage(1);
   }, [searchQuery, filterIndustry]);
 
   async function loadData() {
@@ -262,6 +242,12 @@ export default function CompaniesPage() {
     return matchesSearch && matchesIndustry;
   });
 
+  const totalItems = filteredCompanies.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCompanies = filteredCompanies.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
       {/* Page Header */}
@@ -350,7 +336,7 @@ export default function CompaniesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCompanies.slice(0, visibleCount).map((c) => (
+                {currentCompanies.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-all">
                     <td className="py-4 px-6">
                       <p className="text-sm font-bold text-slate-900">{c.name}</p>
@@ -453,15 +439,77 @@ export default function CompaniesPage() {
               </tbody>
             </table>
           </div>
+          {/* Integrated Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/30 px-6 py-4">
+              {/* Left Side: Info */}
+              <div className="hidden sm:block">
+                <p className="text-xs font-semibold text-slate-500">
+                  Showing <span className="font-extrabold text-slate-800">{indexOfFirstItem + 1}</span> to{' '}
+                  <span className="font-extrabold text-slate-800">
+                    {Math.min(indexOfLastItem, totalItems)}
+                  </span>{' '}
+                  of <span className="font-extrabold text-slate-800">{totalItems}</span> companies
+                </p>
+              </div>
+
+              {/* Right Side: Flat Controls */}
+              <div className="flex flex-1 sm:flex-initial items-center justify-between sm:justify-end gap-2">
+                {/* Previous Button */}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed"
+                  title="Previous Page"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const pageNumber = i + 1;
+                    if (totalPages > 6 && Math.abs(currentPage - pageNumber) > 2 && pageNumber !== 1 && pageNumber !== totalPages) {
+                      if (pageNumber === 2 || pageNumber === totalPages - 1) {
+                        return <span key={pageNumber} className="text-xs font-bold text-slate-400 px-1">...</span>;
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`min-w-[28px] h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                          currentPage === pageNumber
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-transparent'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed"
+                  title="Next Page"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Infinite Scroll Trigger */}
-      <div ref={observerTarget} className="h-10 flex items-center justify-center">
-        {filteredCompanies.length > visibleCount && (
-          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-        )}
-      </div>
 
       {/* Add Company Modal Overlay */}
       {isModalOpen && (

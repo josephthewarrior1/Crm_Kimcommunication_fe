@@ -100,6 +100,11 @@ export interface EventLead {
   projectInfo?: string;
   timeline?: string;
   notes?: string;
+  reminderH7?: string;
+  reminderH3?: string;
+  reminderH1?: string;
+  reminderHariH?: string;
+  confirmationStatus?: string; // pending | approve | decline
   createdAt?: string;
   updatedAt?: string;
 }

@@ -121,6 +121,7 @@ export class CrmService extends ApiService {
     contactIds?: number[];
     leadStatus?: string;
     attendanceStatus?: string;
+    confirmationStatus?: string;
     notes?: string;
   }): Promise<any> {
     return this.post<any>('/api/event-leads', lead);
@@ -138,7 +139,12 @@ export class CrmService extends ApiService {
     meetingStatus?: string,
     businessChallenges?: string,
     projectInfo?: string,
-    timeline?: string
+    timeline?: string,
+    reminderH7?: string,
+    reminderH3?: string,
+    reminderH1?: string,
+    reminderHariH?: string,
+    confirmationStatus?: string
   ): Promise<EventLead> {
     const params = new URLSearchParams();
     if (leadStatus) params.append('leadStatus', leadStatus);
@@ -152,6 +158,11 @@ export class CrmService extends ApiService {
     if (businessChallenges) params.append('businessChallenges', businessChallenges);
     if (projectInfo) params.append('projectInfo', projectInfo);
     if (timeline) params.append('timeline', timeline);
+    if (reminderH7) params.append('reminderH7', reminderH7);
+    if (reminderH3) params.append('reminderH3', reminderH3);
+    if (reminderH1) params.append('reminderH1', reminderH1);
+    if (reminderHariH) params.append('reminderHariH', reminderHariH);
+    if (confirmationStatus) params.append('confirmationStatus', confirmationStatus);
 
     return this.put<EventLead>(`/api/event-leads/${leadId}/status?${params.toString()}`);
   }
@@ -298,6 +309,10 @@ export class CrmService extends ApiService {
 
   async updateUserRole(id: number, role: string): Promise<AppUser> {
     return this.put<AppUser>(`/api/users/${id}/role?role=${encodeURIComponent(role)}`);
+  }
+
+  async updateUserPassword(id: number, password: string): Promise<AppUser> {
+    return this.put<AppUser>(`/api/users/${id}/password`, { password });
   }
 
   async deleteUser(id: number): Promise<void> {

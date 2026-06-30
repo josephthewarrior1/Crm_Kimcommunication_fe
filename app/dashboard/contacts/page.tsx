@@ -97,9 +97,9 @@ export default function ContactsPage() {
   const [filterJobTitle, setFilterJobTitle] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
 
-  // Infinite Scroll state and ref
-  const [visibleCount, setVisibleCount] = useState(20);
-  const observerTarget = useRef<HTMLDivElement | null>(null);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
 
 
@@ -769,28 +769,16 @@ export default function ContactsPage() {
     return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesJobTitle && matchesIndustry;
   });
 
+  // Reset current page when query or any filter changes
   useEffect(() => {
-    const target = observerTarget.current;
-    if (!target) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && filteredContacts.length > visibleCount) {
-          setVisibleCount((prev) => prev + 20);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(target);
-    return () => {
-      observer.unobserve(target);
-    };
-  }, [filteredContacts, visibleCount]);
-
-  useEffect(() => {
-    setVisibleCount(20);
+    setCurrentPage(1);
   }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterJobTitle, filterIndustry]);
+
+  const totalItems = filteredContacts.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentContacts = filteredContacts.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -930,7 +918,7 @@ export default function ContactsPage() {
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-h-[350px]">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50">
@@ -943,8 +931,8 @@ export default function ContactsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredContacts.slice(0, visibleCount).map((c, idx, slicedArray) => {
-                  const isNearBottom = idx >= slicedArray.length - 2;
+                {currentContacts.map((c, idx, slicedArray) => {
+                  const isNearBottom = idx >= slicedArray.length - 2 && idx >= 2;
                   
                   // 1. Get flags from database
                   const dbFlags = flags.filter(f => f.contact?.id === c.id && f.status !== 'cleared');
@@ -990,6 +978,7 @@ export default function ContactsPage() {
                   
                   const allFlags = [...dbFlags, ...localFlags];
                   const isFlaggedTikus = allFlags.length > 0;
+                  const hasConfirmedFlag = dbFlags.some(f => f.status === 'confirmed');
 
                   return (
                     <tr key={c.id} className={`hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
@@ -1003,13 +992,23 @@ export default function ContactsPage() {
                           {c.firstName} {c.lastName}
                         </span>
                         {isFlaggedTikus && (
-                          <span
-                            className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md shrink-0 transition-colors"
-                            title={`Mencurigakan / Terdeteksi Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
-                          >
-                            <ShieldAlert className="w-2.5 h-2.5 text-red-500" />
-                            Tikus
-                          </span>
+                          hasConfirmedFlag ? (
+                            <span
+                              className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md shrink-0 transition-colors"
+                              title={`Terkonfirmasi Tikus / Spam:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
+                            >
+                              <ShieldAlert className="w-2.5 h-2.5 text-red-500" />
+                              Tikus
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 border border-amber-100 text-amber-600 rounded-md shrink-0 transition-colors"
+                              title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
+                            >
+                              <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />
+                              Suspected
+                            </span>
+                          )
                         )}
                         {checkContactCompleteness(c).isIncomplete && (
                           <span
@@ -1140,17 +1139,77 @@ export default function ContactsPage() {
               </tbody>
             </table>
 
-            {/* Infinite Scroll Trigger */}
-            {filteredContacts.length > visibleCount && (
-              <div 
-                ref={observerTarget} 
-                className="py-4 text-center border-t border-slate-100 bg-slate-50/50 flex items-center justify-center gap-2"
-              >
-                <Loader2 className="w-4 h-4 animate-spin text-slate-450" />
-                <span className="text-xs text-slate-500 font-medium animate-pulse">Loading more contacts...</span>
-              </div>
-            )}
           </div>
+          
+          {/* Integrated Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/30 px-6 py-4">
+              {/* Left Side: Info */}
+              <div className="hidden sm:block">
+                <p className="text-xs font-semibold text-slate-500">
+                  Showing <span className="font-extrabold text-slate-800">{indexOfFirstItem + 1}</span> to{' '}
+                  <span className="font-extrabold text-slate-800">
+                    {Math.min(indexOfLastItem, totalItems)}
+                  </span>{' '}
+                  of <span className="font-extrabold text-slate-800">{totalItems}</span> contacts
+                </p>
+              </div>
+
+              {/* Right Side: Flat Controls */}
+              <div className="flex flex-1 sm:flex-initial items-center justify-between sm:justify-end gap-2">
+                {/* Previous Button */}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed"
+                  title="Previous Page"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const pageNumber = i + 1;
+                    if (totalPages > 6 && Math.abs(currentPage - pageNumber) > 2 && pageNumber !== 1 && pageNumber !== totalPages) {
+                      if (pageNumber === 2 || pageNumber === totalPages - 1) {
+                        return <span key={pageNumber} className="text-xs font-bold text-slate-400 px-1">...</span>;
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`min-w-[28px] h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                          currentPage === pageNumber
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-transparent'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed"
+                  title="Next Page"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
