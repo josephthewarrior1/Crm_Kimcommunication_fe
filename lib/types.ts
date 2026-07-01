@@ -35,6 +35,7 @@ export interface Company {
   companySizeEmployee?: string;
   companyHardware?: string;
   city?: string;
+  postalCode?: string;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -930,13 +930,30 @@ export default function ContactsPage() {
           <div className="overflow-x-auto min-h-[350px]">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/50">
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Name</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Group</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Company</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Phone / LinkedIn</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap">
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Group/Holding Company</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Brand</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Salutation</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">First Name</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Last Name</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Position</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Speciality/Division</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Jobtitle</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Address</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Office Phone</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile Phone</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Email Address</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Personal Email Address</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Industry</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Revenue)</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Employee)</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Hardware</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Linkedin Link</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">City</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Postal Code</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Website</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -946,7 +963,7 @@ export default function ContactsPage() {
                   // 1. Get flags from database
                   const dbFlags = flags.filter(f => f.contact?.id === c.id && f.status !== 'cleared');
                   
-                  // 2. Compute dynamic client-side duplicate indications (e.g. for existing duplicates or unflagged records)
+                  // 2. Compute dynamic client-side duplicate indications
                   const localFlags: any[] = [];
                   
                   if (c.mobilePhone) {
@@ -990,84 +1007,128 @@ export default function ContactsPage() {
                   const hasConfirmedFlag = dbFlags.some(f => f.status === 'confirmed');
 
                   return (
-                    <tr key={c.id} className={`hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
-                    <td className="py-4 px-6">
-                      <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                        <span 
-                          className="truncate max-w-[180px] inline-block align-middle"
-                          title={`${c.salutation ? `${c.salutation} ` : ''}${c.firstName} ${c.lastName}`}
-                        >
-                          {c.salutation && <span className="text-slate-400 font-normal mr-1">{c.salutation}</span>}
-                          {c.firstName} {c.lastName}
-                        </span>
-                        {isFlaggedTikus && (
-                          hasConfirmedFlag ? (
+                    <tr key={c.id} className={`group hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
+                      <td className="py-4 px-4 text-sm font-medium text-slate-600">
+                        {c.company?.group?.name || <span className="text-slate-400">-</span>}
+                      </td>
+                      <td className="py-4 px-4 text-sm font-medium text-slate-650">
+                        {c.company?.brandName || <span className="text-slate-400">-</span>}
+                      </td>
+                      <td className="py-4 px-4 text-sm font-semibold text-slate-700">
+                        {c.company?.name || <span className="text-slate-400">-</span>}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-500">
+                        {c.salutation || '-'}
+                      </td>
+                      <td className="py-4 px-4">
+                        <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                          <span className="truncate max-w-[150px] inline-block align-middle" title={c.firstName}>
+                            {c.firstName}
+                          </span>
+                          {isFlaggedTikus && (
+                            hasConfirmedFlag ? (
+                              <span
+                                className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md shrink-0 transition-colors"
+                                title={`Terkonfirmasi Tikus / Spam:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
+                              >
+                                <ShieldAlert className="w-2.5 h-2.5 text-red-500" />
+                                Tikus
+                              </span>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 border border-amber-100 text-amber-600 rounded-md shrink-0 transition-colors"
+                                title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
+                              >
+                                <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />
+                                Suspected
+                              </span>
+                            )
+                          )}
+                          {checkContactCompleteness(c).isIncomplete && (
                             <span
-                              className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md shrink-0 transition-colors"
-                              title={`Terkonfirmasi Tikus / Spam:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
+                              className="inline-flex cursor-help text-amber-550 hover:text-amber-600 transition-colors"
+                              title={`Semua kolom wajib diisi kecuali Division/Speciality, Contact Type, dan Data Source.\n\nKolom kosong:\n• ${checkContactCompleteness(c).missingFields.join("\n• ")}`}
                             >
-                              <ShieldAlert className="w-2.5 h-2.5 text-red-500" />
-                              Tikus
+                              <AlertCircle className="w-4 h-4 shrink-0" />
                             </span>
-                          ) : (
-                            <span
-                              className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 border border-amber-100 text-amber-600 rounded-md shrink-0 transition-colors"
-                              title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
-                            >
-                              <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />
-                              Suspected
-                            </span>
-                          )
-                        )}
-                        {checkContactCompleteness(c).isIncomplete && (
-                          <span
-                            className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Contact Type, dan Data Source.\n\nKolom kosong:\n• ${checkContactCompleteness(c).missingFields.join("\n• ")}`}
-                          >
-                            <AlertCircle className="w-4 h-4 shrink-0" />
+                          )}
+                        </p>
+                        {!c.isActive && (
+                          <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md">
+                            INACTIVE
                           </span>
                         )}
-                      </p>
-                      {!c.isActive && (
-                        <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md">
-                          INACTIVE (OPT-OUT)
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-4 px-6 text-sm font-medium text-slate-600">
-                      {c.company?.group?.name || <span className="text-slate-400">-</span>}
-                    </td>
-                    <td className="py-4 px-6 text-sm font-semibold text-slate-700">
-                      {c.company?.name || <span className="text-slate-400">-</span>}
-                    </td>
-                    <td className="py-4 px-6 text-xs space-y-1">
-                      <p className="text-slate-900 font-medium">{c.jobTitle || '-'}</p>
-                      {(c.positionLevel || c.specialityDivision) && (
-                        <p className="text-slate-500">
-                          {c.positionLevel} ({c.specialityDivision})
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-4 px-6 text-xs space-y-1.5">
-                      {c.mobilePhone && (
-                        <p className="flex items-center gap-1 font-mono text-slate-500">
-                          <Phone className="w-3.5 h-3.5 text-slate-400" />
-                          {c.mobilePhone}
-                        </p>
-                      )}
-                      {c.linkedinUrl && (
-                        <a
-                          href={c.linkedinUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-500 transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          LinkedIn Profile
-                        </a>
-                      )}
-                    </td>
-                    <td className="py-4 px-6 text-sm text-right relative">
+                      </td>
+                      <td className="py-4 px-4 text-sm font-bold text-slate-900">
+                        {c.lastName || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-655 font-medium">
+                        {c.positionLevel || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-600">
+                        {c.specialityDivision || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-950 font-medium">
+                        {c.jobTitle || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-xs text-slate-600 max-w-[200px] truncate" title={c.company?.address}>
+                        {c.company?.address || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm font-mono text-slate-600">
+                        {c.company?.officePhone || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm font-mono text-slate-700">
+                        {c.mobilePhone || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-xs font-mono text-slate-600">
+                        {c.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-xs font-mono text-slate-600">
+                        {c.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-600">
+                        {c.company?.industry || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-600">
+                        {c.company?.companySizeRevenue || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-600">
+                        {c.company?.companySizeEmployee || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-xs text-slate-600 max-w-[150px] truncate" title={c.company?.companyHardware}>
+                        {c.company?.companyHardware || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-xs">
+                        {c.linkedinUrl ? (
+                          <a
+                            href={c.linkedinUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:text-blue-500 font-semibold inline-flex items-center gap-1"
+                          >
+                            LinkedIn <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-600">
+                        {c.company?.city || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm font-mono text-slate-600">
+                        {c.company?.postalCode || '-'}
+                      </td>
+                      <td className="py-4 px-4 text-xs">
+                        {c.company?.website ? (
+                          <a
+                            href={c.company.website.startsWith('http') ? c.company.website : `https://${c.company.website}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:text-blue-500 font-semibold inline-flex items-center gap-1"
+                          >
+                            Website <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-right sticky right-0 bg-white group-hover:bg-slate-50/90 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors">
                       <div className="inline-block text-left">
                         <button
                           onClick={() => setActiveDropdownId(activeDropdownId === c.id ? null : c.id)}
@@ -1309,9 +1370,13 @@ export default function ContactsPage() {
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Industry</span>
                     <span className="font-medium text-slate-700">{detailContact.company?.industry || '-'}</span>
                   </div>
-                  <div>
+                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">City</span>
                     <span className="font-medium text-slate-700">{detailContact.company?.city || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Postal Code</span>
+                    <span className="font-medium text-slate-700">{detailContact.company?.postalCode || '-'}</span>
                   </div>
                   <div className="md:col-span-2">
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Address</span>

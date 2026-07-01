@@ -42,6 +42,7 @@ export default function CompaniesPage() {
   const [companySizeEmployee, setCompanySizeEmployee] = useState('');
   const [companyHardware, setCompanyHardware] = useState('');
   const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -57,6 +58,7 @@ export default function CompaniesPage() {
   const [editCompanySizeEmployee, setEditCompanySizeEmployee] = useState('');
   const [editCompanyHardware, setEditCompanyHardware] = useState('');
   const [editCity, setEditCity] = useState('');
+  const [editPostalCode, setEditPostalCode] = useState('');
 
   // Delete Confirm State
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -125,7 +127,8 @@ export default function CompaniesPage() {
           companySizeRevenue: companySizeRevenue.trim() || undefined,
           companySizeEmployee: companySizeEmployee.trim() || undefined,
           companyHardware: companyHardware.trim() || undefined,
-          city: city.trim() || undefined
+          city: city.trim() || undefined,
+          postalCode: postalCode.trim() || undefined
         },
         selectedGroupId ? Number(selectedGroupId) : undefined
       );
@@ -144,6 +147,7 @@ export default function CompaniesPage() {
       setCompanySizeEmployee('');
       setCompanyHardware('');
       setCity('');
+      setPostalCode('');
       setIsModalOpen(false);
       loadData();
     } catch (err: any) {
@@ -164,8 +168,9 @@ export default function CompaniesPage() {
     setEditIndustry(company.industry || '');
     setEditCompanySizeRevenue(company.companySizeRevenue || '');
     setEditCompanySizeEmployee(company.companySizeEmployee || '');
-    setEditCompanyHardware(company.companyHardware || '');
+     setEditCompanyHardware(company.companyHardware || '');
     setEditCity(company.city || '');
+    setEditPostalCode(company.postalCode || '');
     setIsEditModalOpen(true);
   };
 
@@ -191,7 +196,8 @@ export default function CompaniesPage() {
           companySizeRevenue: editCompanySizeRevenue.trim() || undefined,
           companySizeEmployee: editCompanySizeEmployee.trim() || undefined,
           companyHardware: editCompanyHardware.trim() || undefined,
-          city: editCity.trim() || undefined
+          city: editCity.trim() || undefined,
+          postalCode: editPostalCode.trim() || undefined
         },
         editSelectedGroupId ? Number(editSelectedGroupId) : undefined
       );
@@ -672,6 +678,17 @@ export default function CompaniesPage() {
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Postal Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 14330"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
+                  />
+                </div>
               </div>
 
               <div>
@@ -848,6 +865,17 @@ export default function CompaniesPage() {
                     placeholder="e.g. Jakarta Utara"
                     value={editCity}
                     onChange={(e) => setEditCity(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Postal Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 14330"
+                    value={editPostalCode}
+                    onChange={(e) => setEditPostalCode(e.target.value)}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
                   />
                 </div>
@@ -1040,7 +1068,12 @@ export default function CompaniesPage() {
                       <div>
                         <p className="text-slate-400 font-medium">City / Address</p>
                         {detailCompany.city && (
-                          <p className="font-bold text-slate-850 mt-0.5">{detailCompany.city}</p>
+                          <p className="font-bold text-slate-850 mt-0.5">
+                            {detailCompany.city} {detailCompany.postalCode ? `- ${detailCompany.postalCode}` : ''}
+                          </p>
+                        )}
+                        {!detailCompany.city && detailCompany.postalCode && (
+                          <p className="font-bold text-slate-850 mt-0.5">Postal Code: {detailCompany.postalCode}</p>
                         )}
                         <p className="text-slate-655 mt-1 leading-relaxed">
                           {detailCompany.address || <span className="text-slate-400 italic font-normal">No address provided.</span>}
