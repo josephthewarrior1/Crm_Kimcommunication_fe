@@ -43,3 +43,6 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# BRD files
+/BRD - CRM Kim Communication (Polished) (1) (1).md

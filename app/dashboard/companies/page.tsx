@@ -3,20 +3,24 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Company, Group, Contact } from '../../../lib/types';
-import { Building2, Search, Plus, X, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Eye, Users, Info } from 'lucide-react';
+import { Building2, Search, Plus, X, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Eye, Users, Info, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../lib/constants';
 import { useAuth } from '../../../lib/context/AuthContext';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 
 export default function CompaniesPage() {
   const { isAdmin, isManager, isUser } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
+  const [filterGroup, setFilterGroup] = useState('');
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -71,10 +75,17 @@ export default function CompaniesPage() {
     loadData();
   }, []);
 
-  // Reset current page when query or industry filters change
+  useEffect(() => {
+    const searchVal = searchParams.get('search');
+    if (searchVal) {
+      setSearchQuery(searchVal);
+    }
+  }, [searchParams]);
+
+  // Reset current page when query, industry or group filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterIndustry]);
+  }, [searchQuery, filterIndustry, filterGroup]);
 
   async function loadData() {
     setLoading(true);
@@ -216,7 +227,6 @@ export default function CompaniesPage() {
       setSubmitting(false);
     }
   };
-
   const filteredCompanies = companies.filter((c) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch =
@@ -239,7 +249,9 @@ export default function CompaniesPage() {
       return dbInd === filterInd || dbInd.includes(filterInd) || filterInd.includes(dbInd);
     })();
 
-    return matchesSearch && matchesIndustry;
+    const matchesGroup = !filterGroup || (c.group && c.group.id === Number(filterGroup));
+
+    return matchesSearch && matchesIndustry && matchesGroup;
   });
 
   const totalItems = filteredCompanies.length;
@@ -297,13 +309,32 @@ export default function CompaniesPage() {
           </select>
         </div>
 
+        {/* Holding Group Filter Dropdown */}
+        <div className="w-full sm:w-64">
+          <select
+            value={filterGroup}
+            onChange={(e) => setFilterGroup(e.target.value)}
+            className="w-full px-3 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer"
+          >
+            <option value="">All Groups</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id.toString()}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Reset Filter Button */}
-        {filterIndustry && (
+        {(filterIndustry || filterGroup) && (
           <button
-            onClick={() => setFilterIndustry('')}
+            onClick={() => {
+              setFilterIndustry('');
+              setFilterGroup('');
+            }}
             className="px-3.5 py-2.5 text-xs font-bold text-red-650 hover:text-red-500 bg-red-50 hover:bg-red-100/55 rounded-xl border border-red-200 transition-all self-start sm:self-auto"
           >
-            Clear Industry
+            Clear Filters
           </button>
         )}
       </div>
@@ -1058,15 +1089,17 @@ export default function CompaniesPage() {
                             <th className="py-2.5 px-4">Name</th>
                             <th className="py-2.5 px-4">Job Title / Level</th>
                             <th className="py-2.5 px-4">Mobile Phone</th>
+                            <th className="py-2.5 px-4 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                           {associatedContacts.map((contact) => {
+                            const fullName = `${contact.firstName} ${contact.lastName}`;
                             return (
                               <tr key={contact.id} className="hover:bg-slate-50/30 transition-colors">
                                 <td className="py-3 px-4 font-bold text-slate-900">
                                   {contact.salutation && <span className="text-slate-400 font-normal mr-1">{contact.salutation}</span>}
-                                  {contact.firstName} {contact.lastName}
+                                  {fullName}
                                 </td>
                                 <td className="py-3 px-4 font-medium text-slate-650">
                                   {contact.jobTitle || '-'} 
@@ -1075,6 +1108,17 @@ export default function CompaniesPage() {
                                   )}
                                 </td>
                                 <td className="py-3 px-4 font-mono text-slate-600">{contact.mobilePhone || '-'}</td>
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => {
+                                      router.push(`/dashboard/contacts?search=${encodeURIComponent(fullName)}`);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg border border-blue-100 transition-all cursor-pointer shadow-sm"
+                                  >
+                                    <span>Go to Details</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </button>
+                                </td>
                               </tr>
                             );
                           })}

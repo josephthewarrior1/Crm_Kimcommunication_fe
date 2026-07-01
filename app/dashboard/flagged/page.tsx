@@ -113,6 +113,58 @@ export default function FlaggedPage() {
     setSelectedEventId('');
   };
 
+  const handleSelectContactChange = async (contactIdVal: string) => {
+    setSelectedContactId(contactIdVal);
+    if (!contactIdVal) {
+      return;
+    }
+    const contactObj = contacts.find(c => c.id.toString() === contactIdVal);
+    if (contactObj) {
+      setNameUsed(`${contactObj.firstName} ${contactObj.lastName}`);
+      setPhoneUsed(contactObj.mobilePhone || '');
+      
+      // Fetch email dynamically
+      try {
+        const emails = await crmService.getContactEmails(contactObj.id);
+        if (emails && emails.length > 0) {
+          const primaryEmail = emails.find(e => e.isPrimary) || emails[0];
+          setEmailUsed(primaryEmail.email);
+        } else {
+          setEmailUsed('');
+        }
+      } catch (err) {
+        console.error('Failed to auto-fetch emails for flagged target', err);
+        setEmailUsed('');
+      }
+    }
+  };
+
+  const handleEditSelectContactChange = async (contactIdVal: string) => {
+    setEditSelectedContactId(contactIdVal);
+    if (!contactIdVal) {
+      return;
+    }
+    const contactObj = contacts.find(c => c.id.toString() === contactIdVal);
+    if (contactObj) {
+      setEditNameUsed(`${contactObj.firstName} ${contactObj.lastName}`);
+      setEditPhoneUsed(contactObj.mobilePhone || '');
+      
+      // Fetch email dynamically
+      try {
+        const emails = await crmService.getContactEmails(contactObj.id);
+        if (emails && emails.length > 0) {
+          const primaryEmail = emails.find(e => e.isPrimary) || emails[0];
+          setEditEmailUsed(primaryEmail.email);
+        } else {
+          setEditEmailUsed('');
+        }
+      } catch (err) {
+        console.error('Failed to auto-fetch emails for flagged target', err);
+        setEditEmailUsed('');
+      }
+    }
+  };
+
   const openEditModal = (flg: FlaggedIdentity) => {
     setEditingFlag(flg);
     setEditNameUsed(flg.nameUsed || '');
@@ -433,7 +485,7 @@ export default function FlaggedPage() {
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Contact (Optional)</label>
                   <select
                     value={selectedContactId}
-                    onChange={(e) => setSelectedContactId(e.target.value)}
+                    onChange={(e) => handleSelectContactChange(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white"
                   >
                     <option value="">-- No linked contact --</option>
@@ -582,7 +634,7 @@ export default function FlaggedPage() {
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Contact (Optional)</label>
                   <select
                     value={editSelectedContactId}
-                    onChange={(e) => setEditSelectedContactId(e.target.value)}
+                    onChange={(e) => handleEditSelectContactChange(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white"
                   >
                     <option value="">-- No linked contact --</option>

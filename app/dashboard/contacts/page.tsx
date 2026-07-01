@@ -7,6 +7,7 @@ import { Users, Search, Plus, X, Loader2, Mail, Phone, ExternalLink, ShieldAlert
 import { toast } from 'sonner';
 import { INDUSTRIES } from '../../../lib/constants';
 import { useAuth } from '../../../lib/context/AuthContext';
+import { useSearchParams } from 'next/navigation';
 
 
 const checkContactCompleteness = (c: Contact) => {
@@ -84,6 +85,7 @@ const checkFormCompleteness = (
 
 export default function ContactsPage() {
   const { isAdmin, isManager, isUser } = useAuth();
+  const searchParams = useSearchParams();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -204,6 +206,13 @@ export default function ContactsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const searchVal = searchParams.get('search');
+    if (searchVal) {
+      setSearchQuery(searchVal);
+    }
+  }, [searchParams]);
 
 
   async function loadData() {
