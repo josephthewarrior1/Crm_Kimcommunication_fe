@@ -59,7 +59,7 @@ export default function SettingsPage() {
       {/* Page Header */}
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900">Removal Requests (Opt-Out)</h2>
-        <p className="text-sm text-slate-500 mt-1">Audit, approve or reject takeout/opt-out requests, and manage active contact deletions.</p>
+        <p className="text-sm text-slate-500 mt-1">Audit, approve or reject takeout/opt-out requests, and manage active database record deletions.</p>
       </div>
 
       {/* Main Content */}
@@ -79,7 +79,7 @@ export default function SettingsPage() {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/50 text-slate-500 font-semibold uppercase tracking-wider">
-                      <th className="py-3 px-4">Contact</th>
+                      <th className="py-3 px-4">Database Record</th>
                       <th className="py-3 px-4">Reason</th>
                       <th className="py-3 px-4">Requested By</th>
                       <th className="py-3 px-4">Audit Details</th>
@@ -100,9 +100,9 @@ export default function SettingsPage() {
                         <tr key={rem.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="py-4 px-4">
                             <p className="font-bold text-slate-900">
-                              {rem.contact.firstName} {rem.contact.lastName}
+                              {rem.database.firstName} {rem.database.lastName}
                             </p>
-                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{rem.contact.id}</p>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{rem.database.id}</p>
                           </td>
                           <td className="py-4 px-4 font-semibold text-slate-700 capitalize">{rem.reason.replace(/_/g, ' ')}</td>
                           <td className="py-4 px-4 text-slate-600">{rem.requestedBy || '-'}</td>

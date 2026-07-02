@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Company, Group, Contact } from '../../../lib/types';
+import { Company, Group, Database } from '../../../lib/types';
 import { Building2, Search, Plus, X, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Eye, Users, Info, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../lib/constants';
@@ -16,7 +16,7 @@ export default function CompaniesPage() {
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [databases, setDatabases] = useState<Database[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
@@ -92,16 +92,16 @@ export default function CompaniesPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [cData, gData, contactsData] = await Promise.all([
+      const [cData, gData, databasesData] = await Promise.all([
         crmService.getCompanies(),
         crmService.getGroups(),
-        crmService.getContacts()
+        crmService.getDatabases()
       ]);
       setCompanies(cData);
       setGroups(gData);
-      setContacts(contactsData);
+      setDatabases(databasesData);
     } catch (err) {
-      toast.error('Failed to load companies, groups or contacts data');
+      toast.error('Failed to load companies, groups or databases data');
     } finally {
       setLoading(false);
     }
@@ -366,7 +366,7 @@ export default function CompaniesPage() {
                 <tr className="border-b border-slate-200 bg-slate-50/50">
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Group</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Info</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Database Info</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">City</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
@@ -384,7 +384,7 @@ export default function CompaniesPage() {
                         {c.brandName && <span className="text-slate-300 text-[10px]">•</span>}
                         <span className="text-[11px] text-slate-500 font-medium flex items-center gap-0.5">
                           <Users className="w-3 h-3 text-slate-400" />
-                          {contacts.filter(contact => contact.company?.id === c.id && contact.isActive).length} Contacts
+                          {databases.filter(database => database.company?.id === c.id && database.isActive).length} Databases
                         </span>
                       </div>
                     </td>
@@ -935,7 +935,7 @@ export default function CompaniesPage() {
             <h3 className="text-lg font-bold text-slate-900 mb-2">Delete Company</h3>
             <p className="text-sm text-slate-500 mb-6">
               Are you sure you want to delete the company <span className="font-semibold text-slate-800">"{deletingCompany?.name}"</span>? 
-              This action cannot be undone. Associated contacts will have their company references removed (nullified).
+              This action cannot be undone. Associated databases will have their company references removed (nullified).
             </p>
 
             <div className="flex gap-3 justify-end">
@@ -966,7 +966,7 @@ export default function CompaniesPage() {
 
       {/* Company Details Modal Overlay */}
       {isDetailModalOpen && detailCompany && (() => {
-        const associatedContacts = contacts.filter(c => c.company?.id === detailCompany.id && c.isActive);
+        const associatedDatabases = databases.filter(c => c.company?.id === detailCompany.id && c.isActive);
         return (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200">
@@ -1053,10 +1053,10 @@ export default function CompaniesPage() {
 
                     <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
                       <div>
-                        <p className="text-slate-400 font-medium">CRM Registered Contacts</p>
+                        <p className="text-slate-400 font-medium">CRM Registered Databases</p>
                         <p className="font-bold text-blue-600 mt-0.5 flex items-center gap-1">
                           <Users className="w-3.5 h-3.5" />
-                          {associatedContacts.length} People
+                          {associatedDatabases.length} People
                         </p>
                       </div>
                       <div>
@@ -1101,17 +1101,17 @@ export default function CompaniesPage() {
 
               </div>
 
-              {/* Bottom section: Associated Contacts (Employees) */}
+              {/* Bottom section: Associated Databases (Employees) */}
               <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-blue-500" />
-                  Employees list ({associatedContacts.length} People)
+                  Employees list ({associatedDatabases.length} People)
                 </h4>
 
-                {associatedContacts.length === 0 ? (
+                {associatedDatabases.length === 0 ? (
                   <div className="p-8 text-center bg-slate-50 border border-slate-150 rounded-2xl">
                     <Users className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-xs text-slate-500 font-medium">No contacts associated with this company yet.</p>
+                    <p className="text-xs text-slate-500 font-medium">No databases associated with this company yet.</p>
                   </div>
                 ) : (
                   <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
@@ -1126,25 +1126,25 @@ export default function CompaniesPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                          {associatedContacts.map((contact) => {
-                            const fullName = `${contact.firstName} ${contact.lastName}`;
+                          {associatedDatabases.map((database) => {
+                            const fullName = `${database.firstName} ${database.lastName}`;
                             return (
-                              <tr key={contact.id} className="hover:bg-slate-50/30 transition-colors">
+                              <tr key={database.id} className="hover:bg-slate-50/30 transition-colors">
                                 <td className="py-3 px-4 font-bold text-slate-900">
-                                  {contact.salutation && <span className="text-slate-400 font-normal mr-1">{contact.salutation}</span>}
+                                  {database.salutation && <span className="text-slate-400 font-normal mr-1">{database.salutation}</span>}
                                   {fullName}
                                 </td>
                                 <td className="py-3 px-4 font-medium text-slate-650">
-                                  {contact.jobTitle || '-'} 
-                                  {contact.positionLevel && contact.positionLevel !== 'unknown' && (
-                                    <span className="text-[10px] text-slate-400 font-normal block mt-0.5">Level: {contact.positionLevel}</span>
+                                  {database.jobTitle || '-'} 
+                                  {database.positionLevel && database.positionLevel !== 'unknown' && (
+                                    <span className="text-[10px] text-slate-400 font-normal block mt-0.5">Level: {database.positionLevel}</span>
                                   )}
                                 </td>
-                                <td className="py-3 px-4 font-mono text-slate-600">{contact.mobilePhone || '-'}</td>
+                                <td className="py-3 px-4 font-mono text-slate-600">{database.mobilePhone || '-'}</td>
                                 <td className="py-3 px-4 text-right">
                                   <button
                                     onClick={() => {
-                                      router.push(`/dashboard/contacts?search=${encodeURIComponent(fullName)}`);
+                                      router.push(`/dashboard/databases?search=${encodeURIComponent(fullName)}`);
                                     }}
                                     className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg border border-blue-100 transition-all cursor-pointer shadow-sm"
                                   >

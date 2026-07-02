@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { FlaggedIdentity, Contact, Event } from '../../../lib/types';
+import { FlaggedIdentity, Database, Event } from '../../../lib/types';
 import { ShieldAlert, Plus, Search, X, Loader2, Edit2, Trash2, AlertTriangle, CheckCircle, RefreshCw, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -10,7 +10,7 @@ import { useAuth } from '../../../lib/context/AuthContext';
 export default function FlaggedPage() {
   const { isAdmin, isManager, isUser } = useAuth();
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [databases, setDatabases] = useState<Database[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,7 +28,7 @@ export default function FlaggedPage() {
   const [flagReason, setFlagReason] = useState('multiple_identity');
   const [evidenceNotes, setEvidenceNotes] = useState('');
   const [status, setStatus] = useState('suspected');
-  const [selectedContactId, setSelectedContactId] = useState('');
+  const [selectedDatabaseId, setSelectedDatabaseId] = useState('');
   const [selectedEventId, setSelectedEventId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -40,7 +40,7 @@ export default function FlaggedPage() {
   const [editFlagReason, setEditFlagReason] = useState('multiple_identity');
   const [editEvidenceNotes, setEditEvidenceNotes] = useState('');
   const [editStatus, setEditStatus] = useState('suspected');
-  const [editSelectedContactId, setEditSelectedContactId] = useState('');
+  const [editSelectedDatabaseId, setEditSelectedDatabaseId] = useState('');
   const [editSelectedEventId, setEditSelectedEventId] = useState('');
 
   // Delete state
@@ -53,13 +53,13 @@ export default function FlaggedPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [flagList, contactList, eventList] = await Promise.all([
+      const [flagList, databaseList, eventList] = await Promise.all([
         crmService.getFlaggedIdentities(),
-        crmService.getContacts(),
+        crmService.getDatabases(),
         crmService.getEvents()
       ]);
       setFlags(flagList);
-      setContacts(contactList);
+      setDatabases(databaseList);
       setEvents(eventList);
     } catch (err) {
       toast.error('Failed to load flagged data');
@@ -77,7 +77,7 @@ export default function FlaggedPage() {
 
     setSubmitting(true);
     try {
-      const contactObj = selectedContactId ? { id: selectedContactId } : null;
+      const databaseObj = selectedDatabaseId ? { id: selectedDatabaseId } : null;
       const eventObj = selectedEventId ? { id: selectedEventId } : null;
 
       await crmService.createFlaggedIdentity({
@@ -87,7 +87,7 @@ export default function FlaggedPage() {
         flagReason,
         evidenceNotes: evidenceNotes.trim() || undefined,
         status,
-        contact: contactObj as any,
+        database: databaseObj as any,
         event: eventObj as any
       });
 
@@ -109,23 +109,23 @@ export default function FlaggedPage() {
     setFlagReason('multiple_identity');
     setEvidenceNotes('');
     setStatus('suspected');
-    setSelectedContactId('');
+    setSelectedDatabaseId('');
     setSelectedEventId('');
   };
 
-  const handleSelectContactChange = async (contactIdVal: string) => {
-    setSelectedContactId(contactIdVal);
-    if (!contactIdVal) {
+  const handleSelectDatabaseChange = async (databaseIdVal: string) => {
+    setSelectedDatabaseId(databaseIdVal);
+    if (!databaseIdVal) {
       return;
     }
-    const contactObj = contacts.find(c => c.id.toString() === contactIdVal);
-    if (contactObj) {
-      setNameUsed(`${contactObj.firstName} ${contactObj.lastName}`);
-      setPhoneUsed(contactObj.mobilePhone || '');
+    const databaseObj = databases.find(c => c.id.toString() === databaseIdVal);
+    if (databaseObj) {
+      setNameUsed(`${databaseObj.firstName} ${databaseObj.lastName}`);
+      setPhoneUsed(databaseObj.mobilePhone || '');
       
       // Fetch email dynamically
       try {
-        const emails = await crmService.getContactEmails(contactObj.id);
+        const emails = await crmService.getDatabaseEmails(databaseObj.id);
         if (emails && emails.length > 0) {
           const primaryEmail = emails.find(e => e.isPrimary) || emails[0];
           setEmailUsed(primaryEmail.email);
@@ -139,19 +139,19 @@ export default function FlaggedPage() {
     }
   };
 
-  const handleEditSelectContactChange = async (contactIdVal: string) => {
-    setEditSelectedContactId(contactIdVal);
-    if (!contactIdVal) {
+  const handleEditSelectDatabaseChange = async (databaseIdVal: string) => {
+    setEditSelectedDatabaseId(databaseIdVal);
+    if (!databaseIdVal) {
       return;
     }
-    const contactObj = contacts.find(c => c.id.toString() === contactIdVal);
-    if (contactObj) {
-      setEditNameUsed(`${contactObj.firstName} ${contactObj.lastName}`);
-      setEditPhoneUsed(contactObj.mobilePhone || '');
+    const databaseObj = databases.find(c => c.id.toString() === databaseIdVal);
+    if (databaseObj) {
+      setEditNameUsed(`${databaseObj.firstName} ${databaseObj.lastName}`);
+      setEditPhoneUsed(databaseObj.mobilePhone || '');
       
       // Fetch email dynamically
       try {
-        const emails = await crmService.getContactEmails(contactObj.id);
+        const emails = await crmService.getDatabaseEmails(databaseObj.id);
         if (emails && emails.length > 0) {
           const primaryEmail = emails.find(e => e.isPrimary) || emails[0];
           setEditEmailUsed(primaryEmail.email);
@@ -173,7 +173,7 @@ export default function FlaggedPage() {
     setEditFlagReason(flg.flagReason || 'multiple_identity');
     setEditEvidenceNotes(flg.evidenceNotes || '');
     setEditStatus(flg.status || 'suspected');
-    setEditSelectedContactId(flg.contact?.id?.toString() || '');
+    setEditSelectedDatabaseId(flg.database?.id?.toString() || '');
     setEditSelectedEventId(flg.event?.id?.toString() || '');
     setIsEditModalOpen(true);
   };
@@ -184,7 +184,7 @@ export default function FlaggedPage() {
 
     setSubmitting(true);
     try {
-      const contactObj = editSelectedContactId ? { id: editSelectedContactId } : null;
+      const databaseObj = editSelectedDatabaseId ? { id: editSelectedDatabaseId } : null;
       const eventObj = editSelectedEventId ? { id: editSelectedEventId } : null;
 
       await crmService.updateFlaggedIdentity(editingFlag.id, {
@@ -194,7 +194,7 @@ export default function FlaggedPage() {
         flagReason: editFlagReason,
         evidenceNotes: editEvidenceNotes.trim() || undefined,
         status: editStatus,
-        contact: contactObj as any,
+        database: databaseObj as any,
         event: eventObj as any
       });
 
@@ -340,7 +340,7 @@ export default function FlaggedPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h4 className="font-bold text-slate-900 text-sm">{flg.nameUsed || <span className="text-slate-400 italic">No Name Specified</span>}</h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Linked Profile: {flg.contact ? `${flg.contact.firstName} ${flg.contact.lastName}` : 'No direct link'}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Linked Profile: {flg.database ? `${flg.database.firstName} ${flg.database.lastName}` : 'No direct link'}</p>
                 </div>
                 <span className={`px-2 py-0.5 text-[8px] font-extrabold rounded-full uppercase tracking-wider ${getRiskColor(flg.status)}`}>
                   {flg.status}
@@ -482,14 +482,14 @@ export default function FlaggedPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Contact (Optional)</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Database (Optional)</label>
                   <select
-                    value={selectedContactId}
-                    onChange={(e) => handleSelectContactChange(e.target.value)}
+                    value={selectedDatabaseId}
+                    onChange={(e) => handleSelectDatabaseChange(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white"
                   >
-                    <option value="">-- No linked contact --</option>
-                    {contacts.map((c) => (
+                    <option value="">-- No linked database --</option>
+                    {databases.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.firstName} {c.lastName} {c.company?.name ? `(${c.company.name})` : ''}
                       </option>
@@ -631,14 +631,14 @@ export default function FlaggedPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Contact (Optional)</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Database (Optional)</label>
                   <select
-                    value={editSelectedContactId}
-                    onChange={(e) => handleEditSelectContactChange(e.target.value)}
+                    value={editSelectedDatabaseId}
+                    onChange={(e) => handleEditSelectDatabaseChange(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white"
                   >
-                    <option value="">-- No linked contact --</option>
-                    {contacts.map((c) => (
+                    <option value="">-- No linked database --</option>
+                    {databases.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.firstName} {c.lastName} {c.company?.name ? `(${c.company.name})` : ''}
                       </option>

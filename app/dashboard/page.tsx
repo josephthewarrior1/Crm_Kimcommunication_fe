@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../lib/services/crmService';
-import { Group, Company, Contact, Event, FlaggedIdentity, EventLead } from '../../lib/types';
-import { FolderTree, Building2, Users, CalendarDays, ShieldAlert, Loader2, ArrowUpRight } from 'lucide-react';
+import { Group, Company, Database, Event, FlaggedIdentity, EventLead } from '../../lib/types';
+import { FolderTree, Building2, Database as DatabaseIcon, CalendarDays, ShieldAlert, Loader2, ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ChartTooltip, Legend as ChartLegend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 export default function DashboardPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [databases, setDatabases] = useState<Database[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [flagged, setFlagged] = useState<FlaggedIdentity[]>([]);
   const [leads, setLeads] = useState<EventLead[]>([]);
@@ -19,10 +19,10 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [gList, cList, conList, eList, fList, leadList] = await Promise.all([
+        const [gList, cList, dbList, eList, fList, leadList] = await Promise.all([
           crmService.getGroups(),
           crmService.getCompanies(),
-          crmService.getContacts(),
+          crmService.getDatabases(),
           crmService.getEvents(),
           crmService.getFlaggedIdentities(),
           crmService.getEventLeads().catch(() => []) // fallback
@@ -30,7 +30,7 @@ export default function DashboardPage() {
 
         setGroups(gList);
         setCompanies(cList);
-        setContacts(conList);
+        setDatabases(dbList);
         setEvents(eList);
         setFlagged(fList);
         setLeads(leadList);
@@ -56,7 +56,7 @@ export default function DashboardPage() {
   const stats = [
     { name: 'Total Groups', value: groups.length, icon: FolderTree, color: 'from-blue-600/20 to-blue-800/10', text: 'text-blue-400' },
     { name: 'Total Companies', value: companies.length, icon: Building2, color: 'from-cyan-600/20 to-cyan-800/10', text: 'text-cyan-400' },
-    { name: 'Total Contacts', value: contacts.filter(c => c.isActive !== false).length, icon: Users, color: 'from-emerald-600/20 to-emerald-800/10', text: 'text-emerald-400' },
+    { name: 'Total Database', value: databases.filter(c => c.isActive !== false).length, icon: DatabaseIcon, color: 'from-emerald-600/20 to-emerald-800/10', text: 'text-emerald-400' },
     { name: 'Total Events', value: events.length, icon: CalendarDays, color: 'from-blue-600/20 to-blue-800/10', text: 'text-blue-400' },
   ];
 
@@ -102,7 +102,7 @@ export default function DashboardPage() {
         <div className="relative z-10">
           <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900">KIM CRM Dashboard</h2>
           <p className="text-slate-500 mt-2 max-w-xl">
-            Welcome to the KIM Communications Lead & Event Management panel. View holding company details, active contacts, event statuses, and track suspicious identity flags.
+            Welcome to the KIM Communications Lead & Event Management panel. View holding company details, active database records, event statuses, and track suspicious identity flags.
           </p>
         </div>
       </div>

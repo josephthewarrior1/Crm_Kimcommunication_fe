@@ -2,17 +2,53 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Event, EventLead, Contact, EventLeadActivity } from '../../../lib/types';
-import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Eye, Edit2, Trash2, Download, Check, Square, CheckSquare, RefreshCw, CheckCircle, Phone, Mail, MessageSquare, Calendar, Award, TrendingUp, BarChart3, Copy, Flame, Sun, Snowflake, ArrowLeft } from 'lucide-react';
+import { Event, EventLead, Database, EventLeadActivity } from '../../../lib/types';
+import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Users, Eye, Edit2, Trash2, Download, Check, Square, CheckSquare, RefreshCw, CheckCircle, Phone, Mail, MessageSquare, Calendar, Award, TrendingUp, BarChart3, Copy, Flame, Sun, Snowflake, ArrowLeft, AlertCircle, ExternalLink, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import * as XLSX from 'xlsx';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
 
+const checkDatabaseCompleteness = (c: Database) => {
+  const missing: string[] = [];
+
+  if (!c.company?.group?.name?.trim()) missing.push("Nama Group Holding");
+  if (!c.company?.brandName?.trim()) missing.push("Nama Brand");
+  if (!c.company?.name?.trim()) missing.push("Company Name");
+  if (!c.salutation?.trim()) missing.push("Salutation");
+  if (!c.firstName?.trim()) missing.push("First Name");
+  if (!c.lastName?.trim()) missing.push("Last Name");
+  if (!c.positionLevel || c.positionLevel === 'unknown' || !c.positionLevel.trim()) missing.push("Position");
+  if (!c.jobTitle?.trim()) missing.push("Job Title");
+  if (!c.company?.address?.trim()) missing.push("Address");
+  if (!c.company?.officePhone?.trim()) missing.push("Office Phone");
+  if (!c.mobilePhone?.trim()) missing.push("Mobile Phone");
+
+  const emails = c.emails || [];
+  const hasCompanyEmail = emails.some(e => e.isCorporate || e.emailType === 'company');
+  const hasPersonalEmail = emails.some(e => !e.isCorporate && e.emailType === 'personal');
+
+  if (!hasCompanyEmail) missing.push("Company Email");
+  if (!hasPersonalEmail) missing.push("Personal Email");
+
+  if (!c.company?.industry?.trim()) missing.push("Industry");
+  if (!c.linkedinUrl?.trim()) missing.push("LinkedIn Link");
+  if (!c.company?.city?.trim()) missing.push("City");
+  if (!c.company?.website?.trim()) missing.push("Company Website");
+
+  return {
+    isIncomplete: missing.length > 0,
+    missingFields: missing
+  };
+};
+
 const getStatusBadgeStyle = (status: string) => {
   const s = status ? status.toLowerCase() : '';
-  if (s === 'registered' || s === 'confirm' || s === 'green') {
+  if (s === 'registered' || s === 'confirm' || s === 'green' || s === 'on_location') {
     return 'text-emerald-700 bg-emerald-50 border-emerald-250';
+  }
+  if (s === 'on_the_way') {
+    return 'text-blue-700 bg-blue-50 border-blue-250';
   }
   if (s === 'tentative' || s === 'yellow') {
     return 'text-amber-700 bg-amber-50 border-amber-250';
@@ -34,6 +70,8 @@ const getStatusBadgeStyle = (status: string) => {
 
 const getStatusLabel = (status: string) => {
   const s = status ? status.toLowerCase() : '';
+  if (s === 'on_location') return 'On Location';
+  if (s === 'on_the_way') return 'On The Way';
   if (s === 'registered' || s === 'green') return 'Registered';
   if (s === 'confirm') return 'Confirm';
   if (s === 'tentative' || s === 'yellow') return 'Tentative';
@@ -83,7 +121,7 @@ const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
 export default function EventsPage() {
   const { isAdmin, isManager, isUser } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [databases, setDatabases] = useState<Database[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -94,6 +132,10 @@ export default function EventsPage() {
   const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
   const [leadSearchQuery, setLeadSearchQuery] = useState('');
+  const [filterLeadCompany, setFilterLeadCompany] = useState('');
+  const [filterLeadPosition, setFilterLeadPosition] = useState('');
+  const [filterLeadIndustry, setFilterLeadIndustry] = useState('');
+  const [filterLeadCity, setFilterLeadCity] = useState('');
 
   const setLeadsSorted = (leadsList: EventLead[]) => {
     const sorted = [...leadsList].sort((a, b) => a.id - b.id);
@@ -133,8 +175,8 @@ export default function EventsPage() {
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
 
   // Form inputs for adding a Lead
-  const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
-  const [leadContactSearch, setLeadContactSearch] = useState('');
+  const [selectedDatabaseIds, setSelectedDatabaseIds] = useState<number[]>([]);
+  const [leadDatabaseSearch, setLeadDatabaseSearch] = useState('');
   const [leadStatus, setLeadStatus] = useState('white');
   const [attendanceStatus, setAttendanceStatus] = useState('pending');
   const [leadNotes, setLeadNotes] = useState('');
@@ -142,7 +184,7 @@ export default function EventsPage() {
 
   // Form inputs for updating a Lead status
   const [activeLead, setActiveLead] = useState<EventLead | null>(null);
-  const [activeTab, setActiveTab] = useState<'event' | 'reminder'>('event');
+  const [activeTab, setActiveTab] = useState<'event' | 'reminder' | 'reminder_dday'>('event');
   const [updateLeadStatusStr, setUpdateLeadStatusStr] = useState('white');
   const [updateAttendanceStatusStr, setUpdateAttendanceStatusStr] = useState('invited');
   const [updateConfirmationStatusStr, setUpdateConfirmationStatusStr] = useState('pending');
@@ -177,6 +219,15 @@ export default function EventsPage() {
   const [eventReport, setEventReport] = useState<any>(null);
   const [loadingReport, setLoadingReport] = useState(false);
 
+  // Add Lead Modal filter states
+  const [allEventLeads, setAllEventLeads] = useState<EventLead[]>([]);
+  const [filterAddLeadCompany, setFilterAddLeadCompany] = useState('');
+  const [filterAddLeadPosition, setFilterAddLeadPosition] = useState('');
+  const [filterAddLeadIndustry, setFilterAddLeadIndustry] = useState('');
+  const [filterAddLeadCity, setFilterAddLeadCity] = useState('');
+  const [filterAddLeadEventId, setFilterAddLeadEventId] = useState('');
+  const [filterAddLeadOnlyAttended, setFilterAddLeadOnlyAttended] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -184,14 +235,16 @@ export default function EventsPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [eList, cList] = await Promise.all([
+      const [eList, cList, lList] = await Promise.all([
         crmService.getEvents(),
-        crmService.getContacts()
+        crmService.getDatabases(),
+        crmService.getEventLeads()
       ]);
       setEvents(eList);
-      setContacts(cList.filter(c => c.isActive)); // only active contacts
+      setDatabases(cList.filter(c => c.isActive)); // only active databases
+      setAllEventLeads(lList);
     } catch (err) {
-      toast.error('Failed to load events or contacts');
+      toast.error('Failed to load events or databases');
     } finally {
       setLoading(false);
     }
@@ -301,6 +354,7 @@ export default function EventsPage() {
     setSelectedLeadIds([]); // reset selection
     try {
       const allLeads = await crmService.getEventLeads();
+      setAllEventLeads(allLeads);
       const filteredLeads = allLeads.filter((l) => l.event.id === event.id);
       setLeadsSorted(filteredLeads);
     } catch (err) {
@@ -349,58 +403,68 @@ export default function EventsPage() {
         };
         const confirmationLabel = confirmationLabels[l.confirmationStatus || 'pending'] || l.confirmationStatus;
 
-        // Map Tele Remarks Status Color label
-        const colorLabels: Record<string, string> = {
-          white: 'White (No reply)',
-          yellow: 'Yellow (Tentative)',
-          green: 'Green (Confirmed)',
-          red: 'Red (Rejected)',
-        };
-        const statusColorLabel = colorLabels[l.leadStatus] || l.leadStatus;
-
-        // Map Attendance Status label
-        const attendanceLabels: Record<string, string> = {
-          invited: 'Invited',
-          registered: 'Registered',
-          attended: 'Attended',
-          no_show: 'No Show',
-          cancelled: 'Cancelled',
-        };
-        const attendanceLabel = attendanceLabels[l.attendanceStatus] || l.attendanceStatus;
-
         return {
           'No': index + 1,
-          'Company Name': l.contact.company?.name || '-',
-          'Contact Name': `${l.contact.salutation ? l.contact.salutation + ' ' : ''}${l.contact.firstName} ${l.contact.lastName}`,
-          'Job Title': l.contact.jobTitle || '-',
-          'Email Address': l.contact.emails?.[0]?.email || '-',
-          'Mobile Number': l.contact.mobilePhone || '-',
-          'Industry': l.contact.company?.industry || '-',
+          'Company Name': l.database.company?.name || '-',
+          'Salutation': l.database.salutation || '-',
+          'First Name': l.database.firstName || '-',
+          'Last Name': l.database.lastName || '-',
+          'Position': l.database.positionLevel || '-',
+          'Job Title': l.database.jobTitle || '-',
+          'Office Phone': l.database.company?.officePhone || '-',
+          'Mobile Phone': l.database.mobilePhone || '-',
+          'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
+          'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
           'Call Status': callLabel,
           'WhatsApp Status': l.whatsappStatus === 'SENT' ? 'Sudah WhatsApp' : 'Belum WhatsApp',
           'Email Status': l.emailStatus === 'SENT' ? 'Sudah Email' : 'Belum Email',
-          'Tele Remarks': statusColorLabel,
+          'Tele Remarks': getStatusLabel(l.leadStatus),
           'Confirmation Status': confirmationLabel,
-          'Attendance Status': attendanceLabel,
           'Notes': l.notes || '-'
         };
       });
-    } else {
+    } else if (activeTab === 'reminder') {
       sheetName = 'Reminder Status';
       fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Reminder_Report.xlsx`;
 
       dataToExport = filteredLeads.map((l, index) => {
         return {
           'No': index + 1,
-          'Company Name': l.contact.company?.name || '-',
-          'Contact Name': `${l.contact.salutation ? l.contact.salutation + ' ' : ''}${l.contact.firstName} ${l.contact.lastName}`,
-          'Job Title': l.contact.jobTitle || '-',
-          'Email Address': l.contact.emails?.[0]?.email || '-',
-          'Mobile Number': l.contact.mobilePhone || '-',
-          'Industry': l.contact.company?.industry || '-',
+          'Company Name': l.database.company?.name || '-',
+          'Salutation': l.database.salutation || '-',
+          'First Name': l.database.firstName || '-',
+          'Last Name': l.database.lastName || '-',
+          'Position': l.database.positionLevel || '-',
+          'Job Title': l.database.jobTitle || '-',
+          'Office Phone': l.database.company?.officePhone || '-',
+          'Mobile Phone': l.database.mobilePhone || '-',
+          'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
+          'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
+          'Industry': l.database.company?.industry || '-',
           'H-7 Reminder': getReminderLabel(l.reminderH7),
           'H-3 Reminder': getReminderLabel(l.reminderH3),
           'H-1 Reminder': getReminderLabel(l.reminderH1),
+          'Notes': l.notes || '-'
+        };
+      });
+    } else {
+      sheetName = 'Reminder Dday Status';
+      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Reminder_Dday_Report.xlsx`;
+
+      dataToExport = filteredLeads.map((l, index) => {
+        return {
+          'No': index + 1,
+          'Company Name': l.database.company?.name || '-',
+          'Salutation': l.database.salutation || '-',
+          'First Name': l.database.firstName || '-',
+          'Last Name': l.database.lastName || '-',
+          'Position': l.database.positionLevel || '-',
+          'Job Title': l.database.jobTitle || '-',
+          'Office Phone': l.database.company?.officePhone || '-',
+          'Mobile Phone': l.database.mobilePhone || '-',
+          'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
+          'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
+          'Industry': l.database.company?.industry || '-',
           'Hari H Reminder': getReminderLabel(l.reminderHariH),
           'Notes': l.notes || '-'
         };
@@ -586,10 +650,69 @@ export default function EventsPage() {
     }
   };
 
+  const handleBatchUpdateReminderHariH = async (status: string) => {
+    if (selectedLeadIds.length === 0) return;
+    setIsBatchUpdating(true);
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    await Promise.all(selectedLeadIds.map(async (leadId) => {
+      try {
+        const lead = leads.find(l => l.id === leadId);
+        if (lead) {
+          await crmService.updateLeadStatus(
+            leadId,
+            lead.leadStatus,
+            lead.attendanceStatus,
+            lead.notes || undefined,
+            undefined,
+            lead.callStatus || undefined,
+            lead.emailStatus || undefined,
+            lead.whatsappStatus || undefined,
+            lead.meetingStatus || undefined,
+            lead.businessChallenges || undefined,
+            lead.projectInfo || undefined,
+            lead.timeline || undefined,
+            lead.reminderH7 || undefined,
+            lead.reminderH3 || undefined,
+            lead.reminderH1 || undefined,
+            status,
+            lead.confirmationStatus
+          );
+          successCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }));
+
+    setIsBatchUpdating(false);
+    setSelectedLeadIds([]);
+    
+    if (failCount > 0) {
+      toast.warning(`Berhasil mengupdate ${successCount} leads, gagal ${failCount} leads.`);
+    } else {
+      toast.success(`Berhasil mengupdate status Hari H ${successCount} leads!`);
+    }
+
+    if (selectedEvent) {
+      handleSelectEvent(selectedEvent);
+    }
+  };
+
+  const handleResetLeadFilters = () => {
+    setLeadSearchQuery('');
+    setFilterLeadCompany('');
+    setFilterLeadPosition('');
+    setFilterLeadIndustry('');
+    setFilterLeadCity('');
+  };
+
   const handleAddLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEvent || selectedContactIds.length === 0) {
-      toast.error('Please select at least one contact');
+    if (!selectedEvent || selectedDatabaseIds.length === 0) {
+      toast.error('Please select at least one database');
       return;
     }
 
@@ -597,22 +720,22 @@ export default function EventsPage() {
     try {
       await crmService.createEventLead({
         eventId: selectedEvent.id,
-        contactIds: selectedContactIds,
+        databaseIds: selectedDatabaseIds,
         leadStatus,
         attendanceStatus,
         notes: leadNotes.trim() || undefined
       });
 
-      toast.success(`Successfully added ${selectedContactIds.length} contact(s) as lead(s)!`);
+      toast.success(`Successfully added ${selectedDatabaseIds.length} database(s) as lead(s)!`);
       setIsAddLeadModalOpen(false);
-      setSelectedContactIds([]);
-      setLeadContactSearch('');
+      setSelectedDatabaseIds([]);
+      setLeadDatabaseSearch('');
       setLeadNotes('');
       
       // Reload leads
       handleSelectEvent(selectedEvent);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to add contact(s) to event');
+      toast.error(err.message || 'Failed to add database(s) to event');
     } finally {
       setSubmittingLead(false);
     }
@@ -761,6 +884,7 @@ export default function EventsPage() {
       // Reload leads list
       if (selectedEvent) {
         const allLeads = await crmService.getEventLeads();
+        setAllEventLeads(allLeads);
         const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
         setLeadsSorted(filteredLeads);
       }
@@ -831,6 +955,7 @@ export default function EventsPage() {
       // Reload leads list
       if (selectedEvent) {
         const allLeads = await crmService.getEventLeads();
+        setAllEventLeads(allLeads);
         const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
         setLeadsSorted(filteredLeads);
       }
@@ -866,6 +991,7 @@ export default function EventsPage() {
       // Reload main lead list
       if (selectedEvent) {
         const allLeads = await crmService.getEventLeads();
+        setAllEventLeads(allLeads);
         const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
         setLeadsSorted(filteredLeads);
       }
@@ -878,9 +1004,9 @@ export default function EventsPage() {
 
   const triggerWhatsApp = async () => {
     if (!activeLead) return;
-    const phone = activeLead.contact.mobilePhone;
+    const phone = activeLead.database.mobilePhone;
     if (!phone) {
-      toast.error("Contact has no phone number");
+      toast.error("Database has no phone number");
       return;
     }
     
@@ -890,7 +1016,7 @@ export default function EventsPage() {
     }
     
     // Pre-filled template (Phase 6 Meeting reminder/outbound)
-    const template = `Halo ${activeLead.contact.salutation ? activeLead.contact.salutation + ' ' : ''}${activeLead.contact.firstName} ${activeLead.contact.lastName},\n\nSaya dari KIM Communication. Ingin mengonfirmasi mengenai project aktif dan ketertarikan Anda untuk berdiskusi dengan Ingram Micro mengenai AI Solutions.`;
+    const template = `Halo ${activeLead.database.salutation ? activeLead.database.salutation + ' ' : ''}${activeLead.database.firstName} ${activeLead.database.lastName},\n\nSaya dari KIM Communication. Ingin mengonfirmasi mengenai project aktif dan ketertarikan Anda untuk berdiskusi dengan Ingram Micro mengenai AI Solutions.`;
     const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(template)}`;
     
     window.open(url, '_blank');
@@ -905,6 +1031,7 @@ export default function EventsPage() {
       loadLeadActivities(activeLead.id);
       if (selectedEvent) {
         const allLeads = await crmService.getEventLeads();
+        setAllEventLeads(allLeads);
         const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
         setLeadsSorted(filteredLeads);
       }
@@ -916,9 +1043,9 @@ export default function EventsPage() {
 
   const triggerEmail = async () => {
     if (!activeLead) return;
-    const emails = activeLead.contact.emails;
+    const emails = activeLead.database.emails;
     if (!emails || emails.length === 0) {
-      toast.error("Contact has no email address");
+      toast.error("Database has no email address");
       return;
     }
     const emailAddr = emails[0].email;
@@ -934,6 +1061,7 @@ export default function EventsPage() {
       loadLeadActivities(activeLead.id);
       if (selectedEvent) {
         const allLeads = await crmService.getEventLeads();
+        setAllEventLeads(allLeads);
         const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
         setLeadsSorted(filteredLeads);
       }
@@ -942,7 +1070,7 @@ export default function EventsPage() {
       const trackingPixelUrl = `${window.location.protocol}//${window.location.host.replace(':3000', ':8080')}/api/event-leads/emails/track/${activity.id}`;
       
       setCopiedEmailHTML(`<div style="font-family: sans-serif; font-size: 14px; color: #333; line-height: 1.6;">
-  <p>Halo ${activeLead.contact.salutation ? activeLead.contact.salutation + ' ' : ''}${activeLead.contact.firstName} ${activeLead.contact.lastName},</p>
+  <p>Halo ${activeLead.database.salutation ? activeLead.database.salutation + ' ' : ''}${activeLead.database.firstName} ${activeLead.database.lastName},</p>
   <p>Semoga pesan ini menemui Anda dalam keadaan baik.</p>
   <p>Kami dari <strong>KIM Communication</strong> ingin mendiskusikan implementasi solusi kecerdasan buatan (AI) yang sedang dievaluasi di perusahaan Anda bersama tim <strong>Ingram Micro</strong>.</p>
   <p>Apakah Anda bersedia untuk berdiskusi singkat atau melakukan meeting via Teams/Zoom?</p>
@@ -989,20 +1117,55 @@ export default function EventsPage() {
     (e.clientName && e.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Filter active contacts not currently leads in the selected event
-  const contactsNotInEvent = contacts.filter(
-    (c) => !leads.some((l) => l.contact.id === c.id)
+  // Filter active databases not currently leads in the selected event
+  const databasesNotInEvent = databases.filter(
+    (c) => !leads.some((l) => l.database.id === c.id)
   );
 
-  const visibleContacts = contactsNotInEvent.filter((c) => {
-    const term = leadContactSearch.toLowerCase();
-    const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
-    const companyName = c.company?.name?.toLowerCase() || '';
-    return fullName.includes(term) || companyName.includes(term);
+  const visibleDatabases = databasesNotInEvent.filter((c) => {
+    // 1. Search Query
+    if (leadDatabaseSearch) {
+      const term = leadDatabaseSearch.toLowerCase();
+      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+      const companyName = c.company?.name?.toLowerCase() || '';
+      if (!fullName.includes(term) && !companyName.includes(term)) {
+        return false;
+      }
+    }
+
+    // 2. Company filter
+    if (filterAddLeadCompany && c.company?.name !== filterAddLeadCompany) {
+      return false;
+    }
+
+    // 3. Position Level filter
+    if (filterAddLeadPosition && c.positionLevel !== filterAddLeadPosition) {
+      return false;
+    }
+
+    // 4. Industry filter
+    if (filterAddLeadIndustry && c.company?.industry !== filterAddLeadIndustry) {
+      return false;
+    }
+
+    // 5. City filter
+    if (filterAddLeadCity && c.company?.city !== filterAddLeadCity) {
+      return false;
+    }
+
+    // 6. Event Participation history filter
+    if (filterAddLeadEventId) {
+      const isInvited = allEventLeads.some(
+        (l) => l.database.id === c.id && l.event.id === Number(filterAddLeadEventId)
+      );
+      if (!isInvited) return false;
+    }
+
+    return true;
   });
 
   const filteredLeads = leads.filter((l) => {
-    if (activeTab === 'reminder') {
+    if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
       const confStatus = l.confirmationStatus?.toLowerCase();
       const leadStatus = l.leadStatus?.toLowerCase();
       if (confStatus !== 'approve' || leadStatus !== 'registered') {
@@ -1010,12 +1173,37 @@ export default function EventsPage() {
       }
     }
 
-    if (!leadSearchQuery) return true;
-    const term = leadSearchQuery.toLowerCase();
-    const fullName = `${l.contact.firstName} ${l.contact.lastName}`.toLowerCase();
-    const companyName = l.contact.company?.name?.toLowerCase() || '';
-    const jobTitle = l.contact.jobTitle?.toLowerCase() || '';
-    return fullName.includes(term) || companyName.includes(term) || jobTitle.includes(term);
+    // 1. General search query
+    if (leadSearchQuery) {
+      const term = leadSearchQuery.toLowerCase();
+      const fullName = `${l.database.firstName} ${l.database.lastName}`.toLowerCase();
+      const companyName = l.database.company?.name?.toLowerCase() || '';
+      const jobTitle = l.database.jobTitle?.toLowerCase() || '';
+      const matchesSearch = fullName.includes(term) || companyName.includes(term) || jobTitle.includes(term);
+      if (!matchesSearch) return false;
+    }
+
+    // 2. Company filter
+    if (filterLeadCompany && l.database.company?.name !== filterLeadCompany) {
+      return false;
+    }
+
+    // 3. Position level filter
+    if (filterLeadPosition && l.database.positionLevel !== filterLeadPosition) {
+      return false;
+    }
+
+    // 4. Industry filter
+    if (filterLeadIndustry && l.database.company?.industry !== filterLeadIndustry) {
+      return false;
+    }
+
+    // 5. City filter
+    if (filterLeadCity && l.database.company?.city !== filterLeadCity) {
+      return false;
+    }
+
+    return true;
   });
 
   return (
@@ -1096,6 +1284,10 @@ export default function EventsPage() {
                       )}
                     </div>
                     <p className="text-xs text-slate-500 mt-1.5">Client: <strong className="text-slate-700">{evt.clientName || 'Independent'}</strong></p>
+                    <p className="text-xs text-slate-555 text-slate-500 mt-2.5 flex items-center gap-1.5 font-bold">
+                      <Users className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span>{allEventLeads.filter((l) => l.event.id === evt.id).length} orang</span>
+                    </p>
                   </div>
                   
                   <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
@@ -1182,54 +1374,206 @@ export default function EventsPage() {
             </div>
           </div>
 
-          {/* Statistics Box Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-              <div className="p-3 bg-blue-500 text-white rounded-xl">
-                <UserPlus className="w-5 h-5" />
-              </div>
+          {/* Dynamic Statistics Box Cards */}
+          {activeTab === 'event' && (
+            <div className="space-y-4 mb-6">
               <div>
-                <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Total Leads</span>
-                <span className="text-xl font-extrabold text-blue-900">{leads.length}</span>
-              </div>
-            </div>
-            
-            <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-              <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Hadir (Attended)</span>
-                <span className="text-xl font-extrabold text-emerald-900">
-                  {leads.filter(l => l.attendanceStatus === 'attended').length}
-                </span>
-              </div>
-            </div>
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Registration Status</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-emerald-600 text-white rounded-xl">
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Register</span>
+                      <span className="text-xl font-extrabold text-emerald-900">
+                        {leads.filter(l => l.leadStatus === 'registered' || l.leadStatus === 'green').length}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-amber-500 text-white rounded-xl">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Interested (Follow-up)</span>
+                      <span className="text-xl font-extrabold text-amber-900">
+                        {leads.filter(l => l.leadStatus === 'tentative' || l.leadStatus === 'yellow').length}
+                      </span>
+                    </div>
+                  </div>
 
-            <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-              <div className="p-3 bg-amber-500 text-white rounded-xl">
-                <Calendar className="w-5 h-5" />
+                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-rose-500 text-white rounded-xl">
+                      <X className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Not Interest</span>
+                      <span className="text-xl font-extrabold text-rose-900">
+                        {leads.filter(l => l.leadStatus === 'not_interest' || l.leadStatus === 'red').length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider">Belum Hadir</span>
-                <span className="text-xl font-extrabold text-amber-900">
-                  {leads.filter(l => l.attendanceStatus !== 'attended').length}
-                </span>
-              </div>
-            </div>
 
-            <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-              <div className="p-3 bg-rose-500 text-white rounded-xl">
-                <CheckCircle className="w-5 h-5" />
-              </div>
               <div>
-                <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Registered Leads</span>
-                <span className="text-xl font-extrabold text-rose-900">
-                  {leads.filter(l => l.leadStatus === 'registered' || l.leadStatus === 'green').length}
-                </span>
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Confirmation Status</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-emerald-600 text-white rounded-xl">
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approved</span>
+                      <span className="text-xl font-extrabold text-emerald-900">
+                        {leads.filter(l => l.confirmationStatus === 'approve').length}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-blue-500 text-white rounded-xl">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Pending</span>
+                      <span className="text-xl font-extrabold text-blue-900">
+                        {leads.filter(l => !l.confirmationStatus || l.confirmationStatus === 'pending').length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-rose-500 text-white rounded-xl">
+                      <X className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Declined</span>
+                      <span className="text-xl font-extrabold text-rose-900">
+                        {leads.filter(l => l.confirmationStatus === 'decline').length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {activeTab === 'reminder' && (
+            <div className="space-y-4 mb-6">
+              <div>
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Reminder Status</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-blue-500 text-white rounded-xl">
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Approved Register Total</span>
+                      <span className="text-xl font-extrabold text-blue-900">
+                        {leads.filter(l => l.confirmationStatus === 'approve' && (l.leadStatus === 'registered' || l.leadStatus === 'green')).length}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-emerald-600 text-white rounded-xl">
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Confirm to Attend</span>
+                      <span className="text-xl font-extrabold text-emerald-900">
+                        {leads.filter(l => l.reminderH7 === 'confirm' || l.reminderH3 === 'confirm' || l.reminderH1 === 'confirm').length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-amber-500 text-white rounded-xl">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Tentative</span>
+                      <span className="text-xl font-extrabold text-amber-900">
+                        {leads.filter(l => l.reminderH7 === 'tentative' || l.reminderH3 === 'tentative' || l.reminderH1 === 'tentative').length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-rose-500 text-white rounded-xl">
+                      <X className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable to Attend</span>
+                      <span className="text-xl font-extrabold text-rose-900">
+                        {leads.filter(l => l.reminderH7 === 'unable_to_attend' || l.reminderH3 === 'unable_to_attend' || l.reminderH1 === 'unable_to_attend').length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'reminder_dday' && (
+            <div className="space-y-4 mb-6">
+              <div>
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Reminder D-Day Status</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-emerald-600 text-white rounded-xl">
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">On Location</span>
+                      <span className="text-xl font-extrabold text-emerald-900">
+                        {leads.filter(l => l.reminderHariH === 'on_location').length}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-blue-500 text-white rounded-xl">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">On The Way</span>
+                      <span className="text-xl font-extrabold text-blue-900">
+                        {leads.filter(l => l.reminderHariH === 'on_the_way').length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-amber-500 text-white rounded-xl">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Not Respond Yet</span>
+                      <span className="text-xl font-extrabold text-amber-900">
+                        {leads.filter(l => !l.reminderHariH || l.reminderHariH === 'not_respon_yet').length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-rose-500 text-white rounded-xl">
+                      <X className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable Attend</span>
+                      <span className="text-xl font-extrabold text-rose-900">
+                        {leads.filter(l => l.reminderHariH === 'unable_to_attend').length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Tab Switcher */}
           <div className="flex border-b border-slate-200 mb-6 gap-2 shrink-0">
@@ -1259,21 +1603,186 @@ export default function EventsPage() {
             >
               Reminder
             </button>
+            <button
+              onClick={() => {
+                setActiveTab('reminder_dday');
+                setSelectedLeadIds([]);
+              }}
+              className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+                activeTab === 'reminder_dday'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Reminder Dday
+            </button>
           </div>
 
+          {/* Batch Actions Status Bar */}
+          {selectedLeadIds.length > 0 && (
+            <div className="bg-blue-50 border border-blue-150 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 shadow-sm animate-in slide-in-from-top duration-200">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-full shrink-0">
+                  {selectedLeadIds.length}
+                </span>
+                <span className="text-xs font-bold text-slate-700">Leads selected for batch update</span>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-3">
+                {activeTab === 'event' && (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Remarks</span>
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleBatchUpdateLeadStatus(e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+                      >
+                        <option value="">- Change Status -</option>
+                        <option value="not_respon_yet">Not respond yet</option>
+                        <option value="not_respond_2x">Not respond 2x</option>
+                        <option value="registered">Registered</option>
+                        <option value="tentative">Tentative</option>
+                        <option value="not_interest">Not Interest</option>
+                      </select>
+                    </div>
 
-          {/* Toolbar with Search */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Confirmation</span>
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleBatchUpdateConfirmationStatus(e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+                      >
+                        <option value="">- Change Confirmation -</option>
+                        <option value="pending">Pending</option>
+                        <option value="approve">Approve</option>
+                        <option value="decline">Decline</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 'reminder_dday' && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Hari H</span>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleBatchUpdateReminderHariH(e.target.value);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+                    >
+                      <option value="">- Change Dday Status -</option>
+                      <option value="on_location">On Location</option>
+                      <option value="on_the_way">On The Way</option>
+                      <option value="not_respon_yet">Not Respond Yet</option>
+                      <option value="unable_to_attend">Unable Attend</option>
+                    </select>
+                  </div>
+                )}
+                
+                <button
+                  onClick={() => setSelectedLeadIds([])}
+                  className="px-3 py-1 text-xs text-slate-500 hover:text-slate-800 font-semibold"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Toolbar with Search & Advanced Filters */}
           {leads.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4 shrink-0">
-              <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:max-w-xs shadow-sm">
-                <Search className="w-4 h-4 text-slate-400 mr-2" />
-                <input
-                  type="text"
-                  placeholder="Search leads by name, title, company..."
-                  value={leadSearchQuery}
-                  onChange={(e) => setLeadSearchQuery(e.target.value)}
-                  className="w-full bg-transparent text-xs text-slate-900 placeholder-slate-400 focus:outline-none"
-                />
+            <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-4 space-y-4 mb-6 shrink-0 shadow-sm">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:max-w-xs shadow-sm">
+                  <Search className="w-4 h-4 text-slate-400 mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Search leads by name, title, company..."
+                    value={leadSearchQuery}
+                    onChange={(e) => setLeadSearchQuery(e.target.value)}
+                    className="w-full bg-transparent text-xs text-slate-900 placeholder-slate-400 focus:outline-none"
+                  />
+                </div>
+                {(leadSearchQuery || filterLeadCompany || filterLeadPosition || filterLeadIndustry || filterLeadCity) && (
+                  <button
+                    onClick={handleResetLeadFilters}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-all self-start md:self-auto shadow-sm"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by Company</label>
+                  <select
+                    value={filterLeadCompany}
+                    onChange={(e) => setFilterLeadCompany(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">All Companies</option>
+                    {Array.from(new Set(leads.map(l => l.database.company?.name).filter(Boolean))).sort().map((compName) => (
+                      <option key={compName} value={compName}>{compName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Position Level</label>
+                  <select
+                    value={filterLeadPosition}
+                    onChange={(e) => setFilterLeadPosition(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">All Levels</option>
+                    {Array.from(new Set(leads.map(l => l.database.positionLevel).filter(Boolean))).sort().map((lvl) => (
+                      <option key={lvl} value={lvl}>{lvl}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
+                  <select
+                    value={filterLeadIndustry}
+                    onChange={(e) => setFilterLeadIndustry(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">All Industries</option>
+                    {Array.from(new Set(leads.map(l => l.database.company?.industry).filter(Boolean))).sort().map((ind) => (
+                      <option key={ind} value={ind}>{ind}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">City</label>
+                  <select
+                    value={filterLeadCity}
+                    onChange={(e) => setFilterLeadCity(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">All Cities</option>
+                    {Array.from(new Set(leads.map(l => l.database.company?.city).filter(Boolean))).sort().map((cty) => (
+                      <option key={cty} value={cty}>{cty}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -1287,7 +1796,7 @@ export default function EventsPage() {
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
               <Eye className="w-8 h-8 text-slate-400 mb-2" />
               <p className="text-sm font-semibold text-slate-500">No leads registered for this event</p>
-              <p className="text-xs text-slate-400 mt-1">Start by clicking "Add Lead" to register a contact.</p>
+              <p className="text-xs text-slate-400 mt-1">Start by clicking "Add Lead" to register a database.</p>
             </div>
           ) : filteredLeads.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
@@ -1297,16 +1806,37 @@ export default function EventsPage() {
             </div>
           ) : activeTab === 'event' ? (
             <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-              <table className="w-full min-w-[1000px] text-left border-collapse text-xs">
+              <table className="w-full min-w-[1800px] text-left border-collapse text-xs">
                 <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
                   <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
-                    <th className="py-3 px-4">Contact</th>
+                    <th className="py-3 px-3 w-10 text-center"></th>
+                    <th className="py-3 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedLeadIds(filteredLeads.map(l => l.id));
+                          } else {
+                            setSelectedLeadIds([]);
+                          }
+                        }}
+                        className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
+                    <th className="py-3 px-4">Company Name</th>
+                    <th className="py-3 px-4">Salutation</th>
+                    <th className="py-3 px-4">First Name</th>
+                    <th className="py-3 px-4">Last Name</th>
+                    <th className="py-3 px-4">Position</th>
                     <th className="py-3 px-4">Job Title</th>
-                    <th className="py-3 px-4">Company</th>
+                    <th className="py-3 px-4">Office Phone</th>
+                    <th className="py-3 px-4">Mobile Phone</th>
+                    <th className="py-3 px-4">Office Email</th>
+                    <th className="py-3 px-4">Personal Email</th>
                     <th className="py-3 px-4">Engagement</th>
                     <th className="py-3 px-4">Tele Remarks</th>
                     <th className="py-3 px-4 text-center">Confirmation Status</th>
-                    <th className="py-3 px-4">Attendance</th>
                     <th className="py-3 px-4">Notes</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -1314,14 +1844,59 @@ export default function EventsPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredLeads.map((l) => (
                     <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
+                      <td className="py-3.5 px-3 text-center">
+                        {checkDatabaseCompleteness(l.database).isIncomplete && (
+                          <span
+                            className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
+                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
+                          >
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedLeadIds.includes(l.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedLeadIds([...selectedLeadIds, l.id]);
+                            } else {
+                              setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
+                            }
+                          }}
+                          className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-700">
+                        {l.database.company?.name || <span className="text-slate-400">-</span>}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {l.database.salutation || '-'}
+                      </td>
                       <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {l.contact.firstName} {l.contact.lastName}
+                        {l.database.firstName}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-medium truncate max-w-[150px]" title={l.contact.jobTitle || ''}>
-                        {l.contact.jobTitle || '-'}
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {l.database.lastName || '-'}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-medium">
-                        {l.contact.company?.name || '-'}
+                      <td className="py-3.5 px-4 text-slate-655 font-medium">
+                        {l.database.positionLevel || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-950 font-medium">
+                        {l.database.jobTitle || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.company?.officePhone || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-700">
+                        {l.database.mobilePhone || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5 text-slate-400">
@@ -1391,38 +1966,12 @@ export default function EventsPage() {
                           <select
                             value={l.confirmationStatus || 'pending'}
                             onChange={(e) => handleDirectUpdateLead(l, 'confirmationStatus', e.target.value)}
-                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(l.confirmationStatus)}`}
+                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(l.confirmationStatus || 'pending')}`}
                           >
                             <option value="pending" className="text-blue-700 bg-white font-extrabold">Pending</option>
                             <option value="approve" className="text-emerald-700 bg-white font-extrabold">Approve</option>
-                            <option value="decline" className="text-rose-700 bg-white font-extrabold">Decline</option>
                           </select>
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <select
-                          value={l.attendanceStatus}
-                          onChange={(e) => handleDirectUpdateLead(l, 'attendance', e.target.value)}
-                          className={`text-[10px] font-bold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer capitalize transition-all ${
-                            l.attendanceStatus === 'attended' 
-                              ? 'text-emerald-700 bg-emerald-50 border-emerald-100' 
-                              : l.attendanceStatus === 'no_show' 
-                                ? 'text-amber-700 bg-amber-50 border-amber-100' 
-                                : l.attendanceStatus === 'invited' 
-                                  ? 'text-blue-700 bg-blue-50 border-blue-100' 
-                                  : l.attendanceStatus === 'registered' 
-                                    ? 'text-indigo-700 bg-indigo-50 border-indigo-100' 
-                                    : l.attendanceStatus === 'cancelled' 
-                                      ? 'text-rose-700 bg-rose-50 border-rose-100' 
-                                      : 'text-slate-700 bg-slate-50 border-slate-200'
-                          }`}
-                        >
-                          <option value="invited" className="text-blue-750 bg-white font-semibold">Invited</option>
-                          <option value="registered" className="text-indigo-750 bg-white font-semibold">Registered</option>
-                          <option value="attended" className="text-emerald-750 bg-white font-semibold">Attended</option>
-                          <option value="no_show" className="text-amber-750 bg-white font-semibold">No Show</option>
-                          <option value="cancelled" className="text-rose-750 bg-white font-semibold">Cancelled</option>
-                        </select>
                       </td>
                       <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={l.notes}>
                         {l.notes || '-'}
@@ -1450,18 +1999,39 @@ export default function EventsPage() {
                 </tbody>
               </table>
             </div>
-          ) : (
+          ) : activeTab === 'reminder' ? (
             <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-              <table className="w-full min-w-[1000px] text-left border-collapse text-xs">
+              <table className="w-full min-w-[1800px] text-left border-collapse text-xs">
                 <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
                   <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
-                    <th className="py-3 px-4">Contact</th>
+                    <th className="py-3 px-3 w-10 text-center"></th>
+                    <th className="py-3 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedLeadIds(filteredLeads.map(l => l.id));
+                          } else {
+                            setSelectedLeadIds([]);
+                          }
+                        }}
+                        className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
+                    <th className="py-3 px-4">Company Name</th>
+                    <th className="py-3 px-4">Salutation</th>
+                    <th className="py-3 px-4">First Name</th>
+                    <th className="py-3 px-4">Last Name</th>
+                    <th className="py-3 px-4">Position</th>
                     <th className="py-3 px-4">Job Title</th>
-                    <th className="py-3 px-4">Company</th>
+                    <th className="py-3 px-4">Office Phone</th>
+                    <th className="py-3 px-4">Mobile Phone</th>
+                    <th className="py-3 px-4">Office Email</th>
+                    <th className="py-3 px-4">Personal Email</th>
                     <th className="py-3 px-4 text-center">H-7</th>
                     <th className="py-3 px-4 text-center">H-3</th>
                     <th className="py-3 px-4 text-center">H-1</th>
-                    <th className="py-3 px-4 text-center">Hari H</th>
                     <th className="py-3 px-4">Notes</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -1469,14 +2039,59 @@ export default function EventsPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredLeads.map((l) => (
                     <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
+                      <td className="py-3.5 px-3 text-center">
+                        {checkDatabaseCompleteness(l.database).isIncomplete && (
+                          <span
+                            className="inline-flex cursor-help text-amber-550 text-amber-500 hover:text-amber-600 transition-colors"
+                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
+                          >
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedLeadIds.includes(l.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedLeadIds([...selectedLeadIds, l.id]);
+                            } else {
+                              setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
+                            }
+                          }}
+                          className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-700">
+                        {l.database.company?.name || <span className="text-slate-400">-</span>}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {l.database.salutation || '-'}
+                      </td>
                       <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {l.contact.firstName} {l.contact.lastName}
+                        {l.database.firstName}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-medium truncate max-w-[150px]" title={l.contact.jobTitle || ''}>
-                        {l.contact.jobTitle || '-'}
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {l.database.lastName || '-'}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-medium">
-                        {l.contact.company?.name || '-'}
+                      <td className="py-3.5 px-4 text-slate-655 font-medium">
+                        {l.database.positionLevel || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-950 font-medium">
+                        {l.database.jobTitle || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.company?.officePhone || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-700">
+                        {l.database.mobilePhone || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
                       </td>
                       {/* H-7 Dropdown */}
                       <td className="py-3.5 px-4">
@@ -1529,6 +2144,124 @@ export default function EventsPage() {
                           </select>
                         </div>
                       </td>
+                      <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={l.notes}>
+                        {l.notes || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right space-x-1">
+                        <button
+                          onClick={() => handleOpenUpdateLeadModal(l)}
+                          className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
+                          title="Update Status"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        {!isUser && (
+                          <button
+                            onClick={() => openDeleteLeadConfirm(l)}
+                            className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
+                            title="Remove Participant"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+              <table className="w-full min-w-[1800px] text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
+                  <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
+                    <th className="py-3 px-3 w-10 text-center"></th>
+                    <th className="py-3 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedLeadIds(filteredLeads.map(l => l.id));
+                          } else {
+                            setSelectedLeadIds([]);
+                          }
+                        }}
+                        className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
+                    <th className="py-3 px-4">Company Name</th>
+                    <th className="py-3 px-4">Salutation</th>
+                    <th className="py-3 px-4">First Name</th>
+                    <th className="py-3 px-4">Last Name</th>
+                    <th className="py-3 px-4">Position</th>
+                    <th className="py-3 px-4">Job Title</th>
+                    <th className="py-3 px-4">Office Phone</th>
+                    <th className="py-3 px-4">Mobile Phone</th>
+                    <th className="py-3 px-4">Office Email</th>
+                    <th className="py-3 px-4">Personal Email</th>
+                    <th className="py-3 px-4 text-center">Hari H</th>
+                    <th className="py-3 px-4">Notes</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredLeads.map((l) => (
+                    <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
+                      <td className="py-3.5 px-3 text-center">
+                        {checkDatabaseCompleteness(l.database).isIncomplete && (
+                          <span
+                            className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
+                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
+                          >
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedLeadIds.includes(l.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedLeadIds([...selectedLeadIds, l.id]);
+                            } else {
+                              setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
+                            }
+                          }}
+                          className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-700">
+                        {l.database.company?.name || <span className="text-slate-400">-</span>}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {l.database.salutation || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {l.database.firstName}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {l.database.lastName || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-655 font-medium">
+                        {l.database.positionLevel || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-950 font-medium">
+                        {l.database.jobTitle || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.company?.officePhone || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-700">
+                        {l.database.mobilePhone || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+                      </td>
                       {/* Hari H Dropdown */}
                       <td className="py-3.5 px-4">
                         <div className="flex justify-center">
@@ -1538,16 +2271,10 @@ export default function EventsPage() {
                             className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.reminderHariH || '')}`}
                           >
                             <option value="" className="text-slate-700 bg-white font-normal">- None</option>
-                            <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
-                            <option value="not_respond_2x" className="text-slate-750 bg-white font-semibold">Not respond 2x</option>
-                            <option value="not_respond_3x" className="text-slate-750 bg-white font-semibold">Not respond 3x</option>
-                            <option value="not_respond_4x" className="text-slate-750 bg-white font-semibold">Not respond 4x</option>
-                            <option value="not_respond_5x" className="text-slate-750 bg-white font-semibold">Not respond 5x</option>
-                            <option value="not_respond_6x" className="text-slate-750 bg-white font-semibold">Not respond 6x</option>
-                            <option value="not_respond_7x" className="text-slate-750 bg-white font-semibold">Not respond 7x</option>
-                            <option value="not_respond_8x" className="text-slate-750 bg-white font-semibold">Not respond 8x</option>
-                            <option value="not_respond_9x" className="text-slate-750 bg-white font-semibold">Not respond 9x</option>
-                            <option value="unable_to_attend" className="text-rose-700 bg-white font-extrabold">Unable to attend</option>
+                            <option value="on_location" className="text-emerald-700 bg-white font-extrabold">On Location</option>
+                            <option value="on_the_way" className="text-blue-700 bg-white font-extrabold">On The Way</option>
+                            <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not Respond Yet</option>
+                            <option value="unable_to_attend" className="text-rose-700 bg-white font-extrabold">Unable Attend</option>
                           </select>
                         </div>
                       </td>
@@ -1839,8 +2566,8 @@ export default function EventsPage() {
 
       {/* Add Lead Modal Overlay */}
       {isAddLeadModalOpen && selectedEvent && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 max-h-[90vh] flex flex-col">
             <button
               onClick={() => setIsAddLeadModalOpen(false)}
               className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
@@ -1848,25 +2575,121 @@ export default function EventsPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Add Contact as Lead</h3>
+            <h3 className="text-xl font-extrabold text-slate-900 mb-4 shrink-0">Add Database as Lead</h3>
 
-            <form onSubmit={handleAddLead} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Contacts</label>
-                <input
-                  type="text"
-                  placeholder="Search contacts by name or company..."
-                  value={leadContactSearch}
-                  onChange={(e) => setLeadContactSearch(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white mb-2.5"
-                />
+            <form onSubmit={handleAddLead} className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Databases</label>
+                
+                <div className="space-y-2 mb-3">
+                  <input
+                    type="text"
+                    placeholder="Search databases by name or company..."
+                    value={leadDatabaseSearch}
+                    onChange={(e) => setLeadDatabaseSearch(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
+                  />
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Advanced Filters</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Company</label>
+                        <select
+                          value={filterAddLeadCompany}
+                          onChange={(e) => setFilterAddLeadCompany(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
+                        >
+                          <option value="">All Companies</option>
+                          {Array.from(new Set(databases.map(c => c.company?.name).filter(Boolean))).sort().map((compName) => (
+                            <option key={compName} value={compName}>{compName}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Position</label>
+                        <select
+                          value={filterAddLeadPosition}
+                          onChange={(e) => setFilterAddLeadPosition(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
+                        >
+                          <option value="">All Levels</option>
+                          {Array.from(new Set(databases.map(c => c.positionLevel).filter(Boolean))).sort().map((lvl) => (
+                            <option key={lvl} value={lvl}>{lvl}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Industry</label>
+                        <select
+                          value={filterAddLeadIndustry}
+                          onChange={(e) => setFilterAddLeadIndustry(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
+                        >
+                          <option value="">All Industries</option>
+                          {Array.from(new Set(databases.map(c => c.company?.industry).filter(Boolean))).sort().map((ind) => (
+                            <option key={ind} value={ind}>{ind}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">City</label>
+                        <select
+                          value={filterAddLeadCity}
+                          onChange={(e) => setFilterAddLeadCity(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
+                        >
+                          <option value="">All Cities</option>
+                          {Array.from(new Set(databases.map(c => c.company?.city).filter(Boolean))).sort().map((cty) => (
+                            <option key={cty} value={cty}>{cty}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="col-span-2 border-t border-slate-200 pt-2 mt-1">
+                        <label className="block text-[9px] font-bold text-slate-455 uppercase mb-0.5">Pernah diundang ke Event</label>
+                        <select
+                          value={filterAddLeadEventId}
+                          onChange={(e) => setFilterAddLeadEventId(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
+                        >
+                          <option value="">- Select Event -</option>
+                          {events.filter(e => e.id !== selectedEvent.id).map((evt) => (
+                            <option key={evt.id} value={evt.id}>{evt.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                    </div>
+
+                    {(filterAddLeadCompany || filterAddLeadPosition || filterAddLeadIndustry || filterAddLeadCity || filterAddLeadEventId) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterAddLeadCompany('');
+                          setFilterAddLeadPosition('');
+                          setFilterAddLeadIndustry('');
+                          setFilterAddLeadCity('');
+                          setFilterAddLeadEventId('');
+                        }}
+                        className="text-[10px] font-extrabold text-red-600 hover:text-red-700 transition-colors uppercase pt-1"
+                      >
+                        Clear Modal Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-2 max-h-[180px] overflow-y-auto">
-                  {visibleContacts.length === 0 ? (
-                    <p className="text-center text-xs text-slate-400 py-4">No available contacts found.</p>
+                  {visibleDatabases.length === 0 ? (
+                    <p className="text-center text-xs text-slate-400 py-4">No available databases found.</p>
                   ) : (
-                    visibleContacts.map((c) => {
-                      const isChecked = selectedContactIds.includes(c.id);
+                    visibleDatabases.map((c) => {
+                      const isChecked = selectedDatabaseIds.includes(c.id);
                       return (
                         <label
                           key={c.id}
@@ -1877,18 +2700,37 @@ export default function EventsPage() {
                             checked={isChecked}
                             onChange={() => {
                               if (isChecked) {
-                                setSelectedContactIds(selectedContactIds.filter((id) => id !== c.id));
+                                setSelectedDatabaseIds(selectedDatabaseIds.filter((id) => id !== c.id));
                               } else {
-                                setSelectedContactIds([...selectedContactIds, c.id]);
+                                setSelectedDatabaseIds([...selectedDatabaseIds, c.id]);
                               }
                             }}
                             className="w-4 h-4 text-blue-600 border-slate-350 rounded focus:ring-blue-500"
                           />
-                          <div className="text-xs">
+                          <div className="text-xs flex-1">
                             <p className="font-bold text-slate-900">{c.firstName} {c.lastName}</p>
                             {c.company?.name && (
                               <p className="text-[10px] text-slate-500 font-medium">{c.company.name}</p>
                             )}
+                            
+                            {/* Past Events History Badges */}
+                            {(() => {
+                              const databaseLeads = allEventLeads.filter(l => l.database.id === c.id);
+                              if (databaseLeads.length === 0) return null;
+                              return (
+                                <div className="mt-1.5 flex flex-wrap gap-1 items-center">
+                                  <span className="text-[9px] font-bold text-slate-400">Invited to:</span>
+                                  {databaseLeads.map(l => (
+                                    <span 
+                                      key={l.id} 
+                                      className="inline-flex px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-50 border border-slate-200 text-slate-600 uppercase tracking-wide"
+                                    >
+                                      {l.event.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </label>
                       );
@@ -1896,14 +2738,14 @@ export default function EventsPage() {
                   )}
                 </div>
 
-                {visibleContacts.length > 0 && (
+                {visibleDatabases.length > 0 && (
                   <div className="flex items-center justify-between text-[11px] mt-2 px-1 text-blue-600 font-bold">
                     <button
                       type="button"
                       onClick={() => {
-                        const allVisibleIds = visibleContacts.map((c) => c.id);
-                        const uniqueIds = Array.from(new Set([...selectedContactIds, ...allVisibleIds]));
-                        setSelectedContactIds(uniqueIds);
+                        const allVisibleIds = visibleDatabases.map((c) => c.id);
+                        const uniqueIds = Array.from(new Set([...selectedDatabaseIds, ...allVisibleIds]));
+                        setSelectedDatabaseIds(uniqueIds);
                       }}
                       className="hover:text-blue-550 transition-colors"
                     >
@@ -1912,8 +2754,8 @@ export default function EventsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const allVisibleIds = visibleContacts.map((c) => c.id);
-                        setSelectedContactIds(selectedContactIds.filter((id) => !allVisibleIds.includes(id)));
+                        const allVisibleIds = visibleDatabases.map((c) => c.id);
+                        setSelectedDatabaseIds(selectedDatabaseIds.filter((id) => !allVisibleIds.includes(id)));
                       }}
                       className="hover:text-slate-700 text-slate-500 transition-colors"
                     >
@@ -1923,43 +2765,10 @@ export default function EventsPage() {
                 )}
                 
                 <p className="text-[10px] text-slate-500 mt-2 px-1 font-bold">
-                  {selectedContactIds.length} contact(s) selected to add
+                  {selectedDatabaseIds.length} database(s) selected to add
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Lead Confirmation Status</label>
-                  <select
-                    value={leadStatus}
-                    onChange={(e) => setLeadStatus(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="white">White (No reply)</option>
-                    <option value="yellow">Yellow (Tentative)</option>
-                    <option value="green">Green (Confirmed)</option>
-                    <option value="red">Red (Rejected)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Attendance Status</label>
-                  <select
-                    value={attendanceStatus}
-                    onChange={(e) => setAttendanceStatus(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="approve">Approve</option>
-                    <option value="decline">Decline</option>
-                    <option value="invited">Invited</option>
-                    <option value="registered">Registered</option>
-                    <option value="attended">Attended</option>
-                    <option value="no_show">No Show</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-              </div>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Lead Notes</label>
@@ -1971,8 +2780,9 @@ export default function EventsPage() {
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
                 />
               </div>
+            </div>
 
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+            <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAddLeadModalOpen(false)}
@@ -2011,7 +2821,7 @@ export default function EventsPage() {
             <div className="border-b border-slate-100 pb-2 mb-3">
               <h3 className="text-base font-extrabold text-slate-900">Lead Detail & Qualification</h3>
               <p className="text-[10px] text-slate-500 mt-0.5">
-                Manage contact: <strong className="text-slate-700">{activeLead.contact.firstName} {activeLead.contact.lastName}</strong> ({activeLead.contact.company?.name || 'No Company'})
+                Manage database: <strong className="text-slate-700">{activeLead.database.firstName} {activeLead.database.lastName}</strong> ({activeLead.database.company?.name || 'No Company'})
               </p>
             </div>
 
@@ -2020,26 +2830,26 @@ export default function EventsPage() {
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-150 text-[10px] grid grid-cols-4 gap-2 mb-2">
                 <div>
                   <span className="text-slate-400 font-bold block">Job Title</span>
-                  <p className="font-semibold text-slate-700 truncate">{activeLead.contact.jobTitle || '-'}</p>
+                  <p className="font-semibold text-slate-700 truncate">{activeLead.database.jobTitle || '-'}</p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-bold block">Industry</span>
-                  <p className="font-semibold text-slate-700 truncate">{activeLead.contact.company?.industry || '-'}</p>
+                  <p className="font-semibold text-slate-700 truncate">{activeLead.database.company?.industry || '-'}</p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-bold block">Mobile Phone</span>
-                  <p className="font-semibold text-slate-700 truncate">{activeLead.contact.mobilePhone || '-'}</p>
+                  <p className="font-semibold text-slate-700 truncate">{activeLead.database.mobilePhone || '-'}</p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-bold block">Email</span>
-                  <p className="font-semibold text-slate-700 truncate">{activeLead.contact.emails?.[0]?.email || '-'}</p>
+                  <p className="font-semibold text-slate-700 truncate">{activeLead.database.emails?.[0]?.email || '-'}</p>
                 </div>
               </div>
 
               <form onSubmit={handleUpdateLeadStatus} className="space-y-3">
                 <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1">Lead Qualification</h4>
                 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
                       <CheckCircle className="w-3 h-3 text-emerald-500" />
@@ -2080,24 +2890,6 @@ export default function EventsPage() {
                       <option value="pending">Pending</option>
                       <option value="approve">Approve</option>
                       <option value="decline">Decline</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <Calendar className="w-3 h-3 text-indigo-500" />
-                      Attendance Status
-                    </label>
-                    <select
-                      value={updateAttendanceStatusStr}
-                      onChange={(e) => setUpdateAttendanceStatusStr(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                    >
-                      <option value="invited">Invited</option>
-                      <option value="registered">Registered</option>
-                      <option value="attended">Attended</option>
-                      <option value="no_show">No Show</option>
-                      <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
                 </div>
@@ -2172,16 +2964,10 @@ export default function EventsPage() {
                       className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
                     >
                       <option value="">- None</option>
-                      <option value="not_respon_yet">Not respond yet</option>
-                      <option value="not_respond_2x">Not respond 2x</option>
-                      <option value="not_respond_3x">Not respond 3x</option>
-                      <option value="not_respond_4x">Not respond 4x</option>
-                      <option value="not_respond_5x">Not respond 5x</option>
-                      <option value="not_respond_6x">Not respond 6x</option>
-                      <option value="not_respond_7x">Not respond 7x</option>
-                      <option value="not_respond_8x">Not respond 8x</option>
-                      <option value="not_respond_9x">Not respond 9x</option>
-                      <option value="unable_to_attend">Unable to attend</option>
+                      <option value="on_location">On Location</option>
+                      <option value="on_the_way">On The Way</option>
+                      <option value="not_respon_yet">Not Respond Yet</option>
+                      <option value="unable_to_attend">Unable Attend</option>
                     </select>
                   </div>
                 </div>
@@ -2329,19 +3115,19 @@ export default function EventsPage() {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 mb-6 text-sm">
               <div>
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Name</span>
-                <span className="font-bold text-slate-800">{deletingLead.contact.firstName} {deletingLead.contact.lastName}</span>
+                <span className="font-bold text-slate-800">{deletingLead.database.firstName} {deletingLead.database.lastName}</span>
               </div>
               <div>
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Job Title</span>
-                <span className="font-semibold text-slate-700">{deletingLead.contact.jobTitle || '-'}</span>
+                <span className="font-semibold text-slate-700">{deletingLead.database.jobTitle || '-'}</span>
               </div>
               <div>
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company</span>
-                <span className="font-semibold text-slate-700">{deletingLead.contact.company?.name || '-'}</span>
+                <span className="font-semibold text-slate-700">{deletingLead.database.company?.name || '-'}</span>
               </div>
               <div>
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Industry</span>
-                <span className="font-semibold text-slate-700">{deletingLead.contact.company?.industry || '-'}</span>
+                <span className="font-semibold text-slate-700">{deletingLead.database.company?.industry || '-'}</span>
               </div>
             </div>
 

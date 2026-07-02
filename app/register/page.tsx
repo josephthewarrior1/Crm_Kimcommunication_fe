@@ -132,7 +132,7 @@ export default function RegisterPage() {
                   required
                 >
                   <option value="USER">USER (Read-only Dashboard, Events Check-in)</option>
-                  <option value="MANAGER">MANAGER (Manage contacts, companies, events, groups)</option>
+                  <option value="MANAGER">MANAGER (Manage database, companies, events, groups)</option>
                   <option value="ADMIN">ADMIN (Full permissions, watchlists, removals)</option>
                 </select>
               </div>

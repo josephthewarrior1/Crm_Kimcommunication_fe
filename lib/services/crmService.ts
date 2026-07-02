@@ -2,8 +2,8 @@ import { ApiService } from './apiService';
 import {
   Group,
   Company,
-  Contact,
-  ContactEmail,
+  Database,
+  DatabaseEmail,
   Event,
   EventLead,
   EventLeadActivity,
@@ -54,43 +54,43 @@ export class CrmService extends ApiService {
     return this.delete<void>(`/api/companies/${id}`);
   }
 
-  // --- CONTACTS ---
-  async getContacts(): Promise<Contact[]> {
-    return this.get<Contact[]>('/api/contacts');
+  // --- DATABASES ---
+  async getDatabases(): Promise<Database[]> {
+    return this.get<Database[]>('/api/databases');
   }
 
-  async createContact(contact: Partial<Contact>, companyId?: number): Promise<Contact> {
-    const url = companyId ? `/api/contacts?companyId=${companyId}` : '/api/contacts';
-    return this.post<Contact>(url, contact);
+  async createDatabase(database: Partial<Database>, companyId?: number): Promise<Database> {
+    const url = companyId ? `/api/databases?companyId=${companyId}` : '/api/databases';
+    return this.post<Database>(url, database);
   }
 
-  async updateContact(id: number, contact: Partial<Contact>, companyId?: number): Promise<Contact> {
-    const url = companyId ? `/api/contacts/${id}?companyId=${companyId}` : `/api/contacts/${id}`;
-    return this.put<Contact>(url, contact);
+  async updateDatabase(id: number, database: Partial<Database>, companyId?: number): Promise<Database> {
+    const url = companyId ? `/api/databases/${id}?companyId=${companyId}` : `/api/databases/${id}`;
+    return this.put<Database>(url, database);
   }
 
-  async deleteContact(id: number): Promise<void> {
-    return this.delete<void>(`/api/contacts/${id}`);
+  async deleteDatabase(id: number): Promise<void> {
+    return this.delete<void>(`/api/databases/${id}`);
   }
 
-  async addContactEmail(contactId: number, email: Partial<ContactEmail>): Promise<ContactEmail> {
-    return this.post<ContactEmail>(`/api/contacts/${contactId}/emails`, email);
+  async addDatabaseEmail(databaseId: number, email: Partial<DatabaseEmail>): Promise<DatabaseEmail> {
+    return this.post<DatabaseEmail>(`/api/databases/${databaseId}/emails`, email);
   }
 
-  async getContactEmails(contactId: number): Promise<ContactEmail[]> {
-    return this.get<ContactEmail[]>(`/api/contacts/${contactId}/emails`);
+  async getDatabaseEmails(databaseId: number): Promise<DatabaseEmail[]> {
+    return this.get<DatabaseEmail[]>(`/api/databases/${databaseId}/emails`);
   }
 
-  async updateContactEmail(contactId: number, emailId: number, email: Partial<ContactEmail>): Promise<ContactEmail> {
-    return this.put<ContactEmail>(`/api/contacts/${contactId}/emails/${emailId}`, email);
+  async updateDatabaseEmail(databaseId: number, emailId: number, email: Partial<DatabaseEmail>): Promise<DatabaseEmail> {
+    return this.put<DatabaseEmail>(`/api/databases/${databaseId}/emails/${emailId}`, email);
   }
 
-  async deleteContactEmail(contactId: number, emailId: number): Promise<void> {
-    return this.delete<void>(`/api/contacts/${contactId}/emails/${emailId}`);
+  async deleteDatabaseEmail(databaseId: number, emailId: number): Promise<void> {
+    return this.delete<void>(`/api/databases/${databaseId}/emails/${emailId}`);
   }
 
-  async getContactEventLeads(contactId: number): Promise<EventLead[]> {
-    return this.get<EventLead[]>(`/api/contacts/${contactId}/event-leads`);
+  async getDatabaseEventLeads(databaseId: number): Promise<EventLead[]> {
+    return this.get<EventLead[]>(`/api/databases/${databaseId}/event-leads`);
   }
 
   // --- EVENTS ---
@@ -117,8 +117,8 @@ export class CrmService extends ApiService {
 
   async createEventLead(lead: {
     eventId: number;
-    contactId?: number;
-    contactIds?: number[];
+    databaseId?: number;
+    databaseIds?: number[];
     leadStatus?: string;
     attendanceStatus?: string;
     confirmationStatus?: string;
@@ -192,7 +192,7 @@ export class CrmService extends ApiService {
   }
 
   async createRemovalRequest(request: {
-    contactId: number;
+    databaseId: number;
     reason?: string;
     requestedBy?: string;
     sourceDb?: string;
@@ -233,7 +233,7 @@ export class CrmService extends ApiService {
   }
 
   // --- EXCEL IMPORT ---
-  async previewContactsExcel(file: File): Promise<{
+  async previewDatabasesExcel(file: File): Promise<{
     totalRows: number;
     newCount: number;
     duplicateCount: number;
@@ -255,7 +255,7 @@ export class CrmService extends ApiService {
     const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const response = await fetch(`${this.baseUrl}/api/contacts/import/preview`, {
+    const response = await fetch(`${this.baseUrl}/api/databases/import/preview`, {
       method: 'POST',
       headers,
       body: formData
@@ -275,14 +275,14 @@ export class CrmService extends ApiService {
     return response.json();
   }
 
-  async importContactsExcel(file: File): Promise<{ message: string; count: number }> {
+  async importDatabasesExcel(file: File): Promise<{ message: string; count: number }> {
     const formData = new FormData();
     formData.append('file', file);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const response = await fetch(`${this.baseUrl}/api/contacts/import`, {
+    const response = await fetch(`${this.baseUrl}/api/databases/import`, {
       method: 'POST',
       headers,
       body: formData

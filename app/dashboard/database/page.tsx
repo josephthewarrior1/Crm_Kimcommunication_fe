@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Contact, Company, ContactEmail, Group, EventLead, FlaggedIdentity } from '../../../lib/types';
+import { Database, Company, DatabaseEmail, Group, EventLead, FlaggedIdentity } from '../../../lib/types';
 import { Users, Search, Plus, X, Loader2, Mail, Phone, ExternalLink, ShieldAlert, Trash2, Edit2, Eye, Building2, FolderTree, Globe, MapPin, CheckCircle, AlertCircle, RefreshCw, Upload, Download, Calendar, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { INDUSTRIES } from '../../../lib/constants';
@@ -10,7 +10,7 @@ import { useAuth } from '../../../lib/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
 
 
-const checkContactCompleteness = (c: Contact) => {
+const checkDatabaseCompleteness = (c: Database) => {
   const missing: string[] = [];
 
   if (!c.company?.group?.name?.trim()) missing.push("Nama Group Holding");
@@ -83,10 +83,10 @@ const checkFormCompleteness = (
   };
 };
 
-export default function ContactsPage() {
+export default function DatabasesPage() {
   const { isAdmin, isManager, isUser } = useAuth();
   const searchParams = useSearchParams();
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [databases, setDatabases] = useState<Database[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,20 +136,20 @@ export default function ContactsPage() {
   } | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
-  // Focus contact state
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [contactEmails, setContactEmails] = useState<ContactEmail[]>([]);
-  const [loadingEmails, setLoadingEmails] = useState(false);
+  // Focus database state
+  const [selectedDatabase, setSelectedDatabase] = useState<Database | null>(null);
+  const [databaseEmails, setDatabaseEmails] = useState<DatabaseEmail[]>([]);
+  const [loadingDatabaseEmails, setLoadingEmails] = useState(false);
   const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
 
   // Focus detail state
-  const [detailContact, setDetailContact] = useState<Contact | null>(null);
-  const [detailEmails, setDetailEmails] = useState<ContactEmail[]>([]);
-  const [loadingDetailEmails, setLoadingDetailEmails] = useState(false);
+  const [detailDatabase, setDetailDatabase] = useState<Database | null>(null);
+  const [detailDatabaseEmails, setDetailEmails] = useState<DatabaseEmail[]>([]);
+  const [loadingDetailDatabaseEmails, setLoadingDetailEmails] = useState(false);
   const [detailEvents, setDetailEvents] = useState<EventLead[]>([]);
   const [loadingDetailEvents, setLoadingDetailEvents] = useState(false);
 
-  // Form inputs for Contact creation
+  // Form inputs for Database creation
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [salutation, setSalutation] = useState('Mr');
@@ -159,14 +159,14 @@ export default function ContactsPage() {
   const [jobTitle, setJobTitle] = useState('');
   const [mobilePhone, setMobilePhone] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
-  const [contactType, setContactType] = useState('unknown');
+  const [databaseType, setDatabaseType] = useState('unknown');
   const [source, setSource] = useState('manual');
-  const [submittingContact, setSubmittingContact] = useState(false);
-  const [contactCompanyEmail, setContactCompanyEmail] = useState('');
-  const [contactPersonalEmail, setContactPersonalEmail] = useState('');
+  const [submittingDatabase, setSubmittingDatabase] = useState(false);
+  const [databaseCompanyEmail, setDatabaseCompanyEmail] = useState('');
+  const [databasePersonalEmail, setDatabasePersonalEmail] = useState('');
 
-  // Form inputs for Contact editing
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  // Form inputs for Database editing
+  const [editingDatabase, setEditingDatabase] = useState<Database | null>(null);
   const [editFirstName, setEditFirstName] = useState('');
   const [editLastName, setEditLastName] = useState('');
   const [editSalutation, setEditSalutation] = useState('Mr');
@@ -176,13 +176,13 @@ export default function ContactsPage() {
   const [editJobTitle, setEditJobTitle] = useState('');
   const [editMobilePhone, setEditMobilePhone] = useState('');
   const [editLinkedinUrl, setEditLinkedinUrl] = useState('');
-  const [editContactType, setEditContactType] = useState('unknown');
+  const [editDatabaseType, setEditDatabaseType] = useState('unknown');
   const [editSource, setEditSource] = useState('manual');
   const [editIsActive, setEditIsActive] = useState(true);
-  const [editContactCompanyEmail, setEditContactCompanyEmail] = useState('');
-  const [editContactCompanyEmailId, setEditContactCompanyEmailId] = useState('');
-  const [editContactPersonalEmail, setEditContactPersonalEmail] = useState('');
-  const [editContactPersonalEmailId, setEditContactPersonalEmailId] = useState('');
+  const [editDatabaseCompanyEmail, setEditDatabaseCompanyEmail] = useState('');
+  const [editDatabaseCompanyEmailId, setEditDatabaseCompanyEmailId] = useState('');
+  const [editDatabasePersonalEmail, setEditDatabasePersonalEmail] = useState('');
+  const [editDatabasePersonalEmailId, setEditDatabasePersonalEmailId] = useState('');
 
   // Form inputs for Email addition
   const [newEmailStr, setNewEmailStr] = useState('');
@@ -197,8 +197,8 @@ export default function ContactsPage() {
   const [takeoutNotes, setTakeoutNotes] = useState('');
   const [submittingTakeout, setSubmittingTakeout] = useState(false);
 
-  // Delete contact target state
-  const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
+  // Delete database target state
+  const [deletingDatabase, setDeletingDatabase] = useState<Database | null>(null);
 
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [editSubmitAttempted, setEditSubmitAttempted] = useState(false);
@@ -219,23 +219,23 @@ export default function ContactsPage() {
     setLoading(true);
     try {
       const [conList, compList, groupList, flagList] = await Promise.all([
-        crmService.getContacts(),
+        crmService.getDatabases(),
         crmService.getCompanies(),
         crmService.getGroups(),
         crmService.getFlaggedIdentities()
       ]);
-      setContacts(conList);
+      setDatabases(conList);
       setCompanies(compList);
       setGroups(groupList);
       setFlags(flagList || []);
     } catch (err) {
-      toast.error('Failed to load contacts, companies, groups or flags');
+      toast.error('Failed to load databases, companies, groups or flags');
     } finally {
       setLoading(false);
     }
   }
 
-  const handleCreateContact = async (e: React.FormEvent) => {
+  const handleCreateDatabase = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitAttempted(true);
 
@@ -247,8 +247,8 @@ export default function ContactsPage() {
     if (!jobTitle.trim()) missing.push("Job Title");
     if (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim()) missing.push("Position Level");
     if (!mobilePhone.trim()) missing.push("Mobile Phone");
-    if (!contactCompanyEmail.trim()) missing.push("Company Email");
-    if (!contactPersonalEmail.trim()) missing.push("Personal Email");
+    if (!databaseCompanyEmail.trim()) missing.push("Company Email");
+    if (!databasePersonalEmail.trim()) missing.push("Personal Email");
     if (!linkedinUrl.trim()) missing.push("LinkedIn Profile URL");
     if (!selectedCompanyId) missing.push("Associated Company");
 
@@ -257,9 +257,9 @@ export default function ContactsPage() {
       return;
     }
 
-    setSubmittingContact(true);
+    setSubmittingDatabase(true);
     try {
-      const createdContact = await crmService.createContact(
+      const createdDatabase = await crmService.createDatabase(
         {
           salutation,
           firstName: firstName.trim(),
@@ -270,7 +270,7 @@ export default function ContactsPage() {
           mobilePhone: mobilePhone.trim() || undefined,
           normalizedPhone: mobilePhone.trim() ? `+62${mobilePhone.trim().replace(/^0/, '')}` : undefined,
           linkedinUrl: linkedinUrl.trim() || undefined,
-          contactType,
+          databaseType,
           source,
           isActive: true
         },
@@ -278,44 +278,44 @@ export default function ContactsPage() {
       );
 
       // Save Company Email if filled
-      if (contactCompanyEmail.trim()) {
+      if (databaseCompanyEmail.trim()) {
         try {
-          await crmService.addContactEmail(createdContact.id, {
-            email: contactCompanyEmail.trim().toLowerCase(),
+          await crmService.addDatabaseEmail(createdDatabase.id, {
+            email: databaseCompanyEmail.trim().toLowerCase(),
             emailType: 'company',
             isPrimary: true,
             isVerified: true,
             isCorporate: true
           });
         } catch (emailErr: any) {
-          toast.warning(`Contact created, but failed to save company email: ${emailErr.message}`);
+          toast.warning(`Database created, but failed to save company email: ${emailErr.message}`);
         }
       }
 
       // Save Personal Email if filled
-      if (contactPersonalEmail.trim()) {
+      if (databasePersonalEmail.trim()) {
         try {
-          await crmService.addContactEmail(createdContact.id, {
-            email: contactPersonalEmail.trim().toLowerCase(),
+          await crmService.addDatabaseEmail(createdDatabase.id, {
+            email: databasePersonalEmail.trim().toLowerCase(),
             emailType: 'personal',
-            isPrimary: !contactCompanyEmail.trim(), // Primary if company email is empty
+            isPrimary: !databaseCompanyEmail.trim(), // Primary if company email is empty
             isVerified: true,
             isCorporate: false
           });
         } catch (emailErr: any) {
-          toast.warning(`Contact created, but failed to save personal email: ${emailErr.message}`);
+          toast.warning(`Database created, but failed to save personal email: ${emailErr.message}`);
         }
       }
 
-      toast.success('Contact created successfully!');
+      toast.success('Database created successfully!');
       setIsCreateModalOpen(false);
       setSubmitAttempted(false);
 
       // Reset form
       setFirstName('');
       setLastName('');
-      setContactCompanyEmail('');
-      setContactPersonalEmail('');
+      setDatabaseCompanyEmail('');
+      setDatabasePersonalEmail('');
       setSelectedCompanyId('');
       setPositionLevel('unknown');
       setSpecialityDivision('');
@@ -324,9 +324,9 @@ export default function ContactsPage() {
       setLinkedinUrl('');
       loadData();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create contact');
+      toast.error(err.message || 'Failed to create database');
     } finally {
-      setSubmittingContact(false);
+      setSubmittingDatabase(false);
     }
   };
 
@@ -361,12 +361,12 @@ export default function ContactsPage() {
     }, 600);
 
     try {
-      const res = await crmService.importContactsExcel(selectedImportFile);
+      const res = await crmService.importDatabasesExcel(selectedImportFile);
       clearInterval(ticker);
       setImportProgress(100);
       setImportPhase('Import selesai!');
       await new Promise(r => setTimeout(r, 600));
-      toast.success(res.message || `Successfully imported ${res.count} contact(s)!`);
+      toast.success(res.message || `Successfully imported ${res.count} database(s)!`);
       setIsImportModalOpen(false);
       setSelectedImportFile(null);
       setImportPreview(null);
@@ -409,7 +409,7 @@ export default function ContactsPage() {
     }, 500);
 
     try {
-      const data = await crmService.previewContactsExcel(selectedImportFile);
+      const data = await crmService.previewDatabasesExcel(selectedImportFile);
       clearInterval(ticker);
       setImportProgress(100);
       setImportPhase('Preview siap!');
@@ -427,39 +427,39 @@ export default function ContactsPage() {
     }
   };
 
-  const openEditModal = async (contact: Contact) => {
-    setEditingContact(contact);
-    setEditFirstName(contact.firstName);
-    setEditLastName(contact.lastName);
-    setEditSalutation(contact.salutation || 'Mr');
-    setEditSelectedCompanyId(contact.company?.id ? contact.company.id.toString() : '');
-    setEditPositionLevel(contact.positionLevel || 'unknown');
-    setEditSpecialityDivision(contact.specialityDivision || '');
-    setEditJobTitle(contact.jobTitle || '');
-    setEditMobilePhone(contact.mobilePhone || '');
-    setEditLinkedinUrl(contact.linkedinUrl || '');
-    setEditContactType(contact.contactType || 'unknown');
-    setEditSource(contact.source || 'manual');
-    setEditIsActive(contact.isActive !== false);
+  const openEditModal = async (database: Database) => {
+    setEditingDatabase(database);
+    setEditFirstName(database.firstName);
+    setEditLastName(database.lastName);
+    setEditSalutation(database.salutation || 'Mr');
+    setEditSelectedCompanyId(database.company?.id ? database.company.id.toString() : '');
+    setEditPositionLevel(database.positionLevel || 'unknown');
+    setEditSpecialityDivision(database.specialityDivision || '');
+    setEditJobTitle(database.jobTitle || '');
+    setEditMobilePhone(database.mobilePhone || '');
+    setEditLinkedinUrl(database.linkedinUrl || '');
+    setEditDatabaseType(database.databaseType || 'unknown');
+    setEditSource(database.source || 'manual');
+    setEditIsActive(database.isActive !== false);
     setEditSubmitAttempted(false);
 
     // Fetch emails
-    setEditContactCompanyEmail('');
-    setEditContactCompanyEmailId('');
-    setEditContactPersonalEmail('');
-    setEditContactPersonalEmailId('');
+    setEditDatabaseCompanyEmail('');
+    setEditDatabaseCompanyEmailId('');
+    setEditDatabasePersonalEmail('');
+    setEditDatabasePersonalEmailId('');
     try {
-      const emails = await crmService.getContactEmails(contact.id);
+      const emails = await crmService.getDatabaseEmails(database.id);
       if (emails && emails.length > 0) {
         const compEmail = emails.find(e => e.isCorporate || e.emailType === 'company');
         if (compEmail) {
-          setEditContactCompanyEmail(compEmail.email);
-          setEditContactCompanyEmailId(compEmail.id.toString());
+          setEditDatabaseCompanyEmail(compEmail.email);
+          setEditDatabaseCompanyEmailId(compEmail.id.toString());
         }
         const persEmail = emails.find(e => !e.isCorporate && e.emailType === 'personal');
         if (persEmail) {
-          setEditContactPersonalEmail(persEmail.email);
-          setEditContactPersonalEmailId(persEmail.id.toString());
+          setEditDatabasePersonalEmail(persEmail.email);
+          setEditDatabasePersonalEmailId(persEmail.id.toString());
         }
       }
     } catch (err) {
@@ -469,9 +469,9 @@ export default function ContactsPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateContact = async (e: React.FormEvent) => {
+  const handleUpdateDatabase = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingContact) return;
+    if (!editingDatabase) return;
     setEditSubmitAttempted(true);
 
     // Check all required fields on submit
@@ -482,8 +482,8 @@ export default function ContactsPage() {
     if (!editJobTitle.trim()) missing.push("Job Title");
     if (!editPositionLevel || editPositionLevel === 'unknown' || !editPositionLevel.trim()) missing.push("Position Level");
     if (!editMobilePhone.trim()) missing.push("Mobile Phone");
-    if (!editContactCompanyEmail.trim()) missing.push("Company Email");
-    if (!editContactPersonalEmail.trim()) missing.push("Personal Email");
+    if (!editDatabaseCompanyEmail.trim()) missing.push("Company Email");
+    if (!editDatabasePersonalEmail.trim()) missing.push("Personal Email");
     if (!editLinkedinUrl.trim()) missing.push("LinkedIn Profile URL");
     if (!editSelectedCompanyId) missing.push("Associated Company");
 
@@ -492,10 +492,10 @@ export default function ContactsPage() {
       return;
     }
 
-    setSubmittingContact(true);
+    setSubmittingDatabase(true);
     try {
-      await crmService.updateContact(
-        editingContact.id,
+      await crmService.updateDatabase(
+        editingDatabase.id,
         {
           salutation: editSalutation,
           firstName: editFirstName.trim(),
@@ -506,7 +506,7 @@ export default function ContactsPage() {
           mobilePhone: editMobilePhone.trim() || undefined,
           normalizedPhone: editMobilePhone.trim() ? `+62${editMobilePhone.trim().replace(/^0/, '')}` : undefined,
           linkedinUrl: editLinkedinUrl.trim() || undefined,
-          contactType: editContactType,
+          databaseType: editDatabaseType,
           source: editSource,
           isActive: editIsActive
         },
@@ -514,143 +514,143 @@ export default function ContactsPage() {
       );
 
       // Handle Company Email
-      if (editContactCompanyEmail.trim()) {
-        if (editContactCompanyEmailId) {
+      if (editDatabaseCompanyEmail.trim()) {
+        if (editDatabaseCompanyEmailId) {
           // Update existing company email
           try {
-            await crmService.updateContactEmail(editingContact.id, Number(editContactCompanyEmailId), {
-              email: editContactCompanyEmail.trim().toLowerCase()
+            await crmService.updateDatabaseEmail(editingDatabase.id, Number(editDatabaseCompanyEmailId), {
+              email: editDatabaseCompanyEmail.trim().toLowerCase()
             });
           } catch (emailErr: any) {
-            toast.warning(`Contact updated, but failed to update company email: ${emailErr.message}`);
+            toast.warning(`Database updated, but failed to update company email: ${emailErr.message}`);
           }
         } else {
           // Create new company email
           try {
-            await crmService.addContactEmail(editingContact.id, {
-              email: editContactCompanyEmail.trim().toLowerCase(),
+            await crmService.addDatabaseEmail(editingDatabase.id, {
+              email: editDatabaseCompanyEmail.trim().toLowerCase(),
               emailType: 'company',
               isPrimary: true,
               isVerified: true,
               isCorporate: true
             });
           } catch (emailErr: any) {
-            toast.warning(`Contact updated, but failed to save company email: ${emailErr.message}`);
+            toast.warning(`Database updated, but failed to save company email: ${emailErr.message}`);
           }
         }
-      } else if (editContactCompanyEmailId) {
+      } else if (editDatabaseCompanyEmailId) {
         // Delete company email if cleared
         try {
-          await crmService.deleteContactEmail(editingContact.id, Number(editContactCompanyEmailId));
+          await crmService.deleteDatabaseEmail(editingDatabase.id, Number(editDatabaseCompanyEmailId));
         } catch (emailErr: any) {
-          toast.warning(`Contact updated, but failed to clear company email: ${emailErr.message}`);
+          toast.warning(`Database updated, but failed to clear company email: ${emailErr.message}`);
         }
       }
 
       // Handle Personal Email
-      if (editContactPersonalEmail.trim()) {
-        if (editContactPersonalEmailId) {
+      if (editDatabasePersonalEmail.trim()) {
+        if (editDatabasePersonalEmailId) {
           // Update existing personal email
           try {
-            await crmService.updateContactEmail(editingContact.id, Number(editContactPersonalEmailId), {
-              email: editContactPersonalEmail.trim().toLowerCase()
+            await crmService.updateDatabaseEmail(editingDatabase.id, Number(editDatabasePersonalEmailId), {
+              email: editDatabasePersonalEmail.trim().toLowerCase()
             });
           } catch (emailErr: any) {
-            toast.warning(`Contact updated, but failed to update personal email: ${emailErr.message}`);
+            toast.warning(`Database updated, but failed to update personal email: ${emailErr.message}`);
           }
         } else {
           // Create new personal email
           try {
-            await crmService.addContactEmail(editingContact.id, {
-              email: editContactPersonalEmail.trim().toLowerCase(),
+            await crmService.addDatabaseEmail(editingDatabase.id, {
+              email: editDatabasePersonalEmail.trim().toLowerCase(),
               emailType: 'personal',
-              isPrimary: !editContactCompanyEmail.trim(), // Primary if company email is empty
+              isPrimary: !editDatabaseCompanyEmail.trim(), // Primary if company email is empty
               isVerified: true,
               isCorporate: false
             });
           } catch (emailErr: any) {
-            toast.warning(`Contact updated, but failed to save personal email: ${emailErr.message}`);
+            toast.warning(`Database updated, but failed to save personal email: ${emailErr.message}`);
           }
         }
-      } else if (editContactPersonalEmailId) {
+      } else if (editDatabasePersonalEmailId) {
         // Delete personal email if cleared
         try {
-          await crmService.deleteContactEmail(editingContact.id, Number(editContactPersonalEmailId));
+          await crmService.deleteDatabaseEmail(editingDatabase.id, Number(editDatabasePersonalEmailId));
         } catch (emailErr: any) {
-          toast.warning(`Contact updated, but failed to clear personal email: ${emailErr.message}`);
+          toast.warning(`Database updated, but failed to clear personal email: ${emailErr.message}`);
         }
       }
 
-      toast.success('Contact updated successfully!');
+      toast.success('Database updated successfully!');
       setIsEditModalOpen(false);
-      setEditingContact(null);
-      setEditContactCompanyEmail('');
-      setEditContactCompanyEmailId('');
-      setEditContactPersonalEmail('');
-      setEditContactPersonalEmailId('');
+      setEditingDatabase(null);
+      setEditDatabaseCompanyEmail('');
+      setEditDatabaseCompanyEmailId('');
+      setEditDatabasePersonalEmail('');
+      setEditDatabasePersonalEmailId('');
       setEditSubmitAttempted(false);
       loadData();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update contact');
+      toast.error(err.message || 'Failed to update database');
     } finally {
-      setSubmittingContact(false);
+      setSubmittingDatabase(false);
     }
   };
 
-  const openDeleteConfirm = (contact: Contact) => {
-    setDeletingContact(contact);
+  const openDeleteConfirm = (database: Database) => {
+    setDeletingDatabase(database);
     setIsDeleteConfirmOpen(true);
   };
 
-  const handleDeleteContact = async () => {
-    if (!deletingContact) return;
-    setSubmittingContact(true);
+  const handleDeleteDatabase = async () => {
+    if (!deletingDatabase) return;
+    setSubmittingDatabase(true);
     try {
-      await crmService.deleteContact(deletingContact.id);
-      toast.success('Contact deleted successfully!');
+      await crmService.deleteDatabase(deletingDatabase.id);
+      toast.success('Database deleted successfully!');
       setIsDeleteConfirmOpen(false);
-      setDeletingContact(null);
+      setDeletingDatabase(null);
       loadData();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete contact');
+      toast.error(err.message || 'Failed to delete database');
     } finally {
-      setSubmittingContact(false);
+      setSubmittingDatabase(false);
     }
   };
 
-  const handleOpenDetailModal = async (contact: Contact) => {
-    setDetailContact(contact);
+  const handleOpenDetailModal = async (database: Database) => {
+    setDetailDatabase(database);
     setIsDetailModalOpen(true);
     setLoadingDetailEmails(true);
     setLoadingDetailEvents(true);
     try {
-      const emails = await crmService.getContactEmails(contact.id);
+      const emails = await crmService.getDatabaseEmails(database.id);
       setDetailEmails(emails);
     } catch (err) {
-      toast.error('Failed to load contact emails');
+      toast.error('Failed to load database emails');
     } finally {
       setLoadingDetailEmails(false);
     }
 
     try {
-      const events = await crmService.getContactEventLeads(contact.id);
+      const events = await crmService.getDatabaseEventLeads(database.id);
       setDetailEvents(events);
     } catch (err) {
-      toast.error('Failed to load contact event participation history');
+      toast.error('Failed to load database event participation history');
     } finally {
       setLoadingDetailEvents(false);
     }
   };
 
-  const handleOpenEmailModal = async (contact: Contact) => {
-    setSelectedContact(contact);
+  const handleOpenEmailModal = async (database: Database) => {
+    setSelectedDatabase(database);
     setIsEmailModalOpen(true);
     setLoadingEmails(true);
     try {
-      const emails = await crmService.getContactEmails(contact.id);
-      setContactEmails(emails);
+      const emails = await crmService.getDatabaseEmails(database.id);
+      setDatabaseEmails(emails);
     } catch (err) {
-      toast.error('Failed to load emails for this contact');
+      toast.error('Failed to load emails for this database');
     } finally {
       setLoadingEmails(false);
     }
@@ -658,11 +658,11 @@ export default function ContactsPage() {
 
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedContact || !newEmailStr.trim()) return;
+    if (!selectedDatabase || !newEmailStr.trim()) return;
 
     setSubmittingEmail(true);
     try {
-      await crmService.addContactEmail(selectedContact.id, {
+      await crmService.addDatabaseEmail(selectedDatabase.id, {
         email: newEmailStr.trim(),
         emailType,
         isPrimary,
@@ -675,8 +675,8 @@ export default function ContactsPage() {
       setIsPrimary(false);
 
       // Reload emails list
-      const emails = await crmService.getContactEmails(selectedContact.id);
-      setContactEmails(emails);
+      const emails = await crmService.getDatabaseEmails(selectedDatabase.id);
+      setDatabaseEmails(emails);
     } catch (err: any) {
       toast.error(err.message || 'Failed to add email address');
     } finally {
@@ -684,32 +684,32 @@ export default function ContactsPage() {
     }
   };
 
-  const handleOpenTakeoutModal = (contact: Contact) => {
-    setSelectedContact(contact);
+  const handleOpenTakeoutModal = (database: Database) => {
+    setSelectedDatabase(database);
     setIsTakeoutModalOpen(true);
   };
 
   const handleCreateTakeout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedContact) return;
+    if (!selectedDatabase) return;
 
     setSubmittingTakeout(true);
     try {
       await crmService.createRemovalRequest({
-        contactId: selectedContact.id,
+        databaseId: selectedDatabase.id,
         reason: removalReason,
         requestedBy: requestedBy.trim() || undefined,
         sourceDb: sourceDb.trim() || undefined,
         notes: takeoutNotes.trim() || undefined,
-        status: 'done' // Automatically process soft delete on approve/done
+        status: 'pending' // Default to pending so Admin approval is required
       });
 
-      toast.success(`${selectedContact.firstName} marked as inactive.`);
+      toast.success(`Takeout request for ${selectedDatabase.firstName} submitted for Admin approval.`);
       setIsTakeoutModalOpen(false);
       setRequestedBy('');
       setSourceDb('');
       setTakeoutNotes('');
-      loadData(); // Reload contacts
+      loadData(); // Reload databases
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit takeout request');
     } finally {
@@ -730,9 +730,13 @@ export default function ContactsPage() {
 
 
   // Search and Advanced Filters
-  const filteredContacts = contacts.filter((c) => {
-    // Hide opted-out / inactive contacts from the active lists
+  const filteredDatabases = databases.filter((c) => {
+    // Hide opted-out / inactive databases from the active lists
     if (c.isActive === false) return false;
+
+    // Hide confirmed Tikus/Spam from the main databases directory entirely
+    const isConfirmedTikus = flags.some(f => f.database?.id === c.id && f.status === 'confirmed');
+    if (isConfirmedTikus) return false;
 
     // 1. General search query
     const query = searchQuery.toLowerCase();
@@ -783,19 +787,19 @@ export default function ContactsPage() {
     setCurrentPage(1);
   }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterJobTitle, filterIndustry]);
 
-  const totalItems = filteredContacts.length;
+  const totalItems = filteredDatabases.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentContacts = filteredContacts.slice(indexOfFirstItem, indexOfLastItem);
+  const currentDatabases = filteredDatabases.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900">Contacts</h2>
-          <p className="text-sm text-slate-500 mt-1">Manage contact persons, corporate roles, and corporate vs personal emails.</p>
+          <h2 className="text-2xl font-extrabold text-slate-900">Databases</h2>
+          <p className="text-sm text-slate-500 mt-1">Manage database persons, corporate roles, and corporate vs personal emails.</p>
         </div>
         {!isUser && (
           <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
@@ -811,7 +815,7 @@ export default function ContactsPage() {
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all"
             >
               <Plus className="w-4 h-4" />
-              Add Contact
+              Add Database
             </button>
           </div>
         )}
@@ -912,17 +916,17 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      {/* Contacts List Table */}
+      {/* Databases List Table */}
       {loading ? (
         <div className="h-[40vh] flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
-      ) : filteredContacts.length === 0 ? (
+      ) : filteredDatabases.length === 0 ? (
         <div className="p-12 text-center border border-slate-200 rounded-2xl bg-white shadow-sm">
           <Users className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-          <h3 className="font-bold text-slate-700">No contacts found</h3>
+          <h3 className="font-bold text-slate-700">No databases found</h3>
           <p className="text-xs text-slate-500 mt-1">
-            {searchQuery ? 'Try adjusting your search criteria.' : 'Create a new contact to populate the database.'}
+            {searchQuery ? 'Try adjusting your search criteria.' : 'Create a new database to populate the database.'}
           </p>
         </div>
       ) : (
@@ -931,6 +935,7 @@ export default function ContactsPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap">
+                  <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Group/Holding Company</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Brand</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</th>
@@ -957,28 +962,28 @@ export default function ContactsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {currentContacts.map((c, idx, slicedArray) => {
+                {currentDatabases.map((c, idx, slicedArray) => {
                   const isNearBottom = idx >= slicedArray.length - 2 && idx >= 2;
                   
                   // 1. Get flags from database
-                  const dbFlags = flags.filter(f => f.contact?.id === c.id && f.status !== 'cleared');
+                  const dbFlags = flags.filter(f => f.database?.id === c.id && f.status !== 'cleared');
                   
                   // 2. Compute dynamic client-side duplicate indications
                   const localFlags: any[] = [];
                   
                   if (c.mobilePhone) {
                     const normCurrent = "+62" + c.mobilePhone.trim().replace(/^0/, '');
-                    const matchingContacts = contacts.filter(other => 
+                    const matchingDatabases = databases.filter(other => 
                       other.id !== c.id && 
                       other.isActive && 
                       other.mobilePhone && 
                       ("+62" + other.mobilePhone.trim().replace(/^0/, '')) === normCurrent &&
                       (other.firstName !== c.firstName || other.lastName !== c.lastName)
                     );
-                    if (matchingContacts.length > 0) {
+                    if (matchingDatabases.length > 0) {
                       localFlags.push({
                         flagReason: 'duplicate_phone',
-                        evidenceNotes: `Nomor telepon sama dengan ${matchingContacts.map(m => `${m.firstName} ${m.lastName}`).join(', ')}`
+                        evidenceNotes: `Nomor telepon sama dengan ${matchingDatabases.map(m => `${m.firstName} ${m.lastName}`).join(', ')}`
                       });
                     }
                   }
@@ -986,17 +991,17 @@ export default function ContactsPage() {
                   if (c.emails && c.emails.length > 0) {
                     c.emails.forEach(ce => {
                       if (!ce.email) return;
-                      const matchingContacts = contacts.filter(other => 
+                      const matchingDatabases = databases.filter(other => 
                         other.id !== c.id && 
                         other.isActive && 
                         other.emails && 
                         other.emails.some(oe => oe.email && oe.email.toLowerCase() === ce.email.toLowerCase()) &&
                         (other.firstName !== c.firstName || other.lastName !== c.lastName)
                       );
-                      if (matchingContacts.length > 0) {
+                      if (matchingDatabases.length > 0) {
                         localFlags.push({
                           flagReason: 'duplicate_email',
-                          evidenceNotes: `Email ${ce.email} sama dengan ${matchingContacts.map(m => `${m.firstName} ${m.lastName}`).join(', ')}`
+                          evidenceNotes: `Email ${ce.email} sama dengan ${matchingDatabases.map(m => `${m.firstName} ${m.lastName}`).join(', ')}`
                         });
                       }
                     });
@@ -1008,6 +1013,16 @@ export default function ContactsPage() {
 
                   return (
                     <tr key={c.id} className={`group hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
+                      <td className="py-4 px-3 text-center">
+                        {checkDatabaseCompleteness(c).isIncomplete && (
+                          <span
+                            className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
+                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(c).missingFields.join("\n• ")}`}
+                          >
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                          </span>
+                        )}
+                      </td>
                       <td className="py-4 px-4 text-sm font-medium text-slate-600">
                         {c.company?.group?.name || <span className="text-slate-400">-</span>}
                       </td>
@@ -1022,36 +1037,18 @@ export default function ContactsPage() {
                       </td>
                       <td className="py-4 px-4">
                         <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                          <span className="truncate max-w-[150px] inline-block align-middle" title={c.firstName}>
-                            {c.firstName}
-                          </span>
-                          {isFlaggedTikus && (
-                            hasConfirmedFlag ? (
-                              <span
-                                className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md shrink-0 transition-colors"
-                                title={`Terkonfirmasi Tikus / Spam:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
-                              >
-                                <ShieldAlert className="w-2.5 h-2.5 text-red-500" />
-                                Tikus
-                              </span>
-                            ) : (
-                              <span
-                                className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 border border-amber-100 text-amber-600 rounded-md shrink-0 transition-colors"
-                                title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
-                              >
-                                <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />
-                                Suspected
-                              </span>
-                            )
-                          )}
-                          {checkContactCompleteness(c).isIncomplete && (
+                          {isFlaggedTikus && !hasConfirmedFlag && (
                             <span
-                              className="inline-flex cursor-help text-amber-550 hover:text-amber-600 transition-colors"
-                              title={`Semua kolom wajib diisi kecuali Division/Speciality, Contact Type, dan Data Source.\n\nKolom kosong:\n• ${checkContactCompleteness(c).missingFields.join("\n• ")}`}
+                              className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 border border-amber-100 text-amber-600 rounded-md shrink-0 transition-colors"
+                              title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
                             >
-                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />
+                              Suspected
                             </span>
                           )}
+                          <span className="truncate max-w-[150px] inline-block align-middle font-bold text-slate-900" title={c.firstName}>
+                            {c.firstName}
+                          </span>
                         </p>
                         {!c.isActive && (
                           <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md">
@@ -1166,7 +1163,7 @@ export default function ContactsPage() {
                                   className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
                                 >
                                   <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-                                  Edit Contact
+                                  Edit Database
                                 </button>
                               )}
 
@@ -1221,7 +1218,7 @@ export default function ContactsPage() {
                   <span className="font-extrabold text-slate-800">
                     {Math.min(indexOfLastItem, totalItems)}
                   </span>{' '}
-                  of <span className="font-extrabold text-slate-800">{totalItems}</span> contacts
+                  of <span className="font-extrabold text-slate-800">{totalItems}</span> databases
                 </p>
               </div>
 
@@ -1283,14 +1280,14 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {/* View Contact Detail Modal (EYE Icon - Excel Layout) */}
-      {isDetailModalOpen && detailContact && (
+      {/* View Database Detail Modal (EYE Icon - Excel Layout) */}
+      {isDetailModalOpen && detailDatabase && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-4xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 text-slate-900">
             <button
               onClick={() => {
                 setIsDetailModalOpen(false);
-                setDetailContact(null);
+                setDetailDatabase(null);
                 setDetailEmails([]);
                 setDetailEvents([]);
               }}
@@ -1304,7 +1301,7 @@ export default function ContactsPage() {
                 <Users className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-extrabold text-slate-900">Contact Details</h3>
+                <h3 className="text-xl font-extrabold text-slate-900">Database Details</h3>
                 <p className="text-xs text-slate-500 mt-0.5">Comprehensive end-to-end data mapped from Database Template columns.</p>
               </div>
             </div>
@@ -1312,16 +1309,16 @@ export default function ContactsPage() {
             <div className="space-y-6">
               {(() => {
                 const comp = checkFormCompleteness(
-                  detailContact.salutation || '',
-                  detailContact.firstName || '',
-                  detailContact.lastName || '',
-                  detailContact.positionLevel || '',
-                  detailContact.jobTitle || '',
-                  detailContact.mobilePhone || '',
-                  detailEmails.find(e => e.isCorporate || e.emailType === 'company')?.email || '',
-                  detailEmails.find(e => !e.isCorporate && e.emailType === 'personal')?.email || '',
-                  detailContact.linkedinUrl || '',
-                  detailContact.company?.id?.toString() || '',
+                  detailDatabase.salutation || '',
+                  detailDatabase.firstName || '',
+                  detailDatabase.lastName || '',
+                  detailDatabase.positionLevel || '',
+                  detailDatabase.jobTitle || '',
+                  detailDatabase.mobilePhone || '',
+                  detailDatabaseEmails.find(e => e.isCorporate || e.emailType === 'company')?.email || '',
+                  detailDatabaseEmails.find(e => !e.isCorporate && e.emailType === 'personal')?.email || '',
+                  detailDatabase.linkedinUrl || '',
+                  detailDatabase.company?.id?.toString() || '',
                   companies
                 );
                 if (comp.isIncomplete) {
@@ -1329,7 +1326,7 @@ export default function ContactsPage() {
                     <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                       <div>
-                        <h4 className="text-sm font-extrabold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, Contact Type, dan Data Source</h4>
+                        <h4 className="text-sm font-extrabold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source</h4>
                         <p className="text-xs text-red-600 mt-1">
                           Kolom kosong:{" "}
                           <span className="font-semibold">{comp.missingFields.join(", ")}</span>
@@ -1350,52 +1347,52 @@ export default function ContactsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Holding Group Name</span>
-                    <span className="font-bold text-slate-800">{detailContact.company?.group?.name || '-'}</span>
+                    <span className="font-bold text-slate-800">{detailDatabase.company?.group?.name || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Holding Group Notes</span>
-                    <span className="text-slate-600 truncate block max-w-xs" title={detailContact.company?.group?.notes}>
-                      {detailContact.company?.group?.notes || '-'}
+                    <span className="text-slate-600 truncate block max-w-xs" title={detailDatabase.company?.group?.notes}>
+                      {detailDatabase.company?.group?.notes || '-'}
                     </span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Company Name</span>
-                    <span className="font-bold text-slate-800">{detailContact.company?.name || '-'}</span>
+                    <span className="font-bold text-slate-800">{detailDatabase.company?.name || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Brand</span>
-                    <span className="font-medium text-slate-700">{detailContact.company?.brandName || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.company?.brandName || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Industry</span>
-                    <span className="font-medium text-slate-700">{detailContact.company?.industry || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.company?.industry || '-'}</span>
                   </div>
                    <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">City</span>
-                    <span className="font-medium text-slate-700">{detailContact.company?.city || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.company?.city || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Postal Code</span>
-                    <span className="font-medium text-slate-700">{detailContact.company?.postalCode || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.company?.postalCode || '-'}</span>
                   </div>
                   <div className="md:col-span-2">
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Address</span>
-                    <span className="text-slate-600 block">{detailContact.company?.address || '-'}</span>
+                    <span className="text-slate-600 block">{detailDatabase.company?.address || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Office Phone</span>
-                    <span className="font-mono text-slate-700">{detailContact.company?.officePhone || '-'}</span>
+                    <span className="font-mono text-slate-700">{detailDatabase.company?.officePhone || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Website URL</span>
-                    {detailContact.company?.website ? (
+                    {detailDatabase.company?.website ? (
                       <a
-                        href={detailContact.company.website.startsWith('http') ? detailContact.company.website : `https://${detailContact.company.website}`}
+                        href={detailDatabase.company.website.startsWith('http') ? detailDatabase.company.website : `https://${detailDatabase.company.website}`}
                         target="_blank"
                         rel="noreferrer"
                         className="text-blue-600 hover:text-blue-500 font-semibold inline-flex items-center gap-1"
                       >
-                        {detailContact.company.website}
+                        {detailDatabase.company.website}
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     ) : (
@@ -1404,59 +1401,59 @@ export default function ContactsPage() {
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Company Size (Revenue)</span>
-                    <span className="font-medium text-slate-700">{detailContact.company?.companySizeRevenue || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.company?.companySizeRevenue || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Company Size (Employees)</span>
-                    <span className="font-medium text-slate-700">{detailContact.company?.companySizeEmployee || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.company?.companySizeEmployee || '-'}</span>
                   </div>
                   <div className="md:col-span-3">
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Hardware Infrastructure (Details)</span>
-                    <span className="text-slate-600 whitespace-pre-wrap block mt-0.5">{detailContact.company?.companyHardware || '-'}</span>
+                    <span className="text-slate-600 whitespace-pre-wrap block mt-0.5">{detailDatabase.company?.companyHardware || '-'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* SECTION B: Contact & Personal Info */}
+              {/* SECTION B: Database & Personal Info */}
               <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-5">
                 <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
                   <Users className="w-4 h-4 text-slate-500" />
-                  Contact Profile details
+                  Database Profile details
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Salutation</span>
-                    <span className="font-medium text-slate-700">{detailContact.salutation || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.salutation || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">First Name</span>
-                    <span className="font-bold text-slate-800">{detailContact.firstName}</span>
+                    <span className="font-bold text-slate-800">{detailDatabase.firstName}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Last Name</span>
-                    <span className="font-bold text-slate-800">{detailContact.lastName}</span>
+                    <span className="font-bold text-slate-800">{detailDatabase.lastName}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Job Title</span>
-                    <span className="font-bold text-slate-800">{detailContact.jobTitle || '-'}</span>
+                    <span className="font-bold text-slate-800">{detailDatabase.jobTitle || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Position Level</span>
-                    <span className="font-medium text-slate-700">{detailContact.positionLevel || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.positionLevel || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Speciality / Division</span>
-                    <span className="font-medium text-slate-700">{detailContact.specialityDivision || '-'}</span>
+                    <span className="font-medium text-slate-700">{detailDatabase.specialityDivision || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Mobile Phone</span>
-                    <span className="font-mono text-slate-700">{detailContact.mobilePhone || '-'}</span>
+                    <span className="font-mono text-slate-700">{detailDatabase.mobilePhone || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">LinkedIn URL</span>
-                    {detailContact.linkedinUrl ? (
+                    {detailDatabase.linkedinUrl ? (
                       <a
-                        href={detailContact.linkedinUrl}
+                        href={detailDatabase.linkedinUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="text-blue-600 hover:text-blue-500 font-semibold inline-flex items-center gap-1"
@@ -1471,7 +1468,7 @@ export default function ContactsPage() {
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Status / Opt-out</span>
                     <span className="inline-flex mt-1">
-                      {detailContact.isActive !== false ? (
+                      {detailDatabase.isActive !== false ? (
                         <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-md flex items-center gap-1">
                           <CheckCircle className="w-3 h-3" />
                           Active
@@ -1485,17 +1482,17 @@ export default function ContactsPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Contact Type</span>
-                    <span className="font-medium text-slate-750 capitalize">{detailContact.contactType || '-'}</span>
+                    <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Database Type</span>
+                    <span className="font-medium text-slate-750 capitalize">{detailDatabase.databaseType || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Data Source</span>
-                    <span className="font-medium text-slate-750 capitalize">{detailContact.source?.replace(/_/g, ' ') || '-'}</span>
+                    <span className="font-medium text-slate-750 capitalize">{detailDatabase.source?.replace(/_/g, ' ') || '-'}</span>
                   </div>
                   <div>
                     <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Created Date</span>
                     <span className="text-slate-500">
-                      {detailContact.createdAt ? new Date(detailContact.createdAt).toLocaleString() : '-'}
+                      {detailDatabase.createdAt ? new Date(detailDatabase.createdAt).toLocaleString() : '-'}
                     </span>
                   </div>
                 </div>
@@ -1507,15 +1504,15 @@ export default function ContactsPage() {
                   <Mail className="w-4 h-4 text-slate-500" />
                   Email Addresses (Excel split: Corporate & Personal)
                 </h4>
-                {loadingDetailEmails ? (
+                {loadingDetailDatabaseEmails ? (
                   <div className="py-4 flex items-center justify-center">
                     <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
                   </div>
-                ) : detailEmails.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No email addresses saved for this contact profile.</p>
+                ) : detailDatabaseEmails.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic">No email addresses saved for this database profile.</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {detailEmails.map((em) => (
+                    {detailDatabaseEmails.map((em) => (
                       <div key={em.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-sm">
                         <div className="space-y-1">
                           <p className="text-sm font-bold text-slate-900 font-mono">{em.email}</p>
@@ -1550,7 +1547,7 @@ export default function ContactsPage() {
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                   </div>
                 ) : detailEvents.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic py-2">No event participation history recorded for this contact.</p>
+                  <p className="text-xs text-slate-500 italic py-2">No event participation history recorded for this database.</p>
                 ) : (
                   <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
                     <table className="w-full text-left border-collapse text-xs">
@@ -1560,7 +1557,7 @@ export default function ContactsPage() {
                           <th className="py-2.5 px-3">Client / Partner</th>
                           <th className="py-2.5 px-3">Event Dates</th>
                           <th className="py-2.5 px-3">Lead Status</th>
-                          <th className="py-2.5 px-3">Attendance</th>
+                          <th className="py-2.5 px-3">Hari H Status</th>
                           <th className="py-2.5 px-3">Notes</th>
                         </tr>
                       </thead>
@@ -1573,12 +1570,11 @@ export default function ContactsPage() {
                             red: 'bg-red-50 border-red-200 text-red-700',
                           };
 
-                          const attendanceStatusColors: Record<string, string> = {
-                            invited: 'bg-blue-50 border-blue-200 text-blue-700',
-                            registered: 'bg-indigo-50 border-indigo-200 text-indigo-700',
-                            attended: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-                            no_show: 'bg-red-50 border-red-200 text-red-700',
-                            cancelled: 'bg-slate-100 border-slate-250 text-slate-700',
+                          const hariHColors: Record<string, string> = {
+                            on_location: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                            on_the_way: 'bg-blue-50 border-blue-200 text-blue-700',
+                            not_respon_yet: 'bg-slate-100 border-slate-200 text-slate-700',
+                            unable_to_attend: 'bg-red-50 border-red-200 text-red-700',
                           };
 
                           return (
@@ -1610,8 +1606,8 @@ export default function ContactsPage() {
                                 </span>
                               </td>
                               <td className="py-3 px-3">
-                                <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] capitalize ${attendanceStatusColors[l.attendanceStatus] || 'bg-slate-100 border-slate-250 text-slate-700'}`}>
-                                  {l.attendanceStatus}
+                                <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] capitalize ${hariHColors[l.reminderHariH || 'not_respon_yet'] || 'bg-slate-100 border-slate-250 text-slate-700'}`}>
+                                  {(l.reminderHariH || 'not_respon_yet').replace(/_/g, ' ')}
                                 </span>
                               </td>
                               <td className="py-3 px-3 max-w-[200px] truncate" title={l.notes}>
@@ -1632,7 +1628,7 @@ export default function ContactsPage() {
                 type="button"
                 onClick={() => {
                   setIsDetailModalOpen(false);
-                  setDetailContact(null);
+                  setDetailDatabase(null);
                   setDetailEmails([]);
                   setDetailEvents([]);
                 }}
@@ -1645,7 +1641,7 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {/* Add Contact Modal Overlay */}
+      {/* Add Database Modal Overlay */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200">
@@ -1656,7 +1652,7 @@ export default function ContactsPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Create New Contact</h3>
+            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Create New Database</h3>
 
             {/* DYNAMIC FORM COMPLETENESS WARNING */}
             {(() => {
@@ -1667,8 +1663,8 @@ export default function ContactsPage() {
                 (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim()) ||
                 !jobTitle.trim() ||
                 !mobilePhone.trim() ||
-                !contactCompanyEmail.trim() ||
-                !contactPersonalEmail.trim() ||
+                !databaseCompanyEmail.trim() ||
+                !databasePersonalEmail.trim() ||
                 !linkedinUrl.trim() ||
                 !selectedCompanyId;
 
@@ -1677,7 +1673,7 @@ export default function ContactsPage() {
                   <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
                     <AlertCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
                     <div>
-                      <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, Contact Type, dan Data Source</h5>
+                      <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source</h5>
                     </div>
                   </div>
                 );
@@ -1692,7 +1688,7 @@ export default function ContactsPage() {
               );
             })()}
 
-            <form onSubmit={handleCreateContact} className="space-y-5">
+            <form onSubmit={handleCreateDatabase} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Salutation <span className="text-red-500 font-bold">*</span></label>
@@ -1837,14 +1833,14 @@ export default function ContactsPage() {
                   <input
                     type="email"
                     placeholder="e.g. name@company.com"
-                    value={contactCompanyEmail}
-                    onChange={(e) => setContactCompanyEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !contactCompanyEmail.trim()
+                    value={databaseCompanyEmail}
+                    onChange={(e) => setDatabaseCompanyEmail(e.target.value)}
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !databaseCompanyEmail.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
                       }`}
                   />
-                  {submitAttempted && !contactCompanyEmail.trim() && (
+                  {submitAttempted && !databaseCompanyEmail.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Company Email wajib diisi</p>
                   )}
                 </div>
@@ -1854,14 +1850,14 @@ export default function ContactsPage() {
                   <input
                     type="email"
                     placeholder="e.g. name@gmail.com"
-                    value={contactPersonalEmail}
-                    onChange={(e) => setContactPersonalEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !contactPersonalEmail.trim()
+                    value={databasePersonalEmail}
+                    onChange={(e) => setDatabasePersonalEmail(e.target.value)}
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !databasePersonalEmail.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
                       }`}
                   />
-                  {submitAttempted && !contactPersonalEmail.trim() && (
+                  {submitAttempted && !databasePersonalEmail.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Personal Email wajib diisi</p>
                   )}
                 </div>
@@ -1884,10 +1880,10 @@ export default function ContactsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Contact Type</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Database Type</label>
                   <select
-                    value={contactType}
-                    onChange={(e) => setContactType(e.target.value)}
+                    value={databaseType}
+                    onChange={(e) => setDatabaseType(e.target.value)}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
                   >
                     <option value="unknown">Unknown</option>
@@ -1905,7 +1901,7 @@ export default function ContactsPage() {
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
                   >
                     <option value="manual">Manual Entry</option>
-                    <option value="contactout">ContactOut</option>
+                    <option value="databaseout">DatabaseOut</option>
                     <option value="old_db">Old Database</option>
                     <option value="excel_import">Excel Import</option>
                     <option value="event_registration">Event Registration</option>
@@ -1923,11 +1919,11 @@ export default function ContactsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingContact}
+                  disabled={submittingDatabase}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
                 >
-                  {submittingContact ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Save Contact
+                  {submittingDatabase ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Save Database
                 </button>
               </div>
             </form>
@@ -1935,14 +1931,14 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {/* Edit Contact Modal Overlay */}
-      {isEditModalOpen && editingContact && (
+      {/* Edit Database Modal Overlay */}
+      {isEditModalOpen && editingDatabase && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200">
             <button
               onClick={() => {
                 setIsEditModalOpen(false);
-                setEditingContact(null);
+                setEditingDatabase(null);
                 setEditSubmitAttempted(false);
               }}
               className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
@@ -1950,7 +1946,7 @@ export default function ContactsPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Edit Contact</h3>
+            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Edit Database</h3>
 
             {/* DYNAMIC FORM COMPLETENESS WARNING */}
             {(() => {
@@ -1961,8 +1957,8 @@ export default function ContactsPage() {
                 (!editPositionLevel || editPositionLevel === 'unknown' || !editPositionLevel.trim()) ||
                 !editJobTitle.trim() ||
                 !editMobilePhone.trim() ||
-                !editContactCompanyEmail.trim() ||
-                !editContactPersonalEmail.trim() ||
+                !editDatabaseCompanyEmail.trim() ||
+                !editDatabasePersonalEmail.trim() ||
                 !editLinkedinUrl.trim() ||
                 !editSelectedCompanyId;
 
@@ -1971,7 +1967,7 @@ export default function ContactsPage() {
                   <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
                     <AlertCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
                     <div>
-                      <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, Contact Type, dan Data Source</h5>
+                      <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source</h5>
                     </div>
                   </div>
                 );
@@ -1986,7 +1982,7 @@ export default function ContactsPage() {
               );
             })()}
 
-            <form onSubmit={handleUpdateContact} className="space-y-5">
+            <form onSubmit={handleUpdateDatabase} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Salutation <span className="text-red-500 font-bold">*</span></label>
@@ -2131,14 +2127,14 @@ export default function ContactsPage() {
                   <input
                     type="email"
                     placeholder="e.g. name@company.com"
-                    value={editContactCompanyEmail}
-                    onChange={(e) => setEditContactCompanyEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editContactCompanyEmail.trim()
+                    value={editDatabaseCompanyEmail}
+                    onChange={(e) => setEditDatabaseCompanyEmail(e.target.value)}
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editDatabaseCompanyEmail.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
                       }`}
                   />
-                  {editSubmitAttempted && !editContactCompanyEmail.trim() && (
+                  {editSubmitAttempted && !editDatabaseCompanyEmail.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Company Email wajib diisi</p>
                   )}
                 </div>
@@ -2148,14 +2144,14 @@ export default function ContactsPage() {
                   <input
                     type="email"
                     placeholder="e.g. name@gmail.com"
-                    value={editContactPersonalEmail}
-                    onChange={(e) => setEditContactPersonalEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editContactPersonalEmail.trim()
+                    value={editDatabasePersonalEmail}
+                    onChange={(e) => setEditDatabasePersonalEmail(e.target.value)}
+                    className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${editSubmitAttempted && !editDatabasePersonalEmail.trim()
                         ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                         : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
                       }`}
                   />
-                  {editSubmitAttempted && !editContactPersonalEmail.trim() && (
+                  {editSubmitAttempted && !editDatabasePersonalEmail.trim() && (
                     <p className="text-red-500 text-[11px] mt-1 font-semibold">Personal Email wajib diisi</p>
                   )}
                 </div>
@@ -2178,10 +2174,10 @@ export default function ContactsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Contact Type</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Database Type</label>
                   <select
-                    value={editContactType}
-                    onChange={(e) => setEditContactType(e.target.value)}
+                    value={editDatabaseType}
+                    onChange={(e) => setEditDatabaseType(e.target.value)}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
                   >
                     <option value="unknown">Unknown</option>
@@ -2199,7 +2195,7 @@ export default function ContactsPage() {
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white"
                   >
                     <option value="manual">Manual Entry</option>
-                    <option value="contactout">ContactOut</option>
+                    <option value="databaseout">DatabaseOut</option>
                     <option value="old_db">Old Database</option>
                     <option value="excel_import">Excel Import</option>
                     <option value="event_registration">Event Registration</option>
@@ -2225,7 +2221,7 @@ export default function ContactsPage() {
                   type="button"
                   onClick={() => {
                     setIsEditModalOpen(false);
-                    setEditingContact(null);
+                    setEditingDatabase(null);
                     setEditSubmitAttempted(false);
                   }}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
@@ -2234,10 +2230,10 @@ export default function ContactsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingContact}
+                  disabled={submittingDatabase}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
                 >
-                  {submittingContact ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {submittingDatabase ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Save Changes
                 </button>
               </div>
@@ -2247,7 +2243,7 @@ export default function ContactsPage() {
       )}
 
       {/* Manage Emails Modal Overlay */}
-      {isEmailModalOpen && selectedContact && (
+      {isEmailModalOpen && selectedDatabase && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 flex flex-col text-slate-900">
             <button
@@ -2257,19 +2253,19 @@ export default function ContactsPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-extrabold text-slate-900 mb-1">Emails for {selectedContact.firstName}</h3>
+            <h3 className="text-xl font-extrabold text-slate-900 mb-1">Emails for {selectedDatabase.firstName}</h3>
             <p className="text-xs text-slate-500 mb-6">Manage company or personal emails for lead targeting.</p>
 
             {/* List of current emails */}
             <div className="space-y-3 mb-6 bg-slate-50 p-4 border border-slate-200 rounded-xl max-h-[200px] overflow-y-auto">
-              {loadingEmails ? (
+              {loadingDatabaseEmails ? (
                 <div className="py-6 flex items-center justify-center">
                   <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                 </div>
-              ) : contactEmails.length === 0 ? (
+              ) : databaseEmails.length === 0 ? (
                 <p className="text-center text-xs text-slate-500 py-4">No email addresses added yet.</p>
               ) : (
-                contactEmails.map((em) => (
+                databaseEmails.map((em) => (
                   <div key={em.id} className="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono">
                     <div className="space-y-0.5">
                       <p className="text-slate-900 font-bold">{em.email}</p>
@@ -2359,7 +2355,7 @@ export default function ContactsPage() {
       )}
 
       {/* Takeout Modal Overlay */}
-      {isTakeoutModalOpen && selectedContact && (
+      {isTakeoutModalOpen && selectedDatabase && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
             <button
@@ -2375,7 +2371,7 @@ export default function ContactsPage() {
               </div>
               <h3 className="text-xl font-extrabold text-slate-900">Request Data Takeout</h3>
               <p className="text-xs text-slate-500 mt-1">
-                Proceeding will mark <strong>{selectedContact.firstName} {selectedContact.lastName}</strong> as inactive.
+                Proceeding will mark <strong>{selectedDatabase.firstName} {selectedDatabase.lastName}</strong> as inactive.
               </p>
             </div>
 
@@ -2453,13 +2449,13 @@ export default function ContactsPage() {
       )}
 
       {/* Delete Confirmation Modal Overlay */}
-      {isDeleteConfirmOpen && deletingContact && (
+      {isDeleteConfirmOpen && deletingDatabase && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Hard Delete Contact</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Hard Delete Database</h3>
             <p className="text-sm text-slate-500 mb-6">
-              Are you sure you want to permanently delete contact <span className="font-semibold text-slate-800">"{deletingContact.firstName} {deletingContact.lastName}"</span>?
-              This will completely erase the contact and all associated emails, event leads, and removal request logs. This action is irreversible.
+              Are you sure you want to permanently delete database <span className="font-semibold text-slate-800">"{deletingDatabase.firstName} {deletingDatabase.lastName}"</span>?
+              This will completely erase the database and all associated emails, event leads, and removal request logs. This action is irreversible.
             </p>
 
             <div className="flex gap-3 justify-end">
@@ -2467,20 +2463,20 @@ export default function ContactsPage() {
                 type="button"
                 onClick={() => {
                   setIsDeleteConfirmOpen(false);
-                  setDeletingContact(null);
+                  setDeletingDatabase(null);
                 }}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                disabled={submittingContact}
+                disabled={submittingDatabase}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleDeleteContact}
-                disabled={submittingContact}
+                onClick={handleDeleteDatabase}
+                disabled={submittingDatabase}
                 className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
               >
-                {submittingContact ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {submittingDatabase ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Yes, Delete Permanently
               </button>
             </div>
@@ -2510,9 +2506,9 @@ export default function ContactsPage() {
                   <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
                     <Upload className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-extrabold text-slate-900">Import Contacts from Excel</h3>
+                  <h3 className="text-xl font-extrabold text-slate-900">Import Databases from Excel</h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Upload your database template spreadsheet to bulk import groups, companies, and contacts.
+                    Upload your database template spreadsheet to bulk import groups, companies, and databases.
                   </p>
                   <div className="mt-3">
                     <a
@@ -2612,7 +2608,7 @@ export default function ContactsPage() {
                   </div>
                   <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
                     <span className="block text-2xl font-black text-emerald-600">{importPreview.newCount}</span>
-                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block mt-0.5">New Contacts</span>
+                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block mt-0.5">New Databases</span>
                   </div>
                   <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-center">
                     <span className="block text-2xl font-black text-amber-600">{importPreview.duplicateCount}</span>
@@ -2626,7 +2622,7 @@ export default function ContactsPage() {
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold">Duplicate Warning: </span>
-                      {importPreview.duplicateCount} existing contacts/emails detected. These entries will be <span className="font-bold underline">synchronized (details updated)</span> in the database rather than creating duplicate contacts.
+                      {importPreview.duplicateCount} existing databases/emails detected. These entries will be <span className="font-bold underline">synchronized (details updated)</span> in the database rather than creating duplicate databases.
                     </div>
                   </div>
                 )}

@@ -40,7 +40,7 @@ export interface Company {
   updatedAt?: string;
 }
 
-export interface Contact {
+export interface Database {
   id: number;
   company?: Company | null;
   salutation?: string;
@@ -52,17 +52,17 @@ export interface Contact {
   mobilePhone?: string;
   normalizedPhone?: string;
   linkedinUrl?: string;
-  contactType: string; // partner_it | partner_marketing | end_user | unknown
+  databaseType: string; // partner_it | partner_marketing | end_user | unknown
   source: string; // contactout | old_db | manual | excel_import | event_registration
   isActive: boolean;
-  emails?: ContactEmail[];
+  emails?: DatabaseEmail[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface ContactEmail {
+export interface DatabaseEmail {
   id: number;
-  contact?: Contact;
+  database?: Database;
   email: string;
   emailType: string; // company | personal | other
   isPrimary: boolean;
@@ -87,7 +87,7 @@ export interface Event {
 export interface EventLead {
   id: number;
   event: Event;
-  contact: Contact;
+  database: Database;
   leadStatus: string; // white | yellow | green | red
   requestedAt?: string;
   respondedAt?: string;
@@ -122,7 +122,7 @@ export interface EventLeadActivity {
 
 export interface RemovalRequest {
   id: number;
-  contact: Contact;
+  database: Database;
   reason: string; // resign | pensiun | meninggal | requested_takeout | pindah_kerja | lainnya
   requestedBy?: string;
   requestDate?: string;
@@ -141,7 +141,7 @@ export interface PersonalEmailDomain {
 
 export interface FlaggedIdentity {
   id: number;
-  contact?: Contact | null;
+  database?: Database | null;
   event?: Event | null;
   nameUsed?: string;
   emailUsed?: string;
