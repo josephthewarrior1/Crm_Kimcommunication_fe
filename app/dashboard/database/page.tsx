@@ -8,6 +8,33 @@ import { toast } from 'sonner';
 import { INDUSTRIES } from '../../../lib/constants';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
+import * as XLSX from 'xlsx';
+
+const EXPORT_COLUMNS = [
+  { key: 'groupName', label: 'Nama Group' },
+  { key: 'brandName', label: 'Nama Brand' },
+  { key: 'companyName', label: 'Company Name' },
+  { key: 'salutation', label: 'Salutation' },
+  { key: 'firstName', label: 'First Name' },
+  { key: 'lastName', label: 'Last Name' },
+  { key: 'position', label: 'Position' },
+  { key: 'specialityDivision', label: 'Speciality/Division' },
+  { key: 'jobTitle', label: 'Job Title' },
+  { key: 'address', label: 'Address' },
+  { key: 'officePhone', label: 'Office Phone' },
+  { key: 'mobilePhone', label: 'Mobile Phone' },
+  { key: 'companyEmail', label: 'Company Email Address' },
+  { key: 'personalEmail', label: 'Personal Email Address' },
+  { key: 'industry', label: 'Industry' },
+  { key: 'revenueSize', label: 'Company Size (Revenue)' },
+  { key: 'employeeSize', label: 'Company Size (Employee)' },
+  { key: 'hardware', label: 'Company Hardware' },
+  { key: 'linkedin', label: 'Linkedin Link' },
+  { key: 'city', label: 'City' },
+  { key: 'postalCode', label: 'Postal Code' },
+  { key: 'website', label: 'Company Website' },
+  { key: 'eventHistory', label: 'Event Participation' }
+];
 
 
 const checkDatabaseCompleteness = (c: Database) => {
@@ -103,6 +130,18 @@ export default function DatabasesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
+
+  // Selection and Custom Export states
+  const [selectedDatabaseIds, setSelectedDatabaseIds] = useState<number[]>([]);
+  const [tempSelectedDbIds, setTempSelectedDbIds] = useState<number[]>([]);
+  const [isExportConfigModalOpen, setIsExportConfigModalOpen] = useState(false);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(EXPORT_COLUMNS.map(col => col.key));
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedDatabaseIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
 
 
   // Modals state
@@ -782,6 +821,26 @@ export default function DatabasesPage() {
     return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesJobTitle && matchesIndustry;
   });
 
+  const isAllSelected = filteredDatabases.length > 0 && filteredDatabases.every(d => selectedDatabaseIds.includes(d.id));
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      const filteredIds = filteredDatabases.map(d => d.id);
+      setSelectedDatabaseIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      const filteredIds = filteredDatabases.map(d => d.id);
+      setSelectedDatabaseIds(prev => {
+        const newSelection = [...prev];
+        filteredIds.forEach(id => {
+          if (!newSelection.includes(id)) {
+            newSelection.push(id);
+          }
+        });
+        return newSelection;
+      });
+    }
+  };
+
   // Reset current page when query or any filter changes
   useEffect(() => {
     setCurrentPage(1);
@@ -793,6 +852,111 @@ export default function DatabasesPage() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentDatabases = filteredDatabases.slice(indexOfFirstItem, indexOfLastItem);
 
+  const handleOpenExportConfig = () => {
+    if (filteredDatabases.length === 0) {
+      toast.error("Tidak ada data database untuk di-export.");
+      return;
+    }
+    if (selectedDatabaseIds.length > 0) {
+      setTempSelectedDbIds(selectedDatabaseIds);
+    } else {
+      setTempSelectedDbIds(filteredDatabases.map(d => d.id));
+    }
+    setIsExportConfigModalOpen(true);
+  };
+
+  const handleExecuteExport = async () => {
+    const rowsToExport = databases.filter(d => tempSelectedDbIds.includes(d.id));
+
+    if (rowsToExport.length === 0) {
+      toast.error("Tidak ada data database yang terpilih untuk di-export.");
+      return;
+    }
+
+    if (selectedColumns.length === 0) {
+      toast.error("Harap pilih minimal satu kolom untuk di-export.");
+      return;
+    }
+
+    const loadingToastId = toast.loading("Sedang mengambil data event & memproses Excel...");
+
+    try {
+      let eventLeads: EventLead[] = [];
+      if (selectedColumns.includes('eventHistory')) {
+        eventLeads = await crmService.getEventLeads();
+      }
+
+      const dataToExport = rowsToExport.map((c, index) => {
+        const rowData: Record<string, any> = { 'No': index + 1 };
+        
+        if (selectedColumns.includes('groupName')) rowData['Nama Group'] = c.company?.group?.name || '-';
+        if (selectedColumns.includes('brandName')) rowData['Nama Brand'] = c.company?.brandName || '-';
+        if (selectedColumns.includes('companyName')) rowData['Company Name'] = c.company?.name || '-';
+        if (selectedColumns.includes('salutation')) rowData['Salutation'] = c.salutation || '-';
+        if (selectedColumns.includes('firstName')) rowData['First Name'] = c.firstName || '-';
+        if (selectedColumns.includes('lastName')) rowData['Last Name'] = c.lastName || '-';
+        if (selectedColumns.includes('position')) rowData['Position'] = c.positionLevel || '-';
+        if (selectedColumns.includes('specialityDivision')) rowData['Speciality/Division'] = c.specialityDivision || '-';
+        if (selectedColumns.includes('jobTitle')) rowData['Job Title'] = c.jobTitle || '-';
+        if (selectedColumns.includes('address')) rowData['Address'] = c.company?.address || '-';
+        if (selectedColumns.includes('officePhone')) rowData['Office Phone'] = c.company?.officePhone || '-';
+        if (selectedColumns.includes('mobilePhone')) rowData['Mobile Phone'] = c.mobilePhone || '-';
+        if (selectedColumns.includes('companyEmail')) {
+          rowData['Company Email Address'] = c.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-';
+        }
+        if (selectedColumns.includes('personalEmail')) {
+          rowData['Personal Email Address'] = c.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-';
+        }
+        if (selectedColumns.includes('industry')) rowData['Industry'] = c.company?.industry || '-';
+        if (selectedColumns.includes('revenueSize')) rowData['Company Size (Revenue)'] = c.company?.companySizeRevenue || '-';
+        if (selectedColumns.includes('employeeSize')) rowData['Company Size (Employee)'] = c.company?.companySizeEmployee || '-';
+        if (selectedColumns.includes('hardware')) rowData['Company Hardware'] = c.company?.companyHardware || '-';
+        if (selectedColumns.includes('linkedin')) rowData['Linkedin Link'] = c.linkedinUrl || '-';
+        if (selectedColumns.includes('city')) rowData['City'] = c.company?.city || '-';
+        if (selectedColumns.includes('postalCode')) rowData['Postal Code'] = c.company?.postalCode || '-';
+        if (selectedColumns.includes('website')) rowData['Company Website'] = c.company?.website || '-';
+        
+        if (selectedColumns.includes('eventHistory')) {
+          const matchingLeads = eventLeads.filter(l => l.database?.id === c.id);
+          const eventNames = matchingLeads.map(l => l.event?.name).filter(Boolean);
+          rowData['Event Participation'] = eventNames.length > 0 ? eventNames.join(', ') : '-';
+        }
+
+        return rowData;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Databases');
+
+      // Auto fit column width
+      const maxLens = dataToExport.reduce((acc, row) => {
+        Object.keys(row).forEach((key) => {
+          const valStr = String(row[key as keyof typeof row]);
+          acc[key] = Math.max(acc[key] || 10, valStr.length);
+        });
+        return acc;
+      }, {} as Record<string, number>);
+
+      worksheet['!cols'] = Object.keys(maxLens).map(key => ({
+        wch: maxLens[key] + 3
+      }));
+
+      // Generate filename based on filters if any
+      let fileName = 'Databases_Export.xlsx';
+      if (tempSelectedDbIds.length > 0) {
+        fileName = `Databases_Selected_${tempSelectedDbIds.length}_Export.xlsx`;
+      }
+
+      XLSX.writeFile(workbook, fileName);
+      toast.success('Database berhasil di-export ke Excel!', { id: loadingToastId });
+      setSelectedDatabaseIds(tempSelectedDbIds);
+      setIsExportConfigModalOpen(false);
+    } catch (err: any) {
+      toast.error(`Gagal melakukan export: ${err.message || err}`, { id: loadingToastId });
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
       {/* Page Header */}
@@ -801,24 +965,35 @@ export default function DatabasesPage() {
           <h2 className="text-2xl font-extrabold text-slate-900">Databases</h2>
           <p className="text-sm text-slate-500 mt-1">Manage database persons, corporate roles, and corporate vs personal emails.</p>
         </div>
-        {!isUser && (
-          <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          {filteredDatabases.length > 0 && (
             <button
-              onClick={() => setIsImportModalOpen(true)}
+              onClick={handleOpenExportConfig}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl shadow-sm transition-all"
             >
-              <Upload className="w-4 h-4 text-slate-500" />
-              Import Excel
+              <Download className="w-4 h-4 text-slate-500" />
+              Export Excel
             </button>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              Add Database
-            </button>
-          </div>
-        )}
+          )}
+          {!isUser && (
+            <>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl shadow-sm transition-all"
+              >
+                <Upload className="w-4 h-4 text-slate-500" />
+                Import Excel
+              </button>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Add Database
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Advanced Filters Area */}
@@ -916,6 +1091,24 @@ export default function DatabasesPage() {
         </div>
       </div>
 
+      {/* Selection Actions Bar */}
+      {selectedDatabaseIds.length > 0 && (
+        <div className="bg-blue-50/70 backdrop-blur-sm border border-blue-100 rounded-xl p-3.5 flex items-center justify-between animate-in slide-in-from-top-3 duration-200 shadow-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-blue-600 shrink-0" />
+            <span className="text-sm font-semibold text-blue-800">
+              Terpilih <strong className="font-black text-blue-900">{selectedDatabaseIds.length}</strong> kontak untuk diexport.
+            </span>
+          </div>
+          <button
+            onClick={() => setSelectedDatabaseIds([])}
+            className="text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline px-3 py-1.5 bg-white border border-blue-200 rounded-lg shadow-sm transition-all hover:bg-slate-50"
+          >
+            Clear Selection
+          </button>
+        </div>
+      )}
+
       {/* Databases List Table */}
       {loading ? (
         <div className="h-[40vh] flex items-center justify-center">
@@ -935,6 +1128,14 @@ export default function DatabasesPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap">
+                  <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Group/Holding Company</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Brand</th>
@@ -1013,6 +1214,14 @@ export default function DatabasesPage() {
 
                   return (
                     <tr key={c.id} className={`group hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
+                      <td className="py-4 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedDatabaseIds.includes(c.id)}
+                          onChange={() => handleToggleSelect(c.id)}
+                          className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
                       <td className="py-4 px-3 text-center">
                         {checkDatabaseCompleteness(c).isIncomplete && (
                           <span
@@ -2444,6 +2653,162 @@ export default function DatabasesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Export Configuration Modal Overlay */}
+      {isExportConfigModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto pt-10 sm:pt-16">
+          <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 text-slate-900">
+            <button
+              onClick={() => setIsExportConfigModalOpen(false)}
+              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="mb-6">
+              <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
+                <Download className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Custom Export Excel</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Pilih kolom dan tentukan kontak yang ingin di-export ke dalam file Excel.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              {/* Row selection info and list */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">1. Pilih Orang/Kontak yang mau di-export:</h4>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setTempSelectedDbIds(filteredDatabases.map(d => d.id))}
+                      className="text-[10px] font-bold text-blue-600 hover:underline"
+                    >
+                      Pilih Semua ({filteredDatabases.length})
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button
+                      onClick={() => setTempSelectedDbIds([])}
+                      className="text-[10px] font-bold hover:underline text-red-600"
+                    >
+                      Kosongkan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border border-slate-200 rounded-lg bg-white overflow-hidden shadow-sm">
+                  <div className="max-h-[180px] overflow-y-auto divide-y divide-slate-100">
+                    {filteredDatabases.map((c) => {
+                      const isChecked = tempSelectedDbIds.includes(c.id);
+                      return (
+                        <label
+                          key={c.id}
+                          className={`flex items-center gap-3 p-2.5 hover:bg-slate-50 transition-colors cursor-pointer text-xs ${isChecked ? 'bg-blue-50/20' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setTempSelectedDbIds(prev =>
+                                prev.includes(c.id)
+                                  ? prev.filter(id => id !== c.id)
+                                  : [...prev, c.id]
+                              );
+                            }}
+                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="font-bold text-slate-900 block truncate">
+                              {c.salutation || 'Mr'}. {c.firstName} {c.lastName}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block truncate">
+                              {c.jobTitle || 'No Title'} at {c.company?.name || 'No Company'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                            {c.mobilePhone || 'No Phone'}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <p className="text-[10px] font-semibold text-slate-500 mt-2 text-right italic">
+                  * Menampilkan {filteredDatabases.length} kontak hasil filter aktif. Terpilih <strong className="text-blue-600 font-bold">{tempSelectedDbIds.length}</strong> untuk diexport.
+                </p>
+              </div>
+
+              {/* Column/Heading selection list */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">2. Kolom / Heading yang mau di-export:</h4>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedColumns(EXPORT_COLUMNS.map(col => col.key))}
+                      className="text-[10px] font-bold text-blue-600 hover:underline"
+                    >
+                      Select All
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button
+                      onClick={() => setSelectedColumns([])}
+                      className="text-[10px] font-bold text-blue-600 hover:underline"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 border border-slate-200 rounded-xl p-4 bg-white max-h-[40vh] overflow-y-auto">
+                  {EXPORT_COLUMNS.map((col) => {
+                    const isChecked = selectedColumns.includes(col.key);
+                    return (
+                      <label
+                        key={col.key}
+                        className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs font-medium cursor-pointer transition-all ${isChecked ? 'bg-blue-50/50 border-blue-200 text-blue-900 font-semibold' : 'border-slate-100 hover:bg-slate-50 text-slate-600'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            setSelectedColumns(prev => 
+                              prev.includes(col.key)
+                                ? prev.filter(k => k !== col.key)
+                                : [...prev, col.key]
+                            );
+                          }}
+                          className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                        />
+                        {col.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsExportConfigModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteExport}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  Unduh Excel ({tempSelectedDbIds.length} Data)
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
