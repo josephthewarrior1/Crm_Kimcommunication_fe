@@ -8,6 +8,15 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import * as XLSX from 'xlsx';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
+import { RequestPreEventTable } from './components/RequestPreEventTable';
+import { ReminderTable } from './components/ReminderTable';
+import { ReminderDdayTable } from './components/ReminderDdayTable';
+import { CreateEventModal } from './components/CreateEventModal';
+import { EditEventModal } from './components/EditEventModal';
+import { ExcelImportModal } from './components/ExcelImportModal';
+import { DeleteEventConfirmModal } from './components/DeleteEventConfirmModal';
+import { DeleteLeadConfirmModal } from './components/DeleteLeadConfirmModal';
+import { extractPicFromNotes } from './utils/notesHelper';
 
 const checkDatabaseCompleteness = (c: Database) => {
   const missing: string[] = [];
@@ -107,31 +116,11 @@ const getConfirmationStatusLabel = (status: string) => {
   return 'Pending';
 };
 
-const extractPicFromNotes = (notes: string | null | undefined): { pic: string; cleanNotes: string } => {
-  if (!notes) return { pic: '-', cleanNotes: '-' };
-  const picRegex = /^\[PIC:\s*([^\]]+)\]/;
-  const match = notes.match(picRegex);
-  if (match) {
-    const pic = match[1].trim();
-    const cleanNotes = notes.replace(picRegex, '').trim();
-    return { pic, cleanNotes: cleanNotes || '-' };
-  }
-  return { pic: '-', cleanNotes: notes };
-};
 
-const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
-  <svg 
-    className={className} 
-    viewBox="0 0 24 24" 
-    fill="currentColor"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.703 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-  </svg>
-);
+
 
 export default function EventsPage() {
-  const { isAdmin, isManager, isUser } = useAuth();
+  const { isAdmin, isManager, isUser, user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
   const [loading, setLoading] = useState(true);
@@ -231,14 +220,9 @@ export default function EventsPage() {
   const [newActivityNotes, setNewActivityNotes] = useState('');
   const [isLoggingActivity, setIsLoggingActivity] = useState(false);
 
-  // Email template copy states
-  const [isCopyEmailModalOpen, setIsCopyEmailModalOpen] = useState(false);
-  const [copiedEmailHTML, setCopiedEmailHTML] = useState('');
 
-  // Report states
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [eventReport, setEventReport] = useState<any>(null);
-  const [loadingReport, setLoadingReport] = useState(false);
+
+
 
   // Add Lead Modal filter states
   const [allEventLeads, setAllEventLeads] = useState<EventLead[]>([]);
@@ -751,7 +735,9 @@ export default function EventsPage() {
         leadStatus,
         attendanceStatus,
         confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
-        notes: leadNotes.trim() || undefined
+        notes: activeTab === 'request'
+          ? `[Origin: Request] ${leadNotes.trim()}`.trim()
+          : leadNotes.trim() || undefined
       });
 
       toast.success(`Successfully added ${selectedDatabaseIds.length} database(s) as lead(s)!`);
@@ -947,7 +933,6 @@ export default function EventsPage() {
               });
             }
           }
-
           const isAlreadyLead = leads.some(l => l.database.id === resolvedContactId);
           if (!isAlreadyLead) {
             await crmService.createEventLead({
@@ -955,7 +940,8 @@ export default function EventsPage() {
               databaseId: resolvedContactId,
               leadStatus: 'white',
               attendanceStatus: 'invited',
-              confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending'
+              confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
+              notes: activeTab === 'request' ? '[Origin: Request]' : undefined
             });
           }
           
@@ -1037,19 +1023,7 @@ export default function EventsPage() {
     }
   };
 
-  const handleOpenReportModal = async () => {
-    if (!selectedEvent) return;
-    setLoadingReport(true);
-    setIsReportModalOpen(true);
-    try {
-      const data = await crmService.getEventReport(selectedEvent.id);
-      setEventReport(data);
-    } catch (err) {
-      toast.error('Failed to load performance report');
-    } finally {
-      setLoadingReport(false);
-    }
-  };
+
 
   const loadLeadActivities = async (leadId: number) => {
     setLoadingActivities(true);
@@ -1298,90 +1272,9 @@ export default function EventsPage() {
     }
   };
 
-  const triggerWhatsApp = async () => {
-    if (!activeLead) return;
-    const phone = activeLead.database.mobilePhone;
-    if (!phone) {
-      toast.error("Database has no phone number");
-      return;
-    }
-    
-    let formattedPhone = phone.replace(/[^0-9]/g, '');
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '62' + formattedPhone.slice(1);
-    }
-    
-    // Pre-filled template (Phase 6 Meeting reminder/outbound)
-    const template = `Halo ${activeLead.database.salutation ? activeLead.database.salutation + ' ' : ''}${activeLead.database.firstName} ${activeLead.database.lastName},\n\nSaya dari KIM Communication. Ingin mengonfirmasi mengenai project aktif dan ketertarikan Anda untuk berdiskusi dengan Ingram Micro mengenai AI Solutions.`;
-    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(template)}`;
-    
-    window.open(url, '_blank');
-    
-    try {
-      await crmService.addEventLeadActivity(activeLead.id, {
-        activityType: 'WHATSAPP',
-        status: 'SENT',
-        notes: 'Opened WhatsApp Chat Window.'
-      });
-      setUpdateWhatsappStatusStr('SENT');
-      loadLeadActivities(activeLead.id);
-      if (selectedEvent) {
-        const allLeads = await crmService.getEventLeads();
-        setAllEventLeads(allLeads);
-        const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
-        setLeadsSorted(filteredLeads);
-      }
-      toast.success("WhatsApp chat opened and logged.");
-    } catch (e) {
-      toast.error("Failed to log WhatsApp activity");
-    }
-  };
 
-  const triggerEmail = async () => {
-    if (!activeLead) return;
-    const emails = activeLead.database.emails;
-    if (!emails || emails.length === 0) {
-      toast.error("Database has no email address");
-      return;
-    }
-    const emailAddr = emails[0].email;
-    
-    try {
-      const activity = await crmService.addEventLeadActivity(activeLead.id, {
-        activityType: 'EMAIL',
-        status: 'SENT',
-        notes: `Generated email tracking copy template.`
-      });
-      
-      setUpdateEmailStatusStr('SENT');
-      loadLeadActivities(activeLead.id);
-      if (selectedEvent) {
-        const allLeads = await crmService.getEventLeads();
-        setAllEventLeads(allLeads);
-        const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
-        setLeadsSorted(filteredLeads);
-      }
 
-      // Generate tracking URL point to our backend public tracking endpoint
-      const trackingPixelUrl = `${window.location.protocol}//${window.location.host.replace(':3000', ':8080')}/api/event-leads/emails/track/${activity.id}`;
-      
-      setCopiedEmailHTML(`<div style="font-family: sans-serif; font-size: 14px; color: #333; line-height: 1.6;">
-  <p>Halo ${activeLead.database.salutation ? activeLead.database.salutation + ' ' : ''}${activeLead.database.firstName} ${activeLead.database.lastName},</p>
-  <p>Semoga pesan ini menemui Anda dalam keadaan baik.</p>
-  <p>Kami dari <strong>KIM Communication</strong> ingin mendiskusikan implementasi solusi kecerdasan buatan (AI) yang sedang dievaluasi di perusahaan Anda bersama tim <strong>Ingram Micro</strong>.</p>
-  <p>Apakah Anda bersedia untuk berdiskusi singkat atau melakukan meeting via Teams/Zoom?</p>
-  <br/>
-  <p>Salam hangat,</p>
-  <p><strong>CRM Agent</strong><br/>KIM Communication</p>
-  <img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" />
-</div>`);
-      
-      setIsCopyEmailModalOpen(true);
-      toast.success("Email log created. Copy the template to send!");
-    } catch (e) {
-      toast.error("Failed to log Email activity");
-    }
-  };
+
 
   const openDeleteLeadConfirm = (lead: EventLead) => {
     setDeletingLead(lead);
@@ -1464,7 +1357,10 @@ export default function EventsPage() {
     if (activeTab === 'request') {
       const confStatus = l.confirmationStatus?.toLowerCase();
       if (confStatus === 'approve') {
-        return false;
+        const hasRequestOrigin = l.notes?.includes('[Origin: Request]');
+        if (!hasRequestOrigin) {
+          return false;
+        }
       }
     } else if (activeTab === 'pre_event') {
       const confStatus = l.confirmationStatus?.toLowerCase();
@@ -1479,11 +1375,22 @@ export default function EventsPage() {
       }
     }
 
-    // PIC filter
-    if (filterLeadPic) {
+    // PIC filter (only apply for non-request tabs)
+    if (activeTab !== 'request') {
       const { pic } = extractPicFromNotes(l.notes);
-      if (filterLeadPic === '-' && pic !== '-') return false;
-      if (filterLeadPic !== '-' && pic !== filterLeadPic) return false;
+      if (!isAdmin && user) {
+        // Regular staff (non-admin) only sees their own assigned leads
+        const myName = user.fullName || user.username;
+        if (pic !== myName) {
+          return false;
+        }
+      } else {
+        // Admin/Manager filters by the dropdown selection
+        if (filterLeadPic) {
+          if (filterLeadPic === '-' && pic !== '-') return false;
+          if (filterLeadPic !== '-' && pic !== filterLeadPic) return false;
+        }
+      }
     }
 
     // 1. General search query
@@ -2121,6 +2028,8 @@ export default function EventsPage() {
                     </select>
                   </div>
                 )}
+
+
                 
                 <button
                   onClick={() => setSelectedLeadIds([])}
@@ -2214,21 +2123,23 @@ export default function EventsPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by PIC</label>
-                  <select
-                    value={filterLeadPic}
-                    onChange={(e) => setFilterLeadPic(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
-                  >
-                    <option value="">All PICs</option>
-                    <option value="-">Unassigned</option>
-                    {usersList.map((user) => {
-                      const name = user.fullName || user.username;
-                      return <option key={user.id} value={name}>{name}</option>;
-                    })}
-                  </select>
-                </div>
+                {isAdmin && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by PIC</label>
+                    <select
+                      value={filterLeadPic}
+                      onChange={(e) => setFilterLeadPic(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
+                    >
+                      <option value="">All PICs</option>
+                      <option value="-">Unassigned</option>
+                      {usersList.map((user) => {
+                        const name = user.fullName || user.username;
+                        return <option key={user.id} value={name}>{name}</option>;
+                      })}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2251,772 +2162,105 @@ export default function EventsPage() {
               <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms.</p>
             </div>
           ) : activeTab === 'request' || activeTab === 'pre_event' ? (
-            <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-              <table className="w-full min-w-[1850px] text-left border-collapse text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
-                  <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
-                    <th className="py-3 px-3 w-10 text-center"></th>
-                    <th className="py-3 px-3 w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedLeadIds(filteredLeads.map(l => l.id));
-                          } else {
-                            setSelectedLeadIds([]);
-                          }
-                        }}
-                        className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                      />
-                    </th>
-                    <th className="py-3 px-4">Company Name</th>
-                    <th className="py-3 px-4">Salutation</th>
-                    <th className="py-3 px-4">First Name</th>
-                    <th className="py-3 px-4">Last Name</th>
-                    <th className="py-3 px-4">Position</th>
-                    <th className="py-3 px-4">Job Title</th>
-                    <th className="py-3 px-4">Office Phone</th>
-                    <th className="py-3 px-4">Mobile Phone</th>
-                    <th className="py-3 px-4">Office Email</th>
-                    <th className="py-3 px-4">Personal Email</th>
-                    <th className="py-3 px-4">Engagement</th>
-                    <th className="py-3 px-4">Tele Remarks</th>
-                    <th className="py-3 px-4 text-center">Confirmation Status</th>
-                    <th className="py-3 px-4">PIC</th>
-                    <th className="py-3 px-4">Notes</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredLeads.map((l) => {
-                    const { pic, cleanNotes } = extractPicFromNotes(l.notes);
-                    return (
-                      <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
-                        <td className="py-3.5 px-3 text-center">
-                          {checkDatabaseCompleteness(l.database).isIncomplete && (
-                            <span
-                              className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                              title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
-                            >
-                              <AlertCircle className="w-4 h-4 shrink-0" />
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedLeadIds.includes(l.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedLeadIds([...selectedLeadIds, l.id]);
-                              } else {
-                                setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
-                              }
-                            }}
-                            className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
-                          />
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold text-slate-700">
-                          {l.database.company?.name || <span className="text-slate-400">-</span>}
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-500">
-                          {l.database.salutation || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900">
-                          {l.database.firstName}
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900">
-                          {l.database.lastName || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-655 font-medium">
-                          {l.database.positionLevel || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-950 font-medium">
-                          {l.database.jobTitle || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-600">
-                          {l.database.company?.officePhone || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-700">
-                          {l.database.mobilePhone || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-600">
-                          {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-600">
-                          {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2.5 text-slate-400">
-                            {/* Call Engagement */}
-                            <button
-                              onDoubleClick={() => handleToggleEngagement(l, 'CALL')}
-                              className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                              title={`Call Status: ${l.callStatus || 'NOT_CONTACTED'} (Double-click to toggle)`}
-                            >
-                              <Phone 
-                                className={`w-4 h-4 transition-all ${
-                                  l.callStatus === 'CONNECTED' 
-                                    ? 'text-blue-600 fill-blue-500/10 scale-110 font-bold' 
-                                    : l.callStatus && l.callStatus !== 'NOT_CONTACTED' 
-                                      ? 'text-slate-600' 
-                                      : 'text-slate-300'
-                                }`} 
-                              />
-                            </button>
-
-                            {/* Email Engagement */}
-                            <button
-                              onDoubleClick={() => handleToggleEngagement(l, 'EMAIL')}
-                              className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                              title={`Email Status: ${l.emailStatus || 'NOT_SENT'} (Double-click to toggle)`}
-                            >
-                              <Mail 
-                                className={`w-4 h-4 transition-all ${
-                                  l.emailStatus === 'SENT' || l.emailStatus === 'OPENED' || l.emailStatus === 'RESPONDED'
-                                    ? 'text-rose-500 fill-rose-500/10 scale-110' 
-                                    : 'text-slate-300'
-                                }`} 
-                              />
-                            </button>
-
-                            {/* WhatsApp Engagement */}
-                            <button
-                              onDoubleClick={() => handleToggleEngagement(l, 'WHATSAPP')}
-                              className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                              title={`WhatsApp Status: ${l.whatsappStatus || 'NOT_SENT'} (Double-click to toggle)`}
-                            >
-                              <WhatsAppIcon 
-                                className={`w-4 h-4 transition-all ${
-                                  l.whatsappStatus === 'SENT' || l.whatsappStatus === 'RESPONDED'
-                                    ? 'text-[#25D366] scale-110 filter drop-shadow-[0_1px_2px_rgba(37,211,102,0.2)]' 
-                                    : 'text-slate-300'
-                                }`} 
-                              />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <select
-                            value={l.leadStatus || 'not_respon_yet'}
-                            onChange={(e) => handleDirectUpdateLead(l, 'remarks', e.target.value)}
-                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.leadStatus)}`}
-                          >
-                            <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
-                            <option value="not_respond_2x" className="text-slate-750 bg-white font-semibold">Not respond 2x</option>
-                            <option value="registered" className="text-emerald-700 bg-white font-extrabold">Registered</option>
-                            <option value="tentative" className="text-amber-700 bg-white font-extrabold">Tentative</option>
-                            <option value="not_interest" className="text-rose-700 bg-white font-extrabold">Not Interest</option>
-                          </select>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex justify-center">
-                            <select
-                              value={l.confirmationStatus || 'pending'}
-                              onChange={(e) => handleDirectUpdateLead(l, 'confirmationStatus', e.target.value)}
-                              className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(l.confirmationStatus || 'pending')}`}
-                            >
-                              <option value="pending" className="text-blue-700 bg-white font-extrabold">Pending</option>
-                              <option value="approve" className="text-emerald-700 bg-white font-extrabold">Approve</option>
-                              <option value="decline" className="text-rose-700 bg-white font-extrabold">Decline</option>
-                            </select>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-700">
-                          {pic}
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={cleanNotes}>
-                          {cleanNotes}
-                        </td>
-                        <td className="py-3.5 px-4 text-right space-x-1">
-                          <button
-                            onClick={() => handleOpenUpdateLeadModal(l)}
-                            className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
-                            title="Update Status"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          {!isUser && (
-                            <button
-                              onClick={() => openDeleteLeadConfirm(l)}
-                              className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
-                              title="Remove Participant"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <RequestPreEventTable
+              filteredLeads={filteredLeads}
+              selectedLeadIds={selectedLeadIds}
+              setSelectedLeadIds={setSelectedLeadIds}
+              activeTab={activeTab}
+              checkDatabaseCompleteness={checkDatabaseCompleteness}
+              handleToggleEngagement={handleToggleEngagement}
+              handleDirectUpdateLead={handleDirectUpdateLead}
+              handleOpenUpdateLeadModal={handleOpenUpdateLeadModal}
+              openDeleteLeadConfirm={openDeleteLeadConfirm}
+              isUser={isUser}
+              isAdmin={isAdmin}
+              extractPicFromNotes={extractPicFromNotes}
+              getStatusBadgeStyle={getStatusBadgeStyle}
+              getConfirmationStatusBadgeStyle={getConfirmationStatusBadgeStyle}
+            />
           ) : activeTab === 'reminder' ? (
-            <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-              <table className="w-full min-w-[1800px] text-left border-collapse text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
-                  <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
-                    <th className="py-3 px-3 w-10 text-center"></th>
-                    <th className="py-3 px-3 w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedLeadIds(filteredLeads.map(l => l.id));
-                          } else {
-                            setSelectedLeadIds([]);
-                          }
-                        }}
-                        className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                      />
-                    </th>
-                    <th className="py-3 px-4">Company Name</th>
-                    <th className="py-3 px-4">Salutation</th>
-                    <th className="py-3 px-4">First Name</th>
-                    <th className="py-3 px-4">Last Name</th>
-                    <th className="py-3 px-4">Position</th>
-                    <th className="py-3 px-4">Job Title</th>
-                    <th className="py-3 px-4">Office Phone</th>
-                    <th className="py-3 px-4">Mobile Phone</th>
-                    <th className="py-3 px-4">Office Email</th>
-                    <th className="py-3 px-4">Personal Email</th>
-                    <th className="py-3 px-4 text-center">H-7</th>
-                    <th className="py-3 px-4 text-center">H-3</th>
-                    <th className="py-3 px-4 text-center">H-1</th>
-                    <th className="py-3 px-4">Notes</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredLeads.map((l) => (
-                    <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
-                      <td className="py-3.5 px-3 text-center">
-                        {checkDatabaseCompleteness(l.database).isIncomplete && (
-                          <span
-                            className="inline-flex cursor-help text-amber-550 text-amber-500 hover:text-amber-600 transition-colors"
-                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
-                          >
-                            <AlertCircle className="w-4 h-4 shrink-0" />
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedLeadIds.includes(l.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedLeadIds([...selectedLeadIds, l.id]);
-                            } else {
-                              setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
-                            }
-                          }}
-                          className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
-                        />
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-700">
-                        {l.database.company?.name || <span className="text-slate-400">-</span>}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {l.database.salutation || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {l.database.firstName}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {l.database.lastName || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-655 font-medium">
-                        {l.database.positionLevel || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-950 font-medium">
-                        {l.database.jobTitle || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.company?.officePhone || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-700">
-                        {l.database.mobilePhone || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
-                      </td>
-                      {/* H-7 Dropdown */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex justify-center">
-                          <select
-                            value={l.reminderH7 || ''}
-                            onChange={(e) => handleDirectUpdateLead(l, 'reminderH7', e.target.value)}
-                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.reminderH7 || '')}`}
-                          >
-                            <option value="" className="text-slate-700 bg-white font-normal">- None</option>
-                            <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
-                            <option value="not_respond_2x" className="text-slate-750 bg-white font-semibold">Not respond 2x</option>
-                            <option value="tentative" className="text-amber-700 bg-white font-extrabold">Tentative</option>
-                            <option value="confirm" className="text-emerald-700 bg-white font-extrabold">Confirm</option>
-                            <option value="unable_to_attend" className="text-rose-700 bg-white font-extrabold">Unable to attend</option>
-                          </select>
-                        </div>
-                      </td>
-                      {/* H-3 Dropdown */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex justify-center">
-                          <select
-                            value={l.reminderH3 || ''}
-                            onChange={(e) => handleDirectUpdateLead(l, 'reminderH3', e.target.value)}
-                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.reminderH3 || '')}`}
-                          >
-                            <option value="" className="text-slate-700 bg-white font-normal">- None</option>
-                            <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
-                            <option value="not_respond_2x" className="text-slate-750 bg-white font-semibold">Not respond 2x</option>
-                            <option value="tentative" className="text-amber-700 bg-white font-extrabold">Tentative</option>
-                            <option value="confirm" className="text-emerald-700 bg-white font-extrabold">Confirm</option>
-                            <option value="unable_to_attend" className="text-rose-700 bg-white font-extrabold">Unable to attend</option>
-                          </select>
-                        </div>
-                      </td>
-                      {/* H-1 Dropdown */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex justify-center">
-                          <select
-                            value={l.reminderH1 || ''}
-                            onChange={(e) => handleDirectUpdateLead(l, 'reminderH1', e.target.value)}
-                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.reminderH1 || '')}`}
-                          >
-                            <option value="" className="text-slate-700 bg-white font-normal">- None</option>
-                            <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
-                            <option value="not_respond_2x" className="text-slate-750 bg-white font-semibold">Not respond 2x</option>
-                            <option value="tentative" className="text-amber-700 bg-white font-extrabold">Tentative</option>
-                            <option value="confirm" className="text-emerald-700 bg-white font-extrabold">Confirm</option>
-                            <option value="unable_to_attend" className="text-rose-700 bg-white font-extrabold">Unable to attend</option>
-                          </select>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={l.notes}>
-                        {l.notes || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right space-x-1">
-                        <button
-                          onClick={() => handleOpenUpdateLeadModal(l)}
-                          className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
-                          title="Update Status"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        {!isUser && (
-                          <button
-                            onClick={() => openDeleteLeadConfirm(l)}
-                            className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
-                            title="Remove Participant"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ReminderTable
+              filteredLeads={filteredLeads}
+              selectedLeadIds={selectedLeadIds}
+              setSelectedLeadIds={setSelectedLeadIds}
+              checkDatabaseCompleteness={checkDatabaseCompleteness}
+              handleDirectUpdateLead={handleDirectUpdateLead}
+              handleOpenUpdateLeadModal={handleOpenUpdateLeadModal}
+              openDeleteLeadConfirm={openDeleteLeadConfirm}
+              isUser={isUser}
+              getStatusBadgeStyle={getStatusBadgeStyle}
+            />
           ) : (
-            <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-              <table className="w-full min-w-[1800px] text-left border-collapse text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
-                  <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
-                    <th className="py-3 px-3 w-10 text-center"></th>
-                    <th className="py-3 px-3 w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedLeadIds(filteredLeads.map(l => l.id));
-                          } else {
-                            setSelectedLeadIds([]);
-                          }
-                        }}
-                        className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                      />
-                    </th>
-                    <th className="py-3 px-4">Company Name</th>
-                    <th className="py-3 px-4">Salutation</th>
-                    <th className="py-3 px-4">First Name</th>
-                    <th className="py-3 px-4">Last Name</th>
-                    <th className="py-3 px-4">Position</th>
-                    <th className="py-3 px-4">Job Title</th>
-                    <th className="py-3 px-4">Office Phone</th>
-                    <th className="py-3 px-4">Mobile Phone</th>
-                    <th className="py-3 px-4">Office Email</th>
-                    <th className="py-3 px-4">Personal Email</th>
-                    <th className="py-3 px-4 text-center">Hari H</th>
-                    <th className="py-3 px-4">Notes</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredLeads.map((l) => (
-                    <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
-                      <td className="py-3.5 px-3 text-center">
-                        {checkDatabaseCompleteness(l.database).isIncomplete && (
-                          <span
-                            className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
-                          >
-                            <AlertCircle className="w-4 h-4 shrink-0" />
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedLeadIds.includes(l.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedLeadIds([...selectedLeadIds, l.id]);
-                            } else {
-                              setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
-                            }
-                          }}
-                          className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
-                        />
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-700">
-                        {l.database.company?.name || <span className="text-slate-400">-</span>}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {l.database.salutation || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {l.database.firstName}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {l.database.lastName || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-655 font-medium">
-                        {l.database.positionLevel || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-950 font-medium">
-                        {l.database.jobTitle || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.company?.officePhone || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-700">
-                        {l.database.mobilePhone || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
-                      </td>
-                      {/* Hari H Dropdown */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex justify-center">
-                          <select
-                            value={l.reminderHariH || ''}
-                            onChange={(e) => handleDirectUpdateLead(l, 'reminderHariH', e.target.value)}
-                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.reminderHariH || '')}`}
-                          >
-                            <option value="" className="text-slate-700 bg-white font-normal">- None</option>
-                            <option value="on_location" className="text-emerald-700 bg-white font-extrabold">On Location</option>
-                            <option value="on_the_way" className="text-blue-700 bg-white font-extrabold">On The Way</option>
-                            <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not Respond Yet</option>
-                            <option value="unable_to_attend" className="text-rose-700 bg-white font-extrabold">Unable Attend</option>
-                          </select>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={l.notes}>
-                        {l.notes || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right space-x-1">
-                        <button
-                          onClick={() => handleOpenUpdateLeadModal(l)}
-                          className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
-                          title="Update Status"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        {!isUser && (
-                          <button
-                            onClick={() => openDeleteLeadConfirm(l)}
-                            className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
-                            title="Remove Participant"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ReminderDdayTable
+              filteredLeads={filteredLeads}
+              selectedLeadIds={selectedLeadIds}
+              setSelectedLeadIds={setSelectedLeadIds}
+              checkDatabaseCompleteness={checkDatabaseCompleteness}
+              handleDirectUpdateLead={handleDirectUpdateLead}
+              handleOpenUpdateLeadModal={handleOpenUpdateLeadModal}
+              openDeleteLeadConfirm={openDeleteLeadConfirm}
+              isUser={isUser}
+              getStatusBadgeStyle={getStatusBadgeStyle}
+            />
           )}
         </div>
       )}
 
-      {/* Create Event Modal Overlay */}
-      {isCreateEventModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200">
-            <button
-              onClick={() => setIsCreateEventModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {/* Create Event Modal */}
+      <CreateEventModal
+        isOpen={isCreateEventModalOpen}
+        onClose={() => setIsCreateEventModalOpen(false)}
+        name={name}
+        setName={setName}
+        eventType={eventType}
+        setEventType={setEventType}
+        clientName={clientName}
+        setClientName={setClientName}
+        dateStart={dateStart}
+        setDateStart={setDateStart}
+        dateEnd={dateEnd}
+        setDateEnd={setDateEnd}
+        notes={notes}
+        setNotes={setNotes}
+        submittingEvent={submittingEvent}
+        onSubmit={handleCreateEvent}
+      />
 
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Create New Event</h3>
+      {/* Edit Event Modal */}
+      <EditEventModal
+        isOpen={isEditEventModalOpen}
+        editingEvent={editingEvent}
+        onClose={() => {
+          setIsEditEventModalOpen(false);
+          setEditingEvent(null);
+        }}
+        editName={editName}
+        setEditName={setEditName}
+        editEventType={editEventType}
+        setEditEventType={setEditEventType}
+        editClientName={editClientName}
+        setEditClientName={setEditClientName}
+        editDateStart={editDateStart}
+        setEditDateStart={setEditDateStart}
+        editDateEnd={editDateEnd}
+        setEditDateEnd={setEditDateEnd}
+        editNotes={editNotes}
+        setEditNotes={setEditNotes}
+        submittingEvent={submittingEvent}
+        onSubmit={handleUpdateEvent}
+      />
 
-            <form onSubmit={handleCreateEvent} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Event Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Cloud Security Summit 2026"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Event Type</label>
-                  <select
-                    value={eventType}
-                    onChange={(e) => setEventType(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="partner">Partner</option>
-                    <option value="end_user">End User</option>
-                    <option value="internal">Internal</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Client Target</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Google Cloud"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date Start</label>
-                  <input
-                    type="date"
-                    value={dateStart}
-                    onChange={(e) => setDateStart(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date End</label>
-                  <input
-                    type="date"
-                    value={dateEnd}
-                    onChange={(e) => setDateEnd(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Notes</label>
-                <textarea
-                  placeholder="Additional event description..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateEventModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingEvent}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {submittingEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Save Event
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Event Modal Overlay */}
-      {isEditEventModalOpen && editingEvent && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200">
-            <button
-              onClick={() => {
-                setIsEditEventModalOpen(false);
-                setEditingEvent(null);
-              }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Edit Event</h3>
-
-            <form onSubmit={handleUpdateEvent} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Event Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Cloud Security Summit 2026"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Event Type</label>
-                  <select
-                    value={editEventType}
-                    onChange={(e) => setEditEventType(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="partner">Partner</option>
-                    <option value="end_user">End User</option>
-                    <option value="internal">Internal</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Client Target</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Google Cloud"
-                    value={editClientName}
-                    onChange={(e) => setEditClientName(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date Start</label>
-                  <input
-                    type="date"
-                    value={editDateStart}
-                    onChange={(e) => setEditDateStart(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date End</label>
-                  <input
-                    type="date"
-                    value={editDateEnd}
-                    onChange={(e) => setEditDateEnd(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Notes</label>
-                <textarea
-                  placeholder="Additional event description..."
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  rows={2}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditEventModalOpen(false);
-                    setEditingEvent(null);
-                  }}
-                  className="px-4 py-2 bg-slate-105 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingEvent}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {submittingEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Event Confirmation Modal Overlay */}
-      {isDeleteEventConfirmOpen && deletingEvent && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Delete Event</h3>
-            <p className="text-sm text-slate-500 mb-6">
-              Are you sure you want to permanently delete the event <span className="font-semibold text-slate-800">"{deletingEvent.name}"</span>? 
-              This will completely erase the event and all associated event lead tracking logs. This action is irreversible.
-            </p>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDeleteEventConfirmOpen(false);
-                  setDeletingEvent(null);
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                disabled={submittingEvent}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteEvent}
-                disabled={submittingEvent}
-                className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-              >
-                {submittingEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Yes, Delete Permanently
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete Event Confirmation Modal */}
+      <DeleteEventConfirmModal
+        isOpen={isDeleteEventConfirmOpen}
+        deletingEvent={deletingEvent}
+        onClose={() => {
+          setIsDeleteEventConfirmOpen(false);
+          setDeletingEvent(null);
+        }}
+        onConfirm={handleDeleteEvent}
+        submittingEvent={submittingEvent}
+      />
 
       {/* Add Lead Modal Overlay */}
       {isAddLeadModalOpen && selectedEvent && (
@@ -3502,199 +2746,34 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* Copy Email Template Modal */}
-      {isCopyEmailModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
-            <button
-              onClick={() => setIsCopyEmailModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Copy Email Outbound Template</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Pesan ini mengandung email tracking pixel rahasia untuk melacak open-rate secara otomatis. Copy kode di bawah ini lalu paste sebagai HTML/RichText di aplikasi email Anda (Outlook/Gmail).
-            </p>
-
-            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 max-h-[250px] overflow-y-auto font-mono text-[10px] text-slate-700 whitespace-pre-wrap select-all">
-              {copiedEmailHTML}
-            </div>
-
-            <div className="flex gap-3 justify-end mt-6">
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(copiedEmailHTML);
-                  toast.success("HTML template copied to clipboard!");
-                }}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                Copy HTML Template
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsCopyEmailModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
 
-      {/* Delete Lead Confirm Modal Overlay */}
-      {isDeleteLeadConfirmOpen && deletingLead && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
-            <button
-              onClick={() => {
-                setIsDeleteLeadConfirmOpen(false);
-                setDeletingLead(null);
-              }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {/* Delete Lead Confirm Modal */}
+      <DeleteLeadConfirmModal
+        isOpen={isDeleteLeadConfirmOpen}
+        deletingLead={deletingLead}
+        onClose={() => {
+          setIsDeleteLeadConfirmOpen(false);
+          setDeletingLead(null);
+        }}
+        onConfirm={handleDeleteLead}
+        submittingLeadDelete={submittingLeadDelete}
+      />
 
-            <h3 className="text-lg font-extrabold text-slate-900 mb-1">Remove Participant from Event</h3>
-            <p className="text-xs text-slate-500 mb-6">
-              Are you sure you want to remove this person from the event?
-            </p>
-
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 mb-6 text-sm">
-              <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Name</span>
-                <span className="font-bold text-slate-800">{deletingLead.database.firstName} {deletingLead.database.lastName}</span>
-              </div>
-              <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Job Title</span>
-                <span className="font-semibold text-slate-700">{deletingLead.database.jobTitle || '-'}</span>
-              </div>
-              <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company</span>
-                <span className="font-semibold text-slate-700">{deletingLead.database.company?.name || '-'}</span>
-              </div>
-              <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Industry</span>
-                <span className="font-semibold text-slate-700">{deletingLead.database.company?.industry || '-'}</span>
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDeleteLeadConfirmOpen(false);
-                  setDeletingLead(null);
-                }}
-                className="px-4 py-2 bg-slate-105 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteLead}
-                disabled={submittingLeadDelete}
-                className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-750 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-              >
-                {submittingLeadDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Remove
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Excel Import Modal Overlay for Event Leads */}
-      {isImportLeadsModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto pt-10 sm:pt-16">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
-            <button
-              onClick={() => {
-                setIsImportLeadsModalOpen(false);
-                setImportLeadsFile(null);
-              }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-              disabled={isImportingLeads}
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center mb-6">
-              <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
-                <Plus className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-extrabold text-slate-900">Import Leads Excel</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Unggah berkas Excel berisi daftar kontak untuk dimasukkan ke tab <strong className="text-blue-600">{activeTab === 'pre_event' ? 'Pre-Event' : 'Request'}</strong>.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50/50 transition-colors relative cursor-pointer">
-                <input
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setImportLeadsFile(e.target.files[0]);
-                    }
-                  }}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  disabled={isImportingLeads}
-                />
-                <Download className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <span className="block text-xs font-bold text-slate-700">
-                  {importLeadsFile ? importLeadsFile.name : 'Pilih berkas Excel (.xlsx)'}
-                </span>
-                <span className="block text-[10px] text-slate-400 mt-1">Maksimal ukuran 5MB</span>
-              </div>
-
-              {isImportingLeads && (
-                <div className="space-y-2">
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-2 transition-all duration-300 rounded-full"
-                      style={{ width: `${importLeadsProgress}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-bold text-blue-600 block text-center">
-                    Memproses... {importLeadsProgress}%
-                  </span>
-                </div>
-              )}
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsImportLeadsModalOpen(false);
-                    setImportLeadsFile(null);
-                  }}
-                  className="px-4 py-2 bg-slate-105 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
-                  disabled={isImportingLeads}
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleImportLeadsExcel}
-                  disabled={!importLeadsFile || isImportingLeads}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {isImportingLeads ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                  Mulai Impor
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Excel Import Modal */}
+      <ExcelImportModal
+        isOpen={isImportLeadsModalOpen}
+        onClose={() => {
+          setIsImportLeadsModalOpen(false);
+          setImportLeadsFile(null);
+        }}
+        importLeadsFile={importLeadsFile}
+        setImportLeadsFile={setImportLeadsFile}
+        isImportingLeads={isImportingLeads}
+        importLeadsProgress={importLeadsProgress}
+        activeTab={activeTab}
+        onImport={handleImportLeadsExcel}
+      />
     </div>
   );
 }
