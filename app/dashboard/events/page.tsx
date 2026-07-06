@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Event, EventLead, Database, EventLeadActivity } from '../../../lib/types';
+import { Event, EventLead, Database, EventLeadActivity, AppUser } from '../../../lib/types';
 import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Users, Eye, Edit2, Trash2, Download, Check, Square, CheckSquare, RefreshCw, CheckCircle, Phone, Mail, MessageSquare, Calendar, Award, TrendingUp, BarChart3, Copy, Flame, Sun, Snowflake, ArrowLeft, AlertCircle, ExternalLink, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -107,6 +107,18 @@ const getConfirmationStatusLabel = (status: string) => {
   return 'Pending';
 };
 
+const extractPicFromNotes = (notes: string | null | undefined): { pic: string; cleanNotes: string } => {
+  if (!notes) return { pic: '-', cleanNotes: '-' };
+  const picRegex = /^\[PIC:\s*([^\]]+)\]/;
+  const match = notes.match(picRegex);
+  if (match) {
+    const pic = match[1].trim();
+    const cleanNotes = notes.replace(picRegex, '').trim();
+    return { pic, cleanNotes: cleanNotes || '-' };
+  }
+  return { pic: '-', cleanNotes: notes };
+};
+
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg 
     className={className} 
@@ -184,7 +196,16 @@ export default function EventsPage() {
 
   // Form inputs for updating a Lead status
   const [activeLead, setActiveLead] = useState<EventLead | null>(null);
-  const [activeTab, setActiveTab] = useState<'event' | 'reminder' | 'reminder_dday'>('event');
+  const [activeTab, setActiveTab] = useState<'request' | 'pre_event' | 'reminder' | 'reminder_dday'>('request');
+  const [usersList, setUsersList] = useState<AppUser[]>([]);
+  const [filterLeadPic, setFilterLeadPic] = useState('');
+  
+  // Excel Import states for Event Leads
+  const [isImportLeadsModalOpen, setIsImportLeadsModalOpen] = useState(false);
+  const [importLeadsFile, setImportLeadsFile] = useState<File | null>(null);
+  const [importLeadsProgress, setImportLeadsProgress] = useState(0);
+  const [isImportingLeads, setIsImportingLeads] = useState(false);
+
   const [updateLeadStatusStr, setUpdateLeadStatusStr] = useState('white');
   const [updateAttendanceStatusStr, setUpdateAttendanceStatusStr] = useState('invited');
   const [updateConfirmationStatusStr, setUpdateConfirmationStatusStr] = useState('pending');
@@ -235,14 +256,16 @@ export default function EventsPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [eList, cList, lList] = await Promise.all([
+      const [eList, cList, lList, uList] = await Promise.all([
         crmService.getEvents(),
         crmService.getDatabases(),
-        crmService.getEventLeads()
+        crmService.getEventLeads(),
+        crmService.getUsers().catch(() => [])
       ]);
       setEvents(eList);
       setDatabases(cList.filter(c => c.isActive)); // only active databases
       setAllEventLeads(lList);
+      setUsersList(uList);
     } catch (err) {
       toast.error('Failed to load events or databases');
     } finally {
@@ -384,9 +407,9 @@ export default function EventsPage() {
       return status;
     };
 
-    if (activeTab === 'event') {
-      sheetName = 'Event Leads';
-      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Event_Report.xlsx`;
+    if (activeTab === 'request' || activeTab === 'pre_event') {
+      sheetName = activeTab === 'request' ? 'Request Leads' : 'Pre-Event Leads';
+      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_${activeTab === 'request' ? 'Request' : 'PreEvent'}_Report.xlsx`;
       
       dataToExport = filteredLeads.map((l, index) => {
         // Map Call Status label
@@ -402,6 +425,8 @@ export default function EventsPage() {
           decline: 'Decline',
         };
         const confirmationLabel = confirmationLabels[l.confirmationStatus || 'pending'] || l.confirmationStatus;
+
+        const { pic, cleanNotes } = extractPicFromNotes(l.notes);
 
         return {
           'No': index + 1,
@@ -420,7 +445,8 @@ export default function EventsPage() {
           'Email Status': l.emailStatus === 'SENT' ? 'Sudah Email' : 'Belum Email',
           'Tele Remarks': getStatusLabel(l.leadStatus),
           'Confirmation Status': confirmationLabel,
-          'Notes': l.notes || '-'
+          'PIC': pic,
+          'Notes': cleanNotes
         };
       });
     } else if (activeTab === 'reminder') {
@@ -707,6 +733,7 @@ export default function EventsPage() {
     setFilterLeadPosition('');
     setFilterLeadIndustry('');
     setFilterLeadCity('');
+    setFilterLeadPic('');
   };
 
   const handleAddLead = async (e: React.FormEvent) => {
@@ -723,6 +750,7 @@ export default function EventsPage() {
         databaseIds: selectedDatabaseIds,
         leadStatus,
         attendanceStatus,
+        confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
         notes: leadNotes.trim() || undefined
       });
 
@@ -738,6 +766,274 @@ export default function EventsPage() {
       toast.error(err.message || 'Failed to add database(s) to event');
     } finally {
       setSubmittingLead(false);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'Nama Group', 'Nama Brand', 'Company Name', 'Salutation', 
+      'First Name', 'Last Name', 'Position', 'Speciality/Division', 
+      'Jobtitle', 'Address', 'Office Phone', 'Mobile Phone', 
+      'Company Email Address', 'Personal Email Address', 'Industry', 
+      'Company Size (Revenue)', 'Company Size (Employee)', 'Company Hardware', 
+      'Linkedin Link', 'City', 'Company Website'
+    ];
+    
+    const sampleData = [
+      {
+        'Nama Group': 'Kim Holding',
+        'Nama Brand': 'Kim Comm',
+        'Company Name': 'PT Kim Communication',
+        'Salutation': 'Mr',
+        'First Name': 'Budi',
+        'Last Name': 'Anto',
+        'Position': 'manager',
+        'Speciality/Division': 'Marketing',
+        'Jobtitle': 'Marketing Director',
+        'Address': 'Jl. Merdeka No. 10',
+        'Office Phone': '021-1234567',
+        'Mobile Phone': '081234567890',
+        'Company Email Address': 'budi.anto@kimcomm.com',
+        'Personal Email Address': 'budi.anto@gmail.com',
+        'Industry': 'Telecommunication',
+        'Company Size (Revenue)': '10B',
+        'Company Size (Employee)': '100',
+        'Company Hardware': 'Cisco',
+        'Linkedin Link': 'https://linkedin.com/in/budianto',
+        'City': 'Jakarta',
+        'Company Website': 'www.kimcomm.com'
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData, { header: headers });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Leads');
+
+    worksheet['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 3, 15) }));
+
+    XLSX.writeFile(workbook, 'Event_Leads_Import_Template.xlsx');
+    toast.success('Template Excel berhasil diunduh!');
+  };
+
+  const handleImportLeadsExcel = async () => {
+    if (!importLeadsFile || !selectedEvent) return;
+    setIsImportingLeads(true);
+    setImportLeadsProgress(5);
+
+    try {
+      const reader = new FileReader();
+      
+      const fileData = await new Promise<ArrayBuffer>((resolve, reject) => {
+        reader.onload = (e) => {
+          if (e.target?.result) resolve(e.target.result as ArrayBuffer);
+          else reject(new Error('Failed to read file'));
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(importLeadsFile);
+      });
+
+      const workbook = XLSX.read(fileData, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json<any>(worksheet);
+
+      if (rows.length === 0) {
+        throw new Error('File Excel kosong atau tidak terbaca.');
+      }
+
+      setImportLeadsProgress(20);
+
+      const [allCompanies, allDbContacts] = await Promise.all([
+        crmService.getCompanies(),
+        crmService.getDatabases()
+      ]);
+
+      setImportLeadsProgress(40);
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const firstName = String(row['First Name'] || '').trim();
+        const lastName = String(row['Last Name'] || '').trim();
+        
+        if (!firstName || !lastName) {
+          errorCount++;
+          continue;
+        }
+
+        const companyNameRaw = String(row['Company Name'] || '').trim();
+        
+        try {
+          let resolvedCompanyId: number | undefined = undefined;
+          if (companyNameRaw) {
+            let companyName = companyNameRaw;
+            if (companyName.toUpperCase().endsWith(' PT')) {
+              companyName = 'PT ' + companyName.slice(0, -3).trim();
+            } else if (companyName.toUpperCase().endsWith(' PT.')) {
+              companyName = 'PT ' + companyName.slice(0, -4).trim();
+            }
+            
+            const existingCompany = allCompanies.find(c => 
+              c.name.toLowerCase().trim() === companyName.toLowerCase().trim()
+            );
+
+            if (existingCompany) {
+              resolvedCompanyId = existingCompany.id;
+            } else {
+              const newCompany = await crmService.createCompany({
+                name: companyName,
+                brandName: String(row['Nama Brand'] || '').trim() || undefined,
+                address: String(row['Address'] || '').trim() || undefined,
+                officePhone: String(row['Office Phone'] || '').trim() || undefined,
+                website: String(row['Company Website'] || '').trim() || undefined,
+                industry: String(row['Industry'] || '').trim() || undefined,
+                companySizeRevenue: String(row['Company Size (Revenue)'] || '').trim() || undefined,
+                companySizeEmployee: String(row['Company Size (Employee)'] || '').trim() || undefined,
+                companyHardware: String(row['Company Hardware'] || '').trim() || undefined,
+                city: String(row['City'] || '').trim() || undefined
+              });
+              resolvedCompanyId = newCompany.id;
+              allCompanies.push(newCompany);
+            }
+          }
+
+          let resolvedContactId: number;
+          const existingContact = allDbContacts.find(c => 
+            c.firstName.toLowerCase().trim() === firstName.toLowerCase() &&
+            c.lastName.toLowerCase().trim() === lastName.toLowerCase()
+          );
+
+          if (existingContact) {
+            resolvedContactId = existingContact.id;
+          } else {
+            const newContact = await crmService.createDatabase({
+              firstName,
+              lastName,
+              salutation: String(row['Salutation'] || 'Mr').trim(),
+              positionLevel: String(row['Position'] || 'unknown').trim().toLowerCase(),
+              specialityDivision: String(row['Speciality/Division'] || '').trim() || undefined,
+              jobTitle: String(row['Jobtitle'] || '').trim() || undefined,
+              mobilePhone: String(row['Mobile Phone'] || '').trim() || undefined,
+              linkedinUrl: String(row['Linkedin Link'] || '').trim() || undefined,
+              databaseType: 'unknown',
+              source: 'excel_import',
+              isActive: true
+            }, resolvedCompanyId);
+            
+            resolvedContactId = newContact.id;
+            allDbContacts.push(newContact);
+
+            const companyEmail = String(row['Company Email Address'] || '').trim().toLowerCase();
+            const personalEmail = String(row['Personal Email Address'] || '').trim().toLowerCase();
+
+            if (companyEmail) {
+              await crmService.addDatabaseEmail(newContact.id, {
+                email: companyEmail,
+                emailType: 'company',
+                isPrimary: true,
+                isVerified: true,
+                isCorporate: true
+              });
+            }
+            if (personalEmail) {
+              await crmService.addDatabaseEmail(newContact.id, {
+                email: personalEmail,
+                emailType: 'personal',
+                isPrimary: !companyEmail,
+                isVerified: true,
+                isCorporate: false
+              });
+            }
+          }
+
+          const isAlreadyLead = leads.some(l => l.database.id === resolvedContactId);
+          if (!isAlreadyLead) {
+            await crmService.createEventLead({
+              eventId: selectedEvent.id,
+              databaseId: resolvedContactId,
+              leadStatus: 'white',
+              attendanceStatus: 'invited',
+              confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending'
+            });
+          }
+          
+          successCount++;
+        } catch (rowErr) {
+          console.error(`Error processing row ${i + 1}`, rowErr);
+          errorCount++;
+        }
+
+        setImportLeadsProgress(Math.floor(40 + (50 * (i + 1) / rows.length)));
+      }
+
+      setImportLeadsProgress(100);
+      toast.success(`Impor selesai! Berhasil: ${successCount} baris. Gagal/Skip: ${errorCount} baris.`);
+      setIsImportLeadsModalOpen(false);
+      setImportLeadsFile(null);
+      
+      handleSelectEvent(selectedEvent);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal memproses file Excel.');
+    } finally {
+      setIsImportingLeads(false);
+      setImportLeadsProgress(0);
+    }
+  };
+
+  const handleBatchAssignPic = async (picName: string) => {
+    if (selectedLeadIds.length === 0) return;
+    setIsBatchUpdating(true);
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    await Promise.all(selectedLeadIds.map(async (leadId) => {
+      try {
+        const lead = leads.find(l => l.id === leadId);
+        if (lead) {
+          const { cleanNotes } = extractPicFromNotes(lead.notes);
+          const newNotes = `[PIC: ${picName}] ${cleanNotes === '-' ? '' : cleanNotes}`.trim();
+          
+          await crmService.updateLeadStatus(
+            leadId,
+            lead.leadStatus,
+            lead.attendanceStatus,
+            newNotes,
+            undefined,
+            lead.callStatus || undefined,
+            lead.emailStatus || undefined,
+            lead.whatsappStatus || undefined,
+            lead.meetingStatus || undefined,
+            lead.businessChallenges || undefined,
+            lead.projectInfo || undefined,
+            lead.timeline || undefined,
+            lead.reminderH7 || undefined,
+            lead.reminderH3 || undefined,
+            lead.reminderH1 || undefined,
+            lead.reminderHariH || undefined,
+            lead.confirmationStatus
+          );
+          successCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }));
+
+    setIsBatchUpdating(false);
+    setSelectedLeadIds([]);
+    
+    if (failCount > 0) {
+      toast.warning(`Berhasil menugaskan ${successCount} leads ke ${picName}, gagal ${failCount} leads.`);
+    } else {
+      toast.success(`Berhasil menugaskan ${successCount} leads ke ${picName}!`);
+    }
+
+    if (selectedEvent) {
+      handleSelectEvent(selectedEvent);
     }
   };
 
@@ -1165,12 +1461,29 @@ export default function EventsPage() {
   });
 
   const filteredLeads = leads.filter((l) => {
-    if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
+    if (activeTab === 'request') {
+      const confStatus = l.confirmationStatus?.toLowerCase();
+      if (confStatus === 'approve') {
+        return false;
+      }
+    } else if (activeTab === 'pre_event') {
+      const confStatus = l.confirmationStatus?.toLowerCase();
+      if (confStatus !== 'approve') {
+        return false;
+      }
+    } else if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
       const confStatus = l.confirmationStatus?.toLowerCase();
       const leadStatus = l.leadStatus?.toLowerCase();
       if (confStatus !== 'approve' || leadStatus !== 'registered') {
         return false;
       }
+    }
+
+    // PIC filter
+    if (filterLeadPic) {
+      const { pic } = extractPicFromNotes(l.notes);
+      if (filterLeadPic === '-' && pic !== '-') return false;
+      if (filterLeadPic !== '-' && pic !== filterLeadPic) return false;
     }
 
     // 1. General search query
@@ -1364,6 +1677,26 @@ export default function EventsPage() {
                   </button>
                 </>
               )}
+              {!isUser && (activeTab === 'request' || activeTab === 'pre_event') && (
+                <>
+                  <button
+                    onClick={handleDownloadTemplate}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                    title="Unduh Template Excel untuk Impor Leads"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-600" />
+                    Template
+                  </button>
+                  <button
+                    onClick={() => setIsImportLeadsModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                    title="Impor Peserta Baru via Excel"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-green-600" />
+                    Import Excel
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => setIsAddLeadModalOpen(true)}
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
@@ -1375,7 +1708,52 @@ export default function EventsPage() {
           </div>
 
           {/* Dynamic Statistics Box Cards */}
-          {activeTab === 'event' && (
+          {activeTab === 'request' && (
+            <div className="space-y-4 mb-6">
+              <div>
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Request Vetting Overview</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-blue-500 text-white rounded-xl">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Total Request</span>
+                      <span className="text-xl font-extrabold text-blue-900">
+                        {leads.filter(l => !l.confirmationStatus || l.confirmationStatus === 'pending' || l.confirmationStatus === 'decline').length}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-amber-500 text-white rounded-xl">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider">Pending Approval</span>
+                      <span className="text-xl font-extrabold text-amber-900">
+                        {leads.filter(l => !l.confirmationStatus || l.confirmationStatus === 'pending').length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-3 bg-rose-500 text-white rounded-xl">
+                      <X className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Taken Out (Decline)</span>
+                      <span className="text-xl font-extrabold text-rose-900">
+                        {leads.filter(l => l.confirmationStatus === 'decline').length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'pre_event' && (
             <div className="space-y-4 mb-6">
               <div>
                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Registration Status</h4>
@@ -1579,16 +1957,29 @@ export default function EventsPage() {
           <div className="flex border-b border-slate-200 mb-6 gap-2 shrink-0">
             <button
               onClick={() => {
-                setActiveTab('event');
+                setActiveTab('request');
                 setSelectedLeadIds([]);
               }}
               className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
-                activeTab === 'event'
+                activeTab === 'request'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Event
+              Request
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('pre_event');
+                setSelectedLeadIds([]);
+              }}
+              className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+                activeTab === 'pre_event'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Pre-Event
             </button>
             <button
               onClick={() => {
@@ -1629,7 +2020,26 @@ export default function EventsPage() {
               </div>
               
               <div className="flex flex-wrap items-center gap-3">
-                {activeTab === 'event' && (
+                {activeTab === 'request' && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleBatchUpdateConfirmationStatus('approve')}
+                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-all shadow-sm"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Approve Selected
+                    </button>
+                    <button
+                      onClick={() => handleBatchUpdateConfirmationStatus('decline')}
+                      className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-all shadow-sm"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Take Out Selected
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'pre_event' && (
                   <>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-bold text-slate-500 uppercase">Remarks</span>
@@ -1640,7 +2050,7 @@ export default function EventsPage() {
                             e.target.value = '';
                           }
                         }}
-                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
                       >
                         <option value="">- Change Status -</option>
                         <option value="not_respon_yet">Not respond yet</option>
@@ -1660,12 +2070,32 @@ export default function EventsPage() {
                             e.target.value = '';
                           }
                         }}
-                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
                       >
                         <option value="">- Change Confirmation -</option>
                         <option value="pending">Pending</option>
                         <option value="approve">Approve</option>
                         <option value="decline">Decline</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Assign PIC</span>
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleBatchAssignPic(e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                      >
+                        <option value="">- Choose PIC -</option>
+                        {usersList.map((u) => (
+                          <option key={u.id} value={u.fullName || u.username}>
+                            {u.fullName || u.username}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </>
@@ -1681,7 +2111,7 @@ export default function EventsPage() {
                           e.target.value = '';
                         }
                       }}
-                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
                     >
                       <option value="">- Change Dday Status -</option>
                       <option value="on_location">On Location</option>
@@ -1727,7 +2157,7 @@ export default function EventsPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by Company</label>
                   <select
@@ -1783,6 +2213,22 @@ export default function EventsPage() {
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by PIC</label>
+                  <select
+                    value={filterLeadPic}
+                    onChange={(e) => setFilterLeadPic(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">All PICs</option>
+                    <option value="-">Unassigned</option>
+                    {usersList.map((user) => {
+                      const name = user.fullName || user.username;
+                      return <option key={user.id} value={name}>{name}</option>;
+                    })}
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -1804,9 +2250,9 @@ export default function EventsPage() {
               <p className="text-sm font-semibold text-slate-500">No matching leads found</p>
               <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms.</p>
             </div>
-          ) : activeTab === 'event' ? (
+          ) : activeTab === 'request' || activeTab === 'pre_event' ? (
             <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-              <table className="w-full min-w-[1800px] text-left border-collapse text-xs">
+              <table className="w-full min-w-[1850px] text-left border-collapse text-xs">
                 <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
                   <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
                     <th className="py-3 px-3 w-10 text-center"></th>
@@ -1837,165 +2283,173 @@ export default function EventsPage() {
                     <th className="py-3 px-4">Engagement</th>
                     <th className="py-3 px-4">Tele Remarks</th>
                     <th className="py-3 px-4 text-center">Confirmation Status</th>
+                    <th className="py-3 px-4">PIC</th>
                     <th className="py-3 px-4">Notes</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredLeads.map((l) => (
-                    <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
-                      <td className="py-3.5 px-3 text-center">
-                        {checkDatabaseCompleteness(l.database).isIncomplete && (
-                          <span
-                            className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
-                          >
-                            <AlertCircle className="w-4 h-4 shrink-0" />
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedLeadIds.includes(l.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedLeadIds([...selectedLeadIds, l.id]);
-                            } else {
-                              setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
-                            }
-                          }}
-                          className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
-                        />
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-700">
-                        {l.database.company?.name || <span className="text-slate-400">-</span>}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {l.database.salutation || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {l.database.firstName}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {l.database.lastName || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-655 font-medium">
-                        {l.database.positionLevel || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-950 font-medium">
-                        {l.database.jobTitle || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.company?.officePhone || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-700">
-                        {l.database.mobilePhone || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5 text-slate-400">
-                          {/* Call Engagement */}
-                          <button
-                            onDoubleClick={() => handleToggleEngagement(l, 'CALL')}
-                            className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                            title={`Call Status: ${l.callStatus || 'NOT_CONTACTED'} (Double-click to toggle)`}
-                          >
-                            <Phone 
-                              className={`w-4 h-4 transition-all ${
-                                l.callStatus === 'CONNECTED' 
-                                  ? 'text-blue-600 fill-blue-500/10 scale-110 font-bold' 
-                                  : l.callStatus && l.callStatus !== 'NOT_CONTACTED' 
-                                    ? 'text-slate-600' 
+                  {filteredLeads.map((l) => {
+                    const { pic, cleanNotes } = extractPicFromNotes(l.notes);
+                    return (
+                      <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
+                        <td className="py-3.5 px-3 text-center">
+                          {checkDatabaseCompleteness(l.database).isIncomplete && (
+                            <span
+                              className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
+                              title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
+                            >
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedLeadIds.includes(l.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedLeadIds([...selectedLeadIds, l.id]);
+                              } else {
+                                setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
+                              }
+                            }}
+                            className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-3.5 px-4 font-semibold text-slate-700">
+                          {l.database.company?.name || <span className="text-slate-400">-</span>}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500">
+                          {l.database.salutation || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">
+                          {l.database.firstName}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">
+                          {l.database.lastName || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-655 font-medium">
+                          {l.database.positionLevel || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-950 font-medium">
+                          {l.database.jobTitle || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600">
+                          {l.database.company?.officePhone || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-700">
+                          {l.database.mobilePhone || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600">
+                          {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600">
+                          {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2.5 text-slate-400">
+                            {/* Call Engagement */}
+                            <button
+                              onDoubleClick={() => handleToggleEngagement(l, 'CALL')}
+                              className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              title={`Call Status: ${l.callStatus || 'NOT_CONTACTED'} (Double-click to toggle)`}
+                            >
+                              <Phone 
+                                className={`w-4 h-4 transition-all ${
+                                  l.callStatus === 'CONNECTED' 
+                                    ? 'text-blue-600 fill-blue-500/10 scale-110 font-bold' 
+                                    : l.callStatus && l.callStatus !== 'NOT_CONTACTED' 
+                                      ? 'text-slate-600' 
+                                      : 'text-slate-300'
+                                }`} 
+                              />
+                            </button>
+
+                            {/* Email Engagement */}
+                            <button
+                              onDoubleClick={() => handleToggleEngagement(l, 'EMAIL')}
+                              className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                              title={`Email Status: ${l.emailStatus || 'NOT_SENT'} (Double-click to toggle)`}
+                            >
+                              <Mail 
+                                className={`w-4 h-4 transition-all ${
+                                  l.emailStatus === 'SENT' || l.emailStatus === 'OPENED' || l.emailStatus === 'RESPONDED'
+                                    ? 'text-rose-500 fill-rose-500/10 scale-110' 
                                     : 'text-slate-300'
-                              }`} 
-                            />
-                          </button>
+                                }`} 
+                              />
+                            </button>
 
-                          {/* Email Engagement */}
-                          <button
-                            onDoubleClick={() => handleToggleEngagement(l, 'EMAIL')}
-                            className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                            title={`Email Status: ${l.emailStatus || 'NOT_SENT'} (Double-click to toggle)`}
-                          >
-                            <Mail 
-                              className={`w-4 h-4 transition-all ${
-                                l.emailStatus === 'SENT' || l.emailStatus === 'OPENED' || l.emailStatus === 'RESPONDED'
-                                  ? 'text-rose-500 fill-rose-500/10 scale-110' 
-                                  : 'text-slate-300'
-                              }`} 
-                            />
-                          </button>
-
-                          {/* WhatsApp Engagement */}
-                          <button
-                            onDoubleClick={() => handleToggleEngagement(l, 'WHATSAPP')}
-                            className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                            title={`WhatsApp Status: ${l.whatsappStatus || 'NOT_SENT'} (Double-click to toggle)`}
-                          >
-                            <WhatsAppIcon 
-                              className={`w-4 h-4 transition-all ${
-                                l.whatsappStatus === 'SENT' || l.whatsappStatus === 'RESPONDED'
-                                  ? 'text-[#25D366] scale-110 filter drop-shadow-[0_1px_2px_rgba(37,211,102,0.2)]' 
-                                  : 'text-slate-300'
-                              }`} 
-                            />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <select
-                          value={l.leadStatus || 'not_respon_yet'}
-                          onChange={(e) => handleDirectUpdateLead(l, 'remarks', e.target.value)}
-                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.leadStatus)}`}
-                        >
-                          <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
-                          <option value="not_respond_2x" className="text-slate-750 bg-white font-semibold">Not respond 2x</option>
-                          <option value="registered" className="text-emerald-700 bg-white font-extrabold">Registered</option>
-                          <option value="tentative" className="text-amber-700 bg-white font-extrabold">Tentative</option>
-                          <option value="not_interest" className="text-rose-700 bg-white font-extrabold">Not Interest</option>
-                        </select>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex justify-center">
+                            {/* WhatsApp Engagement */}
+                            <button
+                              onDoubleClick={() => handleToggleEngagement(l, 'WHATSAPP')}
+                              className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                              title={`WhatsApp Status: ${l.whatsappStatus || 'NOT_SENT'} (Double-click to toggle)`}
+                            >
+                              <WhatsAppIcon 
+                                className={`w-4 h-4 transition-all ${
+                                  l.whatsappStatus === 'SENT' || l.whatsappStatus === 'RESPONDED'
+                                    ? 'text-[#25D366] scale-110 filter drop-shadow-[0_1px_2px_rgba(37,211,102,0.2)]' 
+                                    : 'text-slate-300'
+                                }`} 
+                              />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
                           <select
-                            value={l.confirmationStatus || 'pending'}
-                            onChange={(e) => handleDirectUpdateLead(l, 'confirmationStatus', e.target.value)}
-                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(l.confirmationStatus || 'pending')}`}
+                            value={l.leadStatus || 'not_respon_yet'}
+                            onChange={(e) => handleDirectUpdateLead(l, 'remarks', e.target.value)}
+                            className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.leadStatus)}`}
                           >
-                            <option value="pending" className="text-blue-700 bg-white font-extrabold">Pending</option>
-                            <option value="approve" className="text-emerald-700 bg-white font-extrabold">Approve</option>
+                            <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
+                            <option value="not_respond_2x" className="text-slate-750 bg-white font-semibold">Not respond 2x</option>
+                            <option value="registered" className="text-emerald-700 bg-white font-extrabold">Registered</option>
+                            <option value="tentative" className="text-amber-700 bg-white font-extrabold">Tentative</option>
+                            <option value="not_interest" className="text-rose-700 bg-white font-extrabold">Not Interest</option>
                           </select>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={l.notes}>
-                        {l.notes || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right space-x-1">
-                        <button
-                          onClick={() => handleOpenUpdateLeadModal(l)}
-                          className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
-                          title="Update Status"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        {!isUser && (
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex justify-center">
+                            <select
+                              value={l.confirmationStatus || 'pending'}
+                              onChange={(e) => handleDirectUpdateLead(l, 'confirmationStatus', e.target.value)}
+                              className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(l.confirmationStatus || 'pending')}`}
+                            >
+                              <option value="pending" className="text-blue-700 bg-white font-extrabold">Pending</option>
+                              <option value="approve" className="text-emerald-700 bg-white font-extrabold">Approve</option>
+                              <option value="decline" className="text-rose-700 bg-white font-extrabold">Decline</option>
+                            </select>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-700">
+                          {pic}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={cleanNotes}>
+                          {cleanNotes}
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-1">
                           <button
-                            onClick={() => openDeleteLeadConfirm(l)}
-                            className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
-                            title="Remove Participant"
+                            onClick={() => handleOpenUpdateLeadModal(l)}
+                            className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
+                            title="Update Status"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                          {!isUser && (
+                            <button
+                              onClick={() => openDeleteLeadConfirm(l)}
+                              className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
+                              title="Remove Participant"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -3151,6 +3605,92 @@ export default function EventsPage() {
                 {submittingLeadDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Remove
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Excel Import Modal Overlay for Event Leads */}
+      {isImportLeadsModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto pt-10 sm:pt-16">
+          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+            <button
+              onClick={() => {
+                setIsImportLeadsModalOpen(false);
+                setImportLeadsFile(null);
+              }}
+              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+              disabled={isImportingLeads}
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
+                <Plus className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Import Leads Excel</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Unggah berkas Excel berisi daftar kontak untuk dimasukkan ke tab <strong className="text-blue-600">{activeTab === 'pre_event' ? 'Pre-Event' : 'Request'}</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50/50 transition-colors relative cursor-pointer">
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setImportLeadsFile(e.target.files[0]);
+                    }
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  disabled={isImportingLeads}
+                />
+                <Download className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <span className="block text-xs font-bold text-slate-700">
+                  {importLeadsFile ? importLeadsFile.name : 'Pilih berkas Excel (.xlsx)'}
+                </span>
+                <span className="block text-[10px] text-slate-400 mt-1">Maksimal ukuran 5MB</span>
+              </div>
+
+              {isImportingLeads && (
+                <div className="space-y-2">
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-blue-600 h-2 transition-all duration-300 rounded-full"
+                      style={{ width: `${importLeadsProgress}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-600 block text-center">
+                    Memproses... {importLeadsProgress}%
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsImportLeadsModalOpen(false);
+                    setImportLeadsFile(null);
+                  }}
+                  className="px-4 py-2 bg-slate-105 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
+                  disabled={isImportingLeads}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportLeadsExcel}
+                  disabled={!importLeadsFile || isImportingLeads}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {isImportingLeads ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  Mulai Impor
+                </button>
+              </div>
             </div>
           </div>
         </div>
