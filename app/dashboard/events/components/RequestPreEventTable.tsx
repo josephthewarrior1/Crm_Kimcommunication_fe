@@ -52,12 +52,12 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   getConfirmationStatusBadgeStyle
 }) => {
   return (
-    <div className="flex-1 overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-      <table className="w-full min-w-[1850px] text-left border-collapse text-xs">
+    <div className="flex-1 max-h-[620px] overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+      <table className="w-full min-w-[1850px] text-left border-collapse text-[11px]">
         <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
-          <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
-            <th className="py-3 px-3 w-10 text-center"></th>
-            <th className="py-3 px-3 w-10 text-center">
+          <tr className="border-b border-slate-200 text-slate-450 uppercase tracking-widest font-bold text-[9px] whitespace-nowrap">
+            <th className="py-2 px-2 w-8 text-center"></th>
+            <th className="py-2 px-2 w-8 text-center">
               <input
                 type="checkbox"
                 disabled={isUser}
@@ -72,22 +72,22 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
             </th>
-            <th className="py-3 px-4">Company Name</th>
-            <th className="py-3 px-4">Salutation</th>
-            <th className="py-3 px-4">First Name</th>
-            <th className="py-3 px-4">Last Name</th>
-            <th className="py-3 px-4">Position</th>
-            <th className="py-3 px-4">Job Title</th>
-            <th className="py-3 px-4">Office Phone</th>
-            <th className="py-3 px-4">Mobile Phone</th>
-            <th className="py-3 px-4">Office Email</th>
-            <th className="py-3 px-4">Personal Email</th>
-            {activeTab !== 'request' && <th className="py-3 px-4">Engagement</th>}
-            {activeTab !== 'request' && <th className="py-3 px-4">Tele Remarks</th>}
-            <th className="py-3 px-4 text-center">Confirmation Status</th>
-            {isAdmin && activeTab !== 'request' && <th className="py-3 px-4">PIC</th>}
-            <th className="py-3 px-4">Notes</th>
-            <th className="py-3 px-4 text-right">Actions</th>
+            <th className="py-2 px-3">Company Name</th>
+            <th className="py-2 px-3">Salutation</th>
+            <th className="py-2 px-3">First Name</th>
+            <th className="py-2 px-3">Last Name</th>
+            <th className="py-2 px-3">Position</th>
+            <th className="py-2 px-3">Job Title</th>
+            <th className="py-2 px-3">Office Phone</th>
+            <th className="py-2 px-3">Mobile Phone</th>
+            <th className="py-2 px-3">Office Email</th>
+            <th className="py-2 px-3">Personal Email</th>
+            {activeTab !== 'request' && <th className="py-2 px-3">Engagement</th>}
+            {activeTab !== 'request' && <th className="py-2 px-3">Tele Remarks</th>}
+            <th className="py-2 px-3 text-center">Confirmation Status</th>
+            {isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
+            <th className="py-2 px-3">Notes</th>
+            <th className="py-2 px-3 text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -95,8 +95,8 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             const { pic, cleanNotes } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
             return (
-              <tr key={p.id} className="hover:bg-slate-50/30 transition-all">
-                <td className="py-3.5 px-3 text-center">
+              <tr key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
+                <td className="py-1.5 px-2 text-center">
                   {checkDatabaseCompleteness(p.database).isIncomplete && (
                     <span
                       className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
@@ -106,7 +106,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </span>
                   )}
                 </td>
-                <td className="py-3.5 px-3 text-center">
+                <td className="py-1.5 px-2 text-center">
                   <input
                     type="checkbox"
                     disabled={isUser}
@@ -121,38 +121,38 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
                   />
                 </td>
-                <td className="py-3.5 px-4 font-semibold text-slate-700">
+                <td className="py-1.5 px-3 font-semibold text-slate-700">
                   {p.database.company?.name || <span className="text-slate-400">-</span>}
                 </td>
-                <td className="py-3.5 px-4 text-slate-500">
+                <td className="py-1.5 px-3 text-slate-500">
                   {p.database.salutation || '-'}
                 </td>
-                <td className="py-3.5 px-4 font-bold text-slate-900">
+                <td className="py-1.5 px-3 font-bold text-slate-900">
                   {p.database.firstName}
                 </td>
-                <td className="py-3.5 px-4 font-bold text-slate-900">
+                <td className="py-1.5 px-3 font-bold text-slate-900">
                   {p.database.lastName || '-'}
                 </td>
-                <td className="py-3.5 px-4 text-slate-655 font-medium">
+                <td className="py-1.5 px-3 text-slate-655 font-medium">
                   {p.database.positionLevel || '-'}
                 </td>
-                <td className="py-3.5 px-4 text-slate-950 font-medium">
+                <td className="py-1.5 px-3 text-slate-950 font-medium">
                   {p.database.jobTitle || '-'}
                 </td>
-                <td className="py-3.5 px-4 font-mono text-slate-600">
+                <td className="py-1.5 px-3 font-mono text-slate-600">
                   {p.database.company?.officePhone || '-'}
                 </td>
-                <td className="py-3.5 px-4 font-mono text-slate-700">
+                <td className="py-1.5 px-3 font-mono text-slate-700">
                   {p.database.mobilePhone || '-'}
                 </td>
-                <td className="py-3.5 px-4 font-mono text-slate-600">
+                <td className="py-1.5 px-3 font-mono text-slate-600">
                   {p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
                 </td>
-                <td className="py-3.5 px-4 font-mono text-slate-600">
+                <td className="py-1.5 px-3 font-mono text-slate-600">
                   {p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
                 </td>
                 {activeTab !== 'request' && (
-                  <td className="py-3.5 px-4">
+                  <td className="py-1.5 px-3">
                     <div className="flex items-center gap-2.5 text-slate-400">
                       {/* Call Engagement */}
                       <button
@@ -204,22 +204,22 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   </td>
                 )}
                 {activeTab !== 'request' && (
-                  <td className="py-3.5 px-4">
+                  <td className="py-1.5 px-3">
                     <select
                       disabled={isUser}
                       value={p.participantStatus || 'not_respon_yet'}
                       onChange={(e) => handleDirectUpdateParticipant(p, 'remarks', e.target.value)}
                       className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.participantStatus)}`}
                     >
-                      <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
-                      <option value="not_respond_2x" className="text-slate-755 bg-white font-semibold">Not respond 2x</option>
-                      <option value="registered" className="text-emerald-700 bg-white font-extrabold">Registered</option>
-                      <option value="tentative" className="text-amber-700 bg-white font-extrabold">Tentative</option>
-                      <option value="not_interest" className="text-rose-700 bg-white font-extrabold">Not Interest</option>
+                      <option value="not_respon_yet" className="text-slate-705 bg-white font-normal">Not respond yet</option>
+                      <option value="not_respond_2x" className="text-slate-700 bg-white font-semibold">Not respond 2x</option>
+                      <option value="registered" className="text-indigo-950 bg-white font-extrabold">Registered</option>
+                      <option value="tentative" className="text-slate-700 bg-white font-extrabold">Tentative</option>
+                      <option value="not_interest" className="text-slate-400 bg-white font-extrabold">Not Interest</option>
                     </select>
                   </td>
                 )}
-                <td className="py-3.5 px-4">
+                <td className="py-1.5 px-3">
                   <div className="flex justify-center">
                     <select
                       disabled={isUser}
@@ -227,21 +227,21 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                       onChange={(e) => handleDirectUpdateParticipant(p, 'confirmationStatus', e.target.value)}
                       className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(p.confirmationStatus || 'pending')}`}
                     >
-                      <option value="pending" className="text-blue-700 bg-white font-extrabold">Pending</option>
-                      <option value="approve" className="text-emerald-700 bg-white font-extrabold">Approve</option>
-                      <option value="decline" className="text-rose-700 bg-white font-extrabold">Decline</option>
+                      <option value="pending" className="text-slate-700 bg-white font-extrabold">Pending</option>
+                      <option value="approve" className="text-indigo-950 bg-white font-extrabold">Approve</option>
+                      <option value="decline" className="text-slate-400 bg-white font-extrabold">Decline</option>
                     </select>
                   </div>
                 </td>
                 {isAdmin && activeTab !== 'request' && (
-                  <td className="py-3.5 px-4 font-bold text-slate-700">
+                  <td className="py-1.5 px-3 font-bold text-slate-700">
                     {displayPic}
                   </td>
                 )}
-                <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={cleanNotes}>
+                <td className="py-1.5 px-3 text-slate-500 max-w-[120px] truncate" title={cleanNotes}>
                   {cleanNotes}
                 </td>
-                <td className="py-3.5 px-4 text-right space-x-1">
+                <td className="py-1.5 px-3 text-right space-x-1">
                   {!isUser && (
                     <button
                       onClick={() => handleOpenUpdateParticipantModal(p)}

@@ -26,15 +26,15 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
   if (selectedParticipantIds.length === 0) return null;
 
   return (
-    <div className="bg-blue-50 border border-blue-150 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 shadow-sm animate-in slide-in-from-top duration-200">
-      <div className="flex items-center gap-2">
-        <span className="inline-flex items-center justify-center bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-full shrink-0">
+    <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50 border border-blue-100 rounded-2xl px-5 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 shadow-[0_10px_25px_rgba(59,130,246,0.04)] animate-in slide-in-from-top duration-200">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex items-center justify-center bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-full ring-4 ring-blue-100 shrink-0">
           {selectedParticipantIds.length}
         </span>
-        <span className="text-xs font-bold text-slate-700">Participants selected for batch update</span>
+        <span className="text-xs font-extrabold text-slate-800 tracking-tight">Participants selected for batch update</span>
       </div>
       
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3.5">
         {activeTab === 'request' && (
           <div className="flex items-center gap-2">
             <button
@@ -56,8 +56,8 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
 
         {activeTab === 'pre_event' && (
           <>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase">Remarks</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Remarks</span>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -65,7 +65,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
                     e.target.value = '';
                   }
                 }}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer shadow-sm transition-all duration-200"
               >
                 <option value="">- Change Status -</option>
                 <option value="not_respon_yet">Not respond yet</option>
@@ -76,8 +76,8 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase">Confirmation</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Confirmation</span>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -85,7 +85,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
                     e.target.value = '';
                   }
                 }}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer shadow-sm transition-all duration-200"
               >
                 <option value="">- Change Confirmation -</option>
                 <option value="pending">Pending</option>
@@ -94,8 +94,8 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase">Assign PIC</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Assign PIC</span>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -103,7 +103,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
                     e.target.value = '';
                   }
                 }}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer shadow-sm transition-all duration-200"
               >
                 <option value="">- Choose PIC -</option>
                 {usersList.map((u) => (
@@ -117,8 +117,8 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
         )}
 
         {activeTab === 'reminder_dday' && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Hari H</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Hari H</span>
             <select
               onChange={(e) => {
                 if (e.target.value) {
@@ -126,7 +126,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
                   e.target.value = '';
                 }
               }}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+              className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer shadow-sm transition-all duration-200"
             >
               <option value="">- Change Dday Status -</option>
               <option value="on_location">On Location</option>
@@ -139,7 +139,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
 
         <button
           onClick={() => setSelectedParticipantIds([])}
-          className="px-3 py-1 text-xs text-slate-500 hover:text-slate-800 font-semibold"
+          className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 active:bg-slate-300 text-slate-600 text-xs font-black rounded-xl border border-slate-200 transition-all duration-200"
         >
           Clear Selection
         </button>

@@ -42,7 +42,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider">Pending Approval</span>
+                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider">Pending Approval</span>
                   <span className="text-xl font-extrabold text-amber-900">
                     {participants.filter(p => !p.confirmationStatus || p.confirmationStatus === 'pending').length}
                   </span>
@@ -87,7 +87,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Interested (Follow-up)</span>
+                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Interested (Follow-up)</span>
                   <span className="text-xl font-extrabold text-amber-900">
                     {participants.filter(p => p.participantStatus === 'tentative' || p.participantStatus === 'yellow').length}
                   </span>
@@ -168,7 +168,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 </div>
               </div>
               
-              <div className="bg-emerald-55/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
+              <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
                 <div className="p-3 bg-emerald-600 text-white rounded-xl">
                   <CheckCircle className="w-5 h-5" />
                 </div>
@@ -185,7 +185,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Tentative</span>
+                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Tentative</span>
                   <span className="text-xl font-extrabold text-amber-900">
                     {participants.filter(p => p.reminderH7 === 'tentative' || p.reminderH3 === 'tentative' || p.reminderH1 === 'tentative').length}
                   </span>
@@ -242,14 +242,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Not Respond Yet</span>
+                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Not Respond Yet</span>
                   <span className="text-xl font-extrabold text-amber-900">
                     {participants.filter(p => !p.reminderHariH || p.reminderHariH === 'not_respon_yet').length}
                   </span>
                 </div>
               </div>
 
-              <div className="bg-rose-55/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
+              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
                 <div className="p-3 bg-rose-500 text-white rounded-xl">
                   <X className="w-5 h-5" />
                 </div>
@@ -267,31 +267,59 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
       {/* Participant Assignment & Distribution Overview (Admin only) */}
       {isAdmin && activeTab !== 'request' && (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6">
-          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Participant Assignment & Distribution Overview</h4>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="px-3.5 py-2 bg-blue-600 border border-blue-700 rounded-xl text-xs font-black text-white flex items-center gap-1.5 shadow-sm">
-              <Users className="w-3.5 h-3.5" />
-              Total Participants: {participants.length}
+        <div className="bg-slate-50/60 border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* Left side: Section Title and Total metric */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">PIC Assignment & Distribution</h4>
+                <p className="text-[11px] text-slate-550 font-medium">Alokasi pembagian tugas follow-up antar PIC aktif.</p>
+              </div>
+              
+              {/* Total Participants Card */}
+              <div className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-black flex items-center gap-2 shadow-md shadow-blue-500/10 shrink-0">
+                <Users className="w-4 h-4" />
+                <span>Total Participants: {participants.length}</span>
+              </div>
             </div>
-            {usersList.map((usr) => {
-              const name = usr.fullName || usr.username;
-              const count = participants.filter(p => {
-                const pic = extractPicFromNotes(p.notes).pic;
-                return pic.toLowerCase() === name.toLowerCase() || 
-                       (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-              }).length;
-              return (
-                <div key={usr.id} className={`px-3.5 py-2 border rounded-xl text-xs flex items-center gap-1.5 ${
-                  count > 0 
-                    ? 'bg-emerald-50 border-emerald-250 text-emerald-800 font-extrabold' 
-                    : 'bg-white border-slate-200 text-slate-400 font-medium'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${count > 0 ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                  {name}: {count}
-                </div>
-              );
-            })}
+
+            {/* Right side: PIC List */}
+            <div className="flex flex-wrap items-center gap-2">
+              {usersList.map((usr) => {
+                const name = usr.fullName || usr.username;
+                const count = participants.filter(p => {
+                  const pic = extractPicFromNotes(p.notes).pic;
+                  return pic.toLowerCase() === name.toLowerCase() || 
+                         (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
+                }).length;
+                
+                const isActive = count > 0;
+                return (
+                  <div
+                    key={usr.id}
+                    className={`px-3 py-1.5 border rounded-xl text-xs flex items-center gap-2.5 transition-all duration-200 ${
+                      isActive
+                        ? 'bg-white border-slate-200 text-slate-800 font-bold shadow-sm'
+                        : 'bg-slate-100/50 border-slate-150 text-slate-400 opacity-60'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${
+                      isActive 
+                        ? 'bg-emerald-500 shadow-sm shadow-emerald-500/30' 
+                        : 'bg-slate-350'
+                    }`} />
+                    <span>{name}</span>
+                    <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg ${
+                      isActive
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        : 'bg-slate-55 text-slate-400 border border-slate-200'
+                    }`}>
+                      {count}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

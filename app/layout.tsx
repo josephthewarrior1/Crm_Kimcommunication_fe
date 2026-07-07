@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { IBM_Plex_Sans } from 'next/font/google'
 import '../styles/globals.css'
 import { Toaster } from '../components/ui/sonner'
 import { GlobalLoadingProvider } from '../components/GlobalLoading'
 import { AuthProvider } from '../lib/context/AuthContext'
 
-const inter = Inter({ subsets: ['latin'] })
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+})
 
 export const metadata: Metadata = {
   title: 'KIM CRM & Lead Management System — KIM Communications',
@@ -19,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={ibmPlexSans.className}>
         <AuthProvider>
           <GlobalLoadingProvider>
             {children}

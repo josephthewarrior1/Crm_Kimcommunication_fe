@@ -1,27 +1,32 @@
 const BADGE_STYLES: Record<string, string> = {
-  registered: 'text-emerald-700 bg-emerald-50 border-emerald-250',
-  confirm: 'text-emerald-700 bg-emerald-50 border-emerald-250',
-  green: 'text-emerald-700 bg-emerald-50 border-emerald-250',
-  on_location: 'text-emerald-700 bg-emerald-50 border-emerald-250',
-  on_the_way: 'text-blue-700 bg-blue-50 border-blue-250',
-  tentative: 'text-amber-700 bg-amber-50 border-amber-250',
-  yellow: 'text-amber-700 bg-amber-50 border-amber-250',
-  not_respon_yet: 'text-slate-600 bg-slate-50 border-slate-250',
-  not_respond_yet: 'text-slate-600 bg-slate-50 border-slate-250',
-  white: 'text-slate-600 bg-slate-50 border-slate-250',
-  not_respond_2x: 'text-slate-700 bg-slate-100 border-slate-300',
-  not_interest: 'text-rose-700 bg-rose-50 border-rose-250',
-  unable_to_attend: 'text-rose-700 bg-rose-50 border-rose-250',
-  red: 'text-rose-700 bg-rose-50 border-rose-250',
+  // Positive/Active states: Bold, high contrast, brand colors
+  registered: 'text-indigo-950 bg-indigo-50 border-indigo-200 font-extrabold',
+  confirm: 'text-indigo-950 bg-indigo-50 border-indigo-200 font-extrabold',
+  green: 'text-indigo-950 bg-indigo-50 border-indigo-200 font-extrabold',
+  on_location: 'text-indigo-950 bg-indigo-50 border-indigo-200 font-extrabold',
+  
+  // Transition / Pending states: Semibold, neutral slate colors
+  on_the_way: 'text-slate-700 bg-slate-50 border-slate-200 font-semibold',
+  tentative: 'text-slate-700 bg-slate-50 border-slate-200 font-semibold',
+  yellow: 'text-slate-700 bg-slate-50 border-slate-200 font-semibold',
+  not_respon_yet: 'text-slate-500 bg-slate-50 border-slate-150 font-normal',
+  not_respond_yet: 'text-slate-500 bg-slate-50 border-slate-150 font-normal',
+  white: 'text-slate-500 bg-slate-50 border-slate-150 font-normal',
+  
+  // Negative / Muted states: Light text, faded backgrounds, reduced opacity
+  not_respond_2x: 'text-slate-400 bg-slate-50/50 border-slate-150 font-normal opacity-60',
+  not_interest: 'text-slate-400 bg-slate-50/50 border-slate-150 font-normal opacity-60',
+  unable_to_attend: 'text-slate-400 bg-slate-50/50 border-slate-150 font-normal opacity-60',
+  red: 'text-slate-400 bg-slate-50/50 border-slate-150 font-normal opacity-60',
 };
 
 export const getStatusBadgeStyle = (status: string): string => {
   const s = status ? status.toLowerCase() : '';
   if (BADGE_STYLES[s]) return BADGE_STYLES[s];
   if (s.startsWith('not_respond_') || s.startsWith('not_respon_')) {
-    return 'text-slate-800 bg-slate-200/80 border-slate-350';
+    return 'text-slate-400 bg-slate-50/50 border-slate-150 font-normal opacity-60';
   }
-  return 'text-slate-500 bg-slate-50 border-slate-250';
+  return 'text-slate-500 bg-slate-50 border-slate-150 font-normal';
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -56,12 +61,12 @@ export const getStatusLabel = (status: string): string => {
 export const getConfirmationStatusBadgeStyle = (status: string): string => {
   const s = status ? status.toLowerCase() : 'pending';
   if (s === 'approve') {
-    return 'text-emerald-700 bg-emerald-50 border-emerald-250';
+    return 'text-indigo-950 bg-indigo-50 border-indigo-200 font-extrabold';
   }
   if (s === 'decline') {
-    return 'text-rose-700 bg-rose-50 border-rose-250';
+    return 'text-slate-400 bg-slate-50/50 border-slate-150 font-normal opacity-60';
   }
-  return 'text-blue-700 bg-blue-50 border-blue-250';
+  return 'text-slate-700 bg-slate-50 border-slate-200 font-semibold';
 };
 
 export const getConfirmationStatusLabel = (status: string): string => {
