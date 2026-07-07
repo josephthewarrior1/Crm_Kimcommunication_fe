@@ -1,50 +1,50 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Database, Event, EventLead } from '../../../../lib/types';
+import { Database, Event, EventParticipant } from '../../../../lib/types';
 
-interface AddLeadModalProps {
+interface AddParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedEvent: Event;
   databases: Database[];
-  leads: EventLead[];
-  allEventLeads: EventLead[];
+  participants: EventParticipant[];
+  allEventParticipants: EventParticipant[];
   events: Event[];
-  onAddLead: (selectedIds: number[], leadNotes: string) => Promise<void>;
-  submittingLead: boolean;
+  onAddParticipant: (selectedIds: number[], notes: string) => Promise<void>;
+  submittingParticipant: boolean;
 }
 
-export const AddLeadModal: React.FC<AddLeadModalProps> = ({
+export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   isOpen,
   onClose,
   selectedEvent,
   databases,
-  leads,
-  allEventLeads,
+  participants,
+  allEventParticipants,
   events,
-  onAddLead,
-  submittingLead
+  onAddParticipant,
+  submittingParticipant
 }) => {
-  const [leadDatabaseSearch, setLeadDatabaseSearch] = useState('');
-  const [filterAddLeadCompany, setFilterAddLeadCompany] = useState('');
-  const [filterAddLeadPosition, setFilterAddLeadPosition] = useState('');
-  const [filterAddLeadIndustry, setFilterAddLeadIndustry] = useState('');
-  const [filterAddLeadCity, setFilterAddLeadCity] = useState('');
-  const [filterAddLeadEventId, setFilterAddLeadEventId] = useState('');
+  const [databaseSearch, setDatabaseSearch] = useState('');
+  const [filterAddParticipantCompany, setFilterAddParticipantCompany] = useState('');
+  const [filterAddParticipantPosition, setFilterAddParticipantPosition] = useState('');
+  const [filterAddParticipantIndustry, setFilterAddParticipantIndustry] = useState('');
+  const [filterAddParticipantCity, setFilterAddParticipantCity] = useState('');
+  const [filterAddParticipantEventId, setFilterAddParticipantEventId] = useState('');
   const [selectedDatabaseIds, setSelectedDatabaseIds] = useState<number[]>([]);
-  const [leadNotes, setLeadNotes] = useState('');
+  const [notes, setNotes] = useState('');
 
   if (!isOpen) return null;
 
-  // Filter active databases not currently leads in the selected event
+  // Filter active databases not currently participants in the selected event
   const databasesNotInEvent = databases.filter(
-    (c) => !leads.some((l) => l.database.id === c.id)
+    (c) => !participants.some((p) => p.database.id === c.id)
   );
 
   const visibleDatabases = databasesNotInEvent.filter((c) => {
     // 1. Search Query
-    if (leadDatabaseSearch) {
-      const term = leadDatabaseSearch.toLowerCase();
+    if (databaseSearch) {
+      const term = databaseSearch.toLowerCase();
       const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
       const companyName = c.company?.name?.toLowerCase() || '';
       if (!fullName.includes(term) && !companyName.includes(term)) {
@@ -53,29 +53,29 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
     }
 
     // 2. Company filter
-    if (filterAddLeadCompany && c.company?.name !== filterAddLeadCompany) {
+    if (filterAddParticipantCompany && c.company?.name !== filterAddParticipantCompany) {
       return false;
     }
 
     // 3. Position Level filter
-    if (filterAddLeadPosition && c.positionLevel !== filterAddLeadPosition) {
+    if (filterAddParticipantPosition && c.positionLevel !== filterAddParticipantPosition) {
       return false;
     }
 
     // 4. Industry filter
-    if (filterAddLeadIndustry && c.company?.industry !== filterAddLeadIndustry) {
+    if (filterAddParticipantIndustry && c.company?.industry !== filterAddParticipantIndustry) {
       return false;
     }
 
     // 5. City filter
-    if (filterAddLeadCity && c.company?.city !== filterAddLeadCity) {
+    if (filterAddParticipantCity && c.company?.city !== filterAddParticipantCity) {
       return false;
     }
 
     // 6. Event Participation history filter
-    if (filterAddLeadEventId) {
-      const isInvited = allEventLeads.some(
-        (l) => l.database.id === c.id && l.event.id === Number(filterAddLeadEventId)
+    if (filterAddParticipantEventId) {
+      const isInvited = allEventParticipants.some(
+        (p) => p.database.id === c.id && p.event.id === Number(filterAddParticipantEventId)
       );
       if (!isInvited) return false;
     }
@@ -86,7 +86,7 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedDatabaseIds.length === 0) return;
-    onAddLead(selectedDatabaseIds, leadNotes);
+    onAddParticipant(selectedDatabaseIds, notes);
   };
 
   return (
@@ -100,7 +100,7 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-extrabold text-slate-900 mb-4 shrink-0">Add Database as Lead</h3>
+        <h3 className="text-xl font-extrabold text-slate-900 mb-4 shrink-0">Add Database as Participant</h3>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 mb-4">
@@ -111,19 +111,19 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
               <input
                 type="text"
                 placeholder="Search databases by name or company..."
-                value={leadDatabaseSearch}
-                onChange={(e) => setLeadDatabaseSearch(e.target.value)}
+                value={databaseSearch}
+                onChange={(e) => setDatabaseSearch(e.target.value)}
                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
               />
 
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-                <p className="text-[10px] font-bold text-slate-505 uppercase tracking-wider">Advanced Filters</p>
+                <p className="text-[10px] font-bold text-slate-550 uppercase tracking-wider">Advanced Filters</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Company</label>
                     <select
-                      value={filterAddLeadCompany}
-                      onChange={(e) => setFilterAddLeadCompany(e.target.value)}
+                      value={filterAddParticipantCompany}
+                      onChange={(e) => setFilterAddParticipantCompany(e.target.value)}
                       className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
                     >
                       <option value="">All Companies</option>
@@ -136,8 +136,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
                   <div>
                     <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Position</label>
                     <select
-                      value={filterAddLeadPosition}
-                      onChange={(e) => setFilterAddLeadPosition(e.target.value)}
+                      value={filterAddParticipantPosition}
+                      onChange={(e) => setFilterAddParticipantPosition(e.target.value)}
                       className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
                     >
                       <option value="">All Levels</option>
@@ -150,8 +150,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
                   <div>
                     <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Industry</label>
                     <select
-                      value={filterAddLeadIndustry}
-                      onChange={(e) => setFilterAddLeadIndustry(e.target.value)}
+                      value={filterAddParticipantIndustry}
+                      onChange={(e) => setFilterAddParticipantIndustry(e.target.value)}
                       className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
                     >
                       <option value="">All Industries</option>
@@ -164,8 +164,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
                   <div>
                     <label className="block text-[9px] font-bold text-slate-455 uppercase mb-0.5">City</label>
                     <select
-                      value={filterAddLeadCity}
-                      onChange={(e) => setFilterAddLeadCity(e.target.value)}
+                      value={filterAddParticipantCity}
+                      onChange={(e) => setFilterAddParticipantCity(e.target.value)}
                       className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
                     >
                       <option value="">All Cities</option>
@@ -178,8 +178,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
                   <div className="col-span-2 border-t border-slate-200 pt-2 mt-1">
                     <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Pernah diundang ke Event</label>
                     <select
-                      value={filterAddLeadEventId}
-                      onChange={(e) => setFilterAddLeadEventId(e.target.value)}
+                      value={filterAddParticipantEventId}
+                      onChange={(e) => setFilterAddParticipantEventId(e.target.value)}
                       className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
                     >
                       <option value="">- Select Event -</option>
@@ -191,15 +191,15 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
 
                 </div>
 
-                {(filterAddLeadCompany || filterAddLeadPosition || filterAddLeadIndustry || filterAddLeadCity || filterAddLeadEventId) && (
+                {(filterAddParticipantCompany || filterAddParticipantPosition || filterAddParticipantIndustry || filterAddParticipantCity || filterAddParticipantEventId) && (
                   <button
                     type="button"
                     onClick={() => {
-                      setFilterAddLeadCompany('');
-                      setFilterAddLeadPosition('');
-                      setFilterAddLeadIndustry('');
-                      setFilterAddLeadCity('');
-                      setFilterAddLeadEventId('');
+                      setFilterAddParticipantCompany('');
+                      setFilterAddParticipantPosition('');
+                      setFilterAddParticipantIndustry('');
+                      setFilterAddParticipantCity('');
+                      setFilterAddParticipantEventId('');
                     }}
                     className="text-[10px] font-extrabold text-red-600 hover:text-red-750 transition-colors uppercase pt-1"
                   >
@@ -240,17 +240,17 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
                         
                         {/* Past Events History Badges */}
                         {(() => {
-                          const databaseLeads = allEventLeads.filter(l => l.database.id === c.id);
-                          if (databaseLeads.length === 0) return null;
+                          const databaseParticipants = allEventParticipants.filter(p => p.database.id === c.id);
+                          if (databaseParticipants.length === 0) return null;
                           return (
                             <div className="mt-1.5 flex flex-wrap gap-1 items-center">
                               <span className="text-[9px] font-bold text-slate-400">Invited to:</span>
-                              {databaseLeads.map(l => (
+                              {databaseParticipants.map(p => (
                                 <span 
-                                  key={l.id} 
+                                  key={p.id} 
                                   className="inline-flex px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-50 border border-slate-200 text-slate-600 uppercase tracking-wide"
                                 >
-                                  {l.event.name}
+                                  {p.event.name}
                                 </span>
                               ))}
                             </div>
@@ -295,11 +295,11 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Lead Notes</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Participant Notes</label>
             <textarea
               placeholder="Notes about invitation..."
-              value={leadNotes}
-              onChange={(e) => setLeadNotes(e.target.value)}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               rows={2}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
             />
@@ -316,10 +316,10 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={submittingLead || selectedDatabaseIds.length === 0}
+              disabled={submittingParticipant || selectedDatabaseIds.length === 0}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
             >
-              Add Lead
+              Add Participant
             </button>
           </div>
         </form>

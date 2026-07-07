@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Loader2, Building2, Users, Calendar, Mail, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
-import { Database, DatabaseEmail, EventLead, Company } from '../../../../lib/types';
+import { Database, DatabaseEmail, EventParticipant, Company } from '../../../../lib/types';
 import { checkFormCompleteness } from '../utils/validationHelper';
 
 interface DatabaseDetailModalProps {
@@ -9,7 +9,7 @@ interface DatabaseDetailModalProps {
   database: Database;
   emails: DatabaseEmail[];
   loadingEmails: boolean;
-  events: EventLead[];
+  events: EventParticipant[];
   loadingEvents: boolean;
   companies: Company[];
 }
@@ -292,18 +292,18 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
                       <th className="py-2.5 px-3">Event Name</th>
                       <th className="py-2.5 px-3">Client / Partner</th>
                       <th className="py-2.5 px-3">Event Dates</th>
-                      <th className="py-2.5 px-3">Lead Status</th>
+                      <th className="py-2.5 px-3">Participant Status</th>
                       <th className="py-2.5 px-3">Hari H Status</th>
                       <th className="py-2.5 px-3">Notes</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {events.map((l) => {
+                    {events.map((p) => {
                       const statusColors: Record<string, string> = {
                         white: 'bg-slate-100 border-slate-250 text-slate-700',
-                        yellow: 'bg-amber-50 border-amber-200 text-amber-700',
+                        yellow: 'bg-amber-55/70 border-amber-200 text-amber-700',
                         green: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-                        red: 'bg-red-50 border-red-200 text-red-700',
+                        red: 'bg-rose-50 border-rose-200 text-rose-700',
                       };
 
                       const hariHColors: Record<string, string> = {
@@ -314,21 +314,21 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
                       };
 
                       return (
-                        <tr key={l.id} className="hover:bg-slate-50/50 transition-colors">
+                        <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="py-3 px-3">
-                            <span className="font-bold text-slate-900 block">{l.event.name}</span>
-                            <span className="text-[10px] text-slate-400 capitalize">{l.event.eventType} Event</span>
+                            <span className="font-bold text-slate-900 block">{p.event.name}</span>
+                            <span className="text-[10px] text-slate-400 capitalize">{p.event.eventType} Event</span>
                           </td>
                           <td className="py-3 px-3 font-medium">
-                            {l.event.clientName || '-'}
+                            {p.event.clientName || '-'}
                           </td>
                           <td className="py-3 px-3 text-slate-500">
-                            {l.event.dateStart ? (
+                            {p.event.dateStart ? (
                               <>
-                                <span>{new Date(l.event.dateStart).toLocaleDateString()}</span>
-                                {l.event.dateEnd && l.event.dateEnd !== l.event.dateStart && (
+                                <span>{new Date(p.event.dateStart).toLocaleDateString()}</span>
+                                {p.event.dateEnd && p.event.dateEnd !== p.event.dateStart && (
                                   <span className="block text-[10px] text-slate-400">
-                                    to {new Date(l.event.dateEnd).toLocaleDateString()}
+                                    to {new Date(p.event.dateEnd).toLocaleDateString()}
                                   </span>
                                 )}
                               </>
@@ -337,17 +337,17 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
                             )}
                           </td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] ${statusColors[l.leadStatus] || statusColors.white}`}>
-                              {l.leadStatus}
+                            <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] ${statusColors[p.participantStatus] || statusColors.white}`}>
+                              {p.participantStatus}
                             </span>
                           </td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] capitalize ${hariHColors[l.reminderHariH || 'not_respon_yet'] || 'bg-slate-100 border-slate-250 text-slate-700'}`}>
-                              {(l.reminderHariH || 'not_respon_yet').replace(/_/g, ' ')}
+                            <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] capitalize ${hariHColors[p.reminderHariH || 'not_respon_yet'] || 'bg-slate-100 border-slate-250 text-slate-700'}`}>
+                              {(p.reminderHariH || 'not_respon_yet').replace(/_/g, ' ')}
                             </span>
                           </td>
-                          <td className="py-3 px-3 max-w-[200px] truncate" title={l.notes}>
-                            {l.notes || <span className="text-slate-400 italic">-</span>}
+                          <td className="py-3 px-3 max-w-[200px] truncate" title={p.notes}>
+                            {p.notes || <span className="text-slate-400 italic">-</span>}
                           </td>
                         </tr>
                       );

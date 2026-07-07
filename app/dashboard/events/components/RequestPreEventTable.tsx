@@ -1,5 +1,5 @@
 import React from 'react';
-import { EventLead } from '../../../../lib/types';
+import { EventParticipant } from '../../../../lib/types';
 import { AlertCircle, Phone, Mail, Edit2, Trash2 } from 'lucide-react';
 
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -13,19 +13,19 @@ const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
 );
 
 interface RequestPreEventTableProps {
-  filteredLeads: EventLead[];
-  selectedLeadIds: number[];
-  setSelectedLeadIds: React.Dispatch<React.SetStateAction<number[]>>;
+  filteredParticipants: EventParticipant[];
+  selectedParticipantIds: number[];
+  setSelectedParticipantIds: React.Dispatch<React.SetStateAction<number[]>>;
   activeTab: 'request' | 'pre_event' | 'reminder' | 'reminder_dday';
   checkDatabaseCompleteness: (c: any) => { isIncomplete: boolean; missingFields: string[] };
-  handleToggleEngagement: (lead: EventLead, type: 'CALL' | 'EMAIL' | 'WHATSAPP') => void;
-  handleDirectUpdateLead: (
-    lead: EventLead,
+  handleToggleEngagement: (participant: EventParticipant, type: 'CALL' | 'EMAIL' | 'WHATSAPP') => void;
+  handleDirectUpdateParticipant: (
+    participant: EventParticipant,
     field: 'remarks' | 'attendance' | 'confirmationStatus' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH',
     value: string
   ) => void;
-  handleOpenUpdateLeadModal: (lead: EventLead) => void;
-  openDeleteLeadConfirm: (lead: EventLead) => void;
+  handleOpenUpdateParticipantModal: (participant: EventParticipant) => void;
+  openDeleteParticipantConfirm: (participant: EventParticipant) => void;
   isUser: boolean;
   isAdmin?: boolean;
   adminName?: string;
@@ -35,15 +35,15 @@ interface RequestPreEventTableProps {
 }
 
 export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
-  filteredLeads,
-  selectedLeadIds,
-  setSelectedLeadIds,
+  filteredParticipants,
+  selectedParticipantIds,
+  setSelectedParticipantIds,
   activeTab,
   checkDatabaseCompleteness,
   handleToggleEngagement,
-  handleDirectUpdateLead,
-  handleOpenUpdateLeadModal,
-  openDeleteLeadConfirm,
+  handleDirectUpdateParticipant,
+  handleOpenUpdateParticipantModal,
+  openDeleteParticipantConfirm,
   isUser,
   isAdmin,
   adminName,
@@ -61,12 +61,12 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
               <input
                 type="checkbox"
                 disabled={isUser}
-                checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
+                checked={filteredParticipants.length > 0 && selectedParticipantIds.length === filteredParticipants.length}
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setSelectedLeadIds(filteredLeads.map(l => l.id));
+                    setSelectedParticipantIds(filteredParticipants.map(p => p.id));
                   } else {
-                    setSelectedLeadIds([]);
+                    setSelectedParticipantIds([]);
                   }
                 }}
                 className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
@@ -91,16 +91,16 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {filteredLeads.map((l) => {
-            const { pic, cleanNotes } = extractPicFromNotes(l.notes);
+          {filteredParticipants.map((p) => {
+            const { pic, cleanNotes } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
             return (
-              <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
+              <tr key={p.id} className="hover:bg-slate-50/30 transition-all">
                 <td className="py-3.5 px-3 text-center">
-                  {checkDatabaseCompleteness(l.database).isIncomplete && (
+                  {checkDatabaseCompleteness(p.database).isIncomplete && (
                     <span
                       className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                      title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
+                      title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(p.database).missingFields.join("\n• ")}`}
                     >
                       <AlertCircle className="w-4 h-4 shrink-0" />
                     </span>
@@ -110,61 +110,61 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   <input
                     type="checkbox"
                     disabled={isUser}
-                    checked={selectedLeadIds.includes(l.id)}
+                    checked={selectedParticipantIds.includes(p.id)}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedLeadIds([...selectedLeadIds, l.id]);
+                        setSelectedParticipantIds([...selectedParticipantIds, p.id]);
                       } else {
-                        setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
+                        setSelectedParticipantIds(selectedParticipantIds.filter((id) => id !== p.id));
                       }
                     }}
                     className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
                   />
                 </td>
                 <td className="py-3.5 px-4 font-semibold text-slate-700">
-                  {l.database.company?.name || <span className="text-slate-400">-</span>}
+                  {p.database.company?.name || <span className="text-slate-400">-</span>}
                 </td>
                 <td className="py-3.5 px-4 text-slate-500">
-                  {l.database.salutation || '-'}
+                  {p.database.salutation || '-'}
                 </td>
                 <td className="py-3.5 px-4 font-bold text-slate-900">
-                  {l.database.firstName}
+                  {p.database.firstName}
                 </td>
                 <td className="py-3.5 px-4 font-bold text-slate-900">
-                  {l.database.lastName || '-'}
+                  {p.database.lastName || '-'}
                 </td>
                 <td className="py-3.5 px-4 text-slate-655 font-medium">
-                  {l.database.positionLevel || '-'}
+                  {p.database.positionLevel || '-'}
                 </td>
                 <td className="py-3.5 px-4 text-slate-950 font-medium">
-                  {l.database.jobTitle || '-'}
+                  {p.database.jobTitle || '-'}
                 </td>
                 <td className="py-3.5 px-4 font-mono text-slate-600">
-                  {l.database.company?.officePhone || '-'}
+                  {p.database.company?.officePhone || '-'}
                 </td>
                 <td className="py-3.5 px-4 font-mono text-slate-700">
-                  {l.database.mobilePhone || '-'}
+                  {p.database.mobilePhone || '-'}
                 </td>
                 <td className="py-3.5 px-4 font-mono text-slate-600">
-                  {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                  {p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
                 </td>
                 <td className="py-3.5 px-4 font-mono text-slate-600">
-                  {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+                  {p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
                 </td>
                 {activeTab !== 'request' && (
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-2.5 text-slate-400">
                       {/* Call Engagement */}
                       <button
-                        onDoubleClick={() => handleToggleEngagement(l, 'CALL')}
+                        onDoubleClick={() => handleToggleEngagement(p, 'CALL')}
                         className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        title={`Call Status: ${l.callStatus || 'NOT_CONTACTED'} (Double-click to toggle)`}
+                        title={`Call Status: ${p.callStatus || 'NOT_CONTACTED'} (Double-click to toggle)`}
                       >
                         <Phone 
                           className={`w-4 h-4 transition-all ${
-                            l.callStatus === 'CONNECTED' 
+                            p.callStatus === 'CONNECTED' 
                               ? 'text-blue-600 fill-blue-500/10 scale-110 font-bold' 
-                              : l.callStatus && l.callStatus !== 'NOT_CONTACTED' 
+                              : p.callStatus && p.callStatus !== 'NOT_CONTACTED' 
                                 ? 'text-slate-600' 
                                 : 'text-slate-300'
                           }`} 
@@ -173,13 +173,13 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
 
                       {/* Email Engagement */}
                       <button
-                        onDoubleClick={() => handleToggleEngagement(l, 'EMAIL')}
+                        onDoubleClick={() => handleToggleEngagement(p, 'EMAIL')}
                         className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                        title={`Email Status: ${l.emailStatus || 'NOT_SENT'} (Double-click to toggle)`}
+                        title={`Email Status: ${p.emailStatus || 'NOT_SENT'} (Double-click to toggle)`}
                       >
                         <Mail 
                           className={`w-4 h-4 transition-all ${
-                            l.emailStatus === 'SENT' || l.emailStatus === 'OPENED' || l.emailStatus === 'RESPONDED'
+                            p.emailStatus === 'SENT' || p.emailStatus === 'OPENED' || p.emailStatus === 'RESPONDED'
                               ? 'text-rose-500 fill-rose-500/10 scale-110' 
                               : 'text-slate-300'
                           }`} 
@@ -188,13 +188,13 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
 
                       {/* WhatsApp Engagement */}
                       <button
-                        onDoubleClick={() => handleToggleEngagement(l, 'WHATSAPP')}
+                        onDoubleClick={() => handleToggleEngagement(p, 'WHATSAPP')}
                         className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        title={`WhatsApp Status: ${l.whatsappStatus || 'NOT_SENT'} (Double-click to toggle)`}
+                        title={`WhatsApp Status: ${p.whatsappStatus || 'NOT_SENT'} (Double-click to toggle)`}
                       >
                         <WhatsAppIcon 
                           className={`w-4 h-4 transition-all ${
-                            l.whatsappStatus === 'SENT' || l.whatsappStatus === 'RESPONDED'
+                            p.whatsappStatus === 'SENT' || p.whatsappStatus === 'RESPONDED'
                               ? 'text-[#25D366] scale-110 filter drop-shadow-[0_1px_2px_rgba(37,211,102,0.2)]' 
                               : 'text-slate-300'
                           }`} 
@@ -207,9 +207,9 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   <td className="py-3.5 px-4">
                     <select
                       disabled={isUser}
-                      value={l.leadStatus || 'not_respon_yet'}
-                      onChange={(e) => handleDirectUpdateLead(l, 'remarks', e.target.value)}
-                      className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.leadStatus)}`}
+                      value={p.participantStatus || 'not_respon_yet'}
+                      onChange={(e) => handleDirectUpdateParticipant(p, 'remarks', e.target.value)}
+                      className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.participantStatus)}`}
                     >
                       <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
                       <option value="not_respond_2x" className="text-slate-755 bg-white font-semibold">Not respond 2x</option>
@@ -223,9 +223,9 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   <div className="flex justify-center">
                     <select
                       disabled={isUser}
-                      value={l.confirmationStatus || 'pending'}
-                      onChange={(e) => handleDirectUpdateLead(l, 'confirmationStatus', e.target.value)}
-                      className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(l.confirmationStatus || 'pending')}`}
+                      value={p.confirmationStatus || 'pending'}
+                      onChange={(e) => handleDirectUpdateParticipant(p, 'confirmationStatus', e.target.value)}
+                      className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(p.confirmationStatus || 'pending')}`}
                     >
                       <option value="pending" className="text-blue-700 bg-white font-extrabold">Pending</option>
                       <option value="approve" className="text-emerald-700 bg-white font-extrabold">Approve</option>
@@ -244,7 +244,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 <td className="py-3.5 px-4 text-right space-x-1">
                   {!isUser && (
                     <button
-                      onClick={() => handleOpenUpdateLeadModal(l)}
+                      onClick={() => handleOpenUpdateParticipantModal(p)}
                       className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
                       title="Update Status"
                     >
@@ -253,7 +253,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   )}
                   {!isUser && (
                     <button
-                      onClick={() => openDeleteLeadConfirm(l)}
+                      onClick={() => openDeleteParticipantConfirm(p)}
                       className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
                       title="Remove Participant"
                     >

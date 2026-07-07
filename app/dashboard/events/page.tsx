@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Event, EventLead, Database, AppUser } from '../../../lib/types';
+import { Event, EventParticipant, Database, AppUser } from '../../../lib/types';
 import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -14,17 +14,17 @@ import { CreateEventModal } from './components/CreateEventModal';
 import { EditEventModal } from './components/EditEventModal';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { DeleteEventConfirmModal } from './components/DeleteEventConfirmModal';
-import { DeleteLeadConfirmModal } from './components/DeleteLeadConfirmModal';
-import { AddLeadModal } from './components/AddLeadModal';
-import { UpdateLeadModal } from './components/UpdateLeadModal';
+import { DeleteParticipantConfirmModal } from './components/DeleteParticipantConfirmModal';
+import { AddParticipantModal } from './components/AddParticipantModal';
+import { UpdateParticipantModal } from './components/UpdateParticipantModal';
 import { EventStatistics } from './components/EventStatistics';
-import { LeadToolbar } from './components/LeadToolbar';
+import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
 import { extractPicFromNotes } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
-import { exportLeadsToExcel } from './utils/exportHelper';
-import { importLeadsFromExcel } from './utils/importHelper';
+import { exportParticipantsToExcel } from './utils/exportHelper';
+import { importParticipantsFromExcel } from './utils/importHelper';
 
 export default function EventsPage() {
   const { isAdmin, isManager, isUser, user } = useAuth();
@@ -33,32 +33,32 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Selected Event & Leads state
+  // Selected Event & Participants state
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [leads, setLeads] = useState<EventLead[]>([]);
-  const [loadingLeads, setLoadingLeads] = useState(false);
-  const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
+  const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
-  const [leadSearchQuery, setLeadSearchQuery] = useState('');
-  const [filterLeadCompany, setFilterLeadCompany] = useState('');
-  const [filterLeadPosition, setFilterLeadPosition] = useState('');
-  const [filterLeadIndustry, setFilterLeadIndustry] = useState('');
-  const [filterLeadCity, setFilterLeadCity] = useState('');
+  const [participantSearchQuery, setParticipantSearchQuery] = useState('');
+  const [filterCompany, setFilterCompany] = useState('');
+  const [filterPosition, setFilterPosition] = useState('');
+  const [filterIndustry, setFilterIndustry] = useState('');
+  const [filterCity, setFilterCity] = useState('');
 
-  const setLeadsSorted = (leadsList: EventLead[]) => {
-    const sorted = [...leadsList].sort((a, b) => a.id - b.id);
-    setLeads(sorted);
+  const setParticipantsSorted = (participantsList: EventParticipant[]) => {
+    const sorted = [...participantsList].sort((a, b) => a.id - b.id);
+    setParticipants(sorted);
   };
 
   // Modals state
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const [isEditEventModalOpen, setIsEditEventModalOpen] = useState(false);
   const [isDeleteEventConfirmOpen, setIsDeleteEventConfirmOpen] = useState(false);
-  const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
-  const [isUpdateLeadModalOpen, setIsUpdateLeadModalOpen] = useState(false);
-  const [isDeleteLeadConfirmOpen, setIsDeleteLeadConfirmOpen] = useState(false);
-  const [deletingLead, setDeletingLead] = useState<EventLead | null>(null);
-  const [submittingLeadDelete, setSubmittingLeadDelete] = useState(false);
+  const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
+  const [isUpdateParticipantModalOpen, setIsUpdateParticipantModalOpen] = useState(false);
+  const [isDeleteParticipantConfirmOpen, setIsDeleteParticipantConfirmOpen] = useState(false);
+  const [deletingParticipant, setDeletingParticipant] = useState<EventParticipant | null>(null);
+  const [submittingParticipantDelete, setSubmittingParticipantDelete] = useState(false);
 
   // Form inputs for Event creation
   const [name, setName] = useState('');
@@ -81,22 +81,22 @@ export default function EventsPage() {
   // Delete event confirmation target
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
 
-  // Form states for adding/updating leads
-  const [submittingLead, setSubmittingLead] = useState(false);
-  const [activeLead, setActiveLead] = useState<EventLead | null>(null);
+  // Form states for adding/updating participants
+  const [submittingParticipant, setSubmittingParticipant] = useState(false);
+  const [activeParticipant, setActiveParticipant] = useState<EventParticipant | null>(null);
   const [activeTab, setActiveTab] = useState<'request' | 'pre_event' | 'reminder' | 'reminder_dday'>('request');
   const [usersList, setUsersList] = useState<AppUser[]>([]);
-  const [filterLeadPic, setFilterLeadPic] = useState('');
+  const [filterPic, setFilterPic] = useState('');
   
-  // Excel Import states for Event Leads
-  const [isImportLeadsModalOpen, setIsImportLeadsModalOpen] = useState(false);
-  const [importLeadsFile, setImportLeadsFile] = useState<File | null>(null);
-  const [importLeadsProgress, setImportLeadsProgress] = useState(0);
-  const [isImportingLeads, setIsImportingLeads] = useState(false);
+  // Excel Import states for Event Participants
+  const [isImportParticipantsModalOpen, setIsImportParticipantsModalOpen] = useState(false);
+  const [importParticipantsFile, setImportParticipantsFile] = useState<File | null>(null);
+  const [importParticipantsProgress, setImportParticipantsProgress] = useState(0);
+  const [isImportingParticipants, setIsImportingParticipants] = useState(false);
 
-  const [submittingLeadUpdate, setSubmittingLeadUpdate] = useState(false);
+  const [submittingParticipantUpdate, setSubmittingParticipantUpdate] = useState(false);
 
-  const [allEventLeads, setAllEventLeads] = useState<EventLead[]>([]);
+  const [allEventParticipants, setAllEventParticipants] = useState<EventParticipant[]>([]);
 
   const adminUser = usersList.find(u => u.roles?.includes('ADMIN'));
   const adminName = adminUser ? (adminUser.fullName || adminUser.username) : 'Admin';
@@ -110,12 +110,12 @@ export default function EventsPage() {
       const [eList, cList, lList, uList] = await Promise.all([
         crmService.getEvents(),
         crmService.getDatabases(),
-        crmService.getEventLeads(),
+        crmService.getEventParticipants(),
         crmService.getUsers().catch(() => [])
       ]);
       setEvents(eList);
       setDatabases(cList.filter(c => c.isActive)); // only active databases
-      setAllEventLeads(lList);
+      setAllEventParticipants(lList);
       setUsersList(uList);
     } catch (err) {
       toast.error('Failed to load events or databases');
@@ -213,7 +213,7 @@ export default function EventsPage() {
       setIsDeleteEventConfirmOpen(false);
       setDeletingEvent(null);
       setSelectedEvent(null);
-      setLeads([]);
+      setParticipants([]);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete event');
@@ -224,51 +224,51 @@ export default function EventsPage() {
 
   const handleSelectEvent = async (event: Event) => {
     setSelectedEvent(event);
-    setLoadingLeads(true);
-    setSelectedLeadIds([]); // reset selection
+    setLoadingParticipants(true);
+    setSelectedParticipantIds([]); // reset selection
     try {
-      const allLeads = await crmService.getEventLeads();
-      setAllEventLeads(allLeads);
-      const filteredLeads = allLeads.filter((l) => l.event.id === event.id);
-      setLeadsSorted(filteredLeads);
+      const allParticipants = await crmService.getEventParticipants();
+      setAllEventParticipants(allParticipants);
+      const filteredParticipants = allParticipants.filter((l) => l.event.id === event.id);
+      setParticipantsSorted(filteredParticipants);
     } catch (err) {
-      toast.error('Failed to fetch leads for this event');
+      toast.error('Failed to fetch participants for this event');
     } finally {
-      setLoadingLeads(false);
+      setLoadingParticipants(false);
     }
   };
 
-  const handleExportLeads = () => {
-    if (!selectedEvent || filteredLeads.length === 0) {
+  const handleExportParticipants = () => {
+    if (!selectedEvent || filteredParticipants.length === 0) {
       toast.error("Tidak ada data lead untuk di-export.");
       return;
     }
     try {
-      exportLeadsToExcel(selectedEvent, filteredLeads, activeTab, adminName);
-      toast.success('Daftar leads berhasil di-export ke Excel!');
+      exportParticipantsToExcel(selectedEvent, filteredParticipants, activeTab, adminName);
+      toast.success('Daftar participants berhasil di-export ke Excel!');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to export leads');
+      toast.error(err.message || 'Failed to export participants');
     }
   };
 
   const handleBatchUpdateAttendance = async (status: string) => {
-    if (selectedLeadIds.length === 0) return;
+    if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
     
     let successCount = 0;
     let failCount = 0;
     
     // Lakukan update untuk status attendance secara massal
-    await Promise.all(selectedLeadIds.map(async (leadId) => {
+    await Promise.all(selectedParticipantIds.map(async (participantId) => {
       try {
-        const lead = leads.find(l => l.id === leadId);
+        const lead = participants.find(l => l.id === participantId);
         if (lead) {
-          await crmService.updateLeadStatus(
-            leadId,
-            lead.leadStatus,
+          await crmService.updateParticipantStatus(
+            participantId,
+            lead.participantStatus,
             status,
             lead.notes || undefined,
-            undefined, // leadCategory (removed)
+            undefined, // participantCategory (removed)
             lead.callStatus || undefined,
             lead.emailStatus || undefined,
             lead.whatsappStatus || undefined,
@@ -290,37 +290,37 @@ export default function EventsPage() {
     }));
 
     setIsBatchUpdating(false);
-    setSelectedLeadIds([]);
+    setSelectedParticipantIds([]);
     
     if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} leads, gagal ${failCount} leads.`);
+      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
     } else {
-      toast.success(`Berhasil mengupdate status attendance ${successCount} leads!`);
+      toast.success(`Berhasil mengupdate status attendance ${successCount} participants!`);
     }
 
     if (selectedEvent) {
-      handleSelectEvent(selectedEvent); // Reload list leads
+      handleSelectEvent(selectedEvent); // Reload list participants
     }
   };
 
-  const handleBatchUpdateLeadStatus = async (status: string) => {
-    if (selectedLeadIds.length === 0) return;
+  const handleBatchUpdateParticipantStatus = async (status: string) => {
+    if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
     
     let successCount = 0;
     let failCount = 0;
     
     // Lakukan update untuk lead status secara massal
-    await Promise.all(selectedLeadIds.map(async (leadId) => {
+    await Promise.all(selectedParticipantIds.map(async (participantId) => {
       try {
-        const lead = leads.find(l => l.id === leadId);
+        const lead = participants.find(l => l.id === participantId);
         if (lead) {
-          await crmService.updateLeadStatus(
-            leadId,
+          await crmService.updateParticipantStatus(
+            participantId,
             status,
             lead.attendanceStatus,
             lead.notes || undefined,
-            undefined, // leadCategory (removed)
+            undefined, // participantCategory (removed)
             lead.callStatus || undefined,
             lead.emailStatus || undefined,
             lead.whatsappStatus || undefined,
@@ -342,37 +342,37 @@ export default function EventsPage() {
     }));
 
     setIsBatchUpdating(false);
-    setSelectedLeadIds([]);
+    setSelectedParticipantIds([]);
     
     if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} leads, gagal ${failCount} leads.`);
+      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
     } else {
-      toast.success(`Berhasil mengupdate lead status ${successCount} leads!`);
+      toast.success(`Berhasil mengupdate lead status ${successCount} participants!`);
     }
 
     if (selectedEvent) {
-      handleSelectEvent(selectedEvent); // Reload list leads
+      handleSelectEvent(selectedEvent); // Reload list participants
     }
   };
 
   const handleBatchUpdateConfirmationStatus = async (status: string) => {
-    if (selectedLeadIds.length === 0) return;
+    if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
     
     let successCount = 0;
     let failCount = 0;
     
     // Lakukan update untuk status confirmation secara massal
-    await Promise.all(selectedLeadIds.map(async (leadId) => {
+    await Promise.all(selectedParticipantIds.map(async (participantId) => {
       try {
-        const lead = leads.find(l => l.id === leadId);
+        const lead = participants.find(l => l.id === participantId);
         if (lead) {
-          await crmService.updateLeadStatus(
-            leadId,
-            lead.leadStatus,
+          await crmService.updateParticipantStatus(
+            participantId,
+            lead.participantStatus,
             lead.attendanceStatus,
             lead.notes || undefined,
-            undefined, // leadCategory (removed)
+            undefined, // participantCategory (removed)
             lead.callStatus || undefined,
             lead.emailStatus || undefined,
             lead.whatsappStatus || undefined,
@@ -394,33 +394,33 @@ export default function EventsPage() {
     }));
 
     setIsBatchUpdating(false);
-    setSelectedLeadIds([]);
+    setSelectedParticipantIds([]);
     
     if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} leads, gagal ${failCount} leads.`);
+      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
     } else {
-      toast.success(`Berhasil mengupdate status konfirmasi ${successCount} leads!`);
+      toast.success(`Berhasil mengupdate status konfirmasi ${successCount} participants!`);
     }
 
     if (selectedEvent) {
-      handleSelectEvent(selectedEvent); // Reload list leads
+      handleSelectEvent(selectedEvent); // Reload list participants
     }
   };
 
   const handleBatchUpdateReminderHariH = async (status: string) => {
-    if (selectedLeadIds.length === 0) return;
+    if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
     
     let successCount = 0;
     let failCount = 0;
     
-    await Promise.all(selectedLeadIds.map(async (leadId) => {
+    await Promise.all(selectedParticipantIds.map(async (participantId) => {
       try {
-        const lead = leads.find(l => l.id === leadId);
+        const lead = participants.find(l => l.id === participantId);
         if (lead) {
-          await crmService.updateLeadStatus(
-            leadId,
-            lead.leadStatus,
+          await crmService.updateParticipantStatus(
+            participantId,
+            lead.participantStatus,
             lead.attendanceStatus,
             lead.notes || undefined,
             undefined,
@@ -445,12 +445,12 @@ export default function EventsPage() {
     }));
 
     setIsBatchUpdating(false);
-    setSelectedLeadIds([]);
+    setSelectedParticipantIds([]);
     
     if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} leads, gagal ${failCount} leads.`);
+      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
     } else {
-      toast.success(`Berhasil mengupdate status Hari H ${successCount} leads!`);
+      toast.success(`Berhasil mengupdate status Hari H ${successCount} participants!`);
     }
 
     if (selectedEvent) {
@@ -458,43 +458,43 @@ export default function EventsPage() {
     }
   };
 
-  const handleResetLeadFilters = () => {
-    setLeadSearchQuery('');
-    setFilterLeadCompany('');
-    setFilterLeadPosition('');
-    setFilterLeadIndustry('');
-    setFilterLeadCity('');
-    setFilterLeadPic('');
+  const handleResetFilters = () => {
+    setParticipantSearchQuery('');
+    setFilterCompany('');
+    setFilterPosition('');
+    setFilterIndustry('');
+    setFilterCity('');
+    setFilterPic('');
   };
 
-  const handleAddLead = async (databaseIds: number[], leadNotes: string) => {
+  const handleAddParticipant = async (databaseIds: number[], notes: string) => {
     if (!selectedEvent || databaseIds.length === 0) {
       toast.error('Please select at least one database');
       return;
     }
 
-    setSubmittingLead(true);
+    setSubmittingParticipant(true);
     try {
-      await crmService.createEventLead({
+      await crmService.createEventParticipant({
         eventId: selectedEvent.id,
         databaseIds,
-        leadStatus: 'white',
+        participantStatus: 'white',
         attendanceStatus: 'invited',
         confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
         notes: activeTab === 'request'
-          ? `[Origin: Request] ${leadNotes.trim()}`.trim()
-          : leadNotes.trim() || undefined
+          ? `[Origin: Request] ${notes.trim()}`.trim()
+          : notes.trim() || undefined
       });
 
       toast.success(`Successfully added ${databaseIds.length} database(s) as lead(s)!`);
-      setIsAddLeadModalOpen(false);
+      setIsAddParticipantModalOpen(false);
       
-      // Reload leads
+      // Reload participants
       handleSelectEvent(selectedEvent);
     } catch (err: any) {
       toast.error(err.message || 'Failed to add database(s) to event');
     } finally {
-      setSubmittingLead(false);
+      setSubmittingParticipant(false);
     }
   };
 
@@ -536,57 +536,57 @@ export default function EventsPage() {
 
     const worksheet = XLSX.utils.json_to_sheet(sampleData, { header: headers });
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Leads');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Participants');
 
     worksheet['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 3, 15) }));
 
-    XLSX.writeFile(workbook, 'Event_Leads_Import_Template.xlsx');
+    XLSX.writeFile(workbook, 'Event_Participants_Import_Template.xlsx');
     toast.success('Template Excel berhasil diunduh!');
   };
 
-  const handleImportLeadsExcel = async () => {
-    if (!importLeadsFile || !selectedEvent) return;
-    setIsImportingLeads(true);
+  const handleImportParticipantsExcel = async () => {
+    if (!importParticipantsFile || !selectedEvent) return;
+    setIsImportingParticipants(true);
 
     try {
-      const { successCount, errorCount } = await importLeadsFromExcel(
-        importLeadsFile,
+      const { successCount, errorCount } = await importParticipantsFromExcel(
+        importParticipantsFile,
         selectedEvent.id,
         activeTab,
-        leads,
-        setImportLeadsProgress,
+        participants,
+        setImportParticipantsProgress,
         crmService
       );
       toast.success(`Impor selesai! Berhasil: ${successCount} baris. Gagal/Skip: ${errorCount} baris.`);
-      setIsImportLeadsModalOpen(false);
-      setImportLeadsFile(null);
+      setIsImportParticipantsModalOpen(false);
+      setImportParticipantsFile(null);
       handleSelectEvent(selectedEvent);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Gagal memproses file Excel.');
     } finally {
-      setIsImportingLeads(false);
-      setImportLeadsProgress(0);
+      setIsImportingParticipants(false);
+      setImportParticipantsProgress(0);
     }
   };
 
   const handleBatchAssignPic = async (picName: string) => {
-    if (selectedLeadIds.length === 0) return;
+    if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
     
     let successCount = 0;
     let failCount = 0;
     
-    await Promise.all(selectedLeadIds.map(async (leadId) => {
+    await Promise.all(selectedParticipantIds.map(async (participantId) => {
       try {
-        const lead = leads.find(l => l.id === leadId);
+        const lead = participants.find(l => l.id === participantId);
         if (lead) {
           const { cleanNotes } = extractPicFromNotes(lead.notes);
           const newNotes = `[PIC: ${picName}] ${cleanNotes === '-' ? '' : cleanNotes}`.trim();
           
-          await crmService.updateLeadStatus(
-            leadId,
-            lead.leadStatus,
+          await crmService.updateParticipantStatus(
+            participantId,
+            lead.participantStatus,
             lead.attendanceStatus,
             newNotes,
             undefined,
@@ -611,12 +611,12 @@ export default function EventsPage() {
     }));
 
     setIsBatchUpdating(false);
-    setSelectedLeadIds([]);
+    setSelectedParticipantIds([]);
     
     if (failCount > 0) {
-      toast.warning(`Berhasil menugaskan ${successCount} leads ke ${picName}, gagal ${failCount} leads.`);
+      toast.warning(`Berhasil menugaskan ${successCount} participants ke ${picName}, gagal ${failCount} participants.`);
     } else {
-      toast.success(`Berhasil menugaskan ${successCount} leads ke ${picName}!`);
+      toast.success(`Berhasil menugaskan ${successCount} participants ke ${picName}!`);
     }
 
     if (selectedEvent) {
@@ -626,13 +626,13 @@ export default function EventsPage() {
 
 
 
-  const handleOpenUpdateLeadModal = (lead: EventLead) => {
-    setActiveLead(lead);
-    setIsUpdateLeadModalOpen(true);
+  const handleOpenUpdateParticipantModal = (lead: EventParticipant) => {
+    setActiveParticipant(lead);
+    setIsUpdateParticipantModalOpen(true);
   };
 
-  const handleUpdateLeadStatus = async (data: {
-    leadStatus: string;
+  const handleUpdateParticipantStatus = async (data: {
+    participantStatus: string;
     attendanceStatus: string;
     notes: string;
     callStatus: string;
@@ -644,16 +644,16 @@ export default function EventsPage() {
     reminderHariH: string;
     confirmationStatus: string;
   }) => {
-    if (!selectedEvent || !activeLead) return;
+    if (!selectedEvent || !activeParticipant) return;
 
-    setSubmittingLeadUpdate(true);
+    setSubmittingParticipantUpdate(true);
     try {
-      await crmService.updateLeadStatus(
-        activeLead.id,
-        data.leadStatus,
+      await crmService.updateParticipantStatus(
+        activeParticipant.id,
+        data.participantStatus,
         data.attendanceStatus,
         data.notes || undefined,
-        undefined, // leadCategory (removed)
+        undefined, // participantCategory (removed)
         data.callStatus || undefined,
         data.emailStatus || undefined,
         data.whatsappStatus || undefined,
@@ -669,26 +669,26 @@ export default function EventsPage() {
       );
 
       // Log activity in history
-      await crmService.addEventLeadActivity(activeLead.id, {
+      await crmService.addEventParticipantActivity(activeParticipant.id, {
         activityType: 'CALL',
-        status: data.leadStatus,
+        status: data.participantStatus,
         notes: `Updated status and qualification details.`
       });
 
       toast.success('Lead status and qualification updated successfully!');
-      setIsUpdateLeadModalOpen(false);
-      setActiveLead(null);
+      setIsUpdateParticipantModalOpen(false);
+      setActiveParticipant(null);
       
-      // Reload leads
+      // Reload participants
       handleSelectEvent(selectedEvent);
     } catch (err: any) {
       toast.error(err.message || 'Failed to update lead');
     } finally {
-      setSubmittingLeadUpdate(false);
+      setSubmittingParticipantUpdate(false);
     }
   };
 
-  const handleToggleEngagement = async (lead: EventLead, type: 'CALL' | 'EMAIL' | 'WHATSAPP') => {
+  const handleToggleEngagement = async (lead: EventParticipant, type: 'CALL' | 'EMAIL' | 'WHATSAPP') => {
     let callStatus = lead.callStatus || 'NOT_CONTACTED';
     let emailStatus = lead.emailStatus || 'NOT_SENT';
     let whatsappStatus = lead.whatsappStatus || 'NOT_SENT';
@@ -706,12 +706,12 @@ export default function EventsPage() {
     }
 
     try {
-      await crmService.updateLeadStatus(
+      await crmService.updateParticipantStatus(
         lead.id,
-        lead.leadStatus,
+        lead.participantStatus,
         lead.attendanceStatus,
         lead.notes || undefined,
-        undefined, // leadCategory (removed)
+        undefined, // participantCategory (removed)
         callStatus,
         emailStatus,
         whatsappStatus,
@@ -726,7 +726,7 @@ export default function EventsPage() {
       );
 
       // Log activity in history
-      await crmService.addEventLeadActivity(lead.id, {
+      await crmService.addEventParticipantActivity(lead.id, {
         activityType: type,
         status: nextStatus,
         notes: `Toggled ${type} status to ${nextStatus} via double-click.`
@@ -734,24 +734,24 @@ export default function EventsPage() {
 
       toast.success(`Updated ${type} status to ${nextStatus === 'CONNECTED' || nextStatus === 'SENT' ? 'ACTIVE' : 'INACTIVE'}!`);
 
-      // Reload leads list
+      // Reload participants list
       if (selectedEvent) {
-        const allLeads = await crmService.getEventLeads();
-        setAllEventLeads(allLeads);
-        const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
-        setLeadsSorted(filteredLeads);
+        const allParticipants = await crmService.getEventParticipants();
+        setAllEventParticipants(allParticipants);
+        const filteredParticipants = allParticipants.filter((l) => l.event.id === selectedEvent.id);
+        setParticipantsSorted(filteredParticipants);
       }
     } catch (err: any) {
       toast.error(err.message || `Failed to toggle ${type} status`);
     }
   };
 
-  const handleDirectUpdateLead = async (
-    lead: EventLead,
+  const handleDirectUpdateParticipant = async (
+    lead: EventParticipant,
     field: 'remarks' | 'attendance' | 'confirmationStatus' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH',
     value: string
   ) => {
-    let leadStatus = lead.leadStatus;
+    let participantStatus = lead.participantStatus;
     let attendanceStatus = lead.attendanceStatus;
     let confirmationStatus = lead.confirmationStatus;
     let reminderH7 = lead.reminderH7;
@@ -760,7 +760,7 @@ export default function EventsPage() {
     let reminderHariH = lead.reminderHariH;
 
     if (field === 'remarks') {
-      leadStatus = value;
+      participantStatus = value;
     } else if (field === 'attendance') {
       attendanceStatus = value;
     } else if (field === 'confirmationStatus') {
@@ -776,12 +776,12 @@ export default function EventsPage() {
     }
 
     try {
-      await crmService.updateLeadStatus(
+      await crmService.updateParticipantStatus(
         lead.id,
-        leadStatus,
+        participantStatus,
         attendanceStatus,
         lead.notes || undefined,
-        undefined, // leadCategory (removed)
+        undefined, // participantCategory (removed)
         lead.callStatus || undefined,
         lead.emailStatus || undefined,
         lead.whatsappStatus || undefined,
@@ -797,20 +797,20 @@ export default function EventsPage() {
       );
 
       // Log activity
-      await crmService.addEventLeadActivity(lead.id, {
+      await crmService.addEventParticipantActivity(lead.id, {
         activityType: 'CALL',
         status: value,
-        notes: `Directly updated ${field} to ${value || 'None'} from the leads list table.`
+        notes: `Directly updated ${field} to ${value || 'None'} from the participants list table.`
       });
 
       toast.success(`Updated ${field} successfully!`);
 
-      // Reload leads list
+      // Reload participants list
       if (selectedEvent) {
-        const allLeads = await crmService.getEventLeads();
-        setAllEventLeads(allLeads);
-        const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
-        setLeadsSorted(filteredLeads);
+        const allParticipants = await crmService.getEventParticipants();
+        setAllEventParticipants(allParticipants);
+        const filteredParticipants = allParticipants.filter((l) => l.event.id === selectedEvent.id);
+        setParticipantsSorted(filteredParticipants);
       }
     } catch (err: any) {
       toast.error(err.message || `Failed to update ${field}`);
@@ -821,25 +821,25 @@ export default function EventsPage() {
 
 
 
-  const openDeleteLeadConfirm = (lead: EventLead) => {
-    setDeletingLead(lead);
-    setIsDeleteLeadConfirmOpen(true);
+  const openDeleteParticipantConfirm = (lead: EventParticipant) => {
+    setDeletingParticipant(lead);
+    setIsDeleteParticipantConfirmOpen(true);
   };
 
-  const handleDeleteLead = async () => {
-    if (!selectedEvent || !deletingLead) return;
-    setSubmittingLeadDelete(true);
+  const handleDeleteParticipant = async () => {
+    if (!selectedEvent || !deletingParticipant) return;
+    setSubmittingParticipantDelete(true);
 
     try {
-      await crmService.deleteEventLead(deletingLead.id);
+      await crmService.deleteEventParticipant(deletingParticipant.id);
       toast.success('Participant removed from event successfully!');
-      setIsDeleteLeadConfirmOpen(false);
-      setDeletingLead(null);
+      setIsDeleteParticipantConfirmOpen(false);
+      setDeletingParticipant(null);
       handleSelectEvent(selectedEvent);
     } catch (err: any) {
       toast.error(err.message || 'Failed to remove participant');
     } finally {
-      setSubmittingLeadDelete(false);
+      setSubmittingParticipantDelete(false);
     }
   };
 
@@ -853,7 +853,7 @@ export default function EventsPage() {
 
 
 
-  const filteredLeads = leads.filter((l) => {
+  const filteredParticipants = participants.filter((l) => {
     if (activeTab === 'request') {
       const confStatus = l.confirmationStatus?.toLowerCase();
       if (confStatus === 'approve') {
@@ -869,8 +869,8 @@ export default function EventsPage() {
       }
     } else if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
       const confStatus = l.confirmationStatus?.toLowerCase();
-      const leadStatus = l.leadStatus?.toLowerCase();
-      if (confStatus !== 'approve' || leadStatus !== 'registered') {
+      const participantStatus = l.participantStatus?.toLowerCase();
+      if (confStatus !== 'approve' || participantStatus !== 'registered') {
         return false;
       }
     }
@@ -879,7 +879,7 @@ export default function EventsPage() {
     if (activeTab !== 'request') {
       const { pic } = extractPicFromNotes(l.notes);
       if (!isAdmin && user) {
-        // Regular staff (non-admin) only sees their own assigned leads
+        // Regular staff (non-admin) only sees their own assigned participants
         const myName = user.fullName || user.username;
         const isMyPic = pic.toLowerCase() === myName.toLowerCase() || 
                         (pic.toLowerCase() === 'admin' && myName.toLowerCase() === adminName.toLowerCase());
@@ -888,17 +888,17 @@ export default function EventsPage() {
         }
       } else {
         // Admin/Manager filters by the dropdown selection
-        if (filterLeadPic) {
-          const isMatch = pic.toLowerCase() === filterLeadPic.toLowerCase() || 
-                          (pic.toLowerCase() === 'admin' && filterLeadPic.toLowerCase() === adminName.toLowerCase());
+        if (filterPic) {
+          const isMatch = pic.toLowerCase() === filterPic.toLowerCase() || 
+                          (pic.toLowerCase() === 'admin' && filterPic.toLowerCase() === adminName.toLowerCase());
           if (!isMatch) return false;
         }
       }
     }
 
     // 1. General search query
-    if (leadSearchQuery) {
-      const term = leadSearchQuery.toLowerCase();
+    if (participantSearchQuery) {
+      const term = participantSearchQuery.toLowerCase();
       const fullName = `${l.database.firstName} ${l.database.lastName}`.toLowerCase();
       const companyName = l.database.company?.name?.toLowerCase() || '';
       const jobTitle = l.database.jobTitle?.toLowerCase() || '';
@@ -907,22 +907,22 @@ export default function EventsPage() {
     }
 
     // 2. Company filter
-    if (filterLeadCompany && l.database.company?.name !== filterLeadCompany) {
+    if (filterCompany && l.database.company?.name !== filterCompany) {
       return false;
     }
 
     // 3. Position level filter
-    if (filterLeadPosition && l.database.positionLevel !== filterLeadPosition) {
+    if (filterPosition && l.database.positionLevel !== filterPosition) {
       return false;
     }
 
     // 4. Industry filter
-    if (filterLeadIndustry && l.database.company?.industry !== filterLeadIndustry) {
+    if (filterIndustry && l.database.company?.industry !== filterIndustry) {
       return false;
     }
 
     // 5. City filter
-    if (filterLeadCity && l.database.company?.city !== filterLeadCity) {
+    if (filterCity && l.database.company?.city !== filterCity) {
       return false;
     }
 
@@ -934,7 +934,7 @@ export default function EventsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900">Events & Lead Tracking</h2>
+          <h2 className="text-2xl font-extrabold text-slate-900">Event & Participant Management</h2>
           <p className="text-sm text-slate-500 mt-1">Track event attendance, confirmation color statuses, and client targets.</p>
         </div>
         {!isUser && !selectedEvent && (
@@ -1009,7 +1009,7 @@ export default function EventsPage() {
                     <p className="text-xs text-slate-500 mt-1.5">Client: <strong className="text-slate-700">{evt.clientName || 'Independent'}</strong></p>
                     <p className="text-xs text-slate-555 text-slate-500 mt-2.5 flex items-center gap-1.5 font-bold">
                       <Users className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      <span>{allEventLeads.filter((l) => l.event.id === evt.id).length} orang</span>
+                      <span>{allEventParticipants.filter((l) => l.event.id === evt.id).length} orang</span>
                     </p>
                   </div>
                   
@@ -1031,7 +1031,7 @@ export default function EventsPage() {
           <button
             onClick={() => {
               setSelectedEvent(null);
-              setLeads([]);
+              setParticipants([]);
             }}
             className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-950 font-bold text-xs mb-5 transition-all self-start"
           >
@@ -1058,9 +1058,9 @@ export default function EventsPage() {
             </div>
             
             <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto shrink-0">
-              {leads.length > 0 && (
+              {participants.length > 0 && (
                 <button
-                  onClick={handleExportLeads}
+                  onClick={handleExportParticipants}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -1092,13 +1092,13 @@ export default function EventsPage() {
                   <button
                     onClick={handleDownloadTemplate}
                     className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
-                    title="Unduh Template Excel untuk Impor Leads"
+                    title="Unduh Template Excel untuk Impor Participants"
                   >
                     <Download className="w-3.5 h-3.5 text-blue-600" />
                     Template
                   </button>
                   <button
-                    onClick={() => setIsImportLeadsModalOpen(true)}
+                    onClick={() => setIsImportParticipantsModalOpen(true)}
                     className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
                     title="Impor Peserta Baru via Excel"
                   >
@@ -1108,18 +1108,18 @@ export default function EventsPage() {
                 </>
               )}
               <button
-                onClick={() => setIsAddLeadModalOpen(true)}
+                onClick={() => setIsAddParticipantModalOpen(true)}
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                Add Lead
+                Add Participant
               </button>
             </div>
           </div>
 
           <EventStatistics
             activeTab={activeTab}
-            leads={leads}
+            participants={participants}
             usersList={usersList}
             isAdmin={isAdmin}
             adminName={adminName}
@@ -1130,7 +1130,7 @@ export default function EventsPage() {
             <button
               onClick={() => {
                 setActiveTab('request');
-                setSelectedLeadIds([]);
+                setSelectedParticipantIds([]);
               }}
               className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
                 activeTab === 'request'
@@ -1138,12 +1138,12 @@ export default function EventsPage() {
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Request
+              Data List
             </button>
             <button
               onClick={() => {
                 setActiveTab('pre_event');
-                setSelectedLeadIds([]);
+                setSelectedParticipantIds([]);
               }}
               className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
                 activeTab === 'pre_event'
@@ -1156,7 +1156,7 @@ export default function EventsPage() {
             <button
               onClick={() => {
                 setActiveTab('reminder');
-                setSelectedLeadIds([]);
+                setSelectedParticipantIds([]);
               }}
               className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
                 activeTab === 'reminder'
@@ -1169,7 +1169,7 @@ export default function EventsPage() {
             <button
               onClick={() => {
                 setActiveTab('reminder_dday');
-                setSelectedLeadIds([]);
+                setSelectedParticipantIds([]);
               }}
               className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
                 activeTab === 'reminder_dday'
@@ -1183,67 +1183,67 @@ export default function EventsPage() {
 
           {/* Batch Actions Status Bar */}
           <BatchActionsBar
-            selectedLeadIds={selectedLeadIds}
-            setSelectedLeadIds={setSelectedLeadIds}
+            selectedParticipantIds={selectedParticipantIds}
+            setSelectedParticipantIds={setSelectedParticipantIds}
             activeTab={activeTab}
             usersList={usersList}
             handleBatchUpdateConfirmationStatus={handleBatchUpdateConfirmationStatus}
-            handleBatchUpdateLeadStatus={handleBatchUpdateLeadStatus}
+            handleBatchUpdateParticipantStatus={handleBatchUpdateParticipantStatus}
             handleBatchAssignPic={handleBatchAssignPic}
             handleBatchUpdateReminderHariH={handleBatchUpdateReminderHariH}
           />
 
           {/* Toolbar with Search & Advanced Filters */}
-          {leads.length > 0 && (
-            <LeadToolbar
-              leads={leads}
+          {participants.length > 0 && (
+            <ParticipantToolbar
+              participants={participants}
               usersList={usersList}
-              leadSearchQuery={leadSearchQuery}
-              setLeadSearchQuery={setLeadSearchQuery}
-              filterLeadCompany={filterLeadCompany}
-              setFilterLeadCompany={setFilterLeadCompany}
-              filterLeadPosition={filterLeadPosition}
-              setFilterLeadPosition={setFilterLeadPosition}
-              filterLeadIndustry={filterLeadIndustry}
-              setFilterLeadIndustry={setFilterLeadIndustry}
-              filterLeadCity={filterLeadCity}
-              setFilterLeadCity={setFilterLeadCity}
-              filterLeadPic={filterLeadPic}
-              setFilterLeadPic={setFilterLeadPic}
+              searchQuery={participantSearchQuery}
+              setSearchQuery={setParticipantSearchQuery}
+              filterCompany={filterCompany}
+              setFilterCompany={setFilterCompany}
+              filterPosition={filterPosition}
+              setFilterPosition={setFilterPosition}
+              filterIndustry={filterIndustry}
+              setFilterIndustry={setFilterIndustry}
+              filterCity={filterCity}
+              setFilterCity={setFilterCity}
+              filterPic={filterPic}
+              setFilterPic={setFilterPic}
               activeTab={activeTab}
               isAdmin={isAdmin}
-              handleResetLeadFilters={handleResetLeadFilters}
+              handleResetFilters={handleResetFilters}
             />
           )}
 
-          {/* Leads Table */}
-          {loadingLeads ? (
+          {/* Participants Table */}
+          {loadingParticipants ? (
             <div className="py-24 flex items-center justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
-          ) : leads.length === 0 ? (
+          ) : participants.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
               <Eye className="w-8 h-8 text-slate-400 mb-2" />
-              <p className="text-sm font-semibold text-slate-500">No leads registered for this event</p>
+              <p className="text-sm font-semibold text-slate-500">No participants registered for this event</p>
               <p className="text-xs text-slate-400 mt-1">Start by clicking "Add Lead" to register a database.</p>
             </div>
-          ) : filteredLeads.length === 0 ? (
+          ) : filteredParticipants.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
               <Search className="w-8 h-8 text-slate-400 mb-2" />
-              <p className="text-sm font-semibold text-slate-500">No matching leads found</p>
+              <p className="text-sm font-semibold text-slate-500">No matching participants found</p>
               <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms.</p>
             </div>
           ) : activeTab === 'request' || activeTab === 'pre_event' ? (
             <RequestPreEventTable
-              filteredLeads={filteredLeads}
-              selectedLeadIds={selectedLeadIds}
-              setSelectedLeadIds={setSelectedLeadIds}
+              filteredParticipants={filteredParticipants}
+              selectedParticipantIds={selectedParticipantIds}
+              setSelectedParticipantIds={setSelectedParticipantIds}
               activeTab={activeTab}
               checkDatabaseCompleteness={checkDatabaseCompleteness}
               handleToggleEngagement={handleToggleEngagement}
-              handleDirectUpdateLead={handleDirectUpdateLead}
-              handleOpenUpdateLeadModal={handleOpenUpdateLeadModal}
-              openDeleteLeadConfirm={openDeleteLeadConfirm}
+              handleDirectUpdateParticipant={handleDirectUpdateParticipant}
+              handleOpenUpdateParticipantModal={handleOpenUpdateParticipantModal}
+              openDeleteParticipantConfirm={openDeleteParticipantConfirm}
               isUser={isUser}
               isAdmin={isAdmin}
               adminName={adminName}
@@ -1253,25 +1253,25 @@ export default function EventsPage() {
             />
           ) : activeTab === 'reminder' ? (
             <ReminderTable
-              filteredLeads={filteredLeads}
-              selectedLeadIds={selectedLeadIds}
-              setSelectedLeadIds={setSelectedLeadIds}
+              filteredParticipants={filteredParticipants}
+              selectedParticipantIds={selectedParticipantIds}
+              setSelectedParticipantIds={setSelectedParticipantIds}
               checkDatabaseCompleteness={checkDatabaseCompleteness}
-              handleDirectUpdateLead={handleDirectUpdateLead}
-              handleOpenUpdateLeadModal={handleOpenUpdateLeadModal}
-              openDeleteLeadConfirm={openDeleteLeadConfirm}
+              handleDirectUpdateParticipant={handleDirectUpdateParticipant}
+              handleOpenUpdateParticipantModal={handleOpenUpdateParticipantModal}
+              openDeleteParticipantConfirm={openDeleteParticipantConfirm}
               isUser={isUser}
               getStatusBadgeStyle={getStatusBadgeStyle}
             />
           ) : (
             <ReminderDdayTable
-              filteredLeads={filteredLeads}
-              selectedLeadIds={selectedLeadIds}
-              setSelectedLeadIds={setSelectedLeadIds}
+              filteredParticipants={filteredParticipants}
+              selectedParticipantIds={selectedParticipantIds}
+              setSelectedParticipantIds={setSelectedParticipantIds}
               checkDatabaseCompleteness={checkDatabaseCompleteness}
-              handleDirectUpdateLead={handleDirectUpdateLead}
-              handleOpenUpdateLeadModal={handleOpenUpdateLeadModal}
-              openDeleteLeadConfirm={openDeleteLeadConfirm}
+              handleDirectUpdateParticipant={handleDirectUpdateParticipant}
+              handleOpenUpdateParticipantModal={handleOpenUpdateParticipantModal}
+              openDeleteParticipantConfirm={openDeleteParticipantConfirm}
               isUser={isUser}
               getStatusBadgeStyle={getStatusBadgeStyle}
             />
@@ -1337,60 +1337,60 @@ export default function EventsPage() {
 
       {/* Add Lead Modal Overlay */}
       {selectedEvent && (
-        <AddLeadModal
-          isOpen={isAddLeadModalOpen}
-          onClose={() => setIsAddLeadModalOpen(false)}
+        <AddParticipantModal
+          isOpen={isAddParticipantModalOpen}
+          onClose={() => setIsAddParticipantModalOpen(false)}
           selectedEvent={selectedEvent}
           databases={databases}
-          leads={leads}
-          allEventLeads={allEventLeads}
+          participants={participants}
+          allEventParticipants={allEventParticipants}
           events={events}
-          onAddLead={handleAddLead}
-          submittingLead={submittingLead}
+          onAddParticipant={handleAddParticipant}
+          submittingParticipant={submittingParticipant}
         />
       )}
 
       {/* Lead Details & Qualification Drawer Modal Overlay */}
-      {activeLead && (
-        <UpdateLeadModal
-          isOpen={isUpdateLeadModalOpen}
+      {activeParticipant && (
+        <UpdateParticipantModal
+          isOpen={isUpdateParticipantModalOpen}
           onClose={() => {
-            setIsUpdateLeadModalOpen(false);
-            setActiveLead(null);
+            setIsUpdateParticipantModalOpen(false);
+            setActiveParticipant(null);
           }}
-          activeLead={activeLead}
-          onSubmit={handleUpdateLeadStatus}
-          submittingLeadUpdate={submittingLeadUpdate}
+          activeParticipant={activeParticipant}
+          onSubmit={handleUpdateParticipantStatus}
+          submittingParticipantUpdate={submittingParticipantUpdate}
         />
       )}
 
 
 
       {/* Delete Lead Confirm Modal */}
-      <DeleteLeadConfirmModal
-        isOpen={isDeleteLeadConfirmOpen}
-        deletingLead={deletingLead}
+      <DeleteParticipantConfirmModal
+        isOpen={isDeleteParticipantConfirmOpen}
+        deletingParticipant={deletingParticipant}
         onClose={() => {
-          setIsDeleteLeadConfirmOpen(false);
-          setDeletingLead(null);
+          setIsDeleteParticipantConfirmOpen(false);
+          setDeletingParticipant(null);
         }}
-        onConfirm={handleDeleteLead}
-        submittingLeadDelete={submittingLeadDelete}
+        onConfirm={handleDeleteParticipant}
+        submittingParticipantDelete={submittingParticipantDelete}
       />
 
       {/* Excel Import Modal */}
       <ExcelImportModal
-        isOpen={isImportLeadsModalOpen}
+        isOpen={isImportParticipantsModalOpen}
         onClose={() => {
-          setIsImportLeadsModalOpen(false);
-          setImportLeadsFile(null);
+          setIsImportParticipantsModalOpen(false);
+          setImportParticipantsFile(null);
         }}
-        importLeadsFile={importLeadsFile}
-        setImportLeadsFile={setImportLeadsFile}
-        isImportingLeads={isImportingLeads}
-        importLeadsProgress={importLeadsProgress}
+        importParticipantsFile={importParticipantsFile}
+        setImportParticipantsFile={setImportParticipantsFile}
+        isImportingParticipants={isImportingParticipants}
+        importParticipantsProgress={importParticipantsProgress}
         activeTab={activeTab}
-        onImport={handleImportLeadsExcel}
+        onImport={handleImportParticipantsExcel}
       />
     </div>
   );

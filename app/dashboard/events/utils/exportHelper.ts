@@ -1,16 +1,16 @@
 import * as XLSX from 'xlsx';
-import { Event, EventLead } from '../../../../lib/types';
+import { Event, EventParticipant } from '../../../../lib/types';
 import { extractPicFromNotes } from './notesHelper';
 import { getStatusLabel } from './statusHelper';
 
-export const exportLeadsToExcel = (
+export const exportParticipantsToExcel = (
   selectedEvent: Event,
-  filteredLeads: EventLead[],
+  filteredParticipants: EventParticipant[],
   activeTab: string,
   adminName: string
 ) => {
   let dataToExport: any[] = [];
-  let sheetName = 'Leads Handover';
+  let sheetName = 'Participants Handover';
   let fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Handover_Report.xlsx`;
 
   const getReminderLabel = (status: string | null | undefined) => {
@@ -24,15 +24,15 @@ export const exportLeadsToExcel = (
   };
 
   if (activeTab === 'request' || activeTab === 'pre_event') {
-    sheetName = activeTab === 'request' ? 'Request Leads' : 'Pre-Event Leads';
+    sheetName = activeTab === 'request' ? 'Request Participants' : 'Pre-Event Participants';
     fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_${activeTab === 'request' ? 'Request' : 'PreEvent'}_Report.xlsx`;
     
-    dataToExport = filteredLeads.map((l, index) => {
+    dataToExport = filteredParticipants.map((p, index) => {
       // Map Call Status label
       let callLabel = 'Belum Telpon';
-      if (l.callStatus === 'CONNECTED') callLabel = 'Sudah Telpon';
-      else if (l.callStatus === 'NO_ANSWER') callLabel = 'Tidak Diangkat';
-      else if (l.callStatus === 'BUSY') callLabel = 'Sibuk';
+      if (p.callStatus === 'CONNECTED') callLabel = 'Sudah Telpon';
+      else if (p.callStatus === 'NO_ANSWER') callLabel = 'Tidak Diangkat';
+      else if (p.callStatus === 'BUSY') callLabel = 'Sibuk';
 
       // Map Confirmation Status Label
       const confirmationLabels: Record<string, string> = {
@@ -40,26 +40,26 @@ export const exportLeadsToExcel = (
         approve: 'Approve',
         decline: 'Decline',
       };
-      const confirmationLabel = confirmationLabels[l.confirmationStatus || 'pending'] || l.confirmationStatus;
+      const confirmationLabel = confirmationLabels[p.confirmationStatus || 'pending'] || p.confirmationStatus;
 
-      const { pic, cleanNotes } = extractPicFromNotes(l.notes);
+      const { pic, cleanNotes } = extractPicFromNotes(p.notes);
 
       const exportObj: Record<string, any> = {
         'No': index + 1,
-        'Company Name': l.database.company?.name || '-',
-        'Salutation': l.database.salutation || '-',
-        'First Name': l.database.firstName || '-',
-        'Last Name': l.database.lastName || '-',
-        'Position': l.database.positionLevel || '-',
-        'Job Title': l.database.jobTitle || '-',
-        'Office Phone': l.database.company?.officePhone || '-',
-        'Mobile Phone': l.database.mobilePhone || '-',
-        'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-        'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
+        'Company Name': p.database.company?.name || '-',
+        'Salutation': p.database.salutation || '-',
+        'First Name': p.database.firstName || '-',
+        'Last Name': p.database.lastName || '-',
+        'Position': p.database.positionLevel || '-',
+        'Job Title': p.database.jobTitle || '-',
+        'Office Phone': p.database.company?.officePhone || '-',
+        'Mobile Phone': p.database.mobilePhone || '-',
+        'Office Email': p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
+        'Personal Email': p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
         'Call Status': callLabel,
-        'WhatsApp Status': l.whatsappStatus === 'SENT' ? 'Sudah WhatsApp' : 'Belum WhatsApp',
-        'Email Status': l.emailStatus === 'SENT' ? 'Sudah Email' : 'Belum Email',
-        'Tele Remarks': getStatusLabel(l.leadStatus),
+        'WhatsApp Status': p.whatsappStatus === 'SENT' ? 'Sudah WhatsApp' : 'Belum WhatsApp',
+        'Email Status': p.emailStatus === 'SENT' ? 'Sudah Email' : 'Belum Email',
+        'Tele Remarks': getStatusLabel(p.participantStatus),
         'Confirmation Status': confirmationLabel,
       };
 
@@ -74,46 +74,46 @@ export const exportLeadsToExcel = (
     sheetName = 'Reminder Status';
     fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Reminder_Report.xlsx`;
 
-    dataToExport = filteredLeads.map((l, index) => {
+    dataToExport = filteredParticipants.map((p, index) => {
       return {
         'No': index + 1,
-        'Company Name': l.database.company?.name || '-',
-        'Salutation': l.database.salutation || '-',
-        'First Name': l.database.firstName || '-',
-        'Last Name': l.database.lastName || '-',
-        'Position': l.database.positionLevel || '-',
-        'Job Title': l.database.jobTitle || '-',
-        'Office Phone': l.database.company?.officePhone || '-',
-        'Mobile Phone': l.database.mobilePhone || '-',
-        'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-        'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
-        'Industry': l.database.company?.industry || '-',
-        'H-7 Reminder': getReminderLabel(l.reminderH7),
-        'H-3 Reminder': getReminderLabel(l.reminderH3),
-        'H-1 Reminder': getReminderLabel(l.reminderH1),
-        'Notes': l.notes || '-'
+        'Company Name': p.database.company?.name || '-',
+        'Salutation': p.database.salutation || '-',
+        'First Name': p.database.firstName || '-',
+        'Last Name': p.database.lastName || '-',
+        'Position': p.database.positionLevel || '-',
+        'Job Title': p.database.jobTitle || '-',
+        'Office Phone': p.database.company?.officePhone || '-',
+        'Mobile Phone': p.database.mobilePhone || '-',
+        'Office Email': p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
+        'Personal Email': p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
+        'Industry': p.database.company?.industry || '-',
+        'H-7 Reminder': getReminderLabel(p.reminderH7),
+        'H-3 Reminder': getReminderLabel(p.reminderH3),
+        'H-1 Reminder': getReminderLabel(p.reminderH1),
+        'Notes': p.notes || '-'
       };
     });
   } else {
     sheetName = 'Reminder Dday Status';
     fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Reminder_Dday_Report.xlsx`;
 
-    dataToExport = filteredLeads.map((l, index) => {
+    dataToExport = filteredParticipants.map((p, index) => {
       return {
         'No': index + 1,
-        'Company Name': l.database.company?.name || '-',
-        'Salutation': l.database.salutation || '-',
-        'First Name': l.database.firstName || '-',
-        'Last Name': l.database.lastName || '-',
-        'Position': l.database.positionLevel || '-',
-        'Job Title': l.database.jobTitle || '-',
-        'Office Phone': l.database.company?.officePhone || '-',
-        'Mobile Phone': l.database.mobilePhone || '-',
-        'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-        'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
-        'Industry': l.database.company?.industry || '-',
-        'Hari H Reminder': getReminderLabel(l.reminderHariH),
-        'Notes': l.notes || '-'
+        'Company Name': p.database.company?.name || '-',
+        'Salutation': p.database.salutation || '-',
+        'First Name': p.database.firstName || '-',
+        'Last Name': p.database.lastName || '-',
+        'Position': p.database.positionLevel || '-',
+        'Job Title': p.database.jobTitle || '-',
+        'Office Phone': p.database.company?.officePhone || '-',
+        'Mobile Phone': p.database.mobilePhone || '-',
+        'Office Email': p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
+        'Personal Email': p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
+        'Industry': p.database.company?.industry || '-',
+        'Hari H Reminder': getReminderLabel(p.reminderHariH),
+        'Notes': p.notes || '-'
       };
     });
   }

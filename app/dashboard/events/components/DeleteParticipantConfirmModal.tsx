@@ -1,23 +1,23 @@
 import React from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { EventLead } from '../../../../lib/types';
+import { EventParticipant } from '../../../../lib/types';
 
-interface DeleteLeadConfirmModalProps {
+interface DeleteParticipantConfirmModalProps {
   isOpen: boolean;
-  deletingLead: EventLead | null;
+  deletingParticipant: EventParticipant | null;
   onClose: () => void;
   onConfirm: () => void;
-  submittingLeadDelete: boolean;
+  submittingParticipantDelete: boolean;
 }
 
-export const DeleteLeadConfirmModal: React.FC<DeleteLeadConfirmModalProps> = ({
+export const DeleteParticipantConfirmModal: React.FC<DeleteParticipantConfirmModalProps> = ({
   isOpen,
-  deletingLead,
+  deletingParticipant,
   onClose,
   onConfirm,
-  submittingLeadDelete
+  submittingParticipantDelete
 }) => {
-  if (!isOpen || !deletingLead) return null;
+  if (!isOpen || !deletingParticipant) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -37,19 +37,19 @@ export const DeleteLeadConfirmModal: React.FC<DeleteLeadConfirmModalProps> = ({
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 mb-6 text-sm">
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Name</span>
-            <span className="font-bold text-slate-800">{deletingLead.database.firstName} {deletingLead.database.lastName}</span>
+            <span className="font-bold text-slate-800">{deletingParticipant.database.firstName} {deletingParticipant.database.lastName}</span>
           </div>
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Job Title</span>
-            <span className="font-semibold text-slate-700">{deletingLead.database.jobTitle || '-'}</span>
+            <span className="font-semibold text-slate-700">{deletingParticipant.database.jobTitle || '-'}</span>
           </div>
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company</span>
-            <span className="font-semibold text-slate-700">{deletingLead.database.company?.name || '-'}</span>
+            <span className="font-semibold text-slate-700">{deletingParticipant.database.company?.name || '-'}</span>
           </div>
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Industry</span>
-            <span className="font-semibold text-slate-700">{deletingLead.database.company?.industry || '-'}</span>
+            <span className="font-semibold text-slate-700">{deletingParticipant.database.company?.industry || '-'}</span>
           </div>
         </div>
 
@@ -64,10 +64,10 @@ export const DeleteLeadConfirmModal: React.FC<DeleteLeadConfirmModalProps> = ({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={submittingLeadDelete}
+            disabled={submittingParticipantDelete}
             className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-750 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
           >
-            {submittingLeadDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {submittingParticipantDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Remove
           </button>
         </div>

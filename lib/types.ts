@@ -84,15 +84,15 @@ export interface Event {
   updatedAt?: string;
 }
 
-export interface EventLead {
+export interface EventParticipant {
   id: number;
   event: Event;
   database: Database;
-  leadStatus: string; // white | yellow | green | red
+  participantStatus: string; // white | yellow | green | red
   requestedAt?: string;
   respondedAt?: string;
   attendanceStatus: string; // invited | registered | attended | no_show | cancelled
-  leadCategory?: string; // HOT | WARM | COLD
+  participantCategory?: string; // HOT | WARM | COLD
   callStatus?: string;
   emailStatus?: string;
   whatsappStatus?: string;
@@ -110,9 +110,9 @@ export interface EventLead {
   updatedAt?: string;
 }
 
-export interface EventLeadActivity {
+export interface EventParticipantActivity {
   id: number;
-  eventLead?: EventLead;
+  eventParticipant?: EventParticipant;
   activityType: string; // CALL | EMAIL | WHATSAPP | MEETING
   status: string;
   notes?: string;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download } from 'lucide-react';
-import { Database, Company, EventLead } from '../../../../lib/types';
+import { Database, Company, EventParticipant } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -82,9 +82,9 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
     const loadingToastId = toast.loading("Sedang mengambil data event & memproses Excel...");
 
     try {
-      let eventLeads: EventLead[] = [];
+      let eventParticipants: EventParticipant[] = [];
       if (selectedColumns.includes('eventHistory')) {
-        eventLeads = await crmService.getEventLeads();
+        eventParticipants = await crmService.getEventParticipants();
       }
 
       const dataToExport = rowsToExport.map((c, index) => {
@@ -118,8 +118,8 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
         if (selectedColumns.includes('website')) rowData['Company Website'] = c.company?.website || '-';
         
         if (selectedColumns.includes('eventHistory')) {
-          const matchingLeads = eventLeads.filter(l => l.database?.id === c.id);
-          const eventNames = matchingLeads.map(l => l.event?.name).filter(Boolean);
+          const matchingParticipants = eventParticipants.filter(p => p.database?.id === c.id);
+          const eventNames = matchingParticipants.map(p => p.event?.name).filter(Boolean);
           rowData['Event Participation'] = eventNames.length > 0 ? eventNames.join(', ') : '-';
         }
 

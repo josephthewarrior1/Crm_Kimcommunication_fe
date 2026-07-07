@@ -3,35 +3,35 @@ import { Check, X } from 'lucide-react';
 import { AppUser } from '../../../../lib/types';
 
 interface BatchActionsBarProps {
-  selectedLeadIds: number[];
-  setSelectedLeadIds: (ids: number[]) => void;
+  selectedParticipantIds: number[];
+  setSelectedParticipantIds: (ids: number[]) => void;
   activeTab: string;
   usersList: AppUser[];
   handleBatchUpdateConfirmationStatus: (status: string) => void;
-  handleBatchUpdateLeadStatus: (status: string) => void;
+  handleBatchUpdateParticipantStatus: (status: string) => void;
   handleBatchAssignPic: (pic: string) => void;
   handleBatchUpdateReminderHariH: (status: string) => void;
 }
 
 export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
-  selectedLeadIds,
-  setSelectedLeadIds,
+  selectedParticipantIds,
+  setSelectedParticipantIds,
   activeTab,
   usersList,
   handleBatchUpdateConfirmationStatus,
-  handleBatchUpdateLeadStatus,
+  handleBatchUpdateParticipantStatus,
   handleBatchAssignPic,
   handleBatchUpdateReminderHariH,
 }) => {
-  if (selectedLeadIds.length === 0) return null;
+  if (selectedParticipantIds.length === 0) return null;
 
   return (
     <div className="bg-blue-50 border border-blue-150 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 shadow-sm animate-in slide-in-from-top duration-200">
       <div className="flex items-center gap-2">
         <span className="inline-flex items-center justify-center bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-full shrink-0">
-          {selectedLeadIds.length}
+          {selectedParticipantIds.length}
         </span>
-        <span className="text-xs font-bold text-slate-700">Leads selected for batch update</span>
+        <span className="text-xs font-bold text-slate-700">Participants selected for batch update</span>
       </div>
       
       <div className="flex flex-wrap items-center gap-3">
@@ -61,7 +61,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
               <select
                 onChange={(e) => {
                   if (e.target.value) {
-                    handleBatchUpdateLeadStatus(e.target.value);
+                    handleBatchUpdateParticipantStatus(e.target.value);
                     e.target.value = '';
                   }
                 }}
@@ -138,7 +138,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
         )}
 
         <button
-          onClick={() => setSelectedLeadIds([])}
+          onClick={() => setSelectedParticipantIds([])}
           className="px-3 py-1 text-xs text-slate-500 hover:text-slate-800 font-semibold"
         >
           Clear Selection

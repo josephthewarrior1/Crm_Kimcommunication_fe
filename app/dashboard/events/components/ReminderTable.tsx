@@ -1,32 +1,32 @@
 import React from 'react';
-import { EventLead } from '../../../../lib/types';
+import { EventParticipant } from '../../../../lib/types';
 import { AlertCircle, Edit2, Trash2 } from 'lucide-react';
 import { extractPicFromNotes } from '../utils/notesHelper';
 
 interface ReminderTableProps {
-  filteredLeads: EventLead[];
-  selectedLeadIds: number[];
-  setSelectedLeadIds: React.Dispatch<React.SetStateAction<number[]>>;
+  filteredParticipants: EventParticipant[];
+  selectedParticipantIds: number[];
+  setSelectedParticipantIds: React.Dispatch<React.SetStateAction<number[]>>;
   checkDatabaseCompleteness: (c: any) => { isIncomplete: boolean; missingFields: string[] };
-  handleDirectUpdateLead: (
-    lead: EventLead,
+  handleDirectUpdateParticipant: (
+    participant: EventParticipant,
     field: 'remarks' | 'attendance' | 'confirmationStatus' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH',
     value: string
   ) => void;
-  handleOpenUpdateLeadModal: (lead: EventLead) => void;
-  openDeleteLeadConfirm: (lead: EventLead) => void;
+  handleOpenUpdateParticipantModal: (participant: EventParticipant) => void;
+  openDeleteParticipantConfirm: (participant: EventParticipant) => void;
   isUser: boolean;
   getStatusBadgeStyle: (status: string) => string;
 }
 
 export const ReminderTable: React.FC<ReminderTableProps> = ({
-  filteredLeads,
-  selectedLeadIds,
-  setSelectedLeadIds,
+  filteredParticipants,
+  selectedParticipantIds,
+  setSelectedParticipantIds,
   checkDatabaseCompleteness,
-  handleDirectUpdateLead,
-  handleOpenUpdateLeadModal,
-  openDeleteLeadConfirm,
+  handleDirectUpdateParticipant,
+  handleOpenUpdateParticipantModal,
+  openDeleteParticipantConfirm,
   isUser,
   getStatusBadgeStyle
 }) => {
@@ -40,12 +40,12 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               <input
                 type="checkbox"
                 disabled={isUser}
-                checked={filteredLeads.length > 0 && selectedLeadIds.length === filteredLeads.length}
+                checked={filteredParticipants.length > 0 && selectedParticipantIds.length === filteredParticipants.length}
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setSelectedLeadIds(filteredLeads.map(l => l.id));
+                    setSelectedParticipantIds(filteredParticipants.map(p => p.id));
                   } else {
-                    setSelectedLeadIds([]);
+                    setSelectedParticipantIds([]);
                   }
                 }}
                 className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
@@ -69,13 +69,13 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {filteredLeads.map((l) => (
-            <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
+          {filteredParticipants.map((p) => (
+            <tr key={p.id} className="hover:bg-slate-50/30 transition-all">
               <td className="py-3.5 px-3 text-center">
-                {checkDatabaseCompleteness(l.database).isIncomplete && (
+                {checkDatabaseCompleteness(p.database).isIncomplete && (
                   <span
                     className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                    title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(l.database).missingFields.join("\n• ")}`}
+                    title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(p.database).missingFields.join("\n• ")}`}
                   >
                     <AlertCircle className="w-4 h-4 shrink-0" />
                   </span>
@@ -85,55 +85,55 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 <input
                   type="checkbox"
                   disabled={isUser}
-                  checked={selectedLeadIds.includes(l.id)}
+                  checked={selectedParticipantIds.includes(p.id)}
                   onChange={(e) => {
                     if (e.target.checked) {
-                      setSelectedLeadIds([...selectedLeadIds, l.id]);
+                      setSelectedParticipantIds([...selectedParticipantIds, p.id]);
                     } else {
-                      setSelectedLeadIds(selectedLeadIds.filter((id) => id !== l.id));
+                      setSelectedParticipantIds(selectedParticipantIds.filter((id) => id !== p.id));
                     }
                   }}
-                  className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
+                  className="w-3.5 h-3.5 text-blue-600 border-slate-355 rounded focus:ring-blue-500 cursor-pointer"
                 />
               </td>
               <td className="py-3.5 px-4 font-semibold text-slate-700">
-                {l.database.company?.name || <span className="text-slate-400">-</span>}
+                {p.database.company?.name || <span className="text-slate-400">-</span>}
               </td>
               <td className="py-3.5 px-4 text-slate-500">
-                {l.database.salutation || '-'}
+                {p.database.salutation || '-'}
               </td>
               <td className="py-3.5 px-4 font-bold text-slate-900">
-                {l.database.firstName}
+                {p.database.firstName}
               </td>
               <td className="py-3.5 px-4 font-bold text-slate-900">
-                {l.database.lastName || '-'}
+                {p.database.lastName || '-'}
               </td>
               <td className="py-3.5 px-4 text-slate-655 font-medium">
-                {l.database.positionLevel || '-'}
+                {p.database.positionLevel || '-'}
               </td>
               <td className="py-3.5 px-4 text-slate-950 font-medium">
-                {l.database.jobTitle || '-'}
+                {p.database.jobTitle || '-'}
               </td>
               <td className="py-3.5 px-4 font-mono text-slate-600">
-                {l.database.company?.officePhone || '-'}
+                {p.database.company?.officePhone || '-'}
               </td>
               <td className="py-3.5 px-4 font-mono text-slate-700">
-                {l.database.mobilePhone || '-'}
+                {p.database.mobilePhone || '-'}
               </td>
               <td className="py-3.5 px-4 font-mono text-slate-600">
-                {l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                {p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
               </td>
               <td className="py-3.5 px-4 font-mono text-slate-600">
-                {l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+                {p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
               </td>
               {/* H-7 Dropdown */}
               <td className="py-3.5 px-4">
                 <div className="flex justify-center">
                   <select
-                    value={l.reminderH7 || ''}
+                    value={p.reminderH7 || ''}
                     disabled={isUser}
-                    onChange={(e) => handleDirectUpdateLead(l, 'reminderH7', e.target.value)}
-                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.reminderH7 || '')}`}
+                    onChange={(e) => handleDirectUpdateParticipant(p, 'reminderH7', e.target.value)}
+                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.reminderH7 || '')}`}
                   >
                     <option value="" className="text-slate-700 bg-white font-normal">- None</option>
                     <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
@@ -148,10 +148,10 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               <td className="py-3.5 px-4">
                 <div className="flex justify-center">
                   <select
-                    value={l.reminderH3 || ''}
+                    value={p.reminderH3 || ''}
                     disabled={isUser}
-                    onChange={(e) => handleDirectUpdateLead(l, 'reminderH3', e.target.value)}
-                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.reminderH3 || '')}`}
+                    onChange={(e) => handleDirectUpdateParticipant(p, 'reminderH3', e.target.value)}
+                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.reminderH3 || '')}`}
                   >
                     <option value="" className="text-slate-700 bg-white font-normal">- None</option>
                     <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
@@ -166,10 +166,10 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               <td className="py-3.5 px-4">
                 <div className="flex justify-center">
                   <select
-                    value={l.reminderH1 || ''}
+                    value={p.reminderH1 || ''}
                     disabled={isUser}
-                    onChange={(e) => handleDirectUpdateLead(l, 'reminderH1', e.target.value)}
-                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(l.reminderH1 || '')}`}
+                    onChange={(e) => handleDirectUpdateParticipant(p, 'reminderH1', e.target.value)}
+                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.reminderH1 || '')}`}
                   >
                     <option value="" className="text-slate-700 bg-white font-normal">- None</option>
                     <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
@@ -180,13 +180,13 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                   </select>
                 </div>
               </td>
-              <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={extractPicFromNotes(l.notes).cleanNotes}>
-                {extractPicFromNotes(l.notes).cleanNotes}
+              <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={extractPicFromNotes(p.notes).cleanNotes}>
+                {extractPicFromNotes(p.notes).cleanNotes}
               </td>
               <td className="py-3.5 px-4 text-right space-x-1">
                   {!isUser && (
                     <button
-                      onClick={() => handleOpenUpdateLeadModal(l)}
+                      onClick={() => handleOpenUpdateParticipantModal(p)}
                       className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
                       title="Update Status"
                     >
@@ -195,7 +195,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                   )}
                   {!isUser && (
                     <button
-                      onClick={() => openDeleteLeadConfirm(l)}
+                      onClick={() => openDeleteParticipantConfirm(p)}
                       className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
                       title="Remove Participant"
                     >

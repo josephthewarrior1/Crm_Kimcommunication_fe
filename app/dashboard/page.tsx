@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../lib/services/crmService';
-import { Group, Company, Database, Event, FlaggedIdentity, EventLead } from '../../lib/types';
+import { Group, Company, Database, Event, FlaggedIdentity, EventParticipant } from '../../lib/types';
 import { FolderTree, Building2, Database as DatabaseIcon, CalendarDays, ShieldAlert, Loader2, ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ChartTooltip, Legend as ChartLegend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -13,19 +13,19 @@ export default function DashboardPage() {
   const [databases, setDatabases] = useState<Database[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [flagged, setFlagged] = useState<FlaggedIdentity[]>([]);
-  const [leads, setLeads] = useState<EventLead[]>([]);
+  const [participants, setParticipants] = useState<EventParticipant[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [gList, cList, dbList, eList, fList, leadList] = await Promise.all([
+        const [gList, cList, dbList, eList, fList, participantList] = await Promise.all([
           crmService.getGroups(),
           crmService.getCompanies(),
           crmService.getDatabases(),
           crmService.getEvents(),
           crmService.getFlaggedIdentities(),
-          crmService.getEventLeads().catch(() => []) // fallback
+          crmService.getEventParticipants().catch(() => []) // fallback
         ]);
 
         setGroups(gList);
@@ -33,7 +33,7 @@ export default function DashboardPage() {
         setDatabases(dbList);
         setEvents(eList);
         setFlagged(fList);
-        setLeads(leadList);
+        setParticipants(participantList);
       } catch (err) {
         toast.error('Failed to load dashboard data. Ensure backend is running.');
       } finally {
@@ -84,9 +84,9 @@ export default function DashboardPage() {
 
   // Compute Event Attendance Performance Data
   const eventAttendanceData = events.slice(0, 5).map(evt => {
-    const evtLeads = leads.filter(l => l.event.id === evt.id);
-    const total = evtLeads.length;
-    const attended = evtLeads.filter(l => l.attendanceStatus === 'attended').length;
+    const evtParticipants = participants.filter(p => p.event?.id === evt.id);
+    const total = evtParticipants.length;
+    const attended = evtParticipants.filter(p => p.attendanceStatus === 'attended').length;
     return {
       name: evt.name.length > 20 ? evt.name.substring(0, 20) + '...' : evt.name,
       'Invited': total,

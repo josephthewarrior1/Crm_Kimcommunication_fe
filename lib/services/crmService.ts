@@ -5,8 +5,8 @@ import {
   Database,
   DatabaseEmail,
   Event,
-  EventLead,
-  EventLeadActivity,
+  EventParticipant,
+  EventParticipantActivity,
   RemovalRequest,
   PersonalEmailDomain,
   FlaggedIdentity,
@@ -89,8 +89,8 @@ export class CrmService extends ApiService {
     return this.delete<void>(`/api/databases/${databaseId}/emails/${emailId}`);
   }
 
-  async getDatabaseEventLeads(databaseId: number): Promise<EventLead[]> {
-    return this.get<EventLead[]>(`/api/databases/${databaseId}/event-leads`);
+  async getDatabaseEventParticipants(databaseId: number): Promise<EventParticipant[]> {
+    return this.get<EventParticipant[]>(`/api/databases/${databaseId}/event-participants`);
   }
 
   // --- EVENTS ---
@@ -110,29 +110,29 @@ export class CrmService extends ApiService {
     return this.delete<void>(`/api/events/${id}`);
   }
 
-  // --- EVENT LEADS ---
-  async getEventLeads(): Promise<EventLead[]> {
-    return this.get<EventLead[]>('/api/event-leads');
+  // --- EVENT PARTICIPANTS ---
+  async getEventParticipants(): Promise<EventParticipant[]> {
+    return this.get<EventParticipant[]>('/api/event-participants');
   }
 
-  async createEventLead(lead: {
+  async createEventParticipant(participant: {
     eventId: number;
     databaseId?: number;
     databaseIds?: number[];
-    leadStatus?: string;
+    participantStatus?: string;
     attendanceStatus?: string;
     confirmationStatus?: string;
     notes?: string;
   }): Promise<any> {
-    return this.post<any>('/api/event-leads', lead);
+    return this.post<any>('/api/event-participants', participant);
   }
 
-  async updateLeadStatus(
-    leadId: number,
-    leadStatus?: string,
+  async updateParticipantStatus(
+    participantId: number,
+    participantStatus?: string,
     attendanceStatus?: string,
     notes?: string,
-    leadCategory?: string,
+    participantCategory?: string,
     callStatus?: string,
     emailStatus?: string,
     whatsappStatus?: string,
@@ -145,12 +145,12 @@ export class CrmService extends ApiService {
     reminderH1?: string,
     reminderHariH?: string,
     confirmationStatus?: string
-  ): Promise<EventLead> {
+  ): Promise<EventParticipant> {
     const params = new URLSearchParams();
-    if (leadStatus) params.append('leadStatus', leadStatus);
+    if (participantStatus) params.append('participantStatus', participantStatus);
     if (attendanceStatus) params.append('attendanceStatus', attendanceStatus);
     if (notes) params.append('notes', notes);
-    if (leadCategory) params.append('leadCategory', leadCategory);
+    if (participantCategory) params.append('participantCategory', participantCategory);
     if (callStatus) params.append('callStatus', callStatus);
     if (emailStatus) params.append('emailStatus', emailStatus);
     if (whatsappStatus) params.append('whatsappStatus', whatsappStatus);
@@ -164,26 +164,26 @@ export class CrmService extends ApiService {
     if (reminderHariH) params.append('reminderHariH', reminderHariH);
     if (confirmationStatus) params.append('confirmationStatus', confirmationStatus);
 
-    return this.put<EventLead>(`/api/event-leads/${leadId}/status?${params.toString()}`);
+    return this.put<EventParticipant>(`/api/event-participants/${participantId}/status?${params.toString()}`);
   }
 
-  async addEventLeadActivity(
-    leadId: number,
+  async addEventParticipantActivity(
+    participantId: number,
     activity: { activityType: string; status: string; notes?: string }
-  ): Promise<EventLeadActivity> {
-    return this.post<EventLeadActivity>(`/api/event-leads/${leadId}/activities`, activity);
+  ): Promise<EventParticipantActivity> {
+    return this.post<EventParticipantActivity>(`/api/event-participants/${participantId}/activities`, activity);
   }
 
-  async getEventLeadActivities(leadId: number): Promise<EventLeadActivity[]> {
-    return this.get<EventLeadActivity[]>(`/api/event-leads/${leadId}/activities`);
+  async getEventParticipantActivities(participantId: number): Promise<EventParticipantActivity[]> {
+    return this.get<EventParticipantActivity[]>(`/api/event-participants/${participantId}/activities`);
   }
 
   async getEventReport(eventId: number): Promise<any> {
-    return this.get<any>(`/api/event-leads/report/${eventId}`);
+    return this.get<any>(`/api/event-participants/report/${eventId}`);
   }
 
-  async deleteEventLead(id: number): Promise<void> {
-    return this.delete<void>(`/api/event-leads/${id}`);
+  async deleteEventParticipant(id: number): Promise<void> {
+    return this.delete<void>(`/api/event-participants/${id}`);
   }
 
   // --- REMOVAL REQUESTS ---

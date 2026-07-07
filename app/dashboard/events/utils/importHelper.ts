@@ -1,11 +1,11 @@
 import * as XLSX from 'xlsx';
-import { EventLead } from '../../../../lib/types';
+import { EventParticipant } from '../../../../lib/types';
 
-export const importLeadsFromExcel = async (
+export const importParticipantsFromExcel = async (
   importLeadsFile: File,
   selectedEventId: number,
   activeTab: string,
-  leads: EventLead[],
+  participants: EventParticipant[],
   setProgress: (p: number) => void,
   crmService: any
 ): Promise<{ successCount: number; errorCount: number }> => {
@@ -138,12 +138,12 @@ export const importLeadsFromExcel = async (
         }
       }
       
-      const isAlreadyLead = leads.some(l => l.database.id === resolvedContactId);
-      if (!isAlreadyLead) {
-        await crmService.createEventLead({
+      const isAlreadyParticipant = participants.some(p => p.database.id === resolvedContactId);
+      if (!isAlreadyParticipant) {
+        await crmService.createEventParticipant({
           eventId: selectedEventId,
           databaseId: resolvedContactId,
-          leadStatus: 'white',
+          participantStatus: 'white',
           attendanceStatus: 'invited',
           confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
           notes: activeTab === 'request' ? '[Origin: Request]' : undefined

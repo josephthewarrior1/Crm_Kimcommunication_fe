@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2 } from 'lucide-react';
-import { EventLead } from '../../../../lib/types';
+import { EventParticipant } from '../../../../lib/types';
 
-interface UpdateLeadModalProps {
+interface UpdateParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeLead: EventLead;
+  activeParticipant: EventParticipant;
   onSubmit: (data: {
-    leadStatus: string;
+    participantStatus: string;
     attendanceStatus: string;
     notes: string;
     callStatus: string;
@@ -19,17 +19,17 @@ interface UpdateLeadModalProps {
     reminderHariH: string;
     confirmationStatus: string;
   }) => Promise<void>;
-  submittingLeadUpdate: boolean;
+  submittingParticipantUpdate: boolean;
 }
 
-export const UpdateLeadModal: React.FC<UpdateLeadModalProps> = ({
+export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   isOpen,
   onClose,
-  activeLead,
+  activeParticipant,
   onSubmit,
-  submittingLeadUpdate
+  submittingParticipantUpdate
 }) => {
-  const [updateLeadStatusStr, setUpdateLeadStatusStr] = useState('white');
+  const [updateParticipantStatusStr, setUpdateParticipantStatusStr] = useState('white');
   const [updateConfirmationStatusStr, setUpdateConfirmationStatusStr] = useState('pending');
   const [updateReminderH7, setUpdateReminderH7] = useState('');
   const [updateReminderH3, setUpdateReminderH3] = useState('');
@@ -38,31 +38,31 @@ export const UpdateLeadModal: React.FC<UpdateLeadModalProps> = ({
   const [updateCallStatusStr, setUpdateCallStatusStr] = useState('NOT_CONTACTED');
   const [updateWhatsappStatusStr, setUpdateWhatsappStatusStr] = useState('NOT_SENT');
   const [updateEmailStatusStr, setUpdateEmailStatusStr] = useState('NOT_SENT');
-  const [updateLeadNotes, setUpdateLeadNotes] = useState('');
+  const [updateParticipantNotes, setUpdateParticipantNotes] = useState('');
 
   useEffect(() => {
-    if (activeLead) {
-      setUpdateLeadStatusStr(activeLead.leadStatus);
-      setUpdateConfirmationStatusStr(activeLead.confirmationStatus || 'pending');
-      setUpdateReminderH7(activeLead.reminderH7 || '');
-      setUpdateReminderH3(activeLead.reminderH3 || '');
-      setUpdateReminderH1(activeLead.reminderH1 || '');
-      setUpdateReminderHariH(activeLead.reminderHariH || '');
-      setUpdateCallStatusStr(activeLead.callStatus || 'NOT_CONTACTED');
-      setUpdateWhatsappStatusStr(activeLead.whatsappStatus || 'NOT_SENT');
-      setUpdateEmailStatusStr(activeLead.emailStatus || 'NOT_SENT');
-      setUpdateLeadNotes(activeLead.notes || '');
+    if (activeParticipant) {
+      setUpdateParticipantStatusStr(activeParticipant.participantStatus);
+      setUpdateConfirmationStatusStr(activeParticipant.confirmationStatus || 'pending');
+      setUpdateReminderH7(activeParticipant.reminderH7 || '');
+      setUpdateReminderH3(activeParticipant.reminderH3 || '');
+      setUpdateReminderH1(activeParticipant.reminderH1 || '');
+      setUpdateReminderHariH(activeParticipant.reminderHariH || '');
+      setUpdateCallStatusStr(activeParticipant.callStatus || 'NOT_CONTACTED');
+      setUpdateWhatsappStatusStr(activeParticipant.whatsappStatus || 'NOT_SENT');
+      setUpdateEmailStatusStr(activeParticipant.emailStatus || 'NOT_SENT');
+      setUpdateParticipantNotes(activeParticipant.notes || '');
     }
-  }, [activeLead]);
+  }, [activeParticipant]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      leadStatus: updateLeadStatusStr,
-      attendanceStatus: activeLead.attendanceStatus,
-      notes: updateLeadNotes.trim(),
+      participantStatus: updateParticipantStatusStr,
+      attendanceStatus: activeParticipant.attendanceStatus,
+      notes: updateParticipantNotes.trim(),
       callStatus: updateCallStatusStr,
       emailStatus: updateEmailStatusStr,
       whatsappStatus: updateWhatsappStatusStr,
@@ -86,9 +86,9 @@ export const UpdateLeadModal: React.FC<UpdateLeadModalProps> = ({
         </button>
 
         <div className="border-b border-slate-100 pb-2 mb-3">
-          <h3 className="text-base font-extrabold text-slate-900">Lead Detail & Qualification</h3>
+          <h3 className="text-base font-extrabold text-slate-900">Participant Detail & Qualification</h3>
           <p className="text-[10px] text-slate-500 mt-0.5">
-            Manage database: <strong className="text-slate-700">{activeLead.database.firstName} {activeLead.database.lastName}</strong> ({activeLead.database.company?.name || 'No Company'})
+            Manage database: <strong className="text-slate-700">{activeParticipant.database.firstName} {activeParticipant.database.lastName}</strong> ({activeParticipant.database.company?.name || 'No Company'})
           </p>
         </div>
 
@@ -97,24 +97,24 @@ export const UpdateLeadModal: React.FC<UpdateLeadModalProps> = ({
           <div className="bg-slate-55 p-2.5 rounded-xl border border-slate-150 text-[10px] grid grid-cols-4 gap-2 mb-2">
             <div>
               <span className="text-slate-400 font-bold block">Job Title</span>
-              <p className="font-semibold text-slate-700 truncate">{activeLead.database.jobTitle || '-'}</p>
+              <p className="font-semibold text-slate-700 truncate">{activeParticipant.database.jobTitle || '-'}</p>
             </div>
             <div>
               <span className="text-slate-400 font-bold block">Industry</span>
-              <p className="font-semibold text-slate-700 truncate">{activeLead.database.company?.industry || '-'}</p>
+              <p className="font-semibold text-slate-700 truncate">{activeParticipant.database.company?.industry || '-'}</p>
             </div>
             <div>
               <span className="text-slate-400 font-bold block">Mobile Phone</span>
-              <p className="font-semibold text-slate-700 truncate">{activeLead.database.mobilePhone || '-'}</p>
+              <p className="font-semibold text-slate-700 truncate">{activeParticipant.database.mobilePhone || '-'}</p>
             </div>
             <div>
               <span className="text-slate-400 font-bold block">Email</span>
-              <p className="font-semibold text-slate-700 truncate">{activeLead.database.emails?.[0]?.email || '-'}</p>
+              <p className="font-semibold text-slate-700 truncate">{activeParticipant.database.emails?.[0]?.email || '-'}</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1">Lead Qualification</h4>
+            <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1">Participant Qualification</h4>
             
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -123,8 +123,8 @@ export const UpdateLeadModal: React.FC<UpdateLeadModalProps> = ({
                   Tele Remarks (Status)
                 </label>
                 <select
-                  value={updateLeadStatusStr}
-                  onChange={(e) => setUpdateLeadStatusStr(e.target.value)}
+                  value={updateParticipantStatusStr}
+                  onChange={(e) => setUpdateParticipantStatusStr(e.target.value)}
                   className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
                 >
                   <option value="not_respon_yet">Not respond yet</option>
@@ -292,8 +292,8 @@ export const UpdateLeadModal: React.FC<UpdateLeadModalProps> = ({
               <label className="block text-[10px] font-bold text-slate-600 mb-1">Follow-up Notes</label>
               <textarea
                 placeholder="Details on status update..."
-                value={updateLeadNotes}
-                onChange={(e) => setUpdateLeadNotes(e.target.value)}
+                value={updateParticipantNotes}
+                onChange={(e) => setUpdateParticipantNotes(e.target.value)}
                 rows={2}
                 className="w-full px-3 py-1.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-xs placeholder-slate-400 focus:outline-none transition-all resize-none"
               />
@@ -302,10 +302,10 @@ export const UpdateLeadModal: React.FC<UpdateLeadModalProps> = ({
             <div className="flex gap-3 justify-end pt-3 border-t border-slate-100 mt-4">
               <button
                 type="submit"
-                disabled={submittingLeadUpdate}
+                disabled={submittingParticipantUpdate}
                 className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all disabled:opacity-50"
               >
-                {submittingLeadUpdate ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                {submittingParticipantUpdate ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                 Save Qualification Info
               </button>
             </div>

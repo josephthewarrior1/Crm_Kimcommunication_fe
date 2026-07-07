@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Database, Company, DatabaseEmail, Group, EventLead, FlaggedIdentity } from '../../../lib/types';
+import { Database, Company, DatabaseEmail, Group, EventParticipant, FlaggedIdentity } from '../../../lib/types';
 import { Users, Search, Plus, ExternalLink, Eye, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -103,7 +103,7 @@ export default function DatabasesPage() {
   const [detailDatabase, setDetailDatabase] = useState<Database | null>(null);
   const [detailDatabaseEmails, setDetailEmails] = useState<DatabaseEmail[]>([]);
   const [loadingDetailDatabaseEmails, setLoadingDetailEmails] = useState(false);
-  const [detailEvents, setDetailEvents] = useState<EventLead[]>([]);
+  const [detailEvents, setDetailEvents] = useState<EventParticipant[]>([]);
   const [loadingDetailEvents, setLoadingDetailEvents] = useState(false);
 
   // Delete database target state
@@ -165,7 +165,7 @@ export default function DatabasesPage() {
     }
 
     try {
-      const events = await crmService.getDatabaseEventLeads(database.id);
+      const events = await crmService.getDatabaseEventParticipants(database.id);
       setDetailEvents(events);
     } catch (err) {
       toast.error('Failed to load database event participation history');
