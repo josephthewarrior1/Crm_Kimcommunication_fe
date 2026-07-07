@@ -80,6 +80,7 @@ export interface Event {
   dateStart?: string;
   dateEnd?: string;
   notes?: string;
+  targetParticipants?: number;
   createdAt?: string;
   updatedAt?: string;
 }

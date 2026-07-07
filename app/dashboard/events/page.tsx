@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Event, EventParticipant, Database, AppUser } from '../../../lib/types';
-import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye } from 'lucide-react';
+import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import * as XLSX from 'xlsx';
@@ -67,6 +67,7 @@ export default function EventsPage() {
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [notes, setNotes] = useState('');
+  const [targetParticipants, setTargetParticipants] = useState(0);
   const [submittingEvent, setSubmittingEvent] = useState(false);
 
   // Form inputs for Event editing
@@ -77,6 +78,7 @@ export default function EventsPage() {
   const [editDateStart, setEditDateStart] = useState('');
   const [editDateEnd, setEditDateEnd] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editTargetParticipants, setEditTargetParticipants] = useState(0);
 
   // Delete event confirmation target
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
@@ -139,7 +141,8 @@ export default function EventsPage() {
         clientName: clientName.trim() || undefined,
         dateStart: dateStart || undefined,
         dateEnd: dateEnd || undefined,
-        notes: notes.trim() || undefined
+        notes: notes.trim() || undefined,
+        targetParticipants: targetParticipants || 0
       });
 
       toast.success('Event created successfully!');
@@ -149,6 +152,7 @@ export default function EventsPage() {
       setDateStart('');
       setDateEnd('');
       setNotes('');
+      setTargetParticipants(0);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create event');
@@ -165,6 +169,7 @@ export default function EventsPage() {
     setEditDateStart(event.dateStart || '');
     setEditDateEnd(event.dateEnd || '');
     setEditNotes(event.notes || '');
+    setEditTargetParticipants(event.targetParticipants || 0);
     setIsEditEventModalOpen(true);
   };
 
@@ -184,7 +189,8 @@ export default function EventsPage() {
         clientName: editClientName.trim() || undefined,
         dateStart: editDateStart || undefined,
         dateEnd: editDateEnd || undefined,
-        notes: editNotes.trim() || undefined
+        notes: editNotes.trim() || undefined,
+        targetParticipants: editTargetParticipants || 0
       });
 
       toast.success('Event updated successfully!');
@@ -972,57 +978,87 @@ export default function EventsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEvents.map((evt) => (
-                <div
-                  key={evt.id}
-                  onClick={() => handleSelectEvent(evt)}
-                  className="group p-5 rounded-2xl border bg-white border-slate-200 hover:border-blue-500 hover:shadow-md hover:scale-[1.01] transition-all cursor-pointer flex flex-col justify-between h-48"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-extrabold text-slate-900 text-base group-hover:text-blue-600 transition-colors line-clamp-2">{evt.name}</h4>
-                      {!isUser && (
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditEventModal(evt);
-                            }}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-all"
-                            title="Edit Event"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeleteEventConfirm(evt);
-                            }}
-                            className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-650 transition-all"
-                            title="Delete Event"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+              {filteredEvents.map((evt) => {
+                const eventParticipants = allEventParticipants.filter((l) => l.event.id === evt.id);
+                const registeredCount = eventParticipants.filter(p => p.participantStatus === 'registered' || p.participantStatus === 'green').length;
+                const onLocationCount = eventParticipants.filter(p => p.reminderHariH === 'on_location').length;
+                const target = evt.targetParticipants || 0;
+                const isAchieved = target > 0 && onLocationCount >= target;
+
+                return (
+                  <div
+                    key={evt.id}
+                    onClick={() => handleSelectEvent(evt)}
+                    className="group p-5 rounded-2xl border bg-white border-slate-200 hover:border-blue-500 hover:shadow-md hover:scale-[1.01] transition-all cursor-pointer flex flex-col justify-between min-h-[220px]"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-extrabold text-slate-900 text-base group-hover:text-blue-600 transition-colors line-clamp-2">{evt.name}</h4>
+                        {!isUser && (
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditEventModal(evt);
+                              }}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-all"
+                              title="Edit Event"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteEventConfirm(evt);
+                              }}
+                              className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-650 transition-all"
+                              title="Delete Event"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-550 mt-1">Client: <strong className="text-slate-700">{evt.clientName || 'Independent'}</strong></p>
+                      
+                      <div className="mt-4 space-y-1.5 text-xs text-slate-500">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-blue-500 shrink-0" /> Registered:</span>
+                          <span className="font-black text-slate-800">{registeredCount} pax</span>
                         </div>
-                      )}
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> On Location:</span>
+                          <span className="font-black text-emerald-700">{onLocationCount} pax</span>
+                        </div>
+                        {target > 0 && (
+                          <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 mt-1.5">
+                            <span className="font-bold">Target Size:</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-black text-slate-700">{target} pax</span>
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                                isAchieved
+                                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                  : 'bg-slate-150 text-slate-400 border border-slate-200'
+                              }`}>
+                                {isAchieved ? 'Achieved' : 'Pending'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1.5">Client: <strong className="text-slate-700">{evt.clientName || 'Independent'}</strong></p>
-                    <p className="text-xs text-slate-555 text-slate-500 mt-2.5 flex items-center gap-1.5 font-bold">
-                      <Users className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      <span>{allEventParticipants.filter((l) => l.event.id === evt.id).length} orang</span>
-                    </p>
+                    
+                    <div className="border-t border-slate-100 pt-3 mt-4 flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-slate-50 border border-slate-200 text-slate-600 rounded-md uppercase tracking-wider">
+                        {evt.eventType}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {evt.dateStart ? new Date(evt.dateStart).toLocaleDateString() : '-'}
+                      </span>
+                    </div>
                   </div>
-                  
-                  <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-slate-50 border border-slate-200 text-slate-600 rounded-md uppercase tracking-wider">
-                      {evt.eventType}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {evt.dateStart ? new Date(evt.dateStart).toLocaleDateString() : '-'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1045,10 +1081,28 @@ export default function EventsPage() {
                 {selectedEvent.eventType} Event
               </span>
               <h3 className="font-extrabold text-2xl text-slate-900 mt-1.5">{selectedEvent.name}</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Client Target: <strong className="text-slate-700">{selectedEvent.clientName || '-'}</strong>
-                {selectedEvent.dateStart && ` | Duration: ${new Date(selectedEvent.dateStart).toLocaleDateString()} - ${selectedEvent.dateEnd ? new Date(selectedEvent.dateEnd).toLocaleDateString() : 'End'}`}
-              </p>
+              <div className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>Client: <strong className="text-slate-700">{selectedEvent.clientName || '-'}</strong></span>
+                {selectedEvent.dateStart && <span> | Duration: <strong className="text-slate-700">{new Date(selectedEvent.dateStart).toLocaleDateString()} - {selectedEvent.dateEnd ? new Date(selectedEvent.dateEnd).toLocaleDateString() : 'End'}</strong></span>}
+                {selectedEvent.targetParticipants !== undefined && selectedEvent.targetParticipants > 0 ? (
+                  <>
+                    <span> | Target: <strong className="text-slate-700">{selectedEvent.targetParticipants} pax</strong></span>
+                    <span> | Register: <strong className="text-emerald-700">{participants.filter(p => p.participantStatus === 'registered' || p.participantStatus === 'green').length} pax</strong></span>
+                    <span> | On Location: <strong className="text-blue-700">{participants.filter(p => p.reminderHariH === 'on_location').length} pax</strong></span>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                      participants.filter(p => p.reminderHariH === 'on_location').length >= selectedEvent.targetParticipants
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200'
+                    }`}>
+                      {participants.filter(p => p.reminderHariH === 'on_location').length >= selectedEvent.targetParticipants
+                        ? 'Target Achieved'
+                        : 'Not Achieved'}
+                    </span>
+                  </>
+                ) : (
+                  <span> | Target: <strong className="text-slate-400">Not Set</strong></span>
+                )}
+              </div>
               
               {selectedEvent.notes && (
                 <p className="text-xs text-slate-500 mt-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic max-w-2xl">
@@ -1057,64 +1111,26 @@ export default function EventsPage() {
               )}
             </div>
             
-            <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto shrink-0">
-              {participants.length > 0 && (
+            {!isUser && (
+              <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
                 <button
-                  onClick={handleExportParticipants}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  onClick={() => openEditEventModal(selectedEvent)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  title="Edit Event details"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  Export Excel
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Edit Event
                 </button>
-              )}
-              {!isUser && (
-                <>
-                  <button
-                    onClick={() => openEditEventModal(selectedEvent)}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl transition-all shadow-sm"
-                    title="Edit Event details"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    Edit Event
-                  </button>
-                  <button
-                    onClick={() => openDeleteEventConfirm(selectedEvent)}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 border border-red-100 hover:bg-red-100/70 text-red-700 text-xs font-bold rounded-xl transition-all shadow-sm"
-                    title="Delete Event permanently"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete Event
-                  </button>
-                </>
-              )}
-              {!isUser && (activeTab === 'request' || activeTab === 'pre_event') && (
-                <>
-                  <button
-                    onClick={handleDownloadTemplate}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
-                    title="Unduh Template Excel untuk Impor Participants"
-                  >
-                    <Download className="w-3.5 h-3.5 text-blue-600" />
-                    Template
-                  </button>
-                  <button
-                    onClick={() => setIsImportParticipantsModalOpen(true)}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
-                    title="Impor Peserta Baru via Excel"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-green-600" />
-                    Import Excel
-                  </button>
-                </>
-              )}
-              <button
-                onClick={() => setIsAddParticipantModalOpen(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                Add Participant
-              </button>
-            </div>
+                <button
+                  onClick={() => openDeleteEventConfirm(selectedEvent)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 border border-red-100 hover:bg-red-100/70 text-red-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  title="Delete Event permanently"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete Event
+                </button>
+              </div>
+            )}
           </div>
 
           <EventStatistics
@@ -1125,60 +1141,94 @@ export default function EventsPage() {
             adminName={adminName}
           />
 
-          {/* Tab Switcher */}
-          <div className="flex border-b border-slate-200 mb-6 gap-2 shrink-0">
-            <button
-              onClick={() => {
-                setActiveTab('request');
-                setSelectedParticipantIds([]);
-              }}
-              className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
-                activeTab === 'request'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Data List
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('pre_event');
-                setSelectedParticipantIds([]);
-              }}
-              className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
-                activeTab === 'pre_event'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Pre-Event
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('reminder');
-                setSelectedParticipantIds([]);
-              }}
-              className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
-                activeTab === 'reminder'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Reminder
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('reminder_dday');
-                setSelectedParticipantIds([]);
-              }}
-              className={`px-5 py-3 text-sm font-bold border-b-2 transition-all ${
-                activeTab === 'reminder_dday'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Reminder Dday
-            </button>
+          {/* Tab Switcher & Participant Action Buttons */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200 mb-6 gap-3 shrink-0">
+            <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
+              <button
+                onClick={() => {
+                  setActiveTab('request');
+                  setSelectedParticipantIds([]);
+                }}
+                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                  activeTab === 'request'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Data List
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('pre_event');
+                  setSelectedParticipantIds([]);
+                }}
+                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                  activeTab === 'pre_event'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Pre-Event
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('reminder');
+                  setSelectedParticipantIds([]);
+                }}
+                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                  activeTab === 'reminder'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Reminder
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('reminder_dday');
+                  setSelectedParticipantIds([]);
+                }}
+                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                  activeTab === 'reminder_dday'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Reminder Dday
+              </button>
+            </div>
+
+            {/* Participant Management Buttons */}
+            <div className="flex flex-wrap items-center gap-2 pb-2 md:pb-0 self-start md:self-auto">
+              {participants.length > 0 && (
+                <button
+                  onClick={handleExportParticipants}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  title="Export current participant list to Excel"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Export Excel
+                </button>
+              )}
+              {!isUser && (activeTab === 'request' || activeTab === 'pre_event') && (
+                <button
+                  onClick={() => setIsImportParticipantsModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  title="Impor Peserta Baru via Excel"
+                >
+                  <Plus className="w-3.5 h-3.5 text-green-600" />
+                  Import Excel
+                </button>
+              )}
+              <button
+                onClick={() => setIsAddParticipantModalOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                title="Add Participant directly to this Event"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Participant
+              </button>
+            </div>
           </div>
 
           {/* Batch Actions Status Bar */}
@@ -1295,6 +1345,8 @@ export default function EventsPage() {
         setDateEnd={setDateEnd}
         notes={notes}
         setNotes={setNotes}
+        targetParticipants={targetParticipants}
+        setTargetParticipants={setTargetParticipants}
         submittingEvent={submittingEvent}
         onSubmit={handleCreateEvent}
       />
@@ -1319,6 +1371,8 @@ export default function EventsPage() {
         setEditDateEnd={setEditDateEnd}
         editNotes={editNotes}
         setEditNotes={setEditNotes}
+        editTargetParticipants={editTargetParticipants}
+        setEditTargetParticipants={setEditTargetParticipants}
         submittingEvent={submittingEvent}
         onSubmit={handleUpdateEvent}
       />
@@ -1391,6 +1445,8 @@ export default function EventsPage() {
         importParticipantsProgress={importParticipantsProgress}
         activeTab={activeTab}
         onImport={handleImportParticipantsExcel}
+        onDownloadTemplate={handleDownloadTemplate}
+        participants={participants}
       />
     </div>
   );

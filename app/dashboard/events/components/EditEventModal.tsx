@@ -18,6 +18,8 @@ interface EditEventModalProps {
   setEditDateEnd: (v: string) => void;
   editNotes: string;
   setEditNotes: (v: string) => void;
+  editTargetParticipants: number;
+  setEditTargetParticipants: (v: number) => void;
   submittingEvent: boolean;
   onSubmit: (e: React.FormEvent) => void;
 }
@@ -38,6 +40,8 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
   setEditDateEnd,
   editNotes,
   setEditNotes,
+  editTargetParticipants,
+  setEditTargetParticipants,
   submittingEvent,
   onSubmit
 }) => {
@@ -114,6 +118,18 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Target Participants</label>
+            <input
+              type="number"
+              placeholder="e.g. 50"
+              value={editTargetParticipants || ''}
+              onChange={(e) => setEditTargetParticipants(Number(e.target.value))}
+              min={0}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
+            />
           </div>
 
           <div>

@@ -16,6 +16,8 @@ interface CreateEventModalProps {
   setDateEnd: (v: string) => void;
   notes: string;
   setNotes: (v: string) => void;
+  targetParticipants: number;
+  setTargetParticipants: (v: number) => void;
   submittingEvent: boolean;
   onSubmit: (e: React.FormEvent) => void;
 }
@@ -35,6 +37,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   setDateEnd,
   notes,
   setNotes,
+  targetParticipants,
+  setTargetParticipants,
   submittingEvent,
   onSubmit
 }) => {
@@ -111,6 +115,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Target Participants</label>
+            <input
+              type="number"
+              placeholder="e.g. 50"
+              value={targetParticipants || ''}
+              onChange={(e) => setTargetParticipants(Number(e.target.value))}
+              min={0}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
+            />
           </div>
 
           <div>
