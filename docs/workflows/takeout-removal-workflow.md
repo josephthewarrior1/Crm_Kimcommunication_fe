@@ -43,7 +43,7 @@ Setiap user dengan role `ADMIN` atau `MANAGER` dapat mengajukan permohonan opt-o
 
 ## 3. Alur Audit & Pengarsipan (Admin)
 
-Hanya user dengan role **`ADMIN`** yang memiliki akses ke halaman **Removal Requests** (`app/dashboard/settings/page.tsx`):
+Hanya user dengan role **`ADMIN`** yang memiliki akses ke halaman **Takeout Requests** (`app/dashboard/takeout/page.tsx`):
 
 ### A. Kategori Status Audit
 Setiap entri permintaan memiliki status verifikasi:

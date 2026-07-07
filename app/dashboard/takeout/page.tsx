@@ -24,7 +24,7 @@ export default function SettingsPage() {
       const data = await crmService.getRemovalRequests();
       setRemovals(data);
     } catch (err) {
-      toast.error('Failed to load opt-out requests');
+      toast.error('Failed to load takeout requests');
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,7 @@ export default function SettingsPage() {
         </div>
         <h3 className="text-xl font-extrabold text-slate-900">Access Denied</h3>
         <p className="text-sm text-slate-500 mt-2 max-w-sm">
-          Only users with the <span className="font-bold text-red-600">ADMIN</span> role have permissions to audit removal requests.
+          Only users with the <span className="font-bold text-red-600">ADMIN</span> role have permissions to audit takeout requests.
         </p>
       </div>
     );
@@ -58,8 +58,8 @@ export default function SettingsPage() {
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
       {/* Page Header */}
       <div>
-        <h2 className="text-2xl font-extrabold text-slate-900">Removal Requests (Opt-Out)</h2>
-        <p className="text-sm text-slate-500 mt-1">Audit, approve or reject takeout/opt-out requests, and manage active database record deletions.</p>
+        <h2 className="text-2xl font-extrabold text-slate-900">Takeout Requests</h2>
+        <p className="text-sm text-slate-500 mt-1">Audit, approve or reject takeout requests, and manage active database record deletions.</p>
       </div>
 
       {/* Main Content */}
@@ -70,10 +70,10 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-slate-900">Removal / Opt-out Requests</h3>
+            <h3 className="text-lg font-bold text-slate-900">Takeout Requests</h3>
 
             {removals.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-12">No opt-out requests have been logged.</p>
+              <p className="text-sm text-slate-500 text-center py-12">No takeout requests have been logged.</p>
             ) : (
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                 <table className="w-full text-left border-collapse text-xs">

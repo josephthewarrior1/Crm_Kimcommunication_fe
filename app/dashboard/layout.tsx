@@ -81,13 +81,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Database', path: '/dashboard/database', icon: DatabaseIcon },
     { name: 'Events', path: '/dashboard/events', icon: CalendarDays },
     { name: 'Flagged Identities', path: '/dashboard/flagged', icon: ShieldAlert },
-    { name: 'Removal Requests', path: '/dashboard/settings', icon: UserX },
+    { name: 'Takeout Requests', path: '/dashboard/takeout', icon: UserX },
     { name: 'User Management', path: '/dashboard/users', icon: User },
   ];
 
   // Filter based on user roles
   const filteredMenuItems = menuItems.filter((item) => {
-    if (item.path === '/dashboard/settings' || item.path === '/dashboard/users') {
+    if (item.path === '/dashboard/takeout' || item.path === '/dashboard/users') {
       return isAdmin;
     }
     return true;

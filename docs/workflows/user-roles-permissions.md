@@ -39,7 +39,7 @@ Berikut adalah pemetaan akses visual di Next.js Dashboard (`app/dashboard/layout
 | **Export Excel Event Leads** | Yes | Yes | Yes | `app/dashboard/events/page.tsx` |
 | **Flagged Identities Directory (View)**| Yes | Yes | Yes | `app/dashboard/flagged/page.tsx` |
 | **Flagged Identities (Create/Resolve)**| Yes | No | No | `app/dashboard/flagged/page.tsx` |
-| **Removal Requests (Settings)** | Yes | No | No | `app/dashboard/settings/page.tsx` |
+| **Takeout Requests** | Yes | No | No | `app/dashboard/takeout/page.tsx` |
 | **User Management** | Yes | No | No | `app/dashboard/users/page.tsx` |
 
 ---

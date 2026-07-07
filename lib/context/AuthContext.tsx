@@ -75,8 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           router.push('/dashboard');
         }
       } else {
-        // Protect specific dashboard sub-routes
-        const isSettingsRoute = pathname === '/dashboard/settings';
+        const isTakeoutRoute = pathname === '/dashboard/takeout';
         const isFlaggedRoute = pathname === '/dashboard/flagged';
 
         const savedUserJson = localStorage.getItem('user');
@@ -86,8 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const hasAdmin = parsedUser.roles?.includes('ADMIN') || false;
             const hasManager = parsedUser.roles?.includes('MANAGER') || false;
 
-            if (isSettingsRoute && !hasAdmin) {
-              toast.error('Access Denied: Only ADMIN accounts can access Removal Requests.');
+            if (isTakeoutRoute && !hasAdmin) {
+              toast.error('Access Denied: Only ADMIN accounts can access Takeout Requests.');
               router.push('/dashboard');
             }
           } catch (e) {

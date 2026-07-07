@@ -28,6 +28,7 @@ interface RequestPreEventTableProps {
   openDeleteLeadConfirm: (lead: EventLead) => void;
   isUser: boolean;
   isAdmin?: boolean;
+  adminName?: string;
   extractPicFromNotes: (notes: string | null | undefined) => { pic: string; cleanNotes: string };
   getStatusBadgeStyle: (status: string) => string;
   getConfirmationStatusBadgeStyle: (status: string) => string;
@@ -45,6 +46,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   openDeleteLeadConfirm,
   isUser,
   isAdmin,
+  adminName,
   extractPicFromNotes,
   getStatusBadgeStyle,
   getConfirmationStatusBadgeStyle
@@ -83,7 +85,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             {activeTab !== 'request' && <th className="py-3 px-4">Engagement</th>}
             {activeTab !== 'request' && <th className="py-3 px-4">Tele Remarks</th>}
             <th className="py-3 px-4 text-center">Confirmation Status</th>
-            {isAdmin && <th className="py-3 px-4">PIC</th>}
+            {isAdmin && activeTab !== 'request' && <th className="py-3 px-4">PIC</th>}
             <th className="py-3 px-4">Notes</th>
             <th className="py-3 px-4 text-right">Actions</th>
           </tr>
@@ -91,6 +93,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
         <tbody className="divide-y divide-slate-100">
           {filteredLeads.map((l) => {
             const { pic, cleanNotes } = extractPicFromNotes(l.notes);
+            const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
             return (
               <tr key={l.id} className="hover:bg-slate-50/30 transition-all">
                 <td className="py-3.5 px-3 text-center">
@@ -230,9 +233,9 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </select>
                   </div>
                 </td>
-                {isAdmin && (
+                {isAdmin && activeTab !== 'request' && (
                   <td className="py-3.5 px-4 font-bold text-slate-700">
-                    {pic}
+                    {displayPic}
                   </td>
                 )}
                 <td className="py-3.5 px-4 text-slate-500 max-w-[120px] truncate" title={cleanNotes}>

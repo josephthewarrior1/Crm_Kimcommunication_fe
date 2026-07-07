@@ -16,108 +16,11 @@ import { EditEventModal } from './components/EditEventModal';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { DeleteEventConfirmModal } from './components/DeleteEventConfirmModal';
 import { DeleteLeadConfirmModal } from './components/DeleteLeadConfirmModal';
+import { AddLeadModal } from './components/AddLeadModal';
+import { UpdateLeadModal } from './components/UpdateLeadModal';
 import { extractPicFromNotes } from './utils/notesHelper';
-
-const checkDatabaseCompleteness = (c: Database) => {
-  const missing: string[] = [];
-
-  if (!c.company?.group?.name?.trim()) missing.push("Nama Group Holding");
-  if (!c.company?.brandName?.trim()) missing.push("Nama Brand");
-  if (!c.company?.name?.trim()) missing.push("Company Name");
-  if (!c.salutation?.trim()) missing.push("Salutation");
-  if (!c.firstName?.trim()) missing.push("First Name");
-  if (!c.lastName?.trim()) missing.push("Last Name");
-  if (!c.positionLevel || c.positionLevel === 'unknown' || !c.positionLevel.trim()) missing.push("Position");
-  if (!c.jobTitle?.trim()) missing.push("Job Title");
-  if (!c.company?.address?.trim()) missing.push("Address");
-  if (!c.company?.officePhone?.trim()) missing.push("Office Phone");
-  if (!c.mobilePhone?.trim()) missing.push("Mobile Phone");
-
-  const emails = c.emails || [];
-  const hasCompanyEmail = emails.some(e => e.isCorporate || e.emailType === 'company');
-  const hasPersonalEmail = emails.some(e => !e.isCorporate && e.emailType === 'personal');
-
-  if (!hasCompanyEmail) missing.push("Company Email");
-  if (!hasPersonalEmail) missing.push("Personal Email");
-
-  if (!c.company?.industry?.trim()) missing.push("Industry");
-  if (!c.linkedinUrl?.trim()) missing.push("LinkedIn Link");
-  if (!c.company?.city?.trim()) missing.push("City");
-  if (!c.company?.website?.trim()) missing.push("Company Website");
-
-  return {
-    isIncomplete: missing.length > 0,
-    missingFields: missing
-  };
-};
-
-const getStatusBadgeStyle = (status: string) => {
-  const s = status ? status.toLowerCase() : '';
-  if (s === 'registered' || s === 'confirm' || s === 'green' || s === 'on_location') {
-    return 'text-emerald-700 bg-emerald-50 border-emerald-250';
-  }
-  if (s === 'on_the_way') {
-    return 'text-blue-700 bg-blue-50 border-blue-250';
-  }
-  if (s === 'tentative' || s === 'yellow') {
-    return 'text-amber-700 bg-amber-50 border-amber-250';
-  }
-  if (s === 'not_respon_yet' || s === 'not_respond_yet' || s === 'white') {
-    return 'text-slate-600 bg-slate-50 border-slate-250';
-  }
-  if (s === 'not_respond_2x') {
-    return 'text-slate-700 bg-slate-100 border-slate-300';
-  }
-  if (s.startsWith('not_respond_') || s.startsWith('not_respon_')) {
-    return 'text-slate-800 bg-slate-200/80 border-slate-350';
-  }
-  if (s === 'not_interest' || s === 'unable_to_attend' || s === 'red') {
-    return 'text-rose-700 bg-rose-50 border-rose-250';
-  }
-  return 'text-slate-500 bg-slate-50 border-slate-250';
-};
-
-const getStatusLabel = (status: string) => {
-  const s = status ? status.toLowerCase() : '';
-  if (s === 'on_location') return 'On Location';
-  if (s === 'on_the_way') return 'On The Way';
-  if (s === 'registered' || s === 'green') return 'Registered';
-  if (s === 'confirm') return 'Confirm';
-  if (s === 'tentative' || s === 'yellow') return 'Tentative';
-  if (s === 'not_respon_yet' || s === 'not_respond_yet' || s === 'white') return 'Not respond yet';
-  if (s === 'not_respond_2x') return 'Not respond yet 2x';
-  if (s === 'not_respond_3x') return 'Not respond yet 3x';
-  if (s === 'not_respond_4x') return 'Not respond yet 4x';
-  if (s === 'not_respond_5x') return 'Not respond yet 5x';
-  if (s === 'not_respond_6x') return 'Not respond yet 6x';
-  if (s === 'not_respond_7x') return 'Not respond yet 7x';
-  if (s === 'not_respond_8x') return 'Not respond yet 8x';
-  if (s === 'not_respond_9x') return 'Not respond yet 9x';
-  if (s === 'not_interest' || s === 'red') return 'Not Interest';
-  if (s === 'unable_to_attend') return 'Unable to attend';
-  return '- None';
-};
-
-const getConfirmationStatusBadgeStyle = (status: string) => {
-  const s = status ? status.toLowerCase() : 'pending';
-  if (s === 'approve') {
-    return 'text-emerald-700 bg-emerald-50 border-emerald-250';
-  }
-  if (s === 'decline') {
-    return 'text-rose-700 bg-rose-50 border-rose-250';
-  }
-  return 'text-blue-700 bg-blue-50 border-blue-250'; // pending
-};
-
-const getConfirmationStatusLabel = (status: string) => {
-  const s = status ? status.toLowerCase() : 'pending';
-  if (s === 'approve') return 'Approve';
-  if (s === 'decline') return 'Decline';
-  return 'Pending';
-};
-
-
-
+import { getStatusBadgeStyle, getStatusLabel, getConfirmationStatusBadgeStyle, getConfirmationStatusLabel } from './utils/statusHelper';
+import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 
 export default function EventsPage() {
   const { isAdmin, isManager, isUser, user } = useAuth();
@@ -153,7 +56,6 @@ export default function EventsPage() {
   const [deletingLead, setDeletingLead] = useState<EventLead | null>(null);
   const [submittingLeadDelete, setSubmittingLeadDelete] = useState(false);
 
-
   // Form inputs for Event creation
   const [name, setName] = useState('');
   const [eventType, setEventType] = useState('partner');
@@ -175,15 +77,8 @@ export default function EventsPage() {
   // Delete event confirmation target
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
 
-  // Form inputs for adding a Lead
-  const [selectedDatabaseIds, setSelectedDatabaseIds] = useState<number[]>([]);
-  const [leadDatabaseSearch, setLeadDatabaseSearch] = useState('');
-  const [leadStatus, setLeadStatus] = useState('white');
-  const [attendanceStatus, setAttendanceStatus] = useState('pending');
-  const [leadNotes, setLeadNotes] = useState('');
+  // Form states for adding/updating leads
   const [submittingLead, setSubmittingLead] = useState(false);
-
-  // Form inputs for updating a Lead status
   const [activeLead, setActiveLead] = useState<EventLead | null>(null);
   const [activeTab, setActiveTab] = useState<'request' | 'pre_event' | 'reminder' | 'reminder_dday'>('request');
   const [usersList, setUsersList] = useState<AppUser[]>([]);
@@ -195,44 +90,12 @@ export default function EventsPage() {
   const [importLeadsProgress, setImportLeadsProgress] = useState(0);
   const [isImportingLeads, setIsImportingLeads] = useState(false);
 
-  const [updateLeadStatusStr, setUpdateLeadStatusStr] = useState('white');
-  const [updateAttendanceStatusStr, setUpdateAttendanceStatusStr] = useState('invited');
-  const [updateConfirmationStatusStr, setUpdateConfirmationStatusStr] = useState('pending');
-  const [updateLeadNotes, setUpdateLeadNotes] = useState('');
   const [submittingLeadUpdate, setSubmittingLeadUpdate] = useState(false);
-  const [updateReminderH7, setUpdateReminderH7] = useState('');
-  const [updateReminderH3, setUpdateReminderH3] = useState('');
-  const [updateReminderH1, setUpdateReminderH1] = useState('');
-  const [updateReminderHariH, setUpdateReminderHariH] = useState('');
-  const [updateCallStatusStr, setUpdateCallStatusStr] = useState('NOT_CONTACTED');
-  const [updateEmailStatusStr, setUpdateEmailStatusStr] = useState('NOT_SENT');
-  const [updateWhatsappStatusStr, setUpdateWhatsappStatusStr] = useState('NOT_SENT');
-  const [updateMeetingStatusStr, setUpdateMeetingStatusStr] = useState('NONE');
-  const [updateBusinessChallengesStr, setUpdateBusinessChallengesStr] = useState('');
-  const [updateProjectInfoStr, setUpdateProjectInfoStr] = useState('');
-  const [updateTimelineStr, setUpdateTimelineStr] = useState('');
 
-  // Activity Log states
-  const [activities, setActivities] = useState<EventLeadActivity[]>([]);
-  const [loadingActivities, setLoadingActivities] = useState(false);
-  const [newActivityType, setNewActivityType] = useState('CALL');
-  const [newActivityStatus, setNewActivityStatus] = useState('CONNECTED');
-  const [newActivityNotes, setNewActivityNotes] = useState('');
-  const [isLoggingActivity, setIsLoggingActivity] = useState(false);
-
-
-
-
-
-  // Add Lead Modal filter states
   const [allEventLeads, setAllEventLeads] = useState<EventLead[]>([]);
-  const [filterAddLeadCompany, setFilterAddLeadCompany] = useState('');
-  const [filterAddLeadPosition, setFilterAddLeadPosition] = useState('');
-  const [filterAddLeadIndustry, setFilterAddLeadIndustry] = useState('');
-  const [filterAddLeadCity, setFilterAddLeadCity] = useState('');
-  const [filterAddLeadEventId, setFilterAddLeadEventId] = useState('');
-  const [filterAddLeadOnlyAttended, setFilterAddLeadOnlyAttended] = useState(false);
 
+  const adminUser = usersList.find(u => u.roles?.includes('ADMIN'));
+  const adminName = adminUser ? (adminUser.fullName || adminUser.username) : 'Admin';
   useEffect(() => {
     loadData();
   }, []);
@@ -412,7 +275,7 @@ export default function EventsPage() {
 
         const { pic, cleanNotes } = extractPicFromNotes(l.notes);
 
-        return {
+        const exportObj: Record<string, any> = {
           'No': index + 1,
           'Company Name': l.database.company?.name || '-',
           'Salutation': l.database.salutation || '-',
@@ -429,9 +292,14 @@ export default function EventsPage() {
           'Email Status': l.emailStatus === 'SENT' ? 'Sudah Email' : 'Belum Email',
           'Tele Remarks': getStatusLabel(l.leadStatus),
           'Confirmation Status': confirmationLabel,
-          'PIC': pic,
-          'Notes': cleanNotes
         };
+
+        if (activeTab !== 'request') {
+          exportObj['PIC'] = pic.toLowerCase() === 'admin' ? adminName : pic;
+        }
+
+        exportObj['Notes'] = cleanNotes;
+        return exportObj;
       });
     } else if (activeTab === 'reminder') {
       sheetName = 'Reminder Status';
@@ -720,9 +588,8 @@ export default function EventsPage() {
     setFilterLeadPic('');
   };
 
-  const handleAddLead = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedEvent || selectedDatabaseIds.length === 0) {
+  const handleAddLead = async (databaseIds: number[], leadNotes: string) => {
+    if (!selectedEvent || databaseIds.length === 0) {
       toast.error('Please select at least one database');
       return;
     }
@@ -731,20 +598,17 @@ export default function EventsPage() {
     try {
       await crmService.createEventLead({
         eventId: selectedEvent.id,
-        databaseIds: selectedDatabaseIds,
-        leadStatus,
-        attendanceStatus,
+        databaseIds,
+        leadStatus: 'white',
+        attendanceStatus: 'invited',
         confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
         notes: activeTab === 'request'
           ? `[Origin: Request] ${leadNotes.trim()}`.trim()
           : leadNotes.trim() || undefined
       });
 
-      toast.success(`Successfully added ${selectedDatabaseIds.length} database(s) as lead(s)!`);
+      toast.success(`Successfully added ${databaseIds.length} database(s) as lead(s)!`);
       setIsAddLeadModalOpen(false);
-      setSelectedDatabaseIds([]);
-      setLeadDatabaseSearch('');
-      setLeadNotes('');
       
       // Reload leads
       handleSelectEvent(selectedEvent);
@@ -1025,72 +889,54 @@ export default function EventsPage() {
 
 
 
-  const loadLeadActivities = async (leadId: number) => {
-    setLoadingActivities(true);
-    try {
-      const data = await crmService.getEventLeadActivities(leadId);
-      setActivities(data);
-    } catch (err) {
-      toast.error('Failed to load lead activities');
-    } finally {
-      setLoadingActivities(false);
-    }
-  };
-
   const handleOpenUpdateLeadModal = (lead: EventLead) => {
     setActiveLead(lead);
-    setUpdateLeadStatusStr(lead.leadStatus);
-    setUpdateAttendanceStatusStr(lead.attendanceStatus);
-    setUpdateConfirmationStatusStr(lead.confirmationStatus || 'pending');
-    setUpdateLeadNotes(lead.notes || '');
-    
-    // Set qualification fields
-    setUpdateReminderH7(lead.reminderH7 || '');
-    setUpdateReminderH3(lead.reminderH3 || '');
-    setUpdateReminderH1(lead.reminderH1 || '');
-    setUpdateReminderHariH(lead.reminderHariH || '');
-    setUpdateCallStatusStr(lead.callStatus || 'NOT_CONTACTED');
-    setUpdateEmailStatusStr(lead.emailStatus || 'NOT_SENT');
-    setUpdateWhatsappStatusStr(lead.whatsappStatus || 'NOT_SENT');
-    setUpdateMeetingStatusStr(lead.meetingStatus || 'NONE');
-    setUpdateBusinessChallengesStr(lead.businessChallenges || '');
-    setUpdateProjectInfoStr(lead.projectInfo || '');
-    setUpdateTimelineStr(lead.timeline || '');
-
-    // Reset logging inputs
-    setNewActivityType('CALL');
-    setNewActivityStatus('CONNECTED');
-    setNewActivityNotes('');
-
     setIsUpdateLeadModalOpen(true);
-    loadLeadActivities(lead.id);
   };
 
-  const handleUpdateLeadStatus = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateLeadStatus = async (data: {
+    leadStatus: string;
+    attendanceStatus: string;
+    notes: string;
+    callStatus: string;
+    emailStatus: string;
+    whatsappStatus: string;
+    reminderH7: string;
+    reminderH3: string;
+    reminderH1: string;
+    reminderHariH: string;
+    confirmationStatus: string;
+  }) => {
     if (!selectedEvent || !activeLead) return;
 
     setSubmittingLeadUpdate(true);
     try {
       await crmService.updateLeadStatus(
         activeLead.id,
-        updateLeadStatusStr,
-        updateAttendanceStatusStr,
-        updateLeadNotes.trim() || undefined,
+        data.leadStatus,
+        data.attendanceStatus,
+        data.notes || undefined,
         undefined, // leadCategory (removed)
-        updateCallStatusStr || undefined,
-        updateEmailStatusStr || undefined,
-        updateWhatsappStatusStr || undefined,
-        updateMeetingStatusStr || undefined,
-        updateBusinessChallengesStr.trim() || undefined,
-        updateProjectInfoStr.trim() || undefined,
-        updateTimelineStr.trim() || undefined,
-        updateReminderH7 || undefined,
-        updateReminderH3 || undefined,
-        updateReminderH1 || undefined,
-        updateReminderHariH || undefined,
-        updateConfirmationStatusStr || undefined
+        data.callStatus || undefined,
+        data.emailStatus || undefined,
+        data.whatsappStatus || undefined,
+        undefined, // meetingStatus
+        undefined, // businessChallenges
+        undefined, // projectInfo
+        undefined, // timeline
+        data.reminderH7 || undefined,
+        data.reminderH3 || undefined,
+        data.reminderH1 || undefined,
+        data.reminderHariH || undefined,
+        data.confirmationStatus || undefined
       );
+
+      // Log activity in history
+      await crmService.addEventLeadActivity(activeLead.id, {
+        activityType: 'CALL',
+        status: data.leadStatus,
+        notes: `Updated status and qualification details.`
+      });
 
       toast.success('Lead status and qualification updated successfully!');
       setIsUpdateLeadModalOpen(false);
@@ -1234,44 +1080,6 @@ export default function EventsPage() {
     }
   };
 
-  const handleAddActivity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeLead) return;
-
-    setIsLoggingActivity(true);
-    try {
-      await crmService.addEventLeadActivity(activeLead.id, {
-        activityType: newActivityType,
-        status: newActivityStatus,
-        notes: newActivityNotes.trim() || undefined
-      });
-
-      toast.success('Activity logged successfully!');
-      setNewActivityNotes('');
-      
-      // Reload activities history
-      loadLeadActivities(activeLead.id);
-      
-      // Update local states
-      if (newActivityType === 'CALL') setUpdateCallStatusStr(newActivityStatus);
-      else if (newActivityType === 'EMAIL') setUpdateEmailStatusStr(newActivityStatus);
-      else if (newActivityType === 'WHATSAPP') setUpdateWhatsappStatusStr(newActivityStatus);
-      else if (newActivityType === 'MEETING') setUpdateMeetingStatusStr(newActivityStatus);
-      
-      // Reload main lead list
-      if (selectedEvent) {
-        const allLeads = await crmService.getEventLeads();
-        setAllEventLeads(allLeads);
-        const filteredLeads = allLeads.filter((l) => l.event.id === selectedEvent.id);
-        setLeadsSorted(filteredLeads);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to log activity');
-    } finally {
-      setIsLoggingActivity(false);
-    }
-  };
-
 
 
 
@@ -1306,52 +1114,7 @@ export default function EventsPage() {
     (e.clientName && e.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Filter active databases not currently leads in the selected event
-  const databasesNotInEvent = databases.filter(
-    (c) => !leads.some((l) => l.database.id === c.id)
-  );
 
-  const visibleDatabases = databasesNotInEvent.filter((c) => {
-    // 1. Search Query
-    if (leadDatabaseSearch) {
-      const term = leadDatabaseSearch.toLowerCase();
-      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
-      const companyName = c.company?.name?.toLowerCase() || '';
-      if (!fullName.includes(term) && !companyName.includes(term)) {
-        return false;
-      }
-    }
-
-    // 2. Company filter
-    if (filterAddLeadCompany && c.company?.name !== filterAddLeadCompany) {
-      return false;
-    }
-
-    // 3. Position Level filter
-    if (filterAddLeadPosition && c.positionLevel !== filterAddLeadPosition) {
-      return false;
-    }
-
-    // 4. Industry filter
-    if (filterAddLeadIndustry && c.company?.industry !== filterAddLeadIndustry) {
-      return false;
-    }
-
-    // 5. City filter
-    if (filterAddLeadCity && c.company?.city !== filterAddLeadCity) {
-      return false;
-    }
-
-    // 6. Event Participation history filter
-    if (filterAddLeadEventId) {
-      const isInvited = allEventLeads.some(
-        (l) => l.database.id === c.id && l.event.id === Number(filterAddLeadEventId)
-      );
-      if (!isInvited) return false;
-    }
-
-    return true;
-  });
 
   const filteredLeads = leads.filter((l) => {
     if (activeTab === 'request') {
@@ -1381,14 +1144,17 @@ export default function EventsPage() {
       if (!isAdmin && user) {
         // Regular staff (non-admin) only sees their own assigned leads
         const myName = user.fullName || user.username;
-        if (pic !== myName) {
+        const isMyPic = pic.toLowerCase() === myName.toLowerCase() || 
+                        (pic.toLowerCase() === 'admin' && myName.toLowerCase() === adminName.toLowerCase());
+        if (!isMyPic) {
           return false;
         }
       } else {
         // Admin/Manager filters by the dropdown selection
         if (filterLeadPic) {
-          if (filterLeadPic === '-' && pic !== '-') return false;
-          if (filterLeadPic !== '-' && pic !== filterLeadPic) return false;
+          const isMatch = pic.toLowerCase() === filterLeadPic.toLowerCase() || 
+                          (pic.toLowerCase() === 'admin' && filterLeadPic.toLowerCase() === adminName.toLowerCase());
+          if (!isMatch) return false;
         }
       }
     }
@@ -1860,6 +1626,37 @@ export default function EventsPage() {
             </div>
           )}
 
+          {/* Lead Assignment & Distribution Overview (Admin only) */}
+          {isAdmin && activeTab !== 'request' && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Lead Assignment & Distribution Overview</h4>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="px-3.5 py-2 bg-blue-600 border border-blue-700 rounded-xl text-xs font-black text-white flex items-center gap-1.5 shadow-sm">
+                  <Users className="w-3.5 h-3.5" />
+                  Total Leads: {leads.length}
+                </div>
+                {usersList.map((user) => {
+                  const name = user.fullName || user.username;
+                  const count = leads.filter(l => {
+                    const pic = extractPicFromNotes(l.notes).pic;
+                    return pic.toLowerCase() === name.toLowerCase() || 
+                           (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
+                  }).length;
+                  return (
+                    <div key={user.id} className={`px-3.5 py-2 border rounded-xl text-xs flex items-center gap-1.5 ${
+                      count > 0 
+                        ? 'bg-emerald-50 border-emerald-250 text-emerald-800 font-extrabold' 
+                        : 'bg-white border-slate-200 text-slate-400 font-medium'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${count > 0 ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                      {name}: {count}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Tab Switcher */}
           <div className="flex border-b border-slate-200 mb-6 gap-2 shrink-0">
             <button
@@ -2123,7 +1920,7 @@ export default function EventsPage() {
                   </select>
                 </div>
 
-                {isAdmin && (
+                {isAdmin && activeTab !== 'request' && (
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by PIC</label>
                     <select
@@ -2132,7 +1929,6 @@ export default function EventsPage() {
                       className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
                     >
                       <option value="">All PICs</option>
-                      <option value="-">Unassigned</option>
                       {usersList.map((user) => {
                         const name = user.fullName || user.username;
                         return <option key={user.id} value={name}>{name}</option>;
@@ -2174,6 +1970,7 @@ export default function EventsPage() {
               openDeleteLeadConfirm={openDeleteLeadConfirm}
               isUser={isUser}
               isAdmin={isAdmin}
+              adminName={adminName}
               extractPicFromNotes={extractPicFromNotes}
               getStatusBadgeStyle={getStatusBadgeStyle}
               getConfirmationStatusBadgeStyle={getConfirmationStatusBadgeStyle}
@@ -2263,487 +2060,32 @@ export default function EventsPage() {
       />
 
       {/* Add Lead Modal Overlay */}
-      {isAddLeadModalOpen && selectedEvent && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 max-h-[90vh] flex flex-col">
-            <button
-              onClick={() => setIsAddLeadModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-xl font-extrabold text-slate-900 mb-4 shrink-0">Add Database as Lead</h3>
-
-            <form onSubmit={handleAddLead} className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 mb-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Databases</label>
-                
-                <div className="space-y-2 mb-3">
-                  <input
-                    type="text"
-                    placeholder="Search databases by name or company..."
-                    value={leadDatabaseSearch}
-                    onChange={(e) => setLeadDatabaseSearch(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
-                  />
-
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Advanced Filters</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Company</label>
-                        <select
-                          value={filterAddLeadCompany}
-                          onChange={(e) => setFilterAddLeadCompany(e.target.value)}
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
-                        >
-                          <option value="">All Companies</option>
-                          {Array.from(new Set(databases.map(c => c.company?.name).filter(Boolean))).sort().map((compName) => (
-                            <option key={compName} value={compName}>{compName}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Position</label>
-                        <select
-                          value={filterAddLeadPosition}
-                          onChange={(e) => setFilterAddLeadPosition(e.target.value)}
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
-                        >
-                          <option value="">All Levels</option>
-                          {Array.from(new Set(databases.map(c => c.positionLevel).filter(Boolean))).sort().map((lvl) => (
-                            <option key={lvl} value={lvl}>{lvl}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">Industry</label>
-                        <select
-                          value={filterAddLeadIndustry}
-                          onChange={(e) => setFilterAddLeadIndustry(e.target.value)}
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
-                        >
-                          <option value="">All Industries</option>
-                          {Array.from(new Set(databases.map(c => c.company?.industry).filter(Boolean))).sort().map((ind) => (
-                            <option key={ind} value={ind}>{ind}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-450 uppercase mb-0.5">City</label>
-                        <select
-                          value={filterAddLeadCity}
-                          onChange={(e) => setFilterAddLeadCity(e.target.value)}
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
-                        >
-                          <option value="">All Cities</option>
-                          {Array.from(new Set(databases.map(c => c.company?.city).filter(Boolean))).sort().map((cty) => (
-                            <option key={cty} value={cty}>{cty}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="col-span-2 border-t border-slate-200 pt-2 mt-1">
-                        <label className="block text-[9px] font-bold text-slate-455 uppercase mb-0.5">Pernah diundang ke Event</label>
-                        <select
-                          value={filterAddLeadEventId}
-                          onChange={(e) => setFilterAddLeadEventId(e.target.value)}
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] focus:outline-none cursor-pointer"
-                        >
-                          <option value="">- Select Event -</option>
-                          {events.filter(e => e.id !== selectedEvent.id).map((evt) => (
-                            <option key={evt.id} value={evt.id}>{evt.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                    </div>
-
-                    {(filterAddLeadCompany || filterAddLeadPosition || filterAddLeadIndustry || filterAddLeadCity || filterAddLeadEventId) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFilterAddLeadCompany('');
-                          setFilterAddLeadPosition('');
-                          setFilterAddLeadIndustry('');
-                          setFilterAddLeadCity('');
-                          setFilterAddLeadEventId('');
-                        }}
-                        className="text-[10px] font-extrabold text-red-600 hover:text-red-700 transition-colors uppercase pt-1"
-                      >
-                        Clear Modal Filters
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-2 max-h-[180px] overflow-y-auto">
-                  {visibleDatabases.length === 0 ? (
-                    <p className="text-center text-xs text-slate-400 py-4">No available databases found.</p>
-                  ) : (
-                    visibleDatabases.map((c) => {
-                      const isChecked = selectedDatabaseIds.includes(c.id);
-                      return (
-                        <label
-                          key={c.id}
-                          className="flex items-center gap-3 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              if (isChecked) {
-                                setSelectedDatabaseIds(selectedDatabaseIds.filter((id) => id !== c.id));
-                              } else {
-                                setSelectedDatabaseIds([...selectedDatabaseIds, c.id]);
-                              }
-                            }}
-                            className="w-4 h-4 text-blue-600 border-slate-350 rounded focus:ring-blue-500"
-                          />
-                          <div className="text-xs flex-1">
-                            <p className="font-bold text-slate-900">{c.firstName} {c.lastName}</p>
-                            {c.company?.name && (
-                              <p className="text-[10px] text-slate-500 font-medium">{c.company.name}</p>
-                            )}
-                            
-                            {/* Past Events History Badges */}
-                            {(() => {
-                              const databaseLeads = allEventLeads.filter(l => l.database.id === c.id);
-                              if (databaseLeads.length === 0) return null;
-                              return (
-                                <div className="mt-1.5 flex flex-wrap gap-1 items-center">
-                                  <span className="text-[9px] font-bold text-slate-400">Invited to:</span>
-                                  {databaseLeads.map(l => (
-                                    <span 
-                                      key={l.id} 
-                                      className="inline-flex px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-50 border border-slate-200 text-slate-600 uppercase tracking-wide"
-                                    >
-                                      {l.event.name}
-                                    </span>
-                                  ))}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-
-                {visibleDatabases.length > 0 && (
-                  <div className="flex items-center justify-between text-[11px] mt-2 px-1 text-blue-600 font-bold">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const allVisibleIds = visibleDatabases.map((c) => c.id);
-                        const uniqueIds = Array.from(new Set([...selectedDatabaseIds, ...allVisibleIds]));
-                        setSelectedDatabaseIds(uniqueIds);
-                      }}
-                      className="hover:text-blue-550 transition-colors"
-                    >
-                      Select All Matches
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const allVisibleIds = visibleDatabases.map((c) => c.id);
-                        setSelectedDatabaseIds(selectedDatabaseIds.filter((id) => !allVisibleIds.includes(id)));
-                      }}
-                      className="hover:text-slate-700 text-slate-500 transition-colors"
-                    >
-                      Deselect All Matches
-                    </button>
-                  </div>
-                )}
-                
-                <p className="text-[10px] text-slate-500 mt-2 px-1 font-bold">
-                  {selectedDatabaseIds.length} database(s) selected to add
-                </p>
-              </div>
-
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Lead Notes</label>
-                <textarea
-                  placeholder="Notes about invitation..."
-                  value={leadNotes}
-                  onChange={(e) => setLeadNotes(e.target.value)}
-                  rows={2}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsAddLeadModalOpen(false)}
-                  className="px-4 py-2 bg-slate-105 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingLead}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {submittingLead ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Add Lead
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {selectedEvent && (
+        <AddLeadModal
+          isOpen={isAddLeadModalOpen}
+          onClose={() => setIsAddLeadModalOpen(false)}
+          selectedEvent={selectedEvent}
+          databases={databases}
+          leads={leads}
+          allEventLeads={allEventLeads}
+          events={events}
+          onAddLead={handleAddLead}
+          submittingLead={submittingLead}
+        />
       )}
 
       {/* Lead Details & Qualification Drawer Modal Overlay */}
-      {isUpdateLeadModalOpen && activeLead && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl p-5 shadow-xl relative animate-in scale-in duration-200 text-slate-900 my-4">
-            <button
-              onClick={() => {
-                setIsUpdateLeadModalOpen(false);
-                setActiveLead(null);
-              }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="border-b border-slate-100 pb-2 mb-3">
-              <h3 className="text-base font-extrabold text-slate-900">Lead Detail & Qualification</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">
-                Manage database: <strong className="text-slate-700">{activeLead.database.firstName} {activeLead.database.lastName}</strong> ({activeLead.database.company?.name || 'No Company'})
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {/* Profile Info */}
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-150 text-[10px] grid grid-cols-4 gap-2 mb-2">
-                <div>
-                  <span className="text-slate-400 font-bold block">Job Title</span>
-                  <p className="font-semibold text-slate-700 truncate">{activeLead.database.jobTitle || '-'}</p>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-bold block">Industry</span>
-                  <p className="font-semibold text-slate-700 truncate">{activeLead.database.company?.industry || '-'}</p>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-bold block">Mobile Phone</span>
-                  <p className="font-semibold text-slate-700 truncate">{activeLead.database.mobilePhone || '-'}</p>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-bold block">Email</span>
-                  <p className="font-semibold text-slate-700 truncate">{activeLead.database.emails?.[0]?.email || '-'}</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleUpdateLeadStatus} className="space-y-3">
-                <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1">Lead Qualification</h4>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <CheckCircle className="w-3 h-3 text-emerald-500" />
-                      Tele Remarks (Status)
-                    </label>
-                    <select
-                      value={updateLeadStatusStr}
-                      onChange={(e) => setUpdateLeadStatusStr(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                    >
-                      <option value="not_respon_yet">Not respond yet</option>
-                      <option value="not_respond_2x">Not respond 2x</option>
-                      <option value="not_respond_3x">Not respond 3x</option>
-                      <option value="not_respond_4x">Not respond 4x</option>
-                      <option value="not_respond_5x">Not respond 5x</option>
-                      <option value="not_respond_6x">Not respond 6x</option>
-                      <option value="not_respond_7x">Not respond 7x</option>
-                      <option value="not_respond_8x">Not respond 8x</option>
-                      <option value="not_respond_9x">Not respond 9x</option>
-                      <option value="registered">Registered</option>
-                      <option value="confirm">Confirm</option>
-                      <option value="tentative">Tentative</option>
-                      <option value="not_interest">Not Interest</option>
-                      <option value="unable_to_attend">Unable to attend</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <CheckCircle className="w-3 h-3 text-blue-500" />
-                      Confirmation Status
-                    </label>
-                    <select
-                      value={updateConfirmationStatusStr}
-                      onChange={(e) => setUpdateConfirmationStatusStr(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="approve">Approve</option>
-                      <option value="decline">Decline</option>
-                    </select>
-                  </div>
-                </div>
-
-                <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1 pt-1">Reminders</h4>
-                <div className="grid grid-cols-4 gap-2">
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <Calendar className="w-3 h-3 text-blue-500" />
-                      H-7 Reminder
-                    </label>
-                    <select
-                      value={updateReminderH7}
-                      onChange={(e) => setUpdateReminderH7(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
-                    >
-                      <option value="">- None</option>
-                      <option value="not_respon_yet">Not respond yet</option>
-                      <option value="not_respond_2x">Not respond 2x</option>
-                      <option value="tentative">Tentative</option>
-                      <option value="confirm">Confirm</option>
-                      <option value="unable_to_attend">Unable to attend</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <Calendar className="w-3 h-3 text-amber-500" />
-                      H-3 Reminder
-                    </label>
-                    <select
-                      value={updateReminderH3}
-                      onChange={(e) => setUpdateReminderH3(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
-                    >
-                      <option value="">- None</option>
-                      <option value="not_respon_yet">Not respond yet</option>
-                      <option value="not_respond_2x">Not respond 2x</option>
-                      <option value="tentative">Tentative</option>
-                      <option value="confirm">Confirm</option>
-                      <option value="unable_to_attend">Unable to attend</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <Calendar className="w-3 h-3 text-indigo-500" />
-                      H-1 Reminder
-                    </label>
-                    <select
-                      value={updateReminderH1}
-                      onChange={(e) => setUpdateReminderH1(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
-                    >
-                      <option value="">- None</option>
-                      <option value="not_respon_yet">Not respond yet</option>
-                      <option value="not_respond_2x">Not respond 2x</option>
-                      <option value="tentative">Tentative</option>
-                      <option value="confirm">Confirm</option>
-                      <option value="unable_to_attend">Unable to attend</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <Calendar className="w-3 h-3 text-rose-500" />
-                      Hari H Reminder
-                    </label>
-                    <select
-                      value={updateReminderHariH}
-                      onChange={(e) => setUpdateReminderHariH(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
-                    >
-                      <option value="">- None</option>
-                      <option value="on_location">On Location</option>
-                      <option value="on_the_way">On The Way</option>
-                      <option value="not_respon_yet">Not Respond Yet</option>
-                      <option value="unable_to_attend">Unable Attend</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <Phone className="w-3 h-3 text-sky-500" />
-                      Call Status
-                    </label>
-                    <select
-                      value={updateCallStatusStr}
-                      onChange={(e) => setUpdateCallStatusStr(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                    >
-                      <option value="NOT_CONTACTED">Belum Telpon</option>
-                      <option value="CONNECTED">Sudah Telpon</option>
-                      <option value="NO_ANSWER">Tidak Diangkat</option>
-                      <option value="BUSY">Sibuk</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <MessageSquare className="w-3 h-3 text-emerald-500" />
-                      WhatsApp Status
-                    </label>
-                    <select
-                      value={updateWhatsappStatusStr}
-                      onChange={(e) => setUpdateWhatsappStatusStr(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                    >
-                      <option value="NOT_SENT">Belum WA</option>
-                      <option value="SENT">Sudah WA</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                      <Mail className="w-3 h-3 text-amber-500" />
-                      Email Status
-                    </label>
-                    <select
-                      value={updateEmailStatusStr}
-                      onChange={(e) => setUpdateEmailStatusStr(e.target.value)}
-                      className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                    >
-                      <option value="NOT_SENT">Belum Email</option>
-                      <option value="SENT">Sudah Email</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 mb-1">Follow-up Notes</label>
-                  <textarea
-                    placeholder="Details on status update..."
-                    value={updateLeadNotes}
-                    onChange={(e) => setUpdateLeadNotes(e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs placeholder-slate-400 focus:outline-none transition-all resize-none"
-                  />
-                </div>
-
-                <div className="flex gap-3 justify-end pt-3 border-t border-slate-100 mt-4">
-                  <button
-                    type="submit"
-                    disabled={submittingLeadUpdate}
-                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all disabled:opacity-50"
-                  >
-                    {submittingLeadUpdate ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                    Save Qualification Info
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+      {activeLead && (
+        <UpdateLeadModal
+          isOpen={isUpdateLeadModalOpen}
+          onClose={() => {
+            setIsUpdateLeadModalOpen(false);
+            setActiveLead(null);
+          }}
+          activeLead={activeLead}
+          onSubmit={handleUpdateLeadStatus}
+          submittingLeadUpdate={submittingLeadUpdate}
+        />
       )}
 
 

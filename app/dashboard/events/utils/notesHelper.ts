@@ -1,5 +1,5 @@
 export const extractPicFromNotes = (notes: string | null | undefined): { pic: string; cleanNotes: string } => {
-  if (!notes) return { pic: '-', cleanNotes: '-' };
+  if (!notes) return { pic: 'Admin', cleanNotes: '-' };
   let clean = notes;
   
   // Clean [Origin: Request] tag
@@ -13,5 +13,5 @@ export const extractPicFromNotes = (notes: string | null | undefined): { pic: st
     const cleanNotes = clean.replace(picRegex, '').trim();
     return { pic, cleanNotes: cleanNotes || '-' };
   }
-  return { pic: '-', cleanNotes: clean || '-' };
+  return { pic: 'Admin', cleanNotes: clean || '-' };
 };
