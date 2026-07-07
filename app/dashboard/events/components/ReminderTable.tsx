@@ -183,7 +183,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               <td className="py-1.5 px-3 text-slate-500 max-w-[120px] truncate" title={extractPicFromNotes(p.notes).cleanNotes}>
                 {extractPicFromNotes(p.notes).cleanNotes}
               </td>
-              <td className="py-1.5 px-3 text-right space-x-1">
+              <td className="py-1.5 px-3 text-right whitespace-nowrap space-x-1">
                 {!isUser && (
                   <button
                     onClick={() => handleOpenUpdateParticipantModal(p)}

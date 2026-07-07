@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2 } from 'lucide-react';
-import { EventParticipant } from '../../../../lib/types';
+import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2, Users } from 'lucide-react';
+import { EventParticipant, AppUser } from '../../../../lib/types';
+import { extractPicFromNotes } from '../utils/notesHelper';
 
 interface UpdateParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeParticipant: EventParticipant;
+  usersList: AppUser[];
   onSubmit: (data: {
     participantStatus: string;
     attendanceStatus: string;
@@ -26,6 +28,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   isOpen,
   onClose,
   activeParticipant,
+  usersList,
   onSubmit,
   submittingParticipantUpdate
 }) => {
@@ -39,6 +42,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   const [updateWhatsappStatusStr, setUpdateWhatsappStatusStr] = useState('NOT_SENT');
   const [updateEmailStatusStr, setUpdateEmailStatusStr] = useState('NOT_SENT');
   const [updateParticipantNotes, setUpdateParticipantNotes] = useState('');
+  const [updatePic, setUpdatePic] = useState('Admin');
 
   useEffect(() => {
     if (activeParticipant) {
@@ -51,7 +55,9 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       setUpdateCallStatusStr(activeParticipant.callStatus || 'NOT_CONTACTED');
       setUpdateWhatsappStatusStr(activeParticipant.whatsappStatus || 'NOT_SENT');
       setUpdateEmailStatusStr(activeParticipant.emailStatus || 'NOT_SENT');
-      setUpdateParticipantNotes(activeParticipant.notes || '');
+      const { pic, cleanNotes } = extractPicFromNotes(activeParticipant.notes);
+      setUpdatePic(pic);
+      setUpdateParticipantNotes(cleanNotes === '-' ? '' : cleanNotes);
     }
   }, [activeParticipant]);
 
@@ -59,10 +65,11 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const finalNotes = `[PIC: ${updatePic}] ${updateParticipantNotes}`.trim();
     onSubmit({
       participantStatus: updateParticipantStatusStr,
       attendanceStatus: activeParticipant.attendanceStatus,
-      notes: updateParticipantNotes.trim(),
+      notes: finalNotes,
       callStatus: updateCallStatusStr,
       emailStatus: updateEmailStatusStr,
       whatsappStatus: updateWhatsappStatusStr,
@@ -116,7 +123,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-3">
             <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1">Participant Qualification</h4>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
                   <CheckCircle className="w-3 h-3 text-emerald-500" />
@@ -158,6 +165,28 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                   <option value="approve">Approve</option>
                   <option value="decline">Decline</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
+                  <Users className="w-3 h-3 text-indigo-500" />
+                  Assign PIC
+                </label>
+                <input
+                  type="text"
+                  list="pic-list"
+                  value={updatePic}
+                  onChange={(e) => setUpdatePic(e.target.value)}
+                  placeholder="Search/type PIC..."
+                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none placeholder-slate-400"
+                />
+                <datalist id="pic-list">
+                  <option value="Admin" />
+                  {(usersList || []).map((u) => {
+                    const name = u.fullName || u.username;
+                    return <option key={u.id} value={name} />;
+                  })}
+                </datalist>
               </div>
             </div>
 
@@ -234,6 +263,14 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                   <option value="on_location">On Location</option>
                   <option value="on_the_way">On The Way</option>
                   <option value="not_respon_yet">Not Respond Yet</option>
+                  <option value="not_respond_2x">Not Respond 2x</option>
+                  <option value="not_respond_3x">Not Respond 3x</option>
+                  <option value="not_respond_4x">Not Respond 4x</option>
+                  <option value="not_respond_5x">Not Respond 5x</option>
+                  <option value="not_respond_6x">Not Respond 6x</option>
+                  <option value="not_respond_7x">Not Respond 7x</option>
+                  <option value="not_respond_8x">Not Respond 8x</option>
+                  <option value="not_respond_9x">Not Respond 9x</option>
                   <option value="unable_to_attend">Unable Attend</option>
                 </select>
               </div>

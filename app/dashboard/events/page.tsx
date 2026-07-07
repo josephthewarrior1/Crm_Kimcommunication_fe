@@ -1413,7 +1413,6 @@ export default function EventsPage() {
         />
       )}
 
-      {/* Lead Details & Qualification Drawer Modal Overlay */}
       {activeParticipant && (
         <UpdateParticipantModal
           isOpen={isUpdateParticipantModalOpen}
@@ -1422,6 +1421,7 @@ export default function EventsPage() {
             setActiveParticipant(null);
           }}
           activeParticipant={activeParticipant}
+          usersList={usersList}
           onSubmit={handleUpdateParticipantStatus}
           submittingParticipantUpdate={submittingParticipantUpdate}
         />

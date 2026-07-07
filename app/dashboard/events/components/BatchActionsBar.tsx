@@ -26,7 +26,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
   if (selectedParticipantIds.length === 0) return null;
 
   return (
-    <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50 border border-blue-100 rounded-2xl px-5 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 shadow-[0_10px_25px_rgba(59,130,246,0.04)] animate-in slide-in-from-top duration-200">
+    <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50 border border-blue-100 rounded-2xl px-5 py-3.5 flex flex-row items-center justify-between flex-wrap gap-4 mb-6 shadow-[0_10px_25px_rgba(59,130,246,0.04)] animate-in slide-in-from-top duration-200">
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center justify-center bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-full ring-4 ring-blue-100 shrink-0">
           {selectedParticipantIds.length}
@@ -132,6 +132,14 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
               <option value="on_location">On Location</option>
               <option value="on_the_way">On The Way</option>
               <option value="not_respon_yet">Not Respond Yet</option>
+              <option value="not_respond_2x">Not Respond 2x</option>
+              <option value="not_respond_3x">Not Respond 3x</option>
+              <option value="not_respond_4x">Not Respond 4x</option>
+              <option value="not_respond_5x">Not Respond 5x</option>
+              <option value="not_respond_6x">Not Respond 6x</option>
+              <option value="not_respond_7x">Not Respond 7x</option>
+              <option value="not_respond_8x">Not Respond 8x</option>
+              <option value="not_respond_9x">Not Respond 9x</option>
               <option value="unable_to_attend">Unable Attend</option>
             </select>
           </div>

@@ -241,7 +241,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 <td className="py-1.5 px-3 text-slate-500 max-w-[120px] truncate" title={cleanNotes}>
                   {cleanNotes}
                 </td>
-                <td className="py-1.5 px-3 text-right space-x-1">
+                <td className="py-1.5 px-3 text-right whitespace-nowrap space-x-1">
                   {!isUser && (
                     <button
                       onClick={() => handleOpenUpdateParticipantModal(p)}

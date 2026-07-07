@@ -284,41 +284,35 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
             </div>
 
             {/* Right side: PIC List */}
-            <div className="flex flex-wrap items-center gap-2">
-              {usersList.map((usr) => {
-                const name = usr.fullName || usr.username;
-                const count = participants.filter(p => {
-                  const pic = extractPicFromNotes(p.notes).pic;
-                  return pic.toLowerCase() === name.toLowerCase() || 
-                         (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                }).length;
-                
-                const isActive = count > 0;
-                return (
+            <div className="flex flex-wrap items-center gap-2 max-h-28 overflow-y-auto pr-1">
+              {(() => {
+                const activePics = usersList.map((usr) => {
+                  const name = usr.fullName || usr.username;
+                  const count = participants.filter(p => {
+                    const pic = extractPicFromNotes(p.notes).pic;
+                    return pic.toLowerCase() === name.toLowerCase() || 
+                           (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
+                  }).length;
+                  return { usr, name, count };
+                }).filter(item => item.count > 0);
+
+                if (activePics.length === 0) {
+                  return <span className="text-xs text-slate-400 italic font-medium">No PICs assigned yet</span>;
+                }
+
+                return activePics.map(({ usr, name, count }) => (
                   <div
                     key={usr.id}
-                    className={`px-3 py-1.5 border rounded-xl text-xs flex items-center gap-2.5 transition-all duration-200 ${
-                      isActive
-                        ? 'bg-white border-slate-200 text-slate-800 font-bold shadow-sm'
-                        : 'bg-slate-100/50 border-slate-150 text-slate-400 opacity-60'
-                    }`}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-2.5 shadow-sm transition-all duration-200 hover:border-slate-300"
                   >
-                    <span className={`w-2 h-2 rounded-full ${
-                      isActive 
-                        ? 'bg-emerald-500 shadow-sm shadow-emerald-500/30' 
-                        : 'bg-slate-350'
-                    }`} />
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/30" />
                     <span>{name}</span>
-                    <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg ${
-                      isActive
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                        : 'bg-slate-55 text-slate-400 border border-slate-200'
-                    }`}>
+                    <span className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
                       {count}
                     </span>
                   </div>
-                );
-              })}
+                ));
+              })()}
             </div>
           </div>
         </div>
