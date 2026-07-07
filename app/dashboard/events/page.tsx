@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Event, EventLead, Database, EventLeadActivity, AppUser } from '../../../lib/types';
-import { CalendarDays, Plus, Search, X, Loader2, UserPlus, Users, Eye, Edit2, Trash2, Download, Check, Square, CheckSquare, RefreshCw, CheckCircle, Phone, Mail, MessageSquare, Calendar, Award, TrendingUp, BarChart3, Copy, Flame, Sun, Snowflake, ArrowLeft, AlertCircle, ExternalLink, Clock } from 'lucide-react';
+import { Event, EventLead, Database, AppUser } from '../../../lib/types';
+import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import * as XLSX from 'xlsx';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
 import { RequestPreEventTable } from './components/RequestPreEventTable';
 import { ReminderTable } from './components/ReminderTable';
 import { ReminderDdayTable } from './components/ReminderDdayTable';
@@ -18,9 +17,14 @@ import { DeleteEventConfirmModal } from './components/DeleteEventConfirmModal';
 import { DeleteLeadConfirmModal } from './components/DeleteLeadConfirmModal';
 import { AddLeadModal } from './components/AddLeadModal';
 import { UpdateLeadModal } from './components/UpdateLeadModal';
+import { EventStatistics } from './components/EventStatistics';
+import { LeadToolbar } from './components/LeadToolbar';
+import { BatchActionsBar } from './components/BatchActionsBar';
 import { extractPicFromNotes } from './utils/notesHelper';
-import { getStatusBadgeStyle, getStatusLabel, getConfirmationStatusBadgeStyle, getConfirmationStatusLabel } from './utils/statusHelper';
+import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
+import { exportLeadsToExcel } from './utils/exportHelper';
+import { importLeadsFromExcel } from './utils/importHelper';
 
 export default function EventsPage() {
   const { isAdmin, isManager, isUser, user } = useAuth();
@@ -239,137 +243,12 @@ export default function EventsPage() {
       toast.error("Tidak ada data lead untuk di-export.");
       return;
     }
-
-    let dataToExport: any[] = [];
-    let sheetName = 'Leads Handover';
-    let fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Handover_Report.xlsx`;
-
-    const getReminderLabel = (status: string | null | undefined) => {
-      if (!status) return '-';
-      if (status === 'not_respon_yet') return 'Not respond yet';
-      if (status === 'not_respond_2x') return 'Not respond 2x';
-      if (status === 'tentative') return 'Tentative';
-      if (status === 'confirm') return 'Confirm';
-      if (status === 'unable_to_attend') return 'Unable to attend';
-      return status;
-    };
-
-    if (activeTab === 'request' || activeTab === 'pre_event') {
-      sheetName = activeTab === 'request' ? 'Request Leads' : 'Pre-Event Leads';
-      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_${activeTab === 'request' ? 'Request' : 'PreEvent'}_Report.xlsx`;
-      
-      dataToExport = filteredLeads.map((l, index) => {
-        // Map Call Status label
-        let callLabel = 'Belum Telpon';
-        if (l.callStatus === 'CONNECTED') callLabel = 'Sudah Telpon';
-        else if (l.callStatus === 'NO_ANSWER') callLabel = 'Tidak Diangkat';
-        else if (l.callStatus === 'BUSY') callLabel = 'Sibuk';
-
-        // Map Confirmation Status Label
-        const confirmationLabels: Record<string, string> = {
-          pending: 'Pending',
-          approve: 'Approve',
-          decline: 'Decline',
-        };
-        const confirmationLabel = confirmationLabels[l.confirmationStatus || 'pending'] || l.confirmationStatus;
-
-        const { pic, cleanNotes } = extractPicFromNotes(l.notes);
-
-        const exportObj: Record<string, any> = {
-          'No': index + 1,
-          'Company Name': l.database.company?.name || '-',
-          'Salutation': l.database.salutation || '-',
-          'First Name': l.database.firstName || '-',
-          'Last Name': l.database.lastName || '-',
-          'Position': l.database.positionLevel || '-',
-          'Job Title': l.database.jobTitle || '-',
-          'Office Phone': l.database.company?.officePhone || '-',
-          'Mobile Phone': l.database.mobilePhone || '-',
-          'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-          'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
-          'Call Status': callLabel,
-          'WhatsApp Status': l.whatsappStatus === 'SENT' ? 'Sudah WhatsApp' : 'Belum WhatsApp',
-          'Email Status': l.emailStatus === 'SENT' ? 'Sudah Email' : 'Belum Email',
-          'Tele Remarks': getStatusLabel(l.leadStatus),
-          'Confirmation Status': confirmationLabel,
-        };
-
-        if (activeTab !== 'request') {
-          exportObj['PIC'] = pic.toLowerCase() === 'admin' ? adminName : pic;
-        }
-
-        exportObj['Notes'] = cleanNotes;
-        return exportObj;
-      });
-    } else if (activeTab === 'reminder') {
-      sheetName = 'Reminder Status';
-      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Reminder_Report.xlsx`;
-
-      dataToExport = filteredLeads.map((l, index) => {
-        return {
-          'No': index + 1,
-          'Company Name': l.database.company?.name || '-',
-          'Salutation': l.database.salutation || '-',
-          'First Name': l.database.firstName || '-',
-          'Last Name': l.database.lastName || '-',
-          'Position': l.database.positionLevel || '-',
-          'Job Title': l.database.jobTitle || '-',
-          'Office Phone': l.database.company?.officePhone || '-',
-          'Mobile Phone': l.database.mobilePhone || '-',
-          'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-          'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
-          'Industry': l.database.company?.industry || '-',
-          'H-7 Reminder': getReminderLabel(l.reminderH7),
-          'H-3 Reminder': getReminderLabel(l.reminderH3),
-          'H-1 Reminder': getReminderLabel(l.reminderH1),
-          'Notes': l.notes || '-'
-        };
-      });
-    } else {
-      sheetName = 'Reminder Dday Status';
-      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Reminder_Dday_Report.xlsx`;
-
-      dataToExport = filteredLeads.map((l, index) => {
-        return {
-          'No': index + 1,
-          'Company Name': l.database.company?.name || '-',
-          'Salutation': l.database.salutation || '-',
-          'First Name': l.database.firstName || '-',
-          'Last Name': l.database.lastName || '-',
-          'Position': l.database.positionLevel || '-',
-          'Job Title': l.database.jobTitle || '-',
-          'Office Phone': l.database.company?.officePhone || '-',
-          'Mobile Phone': l.database.mobilePhone || '-',
-          'Office Email': l.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-          'Personal Email': l.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
-          'Industry': l.database.company?.industry || '-',
-          'Hari H Reminder': getReminderLabel(l.reminderHariH),
-          'Notes': l.notes || '-'
-        };
-      });
+    try {
+      exportLeadsToExcel(selectedEvent, filteredLeads, activeTab, adminName);
+      toast.success('Daftar leads berhasil di-export ke Excel!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to export leads');
     }
-
-    // Generate Sheet
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-    
-    // Auto fit column width
-    const maxLens = dataToExport.reduce((acc, row) => {
-      Object.keys(row).forEach((key) => {
-        const valStr = String(row[key as keyof typeof row]);
-        acc[key] = Math.max(acc[key] || 10, valStr.length);
-      });
-      return acc;
-    }, {} as Record<string, number>);
-    
-    worksheet['!cols'] = Object.keys(maxLens).map(key => ({
-      wch: maxLens[key] + 3
-    }));
-
-    // Trigger Download
-    XLSX.writeFile(workbook, fileName);
-    toast.success('Daftar leads berhasil di-export ke Excel!');
   };
 
   const handleBatchUpdateAttendance = async (status: string) => {
@@ -668,161 +547,19 @@ export default function EventsPage() {
   const handleImportLeadsExcel = async () => {
     if (!importLeadsFile || !selectedEvent) return;
     setIsImportingLeads(true);
-    setImportLeadsProgress(5);
 
     try {
-      const reader = new FileReader();
-      
-      const fileData = await new Promise<ArrayBuffer>((resolve, reject) => {
-        reader.onload = (e) => {
-          if (e.target?.result) resolve(e.target.result as ArrayBuffer);
-          else reject(new Error('Failed to read file'));
-        };
-        reader.onerror = () => reject(reader.error);
-        reader.readAsArrayBuffer(importLeadsFile);
-      });
-
-      const workbook = XLSX.read(fileData, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json<any>(worksheet);
-
-      if (rows.length === 0) {
-        throw new Error('File Excel kosong atau tidak terbaca.');
-      }
-
-      setImportLeadsProgress(20);
-
-      const [allCompanies, allDbContacts] = await Promise.all([
-        crmService.getCompanies(),
-        crmService.getDatabases()
-      ]);
-
-      setImportLeadsProgress(40);
-
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const firstName = String(row['First Name'] || '').trim();
-        const lastName = String(row['Last Name'] || '').trim();
-        
-        if (!firstName || !lastName) {
-          errorCount++;
-          continue;
-        }
-
-        const companyNameRaw = String(row['Company Name'] || '').trim();
-        
-        try {
-          let resolvedCompanyId: number | undefined = undefined;
-          if (companyNameRaw) {
-            let companyName = companyNameRaw;
-            if (companyName.toUpperCase().endsWith(' PT')) {
-              companyName = 'PT ' + companyName.slice(0, -3).trim();
-            } else if (companyName.toUpperCase().endsWith(' PT.')) {
-              companyName = 'PT ' + companyName.slice(0, -4).trim();
-            }
-            
-            const existingCompany = allCompanies.find(c => 
-              c.name.toLowerCase().trim() === companyName.toLowerCase().trim()
-            );
-
-            if (existingCompany) {
-              resolvedCompanyId = existingCompany.id;
-            } else {
-              const newCompany = await crmService.createCompany({
-                name: companyName,
-                brandName: String(row['Nama Brand'] || '').trim() || undefined,
-                address: String(row['Address'] || '').trim() || undefined,
-                officePhone: String(row['Office Phone'] || '').trim() || undefined,
-                website: String(row['Company Website'] || '').trim() || undefined,
-                industry: String(row['Industry'] || '').trim() || undefined,
-                companySizeRevenue: String(row['Company Size (Revenue)'] || '').trim() || undefined,
-                companySizeEmployee: String(row['Company Size (Employee)'] || '').trim() || undefined,
-                companyHardware: String(row['Company Hardware'] || '').trim() || undefined,
-                city: String(row['City'] || '').trim() || undefined
-              });
-              resolvedCompanyId = newCompany.id;
-              allCompanies.push(newCompany);
-            }
-          }
-
-          let resolvedContactId: number;
-          const existingContact = allDbContacts.find(c => 
-            c.firstName.toLowerCase().trim() === firstName.toLowerCase() &&
-            c.lastName.toLowerCase().trim() === lastName.toLowerCase()
-          );
-
-          if (existingContact) {
-            resolvedContactId = existingContact.id;
-          } else {
-            const newContact = await crmService.createDatabase({
-              firstName,
-              lastName,
-              salutation: String(row['Salutation'] || 'Mr').trim(),
-              positionLevel: String(row['Position'] || 'unknown').trim().toLowerCase(),
-              specialityDivision: String(row['Speciality/Division'] || '').trim() || undefined,
-              jobTitle: String(row['Jobtitle'] || '').trim() || undefined,
-              mobilePhone: String(row['Mobile Phone'] || '').trim() || undefined,
-              linkedinUrl: String(row['Linkedin Link'] || '').trim() || undefined,
-              databaseType: 'unknown',
-              source: 'excel_import',
-              isActive: true
-            }, resolvedCompanyId);
-            
-            resolvedContactId = newContact.id;
-            allDbContacts.push(newContact);
-
-            const companyEmail = String(row['Company Email Address'] || '').trim().toLowerCase();
-            const personalEmail = String(row['Personal Email Address'] || '').trim().toLowerCase();
-
-            if (companyEmail) {
-              await crmService.addDatabaseEmail(newContact.id, {
-                email: companyEmail,
-                emailType: 'company',
-                isPrimary: true,
-                isVerified: true,
-                isCorporate: true
-              });
-            }
-            if (personalEmail) {
-              await crmService.addDatabaseEmail(newContact.id, {
-                email: personalEmail,
-                emailType: 'personal',
-                isPrimary: !companyEmail,
-                isVerified: true,
-                isCorporate: false
-              });
-            }
-          }
-          const isAlreadyLead = leads.some(l => l.database.id === resolvedContactId);
-          if (!isAlreadyLead) {
-            await crmService.createEventLead({
-              eventId: selectedEvent.id,
-              databaseId: resolvedContactId,
-              leadStatus: 'white',
-              attendanceStatus: 'invited',
-              confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
-              notes: activeTab === 'request' ? '[Origin: Request]' : undefined
-            });
-          }
-          
-          successCount++;
-        } catch (rowErr) {
-          console.error(`Error processing row ${i + 1}`, rowErr);
-          errorCount++;
-        }
-
-        setImportLeadsProgress(Math.floor(40 + (50 * (i + 1) / rows.length)));
-      }
-
-      setImportLeadsProgress(100);
+      const { successCount, errorCount } = await importLeadsFromExcel(
+        importLeadsFile,
+        selectedEvent.id,
+        activeTab,
+        leads,
+        setImportLeadsProgress,
+        crmService
+      );
       toast.success(`Impor selesai! Berhasil: ${successCount} baris. Gagal/Skip: ${errorCount} baris.`);
       setIsImportLeadsModalOpen(false);
       setImportLeadsFile(null);
-      
       handleSelectEvent(selectedEvent);
       loadData();
     } catch (err: any) {
@@ -1380,282 +1117,13 @@ export default function EventsPage() {
             </div>
           </div>
 
-          {/* Dynamic Statistics Box Cards */}
-          {activeTab === 'request' && (
-            <div className="space-y-4 mb-6">
-              <div>
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Request Vetting Overview</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-blue-500 text-white rounded-xl">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Total Request</span>
-                      <span className="text-xl font-extrabold text-blue-900">
-                        {leads.filter(l => !l.confirmationStatus || l.confirmationStatus === 'pending' || l.confirmationStatus === 'decline').length}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-amber-500 text-white rounded-xl">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider">Pending Approval</span>
-                      <span className="text-xl font-extrabold text-amber-900">
-                        {leads.filter(l => !l.confirmationStatus || l.confirmationStatus === 'pending').length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-rose-500 text-white rounded-xl">
-                      <X className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Taken Out (Decline)</span>
-                      <span className="text-xl font-extrabold text-rose-900">
-                        {leads.filter(l => l.confirmationStatus === 'decline').length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'pre_event' && (
-            <div className="space-y-4 mb-6">
-              <div>
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Registration Status</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                      <CheckCircle className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Register</span>
-                      <span className="text-xl font-extrabold text-emerald-900">
-                        {leads.filter(l => l.leadStatus === 'registered' || l.leadStatus === 'green').length}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-amber-500 text-white rounded-xl">
-                      <Calendar className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Interested (Follow-up)</span>
-                      <span className="text-xl font-extrabold text-amber-900">
-                        {leads.filter(l => l.leadStatus === 'tentative' || l.leadStatus === 'yellow').length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-rose-500 text-white rounded-xl">
-                      <X className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Not Interest</span>
-                      <span className="text-xl font-extrabold text-rose-900">
-                        {leads.filter(l => l.leadStatus === 'not_interest' || l.leadStatus === 'red').length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Confirmation Status</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                      <CheckCircle className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approved</span>
-                      <span className="text-xl font-extrabold text-emerald-900">
-                        {leads.filter(l => l.confirmationStatus === 'approve').length}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-blue-500 text-white rounded-xl">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Pending</span>
-                      <span className="text-xl font-extrabold text-blue-900">
-                        {leads.filter(l => !l.confirmationStatus || l.confirmationStatus === 'pending').length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-rose-500 text-white rounded-xl">
-                      <X className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Declined</span>
-                      <span className="text-xl font-extrabold text-rose-900">
-                        {leads.filter(l => l.confirmationStatus === 'decline').length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'reminder' && (
-            <div className="space-y-4 mb-6">
-              <div>
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Reminder Status</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-blue-500 text-white rounded-xl">
-                      <CheckCircle className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Approved Register Total</span>
-                      <span className="text-xl font-extrabold text-blue-900">
-                        {leads.filter(l => l.confirmationStatus === 'approve' && (l.leadStatus === 'registered' || l.leadStatus === 'green')).length}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                      <CheckCircle className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Confirm to Attend</span>
-                      <span className="text-xl font-extrabold text-emerald-900">
-                        {leads.filter(l => l.reminderH7 === 'confirm' || l.reminderH3 === 'confirm' || l.reminderH1 === 'confirm').length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-amber-500 text-white rounded-xl">
-                      <Calendar className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Tentative</span>
-                      <span className="text-xl font-extrabold text-amber-900">
-                        {leads.filter(l => l.reminderH7 === 'tentative' || l.reminderH3 === 'tentative' || l.reminderH1 === 'tentative').length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-rose-500 text-white rounded-xl">
-                      <X className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable to Attend</span>
-                      <span className="text-xl font-extrabold text-rose-900">
-                        {leads.filter(l => l.reminderH7 === 'unable_to_attend' || l.reminderH3 === 'unable_to_attend' || l.reminderH1 === 'unable_to_attend').length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'reminder_dday' && (
-            <div className="space-y-4 mb-6">
-              <div>
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Reminder D-Day Status</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                      <CheckCircle className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">On Location</span>
-                      <span className="text-xl font-extrabold text-emerald-900">
-                        {leads.filter(l => l.reminderHariH === 'on_location').length}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-blue-500 text-white rounded-xl">
-                      <TrendingUp className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">On The Way</span>
-                      <span className="text-xl font-extrabold text-blue-900">
-                        {leads.filter(l => l.reminderHariH === 'on_the_way').length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-amber-500 text-white rounded-xl">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-amber-650 uppercase tracking-wider font-semibold">Not Respond Yet</span>
-                      <span className="text-xl font-extrabold text-amber-900">
-                        {leads.filter(l => !l.reminderHariH || l.reminderHariH === 'not_respon_yet').length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-rose-500 text-white rounded-xl">
-                      <X className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable Attend</span>
-                      <span className="text-xl font-extrabold text-rose-900">
-                        {leads.filter(l => l.reminderHariH === 'unable_to_attend').length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Lead Assignment & Distribution Overview (Admin only) */}
-          {isAdmin && activeTab !== 'request' && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6">
-              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Lead Assignment & Distribution Overview</h4>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="px-3.5 py-2 bg-blue-600 border border-blue-700 rounded-xl text-xs font-black text-white flex items-center gap-1.5 shadow-sm">
-                  <Users className="w-3.5 h-3.5" />
-                  Total Leads: {leads.length}
-                </div>
-                {usersList.map((user) => {
-                  const name = user.fullName || user.username;
-                  const count = leads.filter(l => {
-                    const pic = extractPicFromNotes(l.notes).pic;
-                    return pic.toLowerCase() === name.toLowerCase() || 
-                           (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                  }).length;
-                  return (
-                    <div key={user.id} className={`px-3.5 py-2 border rounded-xl text-xs flex items-center gap-1.5 ${
-                      count > 0 
-                        ? 'bg-emerald-50 border-emerald-250 text-emerald-800 font-extrabold' 
-                        : 'bg-white border-slate-200 text-slate-400 font-medium'
-                    }`}>
-                      <span className={`w-2 h-2 rounded-full ${count > 0 ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                      {name}: {count}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <EventStatistics
+            activeTab={activeTab}
+            leads={leads}
+            usersList={usersList}
+            isAdmin={isAdmin}
+            adminName={adminName}
+          />
 
           {/* Tab Switcher */}
           <div className="flex border-b border-slate-200 mb-6 gap-2 shrink-0">
@@ -1714,230 +1182,38 @@ export default function EventsPage() {
           </div>
 
           {/* Batch Actions Status Bar */}
-          {selectedLeadIds.length > 0 && (
-            <div className="bg-blue-50 border border-blue-150 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 shadow-sm animate-in slide-in-from-top duration-200">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-full shrink-0">
-                  {selectedLeadIds.length}
-                </span>
-                <span className="text-xs font-bold text-slate-700">Leads selected for batch update</span>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-3">
-                {activeTab === 'request' && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleBatchUpdateConfirmationStatus('approve')}
-                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-all shadow-sm"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Approve Selected
-                    </button>
-                    <button
-                      onClick={() => handleBatchUpdateConfirmationStatus('decline')}
-                      className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-all shadow-sm"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Take Out Selected
-                    </button>
-                  </div>
-                )}
-
-                {activeTab === 'pre_event' && (
-                  <>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">Remarks</span>
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleBatchUpdateLeadStatus(e.target.value);
-                            e.target.value = '';
-                          }
-                        }}
-                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                      >
-                        <option value="">- Change Status -</option>
-                        <option value="not_respon_yet">Not respond yet</option>
-                        <option value="not_respond_2x">Not respond 2x</option>
-                        <option value="registered">Registered</option>
-                        <option value="tentative">Tentative</option>
-                        <option value="not_interest">Not Interest</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">Confirmation</span>
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleBatchUpdateConfirmationStatus(e.target.value);
-                            e.target.value = '';
-                          }
-                        }}
-                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                      >
-                        <option value="">- Change Confirmation -</option>
-                        <option value="pending">Pending</option>
-                        <option value="approve">Approve</option>
-                        <option value="decline">Decline</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">Assign PIC</span>
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleBatchAssignPic(e.target.value);
-                            e.target.value = '';
-                          }
-                        }}
-                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                      >
-                        <option value="">- Choose PIC -</option>
-                        {usersList.map((u) => (
-                          <option key={u.id} value={u.fullName || u.username}>
-                            {u.fullName || u.username}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {activeTab === 'reminder_dday' && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Hari H</span>
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          handleBatchUpdateReminderHariH(e.target.value);
-                          e.target.value = '';
-                        }
-                      }}
-                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                    >
-                      <option value="">- Change Dday Status -</option>
-                      <option value="on_location">On Location</option>
-                      <option value="on_the_way">On The Way</option>
-                      <option value="not_respon_yet">Not Respond Yet</option>
-                      <option value="unable_to_attend">Unable Attend</option>
-                    </select>
-                  </div>
-                )}
-
-
-                
-                <button
-                  onClick={() => setSelectedLeadIds([])}
-                  className="px-3 py-1 text-xs text-slate-500 hover:text-slate-800 font-semibold"
-                >
-                  Clear Selection
-                </button>
-              </div>
-            </div>
-          )}
+          <BatchActionsBar
+            selectedLeadIds={selectedLeadIds}
+            setSelectedLeadIds={setSelectedLeadIds}
+            activeTab={activeTab}
+            usersList={usersList}
+            handleBatchUpdateConfirmationStatus={handleBatchUpdateConfirmationStatus}
+            handleBatchUpdateLeadStatus={handleBatchUpdateLeadStatus}
+            handleBatchAssignPic={handleBatchAssignPic}
+            handleBatchUpdateReminderHariH={handleBatchUpdateReminderHariH}
+          />
 
           {/* Toolbar with Search & Advanced Filters */}
           {leads.length > 0 && (
-            <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-4 space-y-4 mb-6 shrink-0 shadow-sm">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:max-w-xs shadow-sm">
-                  <Search className="w-4 h-4 text-slate-400 mr-2" />
-                  <input
-                    type="text"
-                    placeholder="Search leads by name, title, company..."
-                    value={leadSearchQuery}
-                    onChange={(e) => setLeadSearchQuery(e.target.value)}
-                    className="w-full bg-transparent text-xs text-slate-900 placeholder-slate-400 focus:outline-none"
-                  />
-                </div>
-                {(leadSearchQuery || filterLeadCompany || filterLeadPosition || filterLeadIndustry || filterLeadCity) && (
-                  <button
-                    onClick={handleResetLeadFilters}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-all self-start md:self-auto shadow-sm"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Reset Filters
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by Company</label>
-                  <select
-                    value={filterLeadCompany}
-                    onChange={(e) => setFilterLeadCompany(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
-                  >
-                    <option value="">All Companies</option>
-                    {Array.from(new Set(leads.map(l => l.database.company?.name).filter(Boolean))).sort().map((compName) => (
-                      <option key={compName} value={compName}>{compName}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Position Level</label>
-                  <select
-                    value={filterLeadPosition}
-                    onChange={(e) => setFilterLeadPosition(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
-                  >
-                    <option value="">All Levels</option>
-                    {Array.from(new Set(leads.map(l => l.database.positionLevel).filter(Boolean))).sort().map((lvl) => (
-                      <option key={lvl} value={lvl}>{lvl}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
-                  <select
-                    value={filterLeadIndustry}
-                    onChange={(e) => setFilterLeadIndustry(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
-                  >
-                    <option value="">All Industries</option>
-                    {Array.from(new Set(leads.map(l => l.database.company?.industry).filter(Boolean))).sort().map((ind) => (
-                      <option key={ind} value={ind}>{ind}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">City</label>
-                  <select
-                    value={filterLeadCity}
-                    onChange={(e) => setFilterLeadCity(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
-                  >
-                    <option value="">All Cities</option>
-                    {Array.from(new Set(leads.map(l => l.database.company?.city).filter(Boolean))).sort().map((cty) => (
-                      <option key={cty} value={cty}>{cty}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {isAdmin && activeTab !== 'request' && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by PIC</label>
-                    <select
-                      value={filterLeadPic}
-                      onChange={(e) => setFilterLeadPic(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[11px] focus:outline-none transition-all cursor-pointer"
-                    >
-                      <option value="">All PICs</option>
-                      {usersList.map((user) => {
-                        const name = user.fullName || user.username;
-                        return <option key={user.id} value={name}>{name}</option>;
-                      })}
-                    </select>
-                  </div>
-                )}
-              </div>
-            </div>
+            <LeadToolbar
+              leads={leads}
+              usersList={usersList}
+              leadSearchQuery={leadSearchQuery}
+              setLeadSearchQuery={setLeadSearchQuery}
+              filterLeadCompany={filterLeadCompany}
+              setFilterLeadCompany={setFilterLeadCompany}
+              filterLeadPosition={filterLeadPosition}
+              setFilterLeadPosition={setFilterLeadPosition}
+              filterLeadIndustry={filterLeadIndustry}
+              setFilterLeadIndustry={setFilterLeadIndustry}
+              filterLeadCity={filterLeadCity}
+              setFilterLeadCity={setFilterLeadCity}
+              filterLeadPic={filterLeadPic}
+              setFilterLeadPic={setFilterLeadPic}
+              activeTab={activeTab}
+              isAdmin={isAdmin}
+              handleResetLeadFilters={handleResetLeadFilters}
+            />
           )}
 
           {/* Leads Table */}

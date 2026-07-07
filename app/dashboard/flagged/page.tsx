@@ -3,9 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { FlaggedIdentity, Database, Event } from '../../../lib/types';
-import { ShieldAlert, Plus, Search, X, Loader2, Edit2, Trash2, AlertTriangle, CheckCircle, RefreshCw, UserX } from 'lucide-react';
+import { Plus, Search, Loader2, Edit2, Trash2, AlertTriangle, CheckCircle, RefreshCw, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
+import { AddFlaggedModal } from './components/AddFlaggedModal';
+import { EditFlaggedModal } from './components/EditFlaggedModal';
+import { DeleteFlaggedConfirmModal } from './components/DeleteFlaggedConfirmModal';
 
 export default function FlaggedPage() {
   const { isAdmin, isManager, isUser } = useAuth();
@@ -21,29 +24,10 @@ export default function FlaggedPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  // Form states for Create
-  const [nameUsed, setNameUsed] = useState('');
-  const [emailUsed, setEmailUsed] = useState('');
-  const [phoneUsed, setPhoneUsed] = useState('');
-  const [flagReason, setFlagReason] = useState('multiple_identity');
-  const [evidenceNotes, setEvidenceNotes] = useState('');
-  const [status, setStatus] = useState('suspected');
-  const [selectedDatabaseId, setSelectedDatabaseId] = useState('');
-  const [selectedEventId, setSelectedEventId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Form states for Edit
+  // Selected for edit/delete
   const [editingFlag, setEditingFlag] = useState<FlaggedIdentity | null>(null);
-  const [editNameUsed, setEditNameUsed] = useState('');
-  const [editEmailUsed, setEditEmailUsed] = useState('');
-  const [editPhoneUsed, setEditPhoneUsed] = useState('');
-  const [editFlagReason, setEditFlagReason] = useState('multiple_identity');
-  const [editEvidenceNotes, setEditEvidenceNotes] = useState('');
-  const [editStatus, setEditStatus] = useState('suspected');
-  const [editSelectedDatabaseId, setEditSelectedDatabaseId] = useState('');
-  const [editSelectedEventId, setEditSelectedEventId] = useState('');
-
-  // Delete state
   const [deletingFlag, setDeletingFlag] = useState<FlaggedIdentity | null>(null);
 
   useEffect(() => {
@@ -68,32 +52,16 @@ export default function FlaggedPage() {
     }
   }
 
-  const handleCreateFlag = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nameUsed.trim() && !emailUsed.trim() && !phoneUsed.trim()) {
+  const handleCreateFlag = async (data: any) => {
+    if (!data.nameUsed && !data.emailUsed && !data.phoneUsed) {
       toast.error('At least one of Name, Email, or Phone is required');
       return;
     }
-
     setSubmitting(true);
     try {
-      const databaseObj = selectedDatabaseId ? { id: selectedDatabaseId } : null;
-      const eventObj = selectedEventId ? { id: selectedEventId } : null;
-
-      await crmService.createFlaggedIdentity({
-        nameUsed: nameUsed.trim() || undefined,
-        emailUsed: emailUsed.trim() || undefined,
-        phoneUsed: phoneUsed.trim() || undefined,
-        flagReason,
-        evidenceNotes: evidenceNotes.trim() || undefined,
-        status,
-        database: databaseObj as any,
-        event: eventObj as any
-      });
-
+      await crmService.createFlaggedIdentity(data);
       toast.success('Suspicious profile flagged successfully.');
       setIsCreateModalOpen(false);
-      resetCreateForm();
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create flagged entry');
@@ -102,102 +70,11 @@ export default function FlaggedPage() {
     }
   };
 
-  const resetCreateForm = () => {
-    setNameUsed('');
-    setEmailUsed('');
-    setPhoneUsed('');
-    setFlagReason('multiple_identity');
-    setEvidenceNotes('');
-    setStatus('suspected');
-    setSelectedDatabaseId('');
-    setSelectedEventId('');
-  };
-
-  const handleSelectDatabaseChange = async (databaseIdVal: string) => {
-    setSelectedDatabaseId(databaseIdVal);
-    if (!databaseIdVal) {
-      return;
-    }
-    const databaseObj = databases.find(c => c.id.toString() === databaseIdVal);
-    if (databaseObj) {
-      setNameUsed(`${databaseObj.firstName} ${databaseObj.lastName}`);
-      setPhoneUsed(databaseObj.mobilePhone || '');
-      
-      // Fetch email dynamically
-      try {
-        const emails = await crmService.getDatabaseEmails(databaseObj.id);
-        if (emails && emails.length > 0) {
-          const primaryEmail = emails.find(e => e.isPrimary) || emails[0];
-          setEmailUsed(primaryEmail.email);
-        } else {
-          setEmailUsed('');
-        }
-      } catch (err) {
-        console.error('Failed to auto-fetch emails for flagged target', err);
-        setEmailUsed('');
-      }
-    }
-  };
-
-  const handleEditSelectDatabaseChange = async (databaseIdVal: string) => {
-    setEditSelectedDatabaseId(databaseIdVal);
-    if (!databaseIdVal) {
-      return;
-    }
-    const databaseObj = databases.find(c => c.id.toString() === databaseIdVal);
-    if (databaseObj) {
-      setEditNameUsed(`${databaseObj.firstName} ${databaseObj.lastName}`);
-      setEditPhoneUsed(databaseObj.mobilePhone || '');
-      
-      // Fetch email dynamically
-      try {
-        const emails = await crmService.getDatabaseEmails(databaseObj.id);
-        if (emails && emails.length > 0) {
-          const primaryEmail = emails.find(e => e.isPrimary) || emails[0];
-          setEditEmailUsed(primaryEmail.email);
-        } else {
-          setEditEmailUsed('');
-        }
-      } catch (err) {
-        console.error('Failed to auto-fetch emails for flagged target', err);
-        setEditEmailUsed('');
-      }
-    }
-  };
-
-  const openEditModal = (flg: FlaggedIdentity) => {
-    setEditingFlag(flg);
-    setEditNameUsed(flg.nameUsed || '');
-    setEditEmailUsed(flg.emailUsed || '');
-    setEditPhoneUsed(flg.phoneUsed || '');
-    setEditFlagReason(flg.flagReason || 'multiple_identity');
-    setEditEvidenceNotes(flg.evidenceNotes || '');
-    setEditStatus(flg.status || 'suspected');
-    setEditSelectedDatabaseId(flg.database?.id?.toString() || '');
-    setEditSelectedEventId(flg.event?.id?.toString() || '');
-    setIsEditModalOpen(true);
-  };
-
-  const handleUpdateFlag = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateFlag = async (data: any) => {
     if (!editingFlag) return;
-
     setSubmitting(true);
     try {
-      const databaseObj = editSelectedDatabaseId ? { id: editSelectedDatabaseId } : null;
-      const eventObj = editSelectedEventId ? { id: editSelectedEventId } : null;
-
-      await crmService.updateFlaggedIdentity(editingFlag.id, {
-        nameUsed: editNameUsed.trim() || undefined,
-        emailUsed: editEmailUsed.trim() || undefined,
-        phoneUsed: editPhoneUsed.trim() || undefined,
-        flagReason: editFlagReason,
-        evidenceNotes: editEvidenceNotes.trim() || undefined,
-        status: editStatus,
-        database: databaseObj as any,
-        event: eventObj as any
-      });
-
+      await crmService.updateFlaggedIdentity(editingFlag.id, data);
       toast.success('Flagged identity details updated.');
       setIsEditModalOpen(false);
       setEditingFlag(null);
@@ -207,11 +84,6 @@ export default function FlaggedPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const openDeleteConfirm = (flg: FlaggedIdentity) => {
-    setDeletingFlag(flg);
-    setIsDeleteConfirmOpen(true);
   };
 
   const handleDeleteFlag = async () => {
@@ -379,14 +251,20 @@ export default function FlaggedPage() {
                 {isAdmin && (
                   <div className="flex justify-end gap-2 border-t border-slate-100 pt-2 mt-1">
                     <button
-                      onClick={() => openEditModal(flg)}
+                      onClick={() => {
+                        setEditingFlag(flg);
+                        setIsEditModalOpen(true);
+                      }}
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-blue-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
                     >
                       <Edit2 className="w-3 h-3" />
                       Edit Status
                     </button>
                     <button
-                      onClick={() => openDeleteConfirm(flg)}
+                      onClick={() => {
+                        setDeletingFlag(flg);
+                        setIsDeleteConfirmOpen(true);
+                      }}
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-lg transition-all"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -402,339 +280,44 @@ export default function FlaggedPage() {
       )}
 
       {/* Flag Manual Profile Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200">
-            <button
-              onClick={() => setIsCreateModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Flag Suspected Identity</h3>
-
-            <form onSubmit={handleCreateFlag} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Name Used</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Joseph W"
-                  value={nameUsed}
-                  onChange={(e) => setNameUsed(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Used</label>
-                  <input
-                    type="email"
-                    placeholder="email@example.com"
-                    value={emailUsed}
-                    onChange={(e) => setEmailUsed(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Used</label>
-                  <input
-                    type="text"
-                    placeholder="0812..."
-                    value={phoneUsed}
-                    onChange={(e) => setPhoneUsed(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Flag Status</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="suspected">Suspected</option>
-                    <option value="confirmed">Confirmed (Tikus)</option>
-                    <option value="cleared">Cleared (Legitimate)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Alert Reason</label>
-                  <select
-                    value={flagReason}
-                    onChange={(e) => setFlagReason(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="multiple_identity">Multiple Identity</option>
-                    <option value="fake_company">Fake Company Name</option>
-                    <option value="no_corporate_email">No Corporate Email Address</option>
-                    <option value="duplicate_phone">Duplicate Phone Number</option>
-                    <option value="duplicate_email">Duplicate Email Address</option>
-                    <option value="suspicious_repeated_attendance">Repeated Attendance Warning</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Database (Optional)</label>
-                  <select
-                    value={selectedDatabaseId}
-                    onChange={(e) => handleSelectDatabaseChange(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white"
-                  >
-                    <option value="">-- No linked database --</option>
-                    {databases.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.firstName} {c.lastName} {c.company?.name ? `(${c.company.name})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Event (Optional)</label>
-                  <select
-                    value={selectedEventId}
-                    onChange={(e) => setSelectedEventId(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white"
-                  >
-                    <option value="">-- No linked event --</option>
-                    {events.map((evt) => (
-                      <option key={evt.id} value={evt.id}>
-                        {evt.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Evidence Description</label>
-                <textarea
-                  placeholder="Explain why this profile is flagged..."
-                  value={evidenceNotes}
-                  onChange={(e) => setEvidenceNotes(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-xs placeholder-slate-400 focus:outline-none resize-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                  Flag Identity
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddFlaggedModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        databases={databases}
+        events={events}
+        onSubmit={handleCreateFlag}
+        submitting={submitting}
+      />
 
       {/* Edit Flagged Identity Modal */}
-      {isEditModalOpen && editingFlag && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200">
-            <button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setEditingFlag(null);
-              }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Edit Flagged Details</h3>
-
-            <form onSubmit={handleUpdateFlag} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Name Used</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Joseph W"
-                  value={editNameUsed}
-                  onChange={(e) => setEditNameUsed(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Used</label>
-                  <input
-                    type="email"
-                    placeholder="email@example.com"
-                    value={editEmailUsed}
-                    onChange={(e) => setEditEmailUsed(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Used</label>
-                  <input
-                    type="text"
-                    placeholder="0812..."
-                    value={editPhoneUsed}
-                    onChange={(e) => setEditPhoneUsed(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Flag Status</label>
-                  <select
-                    value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="suspected">Suspected</option>
-                    <option value="confirmed">Confirmed (Tikus)</option>
-                    <option value="cleared">Cleared (Legitimate)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Alert Reason</label>
-                  <select
-                    value={editFlagReason}
-                    onChange={(e) => setEditFlagReason(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                  >
-                    <option value="multiple_identity">Multiple Identity</option>
-                    <option value="fake_company">Fake Company Name</option>
-                    <option value="no_corporate_email">No Corporate Email Address</option>
-                    <option value="duplicate_phone">Duplicate Phone Number</option>
-                    <option value="duplicate_email">Duplicate Email Address</option>
-                    <option value="suspicious_repeated_attendance">Repeated Attendance Warning</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Database (Optional)</label>
-                  <select
-                    value={editSelectedDatabaseId}
-                    onChange={(e) => handleEditSelectDatabaseChange(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white"
-                  >
-                    <option value="">-- No linked database --</option>
-                    {databases.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.firstName} {c.lastName} {c.company?.name ? `(${c.company.name})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Event (Optional)</label>
-                  <select
-                    value={editSelectedEventId}
-                    onChange={(e) => setEditSelectedEventId(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white"
-                  >
-                    <option value="">-- No linked event --</option>
-                    {events.map((evt) => (
-                      <option key={evt.id} value={evt.id}>
-                        {evt.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Evidence Description</label>
-                <textarea
-                  placeholder="Explain why this profile is flagged..."
-                  value={editEvidenceNotes}
-                  onChange={(e) => setEditEvidenceNotes(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-xs placeholder-slate-400 focus:outline-none resize-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditModalOpen(false);
-                    setEditingFlag(null);
-                  }}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {editingFlag && (
+        <EditFlaggedModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingFlag(null);
+          }}
+          databases={databases}
+          events={events}
+          flag={editingFlag}
+          onSubmit={handleUpdateFlag}
+          submitting={submitting}
+        />
       )}
 
       {/* Delete Confirmation Modal Overlay */}
-      {isDeleteConfirmOpen && deletingFlag && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Delete Flagged Identity</h3>
-            <p className="text-sm text-slate-500 mb-6">
-              Are you sure you want to permanently clear/remove flagged entry <span className="font-semibold text-slate-800">"{deletingFlag.nameUsed || 'this item'}"</span>? 
-              This will completely delete this record from the flagged tikus database list. This action is irreversible.
-            </p>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDeleteConfirmOpen(false);
-                  setDeletingFlag(null);
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteFlag}
-                disabled={submitting}
-                className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Yes, Delete
-              </button>
-            </div>
-          </div>
-        </div>
+      {deletingFlag && (
+        <DeleteFlaggedConfirmModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={() => {
+            setIsDeleteConfirmOpen(false);
+            setDeletingFlag(null);
+          }}
+          flag={deletingFlag}
+          onConfirm={handleDeleteFlag}
+          submitting={submitting}
+        />
       )}
     </div>
   );
 }
-

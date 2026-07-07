@@ -3,10 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Group, Company } from '../../../lib/types';
-import { FolderTree, Search, Plus, X, Loader2, Edit2, Trash2, Eye, Building2, Globe, MapPin, ExternalLink } from 'lucide-react';
+import { FolderTree, Search, Plus, Loader2, Edit2, Trash2, Eye, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { AddGroupModal } from './components/AddGroupModal';
+import { EditGroupModal } from './components/EditGroupModal';
+import { DeleteGroupConfirmModal } from './components/DeleteGroupConfirmModal';
+import { GroupDetailModal } from './components/GroupDetailModal';
 
 export default function GroupsPage() {
   const router = useRouter();
@@ -16,22 +20,12 @@ export default function GroupsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Create Modal State
+  // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupNotes, setNewGroupNotes] = useState('');
-  
-  // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
-  const [editGroupName, setEditGroupName] = useState('');
-  const [editGroupNotes, setEditGroupNotes] = useState('');
-
-  // Delete Confirm State
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
-
-  // Detail Modal State
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailGroup, setDetailGroup] = useState<Group | null>(null);
 
@@ -57,22 +51,11 @@ export default function GroupsPage() {
     }
   }
 
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroupName.trim()) {
-      toast.error('Group name is required');
-      return;
-    }
-
+  const handleCreateGroup = async (data: { name: string; notes?: string }) => {
     setSubmitting(true);
     try {
-      await crmService.createGroup({
-        name: newGroupName.trim(),
-        notes: newGroupNotes.trim() || undefined
-      });
+      await crmService.createGroup(data);
       toast.success('Group created successfully!');
-      setNewGroupName('');
-      setNewGroupNotes('');
       setIsModalOpen(false);
       loadGroups(); // Reload list
     } catch (err: any) {
@@ -82,27 +65,11 @@ export default function GroupsPage() {
     }
   };
 
-  const openEditModal = (group: Group) => {
-    setEditingGroup(group);
-    setEditGroupName(group.name);
-    setEditGroupNotes(group.notes || '');
-    setIsEditModalOpen(true);
-  };
-
-  const handleUpdateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateGroup = async (data: { name: string; notes?: string }) => {
     if (!editingGroup) return;
-    if (!editGroupName.trim()) {
-      toast.error('Group name is required');
-      return;
-    }
-
     setSubmitting(true);
     try {
-      await crmService.updateGroup(editingGroup.id, {
-        name: editGroupName.trim(),
-        notes: editGroupNotes.trim() || undefined
-      });
+      await crmService.updateGroup(editingGroup.id, data);
       toast.success('Group updated successfully!');
       setIsEditModalOpen(false);
       setEditingGroup(null);
@@ -227,7 +194,10 @@ export default function GroupsPage() {
                         </button>
                         {!isUser && (
                           <button
-                            onClick={() => openEditModal(g)}
+                            onClick={() => {
+                              setEditingGroup(g);
+                              setIsEditModalOpen(true);
+                            }}
                             className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
                             title="Edit Group"
                           >
@@ -236,7 +206,10 @@ export default function GroupsPage() {
                         )}
                         {isAdmin && (
                           <button
-                            onClick={() => openDeleteConfirm(g)}
+                            onClick={() => {
+                              setDeletingGroup(g);
+                              setIsDeleteConfirmOpen(true);
+                            }}
                             className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
                             title="Delete Group"
                           >
@@ -254,285 +227,55 @@ export default function GroupsPage() {
       )}
 
       {/* Add Group Modal Overlay */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Create New Group</h3>
-
-            <form onSubmit={handleCreateGroup} className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Group Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Astra Group"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Notes</label>
-                <textarea
-                  placeholder="Additional descriptions..."
-                  value={newGroupNotes}
-                  onChange={(e) => setNewGroupNotes(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Save Group
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddGroupModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateGroup}
+        submitting={submitting}
+      />
 
       {/* Edit Group Modal Overlay */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200">
-            <button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setEditingGroup(null);
-              }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-xl font-extrabold text-slate-900 mb-6">Edit Group</h3>
-
-            <form onSubmit={handleUpdateGroup} className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Group Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Astra Group"
-                  value={editGroupName}
-                  onChange={(e) => setEditGroupName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Notes</label>
-                <textarea
-                  placeholder="Additional descriptions..."
-                  value={editGroupNotes}
-                  onChange={(e) => setEditGroupNotes(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditModalOpen(false);
-                    setEditingGroup(null);
-                  }}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {editingGroup && (
+        <EditGroupModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingGroup(null);
+          }}
+          group={editingGroup}
+          onSubmit={handleUpdateGroup}
+          submitting={submitting}
+        />
       )}
 
       {/* Delete Confirmation Modal Overlay */}
-      {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Delete Holding Group</h3>
-            <p className="text-sm text-slate-500 mb-6">
-              Are you sure you want to delete the group <span className="font-semibold text-slate-800">"{deletingGroup?.name}"</span>? 
-              This action cannot be undone. Associated companies will have their group references removed (nullified).
-            </p>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDeleteConfirmOpen(false);
-                  setDeletingGroup(null);
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteGroup}
-                disabled={submitting}
-                className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Yes, Delete
-              </button>
-            </div>
-          </div>
-        </div>
+      {deletingGroup && (
+        <DeleteGroupConfirmModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={() => {
+            setIsDeleteConfirmOpen(false);
+            setDeletingGroup(null);
+          }}
+          group={deletingGroup}
+          onConfirm={handleDeleteGroup}
+          submitting={submitting}
+        />
       )}
 
       {/* Detail Modal Overlay */}
-      {isDetailModalOpen && detailGroup && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
-            <button
-              onClick={() => {
-                setIsDetailModalOpen(false);
-                setDetailGroup(null);
-              }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-2 mb-4 text-blue-600">
-              <FolderTree className="w-6 h-6" />
-              <h3 className="text-xl font-extrabold text-slate-900">Holding Group Details</h3>
-            </div>
-
-            <div className="space-y-6">
-              {/* Group Metadata */}
-              <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-[10px]">Group Name</h4>
-                  <p className="text-base font-extrabold text-slate-800 mt-0.5">{detailGroup.name}</p>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-[10px]">Notes / Descriptions</h4>
-                  <p className="text-sm text-slate-700 mt-1 whitespace-pre-wrap">
-                    {detailGroup.notes || <span className="text-slate-400 italic">No notes written.</span>}
-                  </p>
-                </div>
-              </div>
-
-              {/* Subsidiaries List */}
-              <div>
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-[10px]">
-                  Anak Perusahaan (Subsidiaries)
-                </h4>
-                
-                {(() => {
-                  const groupSubsidiaries = companies.filter(c => c.group?.id === detailGroup.id);
-                  if (groupSubsidiaries.length === 0) {
-                    return (
-                      <div className="text-center py-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                        <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <p className="text-xs text-slate-500 font-semibold">No subsidiaries linked to this group yet.</p>
-                      </div>
-                    );
-                  }
-                  
-                  return (
-                    <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white shadow-sm">
-                      {groupSubsidiaries.map((company) => (
-                        <div key={company.id} className="p-3.5 flex items-center justify-between hover:bg-slate-50/50 transition-all">
-                          <div className="space-y-1">
-                            <h5 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                              <Building2 className="w-4 h-4 text-slate-450" />
-                              {company.name}
-                            </h5>
-                            <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
-                              {company.brandName && (
-                                <span className="font-semibold text-blue-600">Brand: {company.brandName}</span>
-                              )}
-                              {company.brandName && <span className="text-slate-300">•</span>}
-                              {company.city && (
-                                <span className="flex items-center gap-0.5">
-                                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                  {company.city}
-                                </span>
-                              )}
-                              {company.website && (
-                                <>
-                                  <span className="text-slate-300">•</span>
-                                  <a 
-                                    href={company.website.startsWith('http') ? company.website : `https://${company.website}`} 
-                                    target="_blank" 
-                                    rel="noreferrer"
-                                    className="flex items-center gap-0.5 text-blue-650 hover:text-blue-500 font-medium"
-                                  >
-                                    <Globe className="w-3.5 h-3.5" />
-                                    Website
-                                  </a>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <button
-                            onClick={() => {
-                              router.push(`/dashboard/companies?search=${encodeURIComponent(company.name)}`);
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg border border-blue-100 transition-all cursor-pointer shadow-sm"
-                          >
-                            <span>Go to Details</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDetailModalOpen(false);
-                    setDetailGroup(null);
-                  }}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl border border-slate-200 transition-all cursor-pointer shadow-sm"
-                >
-                  Close Detail
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {detailGroup && (
+        <GroupDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setDetailGroup(null);
+          }}
+          group={detailGroup}
+          companies={companies}
+          onGoToCompanyDetails={(companyName) => {
+            router.push(`/dashboard/companies?search=${encodeURIComponent(companyName)}`);
+          }}
+        />
       )}
     </div>
   );
