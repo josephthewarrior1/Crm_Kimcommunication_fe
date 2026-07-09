@@ -254,8 +254,8 @@ export default function CompaniesPage() {
                 <tr className="border-b border-slate-200 bg-slate-50/50">
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Group</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Database Info</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Info</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Industry</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">City</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
@@ -301,34 +301,27 @@ export default function CompaniesPage() {
                         </a>
                       )}
                       {c.officePhone && (
-                        <p className="flex items-center gap-1.5 text-slate-500 font-mono">
-                          <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <p className="text-slate-500 font-mono">
                           {c.officePhone}
                         </p>
                       )}
                     </td>
                     <td className="py-4 px-6 text-xs space-y-1">
-                      {c.industry && (
-                        <p className="text-slate-700">
-                          <span className="text-slate-400 font-medium">Industry:</span> {c.industry}
+                      {c.industry ? (
+                        <p className="text-sm font-bold text-slate-800">
+                          {c.industry}
                         </p>
+                      ) : (
+                        <span className="text-slate-400">-</span>
                       )}
                       {(c.companySizeRevenue || c.companySizeEmployee) && (
-                        <p className="text-slate-600">
-                          <span className="text-slate-400 font-medium">Size:</span>{' '}
-                          {[c.companySizeRevenue, c.companySizeEmployee].filter(Boolean).join(' / ')}
+                        <p className="text-slate-500 text-[10px] mt-0.5">
+                          Size: {[c.companySizeRevenue, c.companySizeEmployee].filter(Boolean).join(' / ')}
                         </p>
                       )}
                     </td>
                     <td className="py-4 px-6 text-sm font-medium text-slate-700">
-                      {c.city ? (
-                        <p className="flex items-center gap-1 text-slate-500">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                          {c.city}
-                        </p>
-                      ) : (
-                        '-'
-                      )}
+                      {c.city || '-'}
                     </td>
                     <td className="py-4 px-6 text-sm text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
