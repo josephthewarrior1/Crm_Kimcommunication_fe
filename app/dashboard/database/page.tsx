@@ -347,7 +347,7 @@ export default function DatabasesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by Group</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Group</label>
             <select
               value={filterGroupId}
               onChange={(e) => setFilterGroupId(e.target.value)}
@@ -361,7 +361,7 @@ export default function DatabasesPage() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by Company</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company</label>
             <select
               value={filterCompanyId}
               onChange={(e) => setFilterCompanyId(e.target.value)}
@@ -416,23 +416,6 @@ export default function DatabasesPage() {
         </div>
       </div>
 
-      {/* Selection Actions Bar */}
-      {selectedDatabaseIds.length > 0 && (
-        <div className="bg-blue-50/70 backdrop-blur-sm border border-blue-100 rounded-xl p-3.5 flex items-center justify-between animate-in slide-in-from-top-3 duration-200 shadow-sm">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-blue-600 shrink-0" />
-            <span className="text-sm font-semibold text-blue-800">
-              Terpilih <strong className="font-black text-blue-900">{selectedDatabaseIds.length}</strong> kontak untuk diexport.
-            </span>
-          </div>
-          <button
-            onClick={() => setSelectedDatabaseIds([])}
-            className="text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline px-3 py-1.5 bg-white border border-blue-200 rounded-lg shadow-sm transition-all hover:bg-slate-50"
-          >
-            Clear Selection
-          </button>
-        </div>
-      )}
 
       {/* Databases List Table */}
       {loading ? (
@@ -453,14 +436,6 @@ export default function DatabasesPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap">
-                  <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center">
-                    <input
-                      type="checkbox"
-                      checked={isAllSelected}
-                      onChange={handleToggleSelectAll}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                    />
-                  </th>
                   <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Group/Holding Company</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Brand</th>
@@ -539,14 +514,6 @@ export default function DatabasesPage() {
 
                   return (
                     <tr key={c.id} className={`group hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
-                      <td className="py-4 px-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedDatabaseIds.includes(c.id)}
-                          onChange={() => handleToggleSelect(c.id)}
-                          className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                        />
-                      </td>
                       <td className="py-4 px-3 text-center">
                         {checkDatabaseCompleteness(c).isIncomplete && (
                           <span

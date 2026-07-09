@@ -183,17 +183,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   
                   <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-20 animate-in fade-in slide-in-from-top-1 duration-100 text-slate-900">
                     <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/40 rounded-t-xl">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signed in as</p>
                       <p className="text-sm font-bold text-slate-800 truncate">{user?.fullName || user?.username}</p>
                       <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
-                      {user?.roles?.[0] && (
-                        <div className="mt-2">
-                          <span className={`inline-flex items-center gap-1.5 text-[8px] font-extrabold px-2 py-0.5 rounded-lg uppercase border ${getRoleBadge(user.roles[0])}`}>
-                            <Shield className="w-2.5 h-2.5" />
-                            {user.roles[0]}
-                          </span>
-                        </div>
-                      )}
                     </div>
                     <div className="p-1.5 space-y-1">
                       {isAdmin && (

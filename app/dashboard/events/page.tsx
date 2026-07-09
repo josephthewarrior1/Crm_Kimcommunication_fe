@@ -50,6 +50,27 @@ export default function EventsPage() {
     setParticipants(sorted);
   };
 
+  const getEventStatus = (startDateStr: string | null | undefined, endDateStr: string | null | undefined) => {
+    if (!startDateStr) return null;
+    const start = new Date(startDateStr);
+    const end = endDateStr ? new Date(endDateStr) : new Date(startDateStr);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    
+    if (today < start) {
+      const diffTime = start.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return { status: 'future', days: diffDays };
+    } else if (today >= start && today <= end) {
+      return { status: 'ongoing', days: 0 };
+    } else {
+      return { status: 'past', days: 0 };
+    }
+  };
+
   // Modals state
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const [isEditEventModalOpen, setIsEditEventModalOpen] = useState(false);
@@ -232,6 +253,7 @@ export default function EventsPage() {
     setSelectedEvent(event);
     setLoadingParticipants(true);
     setSelectedParticipantIds([]); // reset selection
+    setActiveTab('request'); // default to Data List tab
     try {
       const allParticipants = await crmService.getEventParticipants();
       setAllEventParticipants(allParticipants);
@@ -1086,10 +1108,33 @@ export default function EventsPage() {
 
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
             <div>
-              <span className="px-2 py-0.5 text-[10px] font-extrabold bg-blue-50 border border-blue-100 text-blue-600 rounded-md uppercase">
-                {selectedEvent.eventType} Event
-              </span>
-              <h3 className="font-extrabold text-2xl text-slate-900 mt-1.5">{selectedEvent.name}</h3>
+              <h3 className="font-extrabold text-2xl text-slate-900 mt-1.5 flex flex-wrap items-center gap-2">
+                <span>{selectedEvent.name}</span>
+                {(() => {
+                  const eventStatusInfo = getEventStatus(selectedEvent.dateStart, selectedEvent.dateEnd);
+                  if (eventStatusInfo === null) return null;
+                  
+                  let badgeColor = "bg-blue-50 text-blue-700 border-blue-100";
+                  let label = "";
+                  
+                  if (eventStatusInfo.status === 'future') {
+                    badgeColor = "bg-amber-50 text-amber-700 border-amber-200/50";
+                    label = `Sisa ${eventStatusInfo.days} hari lagi`;
+                  } else if (eventStatusInfo.status === 'ongoing') {
+                    badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-250/60 animate-pulse";
+                    label = "Ongoing";
+                  } else {
+                    badgeColor = "bg-slate-100 text-slate-500 border-slate-200";
+                    label = "Sudah berlalu";
+                  }
+                  
+                  return (
+                    <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${badgeColor}`}>
+                      {label}
+                    </span>
+                  );
+                })()}
+              </h3>
               <div className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span>Client: <strong className="text-slate-700">{selectedEvent.clientName || '-'}</strong></span>
                 {selectedEvent.dateStart && <span> | Duration: <strong className="text-slate-700">{new Date(selectedEvent.dateStart).toLocaleDateString()} - {selectedEvent.dateEnd ? new Date(selectedEvent.dateEnd).toLocaleDateString() : 'End'}</strong></span>}
@@ -1238,6 +1283,45 @@ export default function EventsPage() {
             usersList={usersList}
             isAdmin={isAdmin}
             adminName={adminName}
+            onAssignPic={async (ids, picName) => {
+              setIsBatchUpdating(true);
+              let successCount = 0;
+              await Promise.all(ids.map(async (id) => {
+                try {
+                  const lead = participants.find(l => l.id === id);
+                  if (lead) {
+                    const { cleanNotes } = extractPicFromNotes(lead.notes);
+                    const newNotes = `[PIC: ${picName}] ${cleanNotes === '-' ? '' : cleanNotes}`.trim();
+                    await crmService.updateParticipantStatus(
+                      id,
+                      lead.participantStatus,
+                      lead.attendanceStatus,
+                      newNotes,
+                      undefined,
+                      lead.callStatus || undefined,
+                      lead.emailStatus || undefined,
+                      lead.whatsappStatus || undefined,
+                      lead.meetingStatus || undefined,
+                      lead.businessChallenges || undefined,
+                      lead.projectInfo || undefined,
+                      lead.timeline || undefined,
+                      lead.reminderH7 || undefined,
+                      lead.reminderH3 || undefined,
+                      lead.reminderH1 || undefined,
+                      lead.reminderHariH || undefined,
+                      lead.confirmationStatus
+                    );
+                    successCount++;
+                  }
+                } catch (err) {
+                  console.error(err);
+                }
+              }));
+              setIsBatchUpdating(false);
+              if (selectedEvent) {
+                handleSelectEvent(selectedEvent);
+              }
+            }}
           />
 
           {/* Batch Actions Status Bar */}
