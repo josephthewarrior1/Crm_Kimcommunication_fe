@@ -26,7 +26,7 @@ export default function RootLayout({
         <AuthProvider>
           <GlobalLoadingProvider>
             {children}
-            <Toaster />
+            <Toaster position="top-right" />
           </GlobalLoadingProvider>
         </AuthProvider>
       </body>

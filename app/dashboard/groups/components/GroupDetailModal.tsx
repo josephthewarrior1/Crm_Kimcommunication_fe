@@ -52,16 +52,16 @@ export const GroupDetailModal: React.FC<GroupDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Subsidiaries List */}
+          {/* Group Companies List */}
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-[10px]">
-              Anak Perusahaan (Subsidiaries)
+              Daftar Perusahaan (Group Companies)
             </h4>
             
             {groupSubsidiaries.length === 0 ? (
               <div className="text-center py-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
                 <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs text-slate-500 font-semibold">No subsidiaries linked to this group yet.</p>
+                <p className="text-xs text-slate-500 font-semibold">No companies linked to this group yet.</p>
               </div>
             ) : (
               <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white shadow-sm">
