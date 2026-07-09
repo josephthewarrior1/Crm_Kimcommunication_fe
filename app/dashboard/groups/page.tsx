@@ -31,6 +31,15 @@ export default function GroupsPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Reset current page when query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   useEffect(() => {
     loadGroups();
   }, []);
@@ -107,6 +116,12 @@ export default function GroupsPage() {
     g.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalItems = filteredGroups.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentGroups = filteredGroups.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
       {/* Page Header */}
@@ -156,7 +171,7 @@ export default function GroupsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/50">
+                <tr className="border-b border-slate-200 bg-slate-50/50 text-left">
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Group Name</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Subsidiaries</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Notes</th>
@@ -165,7 +180,7 @@ export default function GroupsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredGroups.map((g) => (
+                {currentGroups.map((g) => (
                   <tr key={g.id} className="hover:bg-slate-50/50 transition-all">
                     <td className="py-4 px-6 text-sm font-bold text-slate-900">{g.name}</td>
                     <td className="py-4 px-6 text-sm text-slate-600">
@@ -205,17 +220,17 @@ export default function GroupsPage() {
                           </button>
                         )}
                         {isAdmin && (
-                          <button
-                            onClick={() => {
-                              setDeletingGroup(g);
-                              setIsDeleteConfirmOpen(true);
-                            }}
-                            className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                            title="Delete Group"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                           <button
+                             onClick={() => {
+                               setDeletingGroup(g);
+                               setIsDeleteConfirmOpen(true);
+                             }}
+                             className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-55 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
+                             title="Delete Group"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </button>
+                         )}
                       </div>
                     </td>
                   </tr>
@@ -223,6 +238,75 @@ export default function GroupsPage() {
               </tbody>
             </table>
           </div>
+          {/* Integrated Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/30 px-6 py-4">
+              {/* Left Side: Info */}
+              <div className="hidden sm:block">
+                <p className="text-xs font-semibold text-slate-500">
+                  Showing <span className="font-extrabold text-slate-800">{indexOfFirstItem + 1}</span> to{' '}
+                  <span className="font-extrabold text-slate-800">
+                    {Math.min(indexOfLastItem, totalItems)}
+                  </span>{' '}
+                  of <span className="font-extrabold text-slate-800">{totalItems}</span> groups
+                </p>
+              </div>
+
+              {/* Right Side: Flat Controls */}
+              <div className="flex flex-1 sm:flex-initial items-center justify-between sm:justify-end gap-2">
+                {/* Previous Button */}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed"
+                  title="Previous Page"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const pageNumber = i + 1;
+                    if (totalPages > 6 && Math.abs(currentPage - pageNumber) > 2 && pageNumber !== 1 && pageNumber !== totalPages) {
+                      if (pageNumber === 2 || pageNumber === totalPages - 1) {
+                        return <span key={pageNumber} className="text-xs font-bold text-slate-400 px-1">...</span>;
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`min-w-[28px] h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                          currentPage === pageNumber
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-transparent'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed"
+                  title="Next Page"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

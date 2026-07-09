@@ -251,9 +251,10 @@ export default function CompaniesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/50">
+                <tr className="border-b border-slate-200 bg-slate-50/50 text-left">
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Group</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Databases</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Info</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Industry</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">City</th>
@@ -265,16 +266,11 @@ export default function CompaniesPage() {
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-all">
                     <td className="py-4 px-6">
                       <p className="text-sm font-bold text-slate-900">{c.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        {c.brandName && (
+                      {c.brandName && (
+                        <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-xs text-blue-650 font-medium">Brand: {c.brandName}</span>
-                        )}
-                        {c.brandName && <span className="text-slate-300 text-[10px]">•</span>}
-                        <span className="text-[11px] text-slate-500 font-medium flex items-center gap-0.5">
-                          <Users className="w-3 h-3 text-slate-400" />
-                          {databases.filter(database => database.company?.id === c.id && database.isActive).length} Databases
-                        </span>
-                      </div>
+                        </div>
+                      )}
                     </td>
                     <td className="py-4 px-6 text-sm">
                       {c.group ? (
@@ -287,6 +283,12 @@ export default function CompaniesPage() {
                       ) : (
                         <span className="text-slate-400">-</span>
                       )}
+                    </td>
+                    <td className="py-4 px-6 text-sm">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg shadow-sm">
+                        <Users className="w-3.5 h-3.5 text-slate-500" />
+                        {databases.filter(database => database.company?.id === c.id && database.isActive).length} Contacts
+                      </span>
                     </td>
                     <td className="py-4 px-6 text-xs space-y-1">
                       {c.website && (
@@ -348,17 +350,17 @@ export default function CompaniesPage() {
                           </button>
                         )}
                         {isAdmin && (
-                          <button
-                            onClick={() => {
-                              setDeletingCompany(c);
-                              setIsDeleteConfirmOpen(true);
-                            }}
-                            className="inline-flex p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-55 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                            title="Delete Company"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                           <button
+                             onClick={() => {
+                               setDeletingCompany(c);
+                               setIsDeleteConfirmOpen(true);
+                             }}
+                             className="inline-flex p-1.5 text-slate-500 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
+                             title="Delete Company"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </button>
+                         )}
                       </div>
                     </td>
                   </tr>

@@ -435,7 +435,7 @@ export default function DatabasesPage() {
           <div className="overflow-x-auto min-h-[350px]">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap">
+                <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap text-left">
                   <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Group/Holding Company</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Brand</th>

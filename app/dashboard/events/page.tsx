@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Event, EventParticipant, Database, AppUser } from '../../../lib/types';
-import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle } from 'lucide-react';
+import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import * as XLSX from 'xlsx';
@@ -1260,7 +1260,7 @@ export default function EventsPage() {
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
                   title="Impor Peserta Baru via Excel"
                 >
-                  <Plus className="w-3.5 h-3.5 text-green-600" />
+                  <Upload className="w-3.5 h-3.5 text-slate-500" />
                   Import Excel
                 </button>
               )}

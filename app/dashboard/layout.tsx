@@ -99,7 +99,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-900 font-sans">
+    <div className="min-h-screen flex bg-slate-50 text-slate-900">
       {/* 1. Large Screen Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0">
         <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-200 bg-white">

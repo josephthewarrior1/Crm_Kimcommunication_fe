@@ -222,14 +222,14 @@ export default function FlaggedPage() {
               {/* Duplicate Details */}
               <div className="space-y-1 text-xs border-y border-slate-100 py-2 font-mono bg-slate-50/50 -mx-3.5 px-3.5">
                 <p className="text-slate-700 truncate">
-                  <span className="text-slate-400 font-sans font-semibold inline-block w-10">Email:</span> {flg.emailUsed || '-'}
+                  <span className="text-slate-400 font-semibold inline-block w-10">Email:</span> {flg.emailUsed || '-'}
                 </p>
                 <p className="text-slate-700">
-                  <span className="text-slate-400 font-sans font-semibold inline-block w-10">Phone:</span> {flg.phoneUsed || '-'}
+                  <span className="text-slate-400 font-semibold inline-block w-10">Phone:</span> {flg.phoneUsed || '-'}
                 </p>
                 {flg.event && (
                   <p className="text-slate-700 truncate">
-                    <span className="text-slate-400 font-sans font-semibold inline-block w-10">Event:</span> {flg.event.name}
+                    <span className="text-slate-400 font-semibold inline-block w-10">Event:</span> {flg.event.name}
                   </p>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Building2, Info, Users, Globe, Phone, MapPin, ExternalLink } from 'lucide-react';
+import { X, Building2, Info, Users, Globe, Phone, MapPin, ExternalLink, BarChart3, Server } from 'lucide-react';
 import { Company, Database } from '../../../../lib/types';
 
 interface CompanyDetailModalProps {
@@ -53,9 +53,9 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
           {/* Left Column: Overview and CRM Metrics */}
           <div className="space-y-5">
             {/* Overview Card */}
-            <div className="bg-slate-50/40 border border-slate-100 rounded-2xl p-5 space-y-4">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
               <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5 text-blue-500" />
+                <Info className="w-4 h-4 text-blue-650 shrink-0" />
                 Company Overview
               </h4>
               
@@ -64,7 +64,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Holding Group</p>
                   <div className="mt-1">
                     {company.group?.name ? (
-                      <span className="inline-flex px-2 py-0.5 text-[10px] font-bold bg-blue-50 border border-blue-100 text-blue-650 rounded-md">
+                      <span className="inline-flex px-2 py-0.5 text-[10px] font-bold bg-blue-50 border border-blue-100 text-blue-655 rounded-md">
                         {company.group.name}
                       </span>
                     ) : (
@@ -87,7 +87,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
                   <span>{company.city || '-'} {company.postalCode ? `(${company.postalCode})` : ''}</span>
                 </p>
                 {company.address && (
-                  <p className="text-xs text-slate-500 mt-2 bg-white/70 p-2.5 rounded-lg border border-slate-100 leading-relaxed italic">
+                  <p className="text-xs text-slate-500 mt-2 bg-slate-50/70 p-2.5 rounded-lg border border-slate-100 leading-relaxed italic">
                     "{company.address}"
                   </p>
                 )}
@@ -95,9 +95,9 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
             </div>
 
             {/* Scale Card */}
-            <div className="bg-slate-50/40 border border-slate-100 rounded-2xl p-5 space-y-4">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
               <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-indigo-500" />
+                <BarChart3 className="w-4 h-4 text-blue-655 shrink-0" />
                 Scale & CRM Metrics
               </h4>
               
@@ -127,9 +127,9 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
           {/* Right Column: Channels and Infrastructure */}
           <div className="space-y-5">
             {/* Contact Channels */}
-            <div className="bg-slate-50/40 border border-slate-100 rounded-2xl p-5 space-y-4">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
               <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                <Globe className="w-4 h-4 text-blue-655 shrink-0" />
                 Channels & Contact Info
               </h4>
 
@@ -141,7 +141,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
                       href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline mt-1.5 break-all transition-all"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-650 hover:text-blue-500 hover:underline mt-1.5 break-all transition-all"
                     >
                       <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                       <span>{company.website}</span>
@@ -167,13 +167,13 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
             </div>
 
             {/* Tech Specs */}
-            <div className="bg-slate-50/40 border border-slate-100 rounded-2xl p-5 space-y-3 flex flex-col min-h-[178px]">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-3 flex flex-col min-h-[178px] shadow-sm">
               <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                <Server className="w-4 h-4 text-blue-655 shrink-0" />
                 Infrastructure & Hardware
               </h4>
 
-              <div className="flex-1 bg-white border border-slate-100 rounded-xl p-3 text-xs overflow-y-auto max-h-[120px]">
+              <div className="flex-1 bg-slate-50/50 border border-slate-100 rounded-xl p-3 text-xs overflow-y-auto max-h-[120px]">
                 {company.companyHardware ? (
                   <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
                     {company.companyHardware}

@@ -33,7 +33,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-slate-50 overflow-hidden font-sans">
+    <div className="relative min-h-screen flex items-center justify-center bg-slate-50 overflow-hidden">
       {/* Decorative Gradients */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-blue-100/40 blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 rounded-full bg-violet-100/30 blur-3xl pointer-events-none"></div>
