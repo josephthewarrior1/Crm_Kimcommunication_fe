@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Database, Company, DatabaseEmail, Group, EventParticipant, FlaggedIdentity } from '../../../lib/types';
-import { Users, Search, Plus, ExternalLink, Eye, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Users, Search, Plus, ExternalLink, Eye, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
@@ -62,6 +62,19 @@ export default function DatabasesPage() {
   const [filterPositionLevel, setFilterPositionLevel] = useState('');
   const [filterJobTitle, setFilterJobTitle] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
+
+  // Sorting state
+  const [sortBy, setSortBy] = useState<string>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -193,7 +206,7 @@ export default function DatabasesPage() {
     setIsTakeoutModalOpen(true);
   };
 
-  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterJobTitle || filterIndustry;
+  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterJobTitle || filterIndustry || sortBy !== 'id' || sortOrder !== 'asc';
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -202,6 +215,8 @@ export default function DatabasesPage() {
     setFilterPositionLevel('');
     setFilterJobTitle('');
     setFilterIndustry('');
+    setSortBy('id');
+    setSortOrder('asc');
   };
 
 
@@ -243,14 +258,68 @@ export default function DatabasesPage() {
     return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesJobTitle && matchesIndustry;
   });
 
-  const isAllSelected = filteredDatabases.length > 0 && filteredDatabases.every(d => selectedDatabaseIds.includes(d.id));
+  // Apply Ascending / Descending sorting
+  const sortedDatabases = [...filteredDatabases].sort((a, b) => {
+    let valA: any = '';
+    let valB: any = '';
+
+    switch (sortBy) {
+      case 'firstName':
+        valA = (a.firstName || '').toLowerCase();
+        valB = (b.firstName || '').toLowerCase();
+        break;
+      case 'lastName':
+        valA = (a.lastName || '').toLowerCase();
+        valB = (b.lastName || '').toLowerCase();
+        break;
+      case 'companyName':
+        valA = (a.company?.name || '').toLowerCase();
+        valB = (b.company?.name || '').toLowerCase();
+        break;
+      case 'groupName':
+        valA = (a.company?.group?.name || '').toLowerCase();
+        valB = (b.company?.group?.name || '').toLowerCase();
+        break;
+      case 'brandName':
+        valA = (a.company?.brandName || '').toLowerCase();
+        valB = (b.company?.brandName || '').toLowerCase();
+        break;
+      case 'jobTitle':
+        valA = (a.jobTitle || '').toLowerCase();
+        valB = (b.jobTitle || '').toLowerCase();
+        break;
+      case 'position':
+        valA = (a.positionLevel || '').toLowerCase();
+        valB = (b.positionLevel || '').toLowerCase();
+        break;
+      case 'industry':
+        valA = (a.company?.industry || '').toLowerCase();
+        valB = (b.company?.industry || '').toLowerCase();
+        break;
+      case 'city':
+        valA = (a.company?.city || '').toLowerCase();
+        valB = (b.company?.city || '').toLowerCase();
+        break;
+      case 'id':
+      default:
+        valA = a.id || 0;
+        valB = b.id || 0;
+        break;
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const isAllSelected = sortedDatabases.length > 0 && sortedDatabases.every(d => selectedDatabaseIds.includes(d.id));
 
   const handleToggleSelectAll = () => {
     if (isAllSelected) {
-      const filteredIds = filteredDatabases.map(d => d.id);
+      const filteredIds = sortedDatabases.map(d => d.id);
       setSelectedDatabaseIds(prev => prev.filter(id => !filteredIds.includes(id)));
     } else {
-      const filteredIds = filteredDatabases.map(d => d.id);
+      const filteredIds = sortedDatabases.map(d => d.id);
       setSelectedDatabaseIds(prev => {
         const newSelection = [...prev];
         filteredIds.forEach(id => {
@@ -263,16 +332,16 @@ export default function DatabasesPage() {
     }
   };
 
-  // Reset current page when query or any filter changes
+  // Reset current page when query, filter or sorting changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterJobTitle, filterIndustry]);
+  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterJobTitle, filterIndustry, sortBy, sortOrder]);
 
-  const totalItems = filteredDatabases.length;
+  const totalItems = sortedDatabases.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentDatabases = filteredDatabases.slice(indexOfFirstItem, indexOfLastItem);
+  const currentDatabases = sortedDatabases.slice(indexOfFirstItem, indexOfLastItem);
 
   const handleOpenExportConfig = () => {
     if (filteredDatabases.length === 0) {
@@ -345,7 +414,7 @@ export default function DatabasesPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 pt-2 border-t border-slate-100">
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Group</label>
             <select
@@ -413,6 +482,41 @@ export default function DatabasesPage() {
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all placeholder-slate-450 focus:bg-white"
             />
           </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white font-medium"
+            >
+              <option value="id">Default (ID)</option>
+              <option value="firstName">First Name</option>
+              <option value="lastName">Last Name</option>
+              <option value="companyName">Company Name</option>
+              <option value="groupName">Group Name</option>
+              <option value="brandName">Brand Name</option>
+              <option value="jobTitle">Job Title</option>
+              <option value="position">Position Level</option>
+              <option value="industry">Industry</option>
+              <option value="city">City</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Order</label>
+            <button
+              type="button"
+              onClick={() => setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))}
+              className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200 rounded-xl text-slate-900 text-xs font-semibold flex items-center justify-between transition-all"
+              title="Click to toggle Ascending / Descending"
+            >
+              <span className="flex items-center gap-1.5 truncate">
+                {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                {sortOrder === 'asc' ? 'Ascending (A-Z)' : 'Descending (Z-A)'}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -437,26 +541,134 @@ export default function DatabasesPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap text-left">
                   <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Group/Holding Company</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Brand</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</th>
+                  <th
+                    onClick={() => handleSort('groupName')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Nama Group/Holding Company</span>
+                      {sortBy === 'groupName' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('brandName')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Nama Brand</span>
+                      {sortBy === 'brandName' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('companyName')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Company Name</span>
+                      {sortBy === 'companyName' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Salutation</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">First Name</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Last Name</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Position</th>
+                  <th
+                    onClick={() => handleSort('firstName')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>First Name</span>
+                      {sortBy === 'firstName' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('lastName')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Last Name</span>
+                      {sortBy === 'lastName' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('position')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Position</span>
+                      {sortBy === 'position' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Speciality/Division</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Jobtitle</th>
+                  <th
+                    onClick={() => handleSort('jobTitle')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Jobtitle</span>
+                      {sortBy === 'jobTitle' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Address</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Office Phone</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile Phone</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Email Address</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Personal Email Address</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Industry</th>
+                  <th
+                    onClick={() => handleSort('industry')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Industry</span>
+                      {sortBy === 'industry' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Revenue)</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Employee)</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Hardware</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Linkedin Link</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">City</th>
+                  <th
+                    onClick={() => handleSort('city')}
+                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>City</span>
+                      {sortBy === 'city' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Postal Code</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Website</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Actions</th>

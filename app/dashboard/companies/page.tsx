@@ -488,7 +488,7 @@ export default function CompaniesPage() {
           company={detailCompany}
           databases={databases}
           onGoToEmployeeDetails={(fullName) => {
-            router.push(`/dashboard/databases?search=${encodeURIComponent(fullName)}`);
+            router.push(`/dashboard/database?search=${encodeURIComponent(fullName)}`);
           }}
         />
       )}

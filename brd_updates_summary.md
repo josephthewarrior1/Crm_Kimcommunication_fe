@@ -27,15 +27,22 @@ Sistem mendukung penyimpanan dan pengunggahan massal (Excel Import) untuk kolom-
 ## 2. Tambahan pada Bab 5 — Kebutuhan Fungsional (No. 4) & Pembatasan Otoritas
 
 **Modul:** Participant & Engagement Tracking  
-**Detail Perubahan:** Tambahkan spesifikasi alur penugasan PIC (Person In Charge) serta aturan pembatasan akses data (*authorization*) berdasarkan PIC.
+**Detail Perubahan:** Spesifikasi alur penugasan PIC (Person In Charge), format penyimpanan data, cakupan penyaringan per tab, serta aturan pembatasan hak akses (*authorization*) berdasarkan PIC.
 
 ```markdown
 ### Fitur Penugasan PIC & Pembatasan Hak Akses:
-Untuk mengelola pembagian tugas staf di lapangan, sistem menerapkan aturan keamanan penugasan PIC:
-*   **Penyimpanan Efisien:** Nama PIC disimpan secara dinamis di awal kolom Catatan (*Notes*) menggunakan format: `[PIC: Nama_PIC]` (contoh: `[PIC: Joseph] Hubungi sore hari`).
-*   **Pembatasan Hak Akses (Security Rule):**
-    *   **Staf Event / Manager (Non-Admin):** Hanya diizinkan melihat, memproses, dan memperbarui data peserta yang ditugaskan kepada mereka sebagai PIC (baik di tab Pre-Event, Reminder, maupun Hari H). Data peserta lain disembunyikan otomatis dari daftar.
-    *   **Admin:** Memiliki hak akses penuh untuk melihat semua data peserta, memfilter berdasarkan PIC tertentu, dan melakukan penugasan/pemindahan PIC secara massal (*Batch Assign PIC*).
+Untuk mengelola pembagian tugas staf di lapangan dan menjaga kerahasiaan data operasional, sistem menerapkan aturan penugasan dan filter PIC sebagai berikut:
+*   **Penyimpanan & Formatisasi Data:**
+    *   Nama PIC disimpan secara dinamis di bagian paling awal kolom Catatan (*Notes*) menggunakan format tag header: `[PIC: Nama_PIC]` (contoh: `[PIC: Joseph] Hubungi sore hari`).
+    *   **Default Fallback:** Apabila kolom Catatan tidak memuat tag `[PIC: ...]`, sistem secara otomatis menganggap/menetapkan fallback PIC peserta sebagai `Admin`.
+*   **Cakupan Penyaringan per Tab (Tab-Level Scope):**
+    *   Penyaringan data berdasarkan PIC **hanya aktif pada Tab Operasional** (`Tab 2: Pre-Event`, `Tab 3: Reminder`, dan `Tab 4: Reminder D-Day`).
+    *   Pada **`Tab 1: Data List / Request`**, aturan penyaringan PIC **dikecualikan (tidak berlaku)**. Seluruh peserta undangan/prospek awal dapat dilihat oleh semua staf maupun Admin untuk kualifikasi awal.
+*   **Pembatasan Hak Akses (Security & Role Rules):**
+    *   **Staf Event / Manager (Non-Admin):** Hanya diizinkan melihat, memproses, dan memperbarui data peserta pada tab operasional yang ditugaskan kepada mereka sebagai PIC (di mana tag PIC sesuai dengan nama akun/fullName pengguna yang login). Data peserta milik PIC lain disembunyikan otomatis dari antarmuka.
+    *   **Admin:** Memiliki hak akses penuh untuk melihat seluruh data peserta di semua tab, menyaring tampilan berdasarkan dropdown nama PIC tertentu, serta melakukan penugasan atau pemindahan PIC baik secara **individual** (via Modal Edit Participant) maupun **massal (*Batch Assign PIC*)** dari daftar tabel.
+*   **Integrasi Ekspor Data (Custom Excel Export):**
+    *   Sistem mengekstrak nama PIC dari kolom Catatan secara otomatis saat proses *Custom Excel Export*, menghasilkan kolom khusus `PIC` pada file Excel yang diunduh (serta memisahkan teks catatan bersih dari tag `[PIC: ...]`).
 ```
 
 ---
