@@ -13,8 +13,6 @@ interface ParticipantToolbarProps {
   setFilterPosition: (val: string) => void;
   filterIndustry: string;
   setFilterIndustry: (val: string) => void;
-  filterCity: string;
-  setFilterCity: (val: string) => void;
   filterPic: string;
   setFilterPic: (val: string) => void;
   activeTab: string;
@@ -33,8 +31,6 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
   setFilterPosition,
   filterIndustry,
   setFilterIndustry,
-  filterCity,
-  setFilterCity,
   filterPic,
   setFilterPic,
   activeTab,
@@ -46,7 +42,6 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
     filterCompany ||
     filterPosition ||
     filterIndustry ||
-    filterCity ||
     filterPic;
 
   return (
@@ -75,7 +70,7 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
       </div>
 
       {/* Row 2: Grid Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 pt-3 border-t border-slate-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-3 border-t border-slate-100">
         <div>
           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Filter by Company</label>
           <select
@@ -114,20 +109,6 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
             <option value="">All Industries</option>
             {Array.from(new Set(participants.map(p => p.database.company?.industry).filter(Boolean))).sort().map((ind) => (
               <option key={ind} value={ind}>{ind}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">City</label>
-          <select
-            value={filterCity}
-            onChange={(e) => setFilterCity(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
-          >
-            <option value="">All Cities</option>
-            {Array.from(new Set(participants.map(p => p.database.company?.city).filter(Boolean))).sort().map((cty) => (
-              <option key={cty} value={cty}>{cty}</option>
             ))}
           </select>
         </div>

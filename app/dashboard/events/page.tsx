@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { crmService } from '../../../lib/services/crmService';
 import { Event, EventParticipant, Database, AppUser } from '../../../lib/types';
 import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload } from 'lucide-react';
@@ -27,6 +28,10 @@ import { exportParticipantsToExcel } from './utils/exportHelper';
 import { importParticipantsFromExcel } from './utils/importHelper';
 
 export default function EventsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const eventIdParam = searchParams.get('eventId') || searchParams.get('id');
+
   const { isAdmin, isManager, isUser, user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
@@ -43,7 +48,6 @@ export default function EventsPage() {
   const [filterCompany, setFilterCompany] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
-  const [filterCity, setFilterCity] = useState('');
 
   const setParticipantsSorted = (participantsList: EventParticipant[]) => {
     const sorted = [...participantsList].sort((a, b) => a.id - b.id);
@@ -132,6 +136,27 @@ export default function EventsPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (events.length > 0) {
+      if (eventIdParam) {
+        const matched = events.find(
+          (ev) => String(ev.id) === eventIdParam || String(ev.pmsEventId) === eventIdParam || String(ev.emsEventId) === eventIdParam || (ev.name && eventIdParam.toLowerCase() === ev.name.trim().toLowerCase())
+        );
+        if (matched) {
+          if (!selectedEvent || selectedEvent.id !== matched.id) {
+            loadParticipantsForEvent(matched);
+          }
+        } else {
+          setSelectedEvent(null);
+          setParticipants([]);
+        }
+      } else {
+        setSelectedEvent(null);
+        setParticipants([]);
+      }
+    }
+  }, [eventIdParam, events]);
+
   async function loadData() {
     setLoading(true);
     try {
@@ -147,6 +172,28 @@ export default function EventsPage() {
       setAllEventParticipants(lList);
       setUsersList(uList);
       setEmsEventsList(emsList);
+
+      // Check URL query parameters for eventId or id
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlEventId = urlParams.get('eventId') || urlParams.get('id');
+        if (urlEventId) {
+          const matchedEvent = eList.find(
+            (ev) => String(ev.id) === urlEventId || String(ev.pmsEventId) === urlEventId || String(ev.emsEventId) === urlEventId || (ev.name && urlEventId.toLowerCase() === ev.name.trim().toLowerCase())
+          );
+          if (matchedEvent) {
+            setSelectedEvent(matchedEvent);
+            const filtered = lList.filter((l) =>
+              l.event && (
+                l.event.id === matchedEvent.id ||
+                (l.event.name && matchedEvent.name && l.event.name.trim().toLowerCase() === matchedEvent.name.trim().toLowerCase())
+              )
+            );
+            setParticipantsSorted(filtered);
+            return;
+          }
+        }
+      }
 
       if (selectedEvent) {
         const updatedSel = eList.find(
@@ -281,7 +328,7 @@ export default function EventsPage() {
     }
   };
 
-  const handleSelectEvent = async (event: Event) => {
+  const loadParticipantsForEvent = async (event: Event) => {
     setSelectedEvent(event);
     setLoadingParticipants(true);
     setSelectedParticipantIds([]); // reset selection
@@ -311,6 +358,10 @@ export default function EventsPage() {
     } finally {
       setLoadingParticipants(false);
     }
+  };
+
+  const handleSelectEvent = (event: Event) => {
+    router.push(`/dashboard/events?eventId=${event.id}`);
   };
 
   const handleExportParticipants = () => {
@@ -538,7 +589,6 @@ export default function EventsPage() {
     setFilterCompany('');
     setFilterPosition('');
     setFilterIndustry('');
-    setFilterCity('');
     setFilterPic('');
   };
 
@@ -996,11 +1046,6 @@ export default function EventsPage() {
       return false;
     }
 
-    // 5. City filter
-    if (filterCity && l.database.company?.city !== filterCity) {
-      return false;
-    }
-
     return true;
   });
 
@@ -1149,8 +1194,7 @@ export default function EventsPage() {
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col w-full text-slate-900 transition-all duration-300">
           <button
             onClick={() => {
-              setSelectedEvent(null);
-              setParticipants([]);
+              router.push('/dashboard/events');
             }}
             className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-950 hover:-translate-x-0.5 font-bold text-xs mb-5 transition-all self-start duration-200"
           >
@@ -1416,8 +1460,6 @@ export default function EventsPage() {
               setFilterPosition={setFilterPosition}
               filterIndustry={filterIndustry}
               setFilterIndustry={setFilterIndustry}
-              filterCity={filterCity}
-              setFilterCity={setFilterCity}
               filterPic={filterPic}
               setFilterPic={setFilterPic}
               activeTab={activeTab}

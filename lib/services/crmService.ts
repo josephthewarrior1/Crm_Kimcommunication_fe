@@ -141,6 +141,7 @@ export class CrmService extends ApiService {
       if (match) {
         return {
           ...pmsEv,
+          id: match.id || pmsEv.id,
           emsEventId: match.emsEventId || pmsEv.emsEventId,
           targetParticipants: match.targetParticipants || pmsEv.targetParticipants,
           notes: match.notes || pmsEv.notes,
