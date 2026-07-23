@@ -18,6 +18,9 @@ interface CreateEventModalProps {
   setNotes: (v: string) => void;
   targetParticipants: number;
   setTargetParticipants: (v: number) => void;
+  emsEvents?: { id: number; name: string }[];
+  emsEventId?: number;
+  setEmsEventId?: (v: number) => void;
   submittingEvent: boolean;
   onSubmit: (e: React.FormEvent) => void;
 }
@@ -39,6 +42,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   setNotes,
   targetParticipants,
   setTargetParticipants,
+  emsEvents = [],
+  emsEventId = 0,
+  setEmsEventId,
   submittingEvent,
   onSubmit
 }) => {
@@ -68,6 +74,35 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               required
             />
           </div>
+
+          {setEmsEventId && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Link ke Event EMS (ID / Dropdown)</label>
+              {emsEvents.length > 0 ? (
+                <select
+                  value={emsEventId}
+                  onChange={(e) => setEmsEventId(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
+                >
+                  <option value={0}>-- Pilih Event EMS (Opsional) --</option>
+                  {emsEvents.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      [ID: {ev.id}] {ev.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="number"
+                  placeholder="Masukkan ID Event EMS (misal: 1, 2, 3)"
+                  value={emsEventId || ''}
+                  onChange={(e) => setEmsEventId(Number(e.target.value))}
+                  min={0}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
+                />
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

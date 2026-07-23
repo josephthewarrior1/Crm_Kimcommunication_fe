@@ -60,10 +60,10 @@ export const getStatusLabel = (status: string): string => {
 
 export const getConfirmationStatusBadgeStyle = (status: string): string => {
   const s = status ? status.toLowerCase() : 'pending';
-  if (s === 'approve') {
+  if (s === 'approve' || s === 'confirmed') {
     return 'text-indigo-950 bg-indigo-50 border-indigo-200 font-extrabold';
   }
-  if (s === 'decline') {
+  if (s === 'decline' || s === 'declined') {
     return 'text-slate-400 bg-slate-50/50 border-slate-150 font-normal opacity-60';
   }
   return 'text-slate-700 bg-slate-50 border-slate-200 font-semibold';
@@ -71,7 +71,7 @@ export const getConfirmationStatusBadgeStyle = (status: string): string => {
 
 export const getConfirmationStatusLabel = (status: string): string => {
   const s = status ? status.toLowerCase() : 'pending';
-  if (s === 'approve') return 'Approve';
-  if (s === 'decline') return 'Decline';
+  if (s === 'approve' || s === 'confirmed') return 'Approve';
+  if (s === 'decline' || s === 'declined') return 'Decline';
   return 'Pending';
 };

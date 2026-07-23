@@ -95,6 +95,7 @@ export interface Event {
   budget?: number | null;
   hedgingUsd?: number | null;
   addOn?: string | null;
+  emsEventId?: number;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -101,6 +101,11 @@ export default function EventsPage() {
   const [editNotes, setEditNotes] = useState('');
   const [editTargetParticipants, setEditTargetParticipants] = useState(0);
 
+  // ponytail: EMS event mapping state
+  const [emsEventsList, setEmsEventsList] = useState<{ id: number; name: string }[]>([]);
+  const [emsEventId, setEmsEventId] = useState<number>(0);
+  const [editEmsEventId, setEditEmsEventId] = useState<number>(0);
+
   // Delete event confirmation target
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
 
@@ -130,16 +135,34 @@ export default function EventsPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [eList, cList, lList, uList] = await Promise.all([
+      const [eList, cList, lList, uList, emsList] = await Promise.all([
         crmService.getEvents(),
         crmService.getDatabases(),
         crmService.getEventParticipants(),
-        crmService.getUsers().catch(() => [])
+        crmService.getUsers().catch(() => []),
+        crmService.getEmsEvents().catch(() => [])
       ]);
       setEvents(eList);
       setDatabases(cList.filter(c => c.isActive)); // only active databases
       setAllEventParticipants(lList);
       setUsersList(uList);
+      setEmsEventsList(emsList);
+
+      if (selectedEvent) {
+        const updatedSel = eList.find(
+          (ev) => ev.id === selectedEvent.id || (ev.name && selectedEvent.name && ev.name.trim().toLowerCase() === selectedEvent.name.trim().toLowerCase())
+        );
+        if (updatedSel) {
+          setSelectedEvent(updatedSel);
+          const filtered = lList.filter((l) =>
+            l.event && (
+              l.event.id === updatedSel.id ||
+              (l.event.name && updatedSel.name && l.event.name.trim().toLowerCase() === updatedSel.name.trim().toLowerCase())
+            )
+          );
+          setParticipantsSorted(filtered);
+        }
+      }
     } catch (err) {
       toast.error('Failed to load events or databases');
     } finally {
@@ -163,7 +186,8 @@ export default function EventsPage() {
         dateStart: dateStart || undefined,
         dateEnd: dateEnd || undefined,
         notes: notes.trim() || undefined,
-        targetParticipants: targetParticipants || 0
+        targetParticipants: targetParticipants || 0,
+        emsEventId: emsEventId || undefined
       });
 
       toast.success('Event created successfully!');
@@ -174,6 +198,7 @@ export default function EventsPage() {
       setDateEnd('');
       setNotes('');
       setTargetParticipants(0);
+      setEmsEventId(0);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create event');
@@ -191,6 +216,7 @@ export default function EventsPage() {
     setEditDateEnd(event.dateEnd || '');
     setEditNotes(event.notes || '');
     setEditTargetParticipants(event.targetParticipants || 0);
+    setEditEmsEventId(event.emsEventId || 0);
     setIsEditEventModalOpen(true);
   };
 
@@ -204,14 +230,20 @@ export default function EventsPage() {
 
     setSubmittingEvent(true);
     try {
+      const validTypes = ['partner', 'end_user', 'internal', 'other'];
+      const safeEventType = validTypes.includes((editEventType || '').toLowerCase())
+        ? (editEventType || '').toLowerCase()
+        : 'partner';
+
       const updated = await crmService.updateEvent(editingEvent.id, {
         name: editName.trim(),
-        eventType: editEventType,
+        eventType: safeEventType,
         clientName: editClientName.trim() || undefined,
         dateStart: editDateStart || undefined,
         dateEnd: editDateEnd || undefined,
         notes: editNotes.trim() || undefined,
-        targetParticipants: editTargetParticipants || 0
+        targetParticipants: editTargetParticipants || 0,
+        emsEventId: editEmsEventId || undefined
       });
 
       toast.success('Event updated successfully!');
@@ -255,9 +287,24 @@ export default function EventsPage() {
     setSelectedParticipantIds([]); // reset selection
     setActiveTab('request'); // default to Data List tab
     try {
+      if (event.emsEventId && event.emsEventId > 0) {
+        try {
+          const res = await crmService.syncEmsParticipants(event.id);
+          if (res && res.count > 0) {
+            toast.success(`Tersinkronkan ${res.count} peserta baru dari EMS!`);
+          }
+        } catch (syncErr) {
+          console.error("EMS sync error:", syncErr);
+        }
+      }
       const allParticipants = await crmService.getEventParticipants();
       setAllEventParticipants(allParticipants);
-      const filteredParticipants = allParticipants.filter((l) => l.event.id === event.id);
+      const filteredParticipants = allParticipants.filter((l) => 
+        l.event && (
+          l.event.id === event.id ||
+          (l.event.name && event.name && l.event.name.trim().toLowerCase() === event.name.trim().toLowerCase())
+        )
+      );
       setParticipantsSorted(filteredParticipants);
     } catch (err) {
       toast.error('Failed to fetch participants for this event');
@@ -1001,7 +1048,12 @@ export default function EventsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredEvents.map((evt) => {
-                const eventParticipants = allEventParticipants.filter((l) => l.event.id === evt.id);
+                const eventParticipants = allEventParticipants.filter(
+                  (l) => l.event && (
+                    l.event.id === evt.id ||
+                    (l.event.name && evt.name && l.event.name.trim().toLowerCase() === evt.name.trim().toLowerCase())
+                  )
+                );
                 const registeredCount = eventParticipants.filter(p => p.participantStatus === 'registered' || p.participantStatus === 'green').length;
                 const onLocationCount = eventParticipants.filter(p => p.reminderHariH === 'on_location').length;
                 const target = evt.targetParticipants || 0;
@@ -1244,6 +1296,21 @@ export default function EventsPage() {
 
             {/* Participant Management Buttons */}
             <div className="flex flex-wrap items-center gap-2 pb-2 md:pb-0 self-start md:self-auto">
+              {selectedEvent?.emsEventId && selectedEvent.emsEventId > 0 && (
+                <button
+                  onClick={async () => {
+                    if (selectedEvent) {
+                      toast.info('Memulai sinkronisasi data EMS...');
+                      await handleSelectEvent(selectedEvent);
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  title="Sinkronisasi data peserta dari EMS"
+                >
+                  <Loader2 className={`w-3.5 h-3.5 ${loadingParticipants ? 'animate-spin' : ''}`} />
+                  Sync EMS
+                </button>
+              )}
               {participants.length > 0 && (
                 <button
                   onClick={handleExportParticipants}
@@ -1440,6 +1507,9 @@ export default function EventsPage() {
         setNotes={setNotes}
         targetParticipants={targetParticipants}
         setTargetParticipants={setTargetParticipants}
+        emsEvents={emsEventsList}
+        emsEventId={emsEventId}
+        setEmsEventId={setEmsEventId}
         submittingEvent={submittingEvent}
         onSubmit={handleCreateEvent}
       />
@@ -1466,6 +1536,9 @@ export default function EventsPage() {
         setEditNotes={setEditNotes}
         editTargetParticipants={editTargetParticipants}
         setEditTargetParticipants={setEditTargetParticipants}
+        emsEvents={emsEventsList}
+        editEmsEventId={editEmsEventId}
+        setEditEmsEventId={setEditEmsEventId}
         submittingEvent={submittingEvent}
         onSubmit={handleUpdateEvent}
       />

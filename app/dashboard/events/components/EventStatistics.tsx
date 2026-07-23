@@ -53,7 +53,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Total Request</span>
                   <span className="text-xl font-extrabold text-blue-900">
-                    {participants.filter(p => !p.confirmationStatus || p.confirmationStatus === 'pending' || p.confirmationStatus === 'decline').length}
+                    {participants.filter(p => !p.confirmationStatus || p.confirmationStatus === 'pending' || p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
                   </span>
                 </div>
               </div>
@@ -77,7 +77,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Taken Out (Decline)</span>
                   <span className="text-xl font-extrabold text-rose-900">
-                    {participants.filter(p => p.confirmationStatus === 'decline').length}
+                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
                   </span>
                 </div>
               </div>
@@ -139,7 +139,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approved</span>
                   <span className="text-xl font-extrabold text-emerald-900">
-                    {participants.filter(p => p.confirmationStatus === 'approve').length}
+                    {participants.filter(p => p.confirmationStatus === 'approve' || p.confirmationStatus === 'confirmed').length}
                   </span>
                 </div>
               </div>
@@ -163,7 +163,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Declined</span>
                   <span className="text-xl font-extrabold text-rose-900">
-                    {participants.filter(p => p.confirmationStatus === 'decline').length}
+                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
                   </span>
                 </div>
               </div>

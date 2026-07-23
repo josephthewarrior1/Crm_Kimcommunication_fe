@@ -1,4 +1,4 @@
-import { ApiService } from './apiService';
+import { ApiService, getAuthHeaders } from './apiService';
 import {
   Group,
   Company,
@@ -95,27 +95,70 @@ export class CrmService extends ApiService {
 
   // --- EVENTS ---
   async getEvents(): Promise<Event[]> {
+    let pmsEvents: Event[] = [];
     try {
       const response = await fetch('http://146.190.101.90:8081/api/public/events');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        pmsEvents = data.map((item: any) => ({
+          ...item,
+          id: item.id,
+          name: item.name || 'Untitled Event',
+          eventType: ['partner', 'end_user', 'internal', 'other'].includes((item.eventType || '').toLowerCase())
+            ? (item.eventType || '').toLowerCase()
+            : 'partner',
+          clientName: item.client || item.clientName || '',
+          dateStart: item.startDate || item.dateStart || '',
+          dateEnd: item.endDate || item.dateEnd || '',
+          notes: item.description || item.notes || item.venueName || '',
+          targetParticipants: item.targetPax || item.targetParticipants || 0,
+        }));
       }
-      const data = await response.json();
-      return data.map((item: any) => ({
-        ...item,
-        id: item.id,
-        name: item.name || 'Untitled Event',
-        eventType: item.eventType || item.status || 'partner',
-        clientName: item.client || item.clientName || '',
-        dateStart: item.startDate || item.dateStart || '',
-        dateEnd: item.endDate || item.dateEnd || '',
-        notes: item.description || item.notes || item.venueName || '',
-        targetParticipants: item.targetPax || item.targetParticipants || 0,
-      }));
     } catch (error) {
-      console.error('Error fetching events from PMS, falling back to local events:', error);
-      return this.get<Event[]>('/api/events');
+      console.error('Error fetching events from PMS:', error);
     }
+
+    let crmEvents: Event[] = [];
+    try {
+      crmEvents = await this.get<Event[]>('/api/events');
+    } catch (error) {
+      console.error('Error fetching local CRM events:', error);
+    }
+
+    if (pmsEvents.length === 0) {
+      return crmEvents;
+    }
+
+    const crmById = new Map<number | string, Event>();
+    const crmByName = new Map<string, Event>();
+    crmEvents.forEach((ev) => {
+      if (ev.id) crmById.set(ev.id, ev);
+      if (ev.name) crmByName.set(ev.name.trim().toLowerCase(), ev);
+    });
+
+    const merged = pmsEvents.map((pmsEv) => {
+      const match = crmById.get(pmsEv.id) || (pmsEv.name ? crmByName.get(pmsEv.name.trim().toLowerCase()) : undefined);
+      if (match) {
+        return {
+          ...pmsEv,
+          emsEventId: match.emsEventId || pmsEv.emsEventId,
+          targetParticipants: match.targetParticipants || pmsEv.targetParticipants,
+          notes: match.notes || pmsEv.notes,
+        };
+      }
+      return pmsEv;
+    });
+
+    crmEvents.forEach((crmEv) => {
+      const exists = merged.some(
+        (m) => m.id === crmEv.id || (m.name && crmEv.name && m.name.trim().toLowerCase() === crmEv.name.trim().toLowerCase())
+      );
+      if (!exists) {
+        merged.push(crmEv);
+      }
+    });
+
+    return merged;
   }
 
   async createEvent(event: Partial<Event>): Promise<Event> {
@@ -128,6 +171,37 @@ export class CrmService extends ApiService {
 
   async deleteEvent(id: number): Promise<void> {
     return this.delete<void>(`/api/events/${id}`);
+  }
+
+  // ponytail: fetch upcoming EMS events for dropdown mapping via backend proxy
+  async getEmsEvents(): Promise<{ id: number; name: string }[]> {
+    try {
+      const json: any = await this.get('/api/events/ems-upcoming');
+      const list = Array.isArray(json) ? json : (json?.data || []);
+      return list.map((item: any) => ({
+        id: item.id,
+        name: item.name || `EMS Event #${item.id}`
+      }));
+    } catch (error) {
+      console.error('Error fetching EMS events from backend:', error);
+      return [];
+    }
+  }
+
+  // ponytail: fetch participants for a specific EMS event
+  async getEmsEventParticipants(emsEventId: number): Promise<any[]> {
+    try {
+      const json: any = await this.get(`/api/events/ems-participants/${emsEventId}`);
+      return Array.isArray(json) ? json : (json?.data || []);
+    } catch (error) {
+      console.error('Error fetching EMS event participants:', error);
+      return [];
+    }
+  }
+
+  // ponytail: trigger EMS participant sync for a CRM event
+  async syncEmsParticipants(eventId: number): Promise<{ message: string; count: number }> {
+    return this.post<{ message: string; count: number }>(`/api/events/${eventId}/sync-ems`, {});
   }
 
   // --- EVENT PARTICIPANTS ---
