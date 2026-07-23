@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
 import { AlertCircle, Phone, Mail, Edit2, Trash2 } from 'lucide-react';
 
@@ -51,9 +51,42 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   getStatusBadgeStyle,
   getConfirmationStatusBadgeStyle
 }) => {
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+
+  useEffect(() => {
+    if (tableRef.current) {
+      setTableScrollWidth(tableRef.current.scrollWidth);
+    }
+  }, [filteredParticipants, activeTab]);
+
   return (
-    <div className="flex-1 max-h-[620px] overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-      <table className="w-full min-w-[1850px] text-left border-collapse text-[11px]">
+    <div className="flex-1 border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden flex flex-col">
+      {/* Top Horizontal Scrollbar */}
+      <div
+        ref={topScrollRef}
+        onScroll={() => {
+          if (topScrollRef.current && tableScrollRef.current) {
+            tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+          }
+        }}
+        className="overflow-x-auto border-b border-slate-100 bg-slate-50/50"
+      >
+        <div style={{ width: tableScrollWidth ? `${tableScrollWidth}px` : '1850px', height: '10px' }} />
+      </div>
+
+      <div
+        ref={tableScrollRef}
+        onScroll={() => {
+          if (topScrollRef.current && tableScrollRef.current) {
+            topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+          }
+        }}
+        className="flex-1 max-h-[620px] overflow-auto"
+      >
+        <table ref={tableRef} className="w-full min-w-[1850px] text-left border-collapse text-[11px]">
         <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
           <tr className="border-b border-slate-200 text-slate-450 uppercase tracking-widest font-bold text-[9px] whitespace-nowrap">
             <th className="py-2 px-2 w-8 text-center"></th>
@@ -266,6 +299,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 };

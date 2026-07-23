@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Company, Group, Database } from '../../../lib/types';
-import { Building2, Search, Plus, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Eye, Users } from 'lucide-react';
+import { Building2, Search, Plus, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { INDUSTRIES } from '../../../lib/constants';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -263,9 +263,16 @@ export default function CompaniesPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {currentCompanies.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50/50 transition-all">
+                  <tr
+                    key={c.id}
+                    onClick={() => {
+                      setDetailCompany(c);
+                      setIsDetailModalOpen(true);
+                    }}
+                    className="hover:bg-slate-50/80 transition-all cursor-pointer group/row"
+                  >
                     <td className="py-4 px-6">
-                      <p className="text-sm font-bold text-slate-900">{c.name}</p>
+                      <p className="text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">{c.name}</p>
                       {c.brandName && (
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-xs text-blue-650 font-medium">Brand: {c.brandName}</span>
@@ -296,6 +303,7 @@ export default function CompaniesPage() {
                           href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
                           target="_blank"
                           rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-1.5 text-blue-600 hover:text-blue-500 transition-colors"
                         >
                           <Globe className="w-3.5 h-3.5" />
@@ -332,19 +340,10 @@ export default function CompaniesPage() {
                     </td>
                     <td className="py-4 px-6 text-sm text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setDetailCompany(c);
-                            setIsDetailModalOpen(true);
-                          }}
-                          className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
                         {!isUser && (
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingCompany(c);
                               setIsEditModalOpen(true);
                             }}
@@ -356,7 +355,8 @@ export default function CompaniesPage() {
                         )}
                         {isAdmin && (
                            <button
-                             onClick={() => {
+                             onClick={(e) => {
+                               e.stopPropagation();
                                setDeletingCompany(c);
                                setIsDeleteConfirmOpen(true);
                              }}

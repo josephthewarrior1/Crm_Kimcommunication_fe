@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Group, Company } from '../../../lib/types';
-import { FolderTree, Search, Plus, Loader2, Edit2, Trash2, Eye, Building2 } from 'lucide-react';
+import { FolderTree, Search, Plus, Loader2, Edit2, Trash2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -181,8 +181,15 @@ export default function GroupsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {currentGroups.map((g) => (
-                  <tr key={g.id} className="hover:bg-slate-50/50 transition-all">
-                    <td className="py-4 px-6 text-sm font-bold text-slate-900">{g.name}</td>
+                  <tr
+                    key={g.id}
+                    onClick={() => {
+                      setDetailGroup(g);
+                      setIsDetailModalOpen(true);
+                    }}
+                    className="hover:bg-slate-50/80 transition-all cursor-pointer group/row"
+                  >
+                    <td className="py-4 px-6 text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">{g.name}</td>
                     <td className="py-4 px-6 text-sm text-slate-600">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-blue-50 border border-blue-100 text-blue-600 rounded-lg">
                         <Building2 className="w-3.5 h-3.5" />
@@ -197,19 +204,10 @@ export default function GroupsPage() {
                     </td>
                     <td className="py-4 px-6 text-sm text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setDetailGroup(g);
-                            setIsDetailModalOpen(true);
-                          }}
-                          className="inline-flex p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                          title="View Group Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
                         {!isUser && (
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingGroup(g);
                               setIsEditModalOpen(true);
                             }}
@@ -221,7 +219,8 @@ export default function GroupsPage() {
                         )}
                         {isAdmin && (
                            <button
-                             onClick={() => {
+                             onClick={(e) => {
+                               e.stopPropagation();
                                setDeletingGroup(g);
                                setIsDeleteConfirmOpen(true);
                              }}

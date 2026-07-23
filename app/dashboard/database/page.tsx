@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Database, Company, DatabaseEmail, Group, EventParticipant, FlaggedIdentity } from '../../../lib/types';
-import { Users, Search, Plus, ExternalLink, Eye, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, Search, Plus, ExternalLink, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
@@ -60,7 +60,6 @@ export default function DatabasesPage() {
   const [filterCompanyId, setFilterCompanyId] = useState('');
   const [filterGroupId, setFilterGroupId] = useState('');
   const [filterPositionLevel, setFilterPositionLevel] = useState('');
-  const [filterJobTitle, setFilterJobTitle] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
 
   // Sorting state
@@ -75,6 +74,12 @@ export default function DatabasesPage() {
       setSortOrder('asc');
     }
   };
+
+  // Table scroll sync state & refs
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -206,14 +211,85 @@ export default function DatabasesPage() {
     setIsTakeoutModalOpen(true);
   };
 
-  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterJobTitle || filterIndustry || sortBy !== 'id' || sortOrder !== 'asc';
+  // Dynamic dropdown options based on active filters
+  const filteredCompanyOptions = companies.filter((c) => {
+    if (filterGroupId && c.group?.id?.toString() !== filterGroupId) return false;
+    if (filterIndustry && !matchesIndustryFilter(c.industry, filterIndustry)) return false;
+    return true;
+  });
+
+  const filteredIndustryOptions = (() => {
+    if (!filterGroupId && !filterCompanyId) {
+      return INDUSTRIES;
+    }
+    const scopedCompanies = companies.filter((c) => {
+      if (filterGroupId && c.group?.id?.toString() !== filterGroupId) return false;
+      if (filterCompanyId && c.id.toString() !== filterCompanyId) return false;
+      return true;
+    });
+    const activeIndustries = new Set<string>();
+    scopedCompanies.forEach((c) => {
+      if (c.industry?.trim()) {
+        activeIndustries.add(c.industry.trim());
+      }
+    });
+    if (activeIndustries.size === 0) return INDUSTRIES;
+
+    const matched = INDUSTRIES.filter((ind) =>
+      Array.from(activeIndustries).some((act) => matchesIndustryFilter(act, ind))
+    );
+    return matched.length > 0 ? matched : Array.from(activeIndustries);
+  })();
+
+  const handleGroupChange = (groupId: string) => {
+    setFilterGroupId(groupId);
+    if (groupId && filterCompanyId) {
+      const isCompanyInGroup = companies.some(
+        (c) => c.id.toString() === filterCompanyId && c.group?.id?.toString() === groupId
+      );
+      if (!isCompanyInGroup) {
+        setFilterCompanyId('');
+      }
+    }
+    if (groupId && filterIndustry) {
+      const groupCompanies = companies.filter((c) => c.group?.id?.toString() === groupId);
+      const isIndustryInGroup = groupCompanies.some((c) => matchesIndustryFilter(c.industry, filterIndustry));
+      if (!isIndustryInGroup) {
+        setFilterIndustry('');
+      }
+    }
+  };
+
+  const handleCompanyChange = (companyId: string) => {
+    setFilterCompanyId(companyId);
+    if (companyId) {
+      const selectedComp = companies.find((c) => c.id.toString() === companyId);
+      if (selectedComp?.group?.id) {
+        setFilterGroupId(selectedComp.group.id.toString());
+      }
+      if (selectedComp?.industry) {
+        setFilterIndustry(selectedComp.industry);
+      }
+    }
+  };
+
+  const handleIndustryChange = (industry: string) => {
+    setFilterIndustry(industry);
+    if (industry && filterCompanyId) {
+      const selectedComp = companies.find((c) => c.id.toString() === companyId);
+      if (selectedComp?.industry && !matchesIndustryFilter(selectedComp.industry, industry)) {
+        setFilterCompanyId('');
+      }
+    }
+  };
+
+  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterIndustry || sortBy !== 'id' || sortOrder !== 'asc';
 
   const handleResetFilters = () => {
     setSearchQuery('');
     setFilterGroupId('');
     setFilterCompanyId('');
     setFilterPositionLevel('');
-    setFilterJobTitle('');
     setFilterIndustry('');
     setSortBy('id');
     setSortOrder('asc');
@@ -236,7 +312,11 @@ export default function DatabasesPage() {
       !query ||
       fullName.includes(query) ||
       (c.company?.name && c.company.name.toLowerCase().includes(query)) ||
+      (c.company?.brandName && c.company.brandName.toLowerCase().includes(query)) ||
+      (c.company?.group?.name && c.company.group.name.toLowerCase().includes(query)) ||
       (c.jobTitle && c.jobTitle.toLowerCase().includes(query)) ||
+      (c.positionLevel && c.positionLevel.toLowerCase().includes(query)) ||
+      (c.specialityDivision && c.specialityDivision.toLowerCase().includes(query)) ||
       (c.mobilePhone && c.mobilePhone.includes(query)) ||
       (c.source && c.source.toLowerCase().includes(query));
 
@@ -249,13 +329,10 @@ export default function DatabasesPage() {
     // 4. Position Level filter
     const matchesPositionLevel = !filterPositionLevel || (c.positionLevel === filterPositionLevel);
 
-    // 5. Job Title filter
-    const matchesJobTitle = !filterJobTitle || (c.jobTitle && c.jobTitle.toLowerCase().includes(filterJobTitle.toLowerCase()));
-
-    // 6. Industry filter
+    // 5. Industry filter
     const matchesIndustry = !filterIndustry || matchesIndustryFilter(c.company?.industry, filterIndustry);
 
-    return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesJobTitle && matchesIndustry;
+    return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesIndustry;
   });
 
   // Apply Ascending / Descending sorting
@@ -335,7 +412,14 @@ export default function DatabasesPage() {
   // Reset current page when query, filter or sorting changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterJobTitle, filterIndustry, sortBy, sortOrder]);
+  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, sortBy, sortOrder]);
+
+  // Update table scroll width for top scrollbar sync
+  useEffect(() => {
+    if (tableRef.current) {
+      setTableScrollWidth(tableRef.current.scrollWidth);
+    }
+  }, [databases, filteredDatabases, currentPage]);
 
   const totalItems = sortedDatabases.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -397,7 +481,7 @@ export default function DatabasesPage() {
             <Search className="w-5 h-5 text-slate-400 mr-2" />
             <input
               type="text"
-              placeholder="Search by name, company, phone, source..."
+              placeholder="Search by name, company, job title, phone, source..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
@@ -414,12 +498,12 @@ export default function DatabasesPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Group</label>
             <select
               value={filterGroupId}
-              onChange={(e) => setFilterGroupId(e.target.value)}
+              onChange={(e) => handleGroupChange(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
             >
               <option value="">All Groups</option>
@@ -433,11 +517,11 @@ export default function DatabasesPage() {
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company</label>
             <select
               value={filterCompanyId}
-              onChange={(e) => setFilterCompanyId(e.target.value)}
+              onChange={(e) => handleCompanyChange(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
             >
               <option value="">All Companies</option>
-              {companies.map((c) => (
+              {filteredCompanyOptions.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
@@ -447,11 +531,11 @@ export default function DatabasesPage() {
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
             <select
               value={filterIndustry}
-              onChange={(e) => setFilterIndustry(e.target.value)}
+              onChange={(e) => handleIndustryChange(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
             >
               <option value="">All Industries</option>
-              {INDUSTRIES.map((ind) => (
+              {filteredIndustryOptions.map((ind) => (
                 <option key={ind} value={ind}>{ind}</option>
               ))}
             </select>
@@ -470,52 +554,6 @@ export default function DatabasesPage() {
               <option value="Manajerial/Head">Manajerial/Head</option>
               <option value="Staff">Staff</option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Job Title</label>
-            <input
-              type="text"
-              placeholder="e.g. IT Manager"
-              value={filterJobTitle}
-              onChange={(e) => setFilterJobTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all placeholder-slate-450 focus:bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sort By</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white font-medium"
-            >
-              <option value="id">Default (ID)</option>
-              <option value="firstName">First Name</option>
-              <option value="lastName">Last Name</option>
-              <option value="companyName">Company Name</option>
-              <option value="groupName">Group Name</option>
-              <option value="brandName">Brand Name</option>
-              <option value="jobTitle">Job Title</option>
-              <option value="position">Position Level</option>
-              <option value="industry">Industry</option>
-              <option value="city">City</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Order</label>
-            <button
-              type="button"
-              onClick={() => setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))}
-              className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200 rounded-xl text-slate-900 text-xs font-semibold flex items-center justify-between transition-all"
-              title="Click to toggle Ascending / Descending"
-            >
-              <span className="flex items-center gap-1.5 truncate">
-                {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                {sortOrder === 'asc' ? 'Ascending (A-Z)' : 'Descending (Z-A)'}
-              </span>
-            </button>
           </div>
         </div>
       </div>
@@ -536,8 +574,29 @@ export default function DatabasesPage() {
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto min-h-[350px]">
-            <table className="w-full text-left border-collapse">
+          {/* Top Horizontal Scrollbar */}
+          <div
+            ref={topScrollRef}
+            onScroll={() => {
+              if (topScrollRef.current && tableScrollRef.current) {
+                tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+              }
+            }}
+            className="overflow-x-auto border-b border-slate-100 bg-slate-50/50"
+          >
+            <div style={{ width: tableScrollWidth ? `${tableScrollWidth}px` : '2200px', height: '10px' }} />
+          </div>
+
+          <div
+            ref={tableScrollRef}
+            onScroll={() => {
+              if (topScrollRef.current && tableScrollRef.current) {
+                topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+              }
+            }}
+            className="overflow-x-auto"
+          >
+            <table ref={tableRef} className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap text-left">
                   <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
@@ -725,7 +784,11 @@ export default function DatabasesPage() {
                   const hasConfirmedFlag = dbFlags.some(f => f.status === 'confirmed');
 
                   return (
-                    <tr key={c.id} className={`group hover:bg-slate-50/30 transition-all ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}>
+                    <tr
+                      key={c.id}
+                      onClick={() => handleOpenDetailModal(c)}
+                      className={`group hover:bg-slate-50/80 transition-all cursor-pointer group/row ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}
+                    >
                       <td className="py-4 px-3 text-center">
                         {checkDatabaseCompleteness(c).isIncomplete && (
                           <span
@@ -749,7 +812,7 @@ export default function DatabasesPage() {
                         {c.salutation || '-'}
                       </td>
                       <td className="py-4 px-4">
-                        <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors flex items-center gap-1.5 flex-wrap">
                           {isFlaggedTikus && !hasConfirmedFlag && (
                             <span
                               className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 border border-amber-100 text-amber-600 rounded-md shrink-0 transition-colors"
@@ -814,6 +877,7 @@ export default function DatabasesPage() {
                             href={c.linkedinUrl}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="text-blue-600 hover:text-blue-500 font-semibold inline-flex items-center gap-1"
                           >
                             LinkedIn <ExternalLink className="w-3 h-3" />
@@ -832,13 +896,17 @@ export default function DatabasesPage() {
                             href={c.company.website.startsWith('http') ? c.company.website : `https://${c.company.website}`}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="text-blue-600 hover:text-blue-500 font-semibold inline-flex items-center gap-1"
                           >
                             Website <ExternalLink className="w-3 h-3" />
                           </a>
                         ) : '-'}
                       </td>
-                      <td className="py-4 px-4 text-sm text-right sticky right-0 bg-white group-hover:bg-slate-50/90 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors">
+                      <td
+                        onClick={(e) => e.stopPropagation()}
+                        className="py-4 px-4 text-sm text-right sticky right-0 bg-white group-hover:bg-slate-50/90 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors"
+                      >
                       <div className="inline-block text-left">
                         <button
                           onClick={() => setActiveDropdownId(activeDropdownId === c.id ? null : c.id)}
@@ -856,17 +924,6 @@ export default function DatabasesPage() {
                               onClick={() => setActiveDropdownId(null)}
                             />
                             <div className={`absolute right-6 ${isNearBottom ? 'bottom-full mb-1 origin-bottom animate-in fade-in slide-in-from-bottom-2' : 'mt-1 origin-top animate-in fade-in slide-in-from-top-2'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1.5 duration-100 text-left`}>
-                              <button
-                                onClick={() => {
-                                  setActiveDropdownId(null);
-                                  handleOpenDetailModal(c);
-                                }}
-                                className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
-                              >
-                                <Eye className="w-3.5 h-3.5 text-slate-400" />
-                                View Details
-                              </button>
-
                               {!isUser && (
                                 <button
                                   onClick={() => {
