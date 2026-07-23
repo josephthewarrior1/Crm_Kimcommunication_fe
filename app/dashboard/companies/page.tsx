@@ -96,9 +96,9 @@ export default function CompaniesPage() {
     try {
       await crmService.updateCompany(editingCompany.id, data, groupId);
       toast.success('Company updated successfully!');
+      await loadData();
       setIsEditModalOpen(false);
       setEditingCompany(null);
-      loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update company');
     } finally {
@@ -323,7 +323,12 @@ export default function CompaniesPage() {
                       )}
                     </td>
                     <td className="py-4 px-6 text-sm font-medium text-slate-700">
-                      {c.city || '-'}
+                      <p className="font-semibold text-slate-800">{c.city || '-'}</p>
+                      {c.postalCode && (
+                        <p className="text-xs text-slate-400 font-mono mt-0.5">
+                          {c.postalCode}
+                        </p>
+                      )}
                     </td>
                     <td className="py-4 px-6 text-sm text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">

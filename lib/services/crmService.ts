@@ -95,7 +95,27 @@ export class CrmService extends ApiService {
 
   // --- EVENTS ---
   async getEvents(): Promise<Event[]> {
-    return this.get<Event[]>('/api/events');
+    try {
+      const response = await fetch('http://146.190.101.90:8081/api/public/events');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.map((item: any) => ({
+        ...item,
+        id: item.id,
+        name: item.name || 'Untitled Event',
+        eventType: item.eventType || item.status || 'partner',
+        clientName: item.client || item.clientName || '',
+        dateStart: item.startDate || item.dateStart || '',
+        dateEnd: item.endDate || item.dateEnd || '',
+        notes: item.description || item.notes || item.venueName || '',
+        targetParticipants: item.targetPax || item.targetParticipants || 0,
+      }));
+    } catch (error) {
+      console.error('Error fetching events from PMS, falling back to local events:', error);
+      return this.get<Event[]>('/api/events');
+    }
   }
 
   async createEvent(event: Partial<Event>): Promise<Event> {

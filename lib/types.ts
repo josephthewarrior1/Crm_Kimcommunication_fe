@@ -75,12 +75,26 @@ export interface DatabaseEmail {
 export interface Event {
   id: number;
   name: string;
-  eventType: string; // partner | end_user | internal | other
+  eventType?: string; // partner | end_user | internal | other
   clientName?: string;
+  client?: string;
   dateStart?: string;
   dateEnd?: string;
+  startDate?: string;
+  endDate?: string;
   notes?: string;
+  description?: string;
   targetParticipants?: number;
+  targetPax?: number;
+  status?: string;
+  venueName?: string;
+  venueRoomName?: string;
+  venueCity?: string;
+  venueAddress?: string;
+  progress?: number;
+  budget?: number | null;
+  hedgingUsd?: number | null;
+  addOn?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
