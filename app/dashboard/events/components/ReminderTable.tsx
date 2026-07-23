@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
-import { AlertCircle, Edit2, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit2, Trash2, History } from 'lucide-react';
 import { extractPicFromNotes } from '../utils/notesHelper';
 
 interface ReminderTableProps {
@@ -17,6 +17,7 @@ interface ReminderTableProps {
   openDeleteParticipantConfirm: (participant: EventParticipant) => void;
   isUser: boolean;
   getStatusBadgeStyle: (status: string) => string;
+  onOpenEngagementModal?: (participant: EventParticipant) => void;
 }
 
 export const ReminderTable: React.FC<ReminderTableProps> = ({
@@ -28,7 +29,8 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
   handleOpenUpdateParticipantModal,
   openDeleteParticipantConfirm,
   isUser,
-  getStatusBadgeStyle
+  getStatusBadgeStyle,
+  onOpenEngagementModal
 }) => {
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -94,6 +96,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
             <th className="py-2 px-3">Mobile Phone</th>
             <th className="py-2 px-3">Office Email</th>
             <th className="py-2 px-3">Personal Email</th>
+            <th className="py-2 px-3">Telemarketing Logs</th>
             <th className="py-2 px-3 text-center">H-7</th>
             <th className="py-2 px-3 text-center">H-3</th>
             <th className="py-2 px-3 text-center">H-1</th>
@@ -158,6 +161,16 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               </td>
               <td className="py-1.5 px-3 font-mono text-slate-600">
                 {p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+              </td>
+              <td className="py-1.5 px-3">
+                <button
+                  onClick={() => onOpenEngagementModal && onOpenEngagementModal(p)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-700 text-xs font-bold rounded-xl border border-slate-200/80 transition-all shadow-2xs focus:outline-none cursor-pointer"
+                  title="Buka Telemarketing Logs (Call, Email, WA)"
+                >
+                  <History className="w-3.5 h-3.5 text-blue-600" />
+                  <span>View Logs</span>
+                </button>
               </td>
               {/* H-7 Dropdown */}
               <td className="py-1.5 px-3">

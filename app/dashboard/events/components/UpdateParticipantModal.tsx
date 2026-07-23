@@ -154,7 +154,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               <div>
                 <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
                   <CheckCircle className="w-3 h-3 text-blue-500" />
-                  Confirmation Status
+                  Registration Status
                 </label>
                 <select
                   value={updateConfirmationStatusStr}

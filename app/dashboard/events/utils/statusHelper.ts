@@ -61,12 +61,12 @@ export const getStatusLabel = (status: string): string => {
 export const getConfirmationStatusBadgeStyle = (status: string): string => {
   const s = status ? status.toLowerCase() : 'pending';
   if (s === 'approve' || s === 'confirmed') {
-    return 'text-indigo-950 bg-indigo-50 border-indigo-200 font-extrabold';
+    return 'text-emerald-800 bg-emerald-50/90 border-emerald-300 font-extrabold shadow-2xs hover:bg-emerald-100/80';
   }
   if (s === 'decline' || s === 'declined') {
-    return 'text-slate-400 bg-slate-50/50 border-slate-150 font-normal opacity-60';
+    return 'text-rose-800 bg-rose-50/90 border-rose-300 font-extrabold shadow-2xs hover:bg-rose-100/80';
   }
-  return 'text-slate-700 bg-slate-50 border-slate-200 font-semibold';
+  return 'text-amber-800 bg-amber-50/90 border-amber-300 font-extrabold shadow-2xs hover:bg-amber-100/80';
 };
 
 export const getConfirmationStatusLabel = (status: string): string => {

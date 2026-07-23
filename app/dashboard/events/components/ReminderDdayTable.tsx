@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
-import { AlertCircle, Edit2, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit2, Trash2, History } from 'lucide-react';
 import { extractPicFromNotes } from '../utils/notesHelper';
 
 interface ReminderDdayTableProps {
@@ -17,6 +17,7 @@ interface ReminderDdayTableProps {
   openDeleteParticipantConfirm: (participant: EventParticipant) => void;
   isUser: boolean;
   getStatusBadgeStyle: (status: string) => string;
+  onOpenEngagementModal?: (participant: EventParticipant) => void;
 }
 
 export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
@@ -28,7 +29,8 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
   handleOpenUpdateParticipantModal,
   openDeleteParticipantConfirm,
   isUser,
-  getStatusBadgeStyle
+  getStatusBadgeStyle,
+  onOpenEngagementModal
 }) => {
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -94,6 +96,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
             <th className="py-2 px-3">Mobile Phone</th>
             <th className="py-2 px-3">Office Email</th>
             <th className="py-2 px-3">Personal Email</th>
+            <th className="py-2 px-3">Telemarketing Logs</th>
             <th className="py-2 px-3 text-center">Hari H</th>
             <th className="py-2 px-3">Notes</th>
             <th className="py-2 px-3 text-right">Actions</th>
@@ -156,6 +159,16 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
               </td>
               <td className="py-1.5 px-3 font-mono text-slate-600">
                 {p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+              </td>
+              <td className="py-1.5 px-3">
+                <button
+                  onClick={() => onOpenEngagementModal && onOpenEngagementModal(p)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-700 text-xs font-bold rounded-xl border border-slate-200/80 transition-all shadow-2xs focus:outline-none cursor-pointer"
+                  title="Buka Telemarketing Logs (Call, Email, WA)"
+                >
+                  <History className="w-3.5 h-3.5 text-blue-600" />
+                  <span>View Logs</span>
+                </button>
               </td>
               {/* Hari H Dropdown */}
               <td className="py-1.5 px-3">

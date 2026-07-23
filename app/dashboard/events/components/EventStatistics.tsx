@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus } from 'lucide-react';
+import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus, History } from 'lucide-react';
 import { EventParticipant, AppUser } from '../../../../lib/types';
 import { extractPicFromNotes } from '../utils/notesHelper';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../components/ui/dialog';
@@ -21,6 +21,7 @@ interface EventStatisticsProps {
   isAdmin: boolean;
   adminName: string;
   onAssignPic?: (participantIds: number[], picName: string) => Promise<void>;
+  onOpenEngagementModal?: (participant: EventParticipant) => void;
 }
 
 export const EventStatistics: React.FC<EventStatisticsProps> = ({
@@ -30,6 +31,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   isAdmin,
   adminName,
   onAssignPic,
+  onOpenEngagementModal,
 }) => {
   const [selectedPic, setSelectedPic] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -130,7 +132,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
           </div>
 
           <div>
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Confirmation Status</h4>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Registration Status</h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
                 <div className="p-3 bg-emerald-600 text-white rounded-xl">
@@ -163,6 +165,51 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Declined</span>
                   <span className="text-xl font-extrabold text-rose-900">
+                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'declined' && (
+        <div className="space-y-4 mb-6">
+          <div>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Declined Participants Overview</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
+                <div className="p-3 bg-rose-600 text-white rounded-xl">
+                  <X className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider">Total Declined</span>
+                  <span className="text-xl font-extrabold text-rose-950">
+                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
+                <div className="p-3 bg-amber-500 text-white rounded-xl">
+                  <UserMinus className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider">Declined from DB Vetting</span>
+                  <span className="text-xl font-extrabold text-amber-950">
+                    {participants.filter(p => (p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined')).length}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-slate-100/60 border border-slate-200 rounded-2xl p-4 flex items-center gap-4">
+                <div className="p-3 bg-slate-700 text-white rounded-xl">
+                  <X className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Taken Out (Decline)</span>
+                  <span className="text-xl font-extrabold text-slate-900">
                     {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
                   </span>
                 </div>
@@ -317,7 +364,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <span>View PIC Workload & Balance</span>
               </button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto bg-white p-6 rounded-2xl border border-slate-200 text-slate-900">
+            <DialogContent 
+              onInteractOutside={(e) => e.preventDefault()}
+              onPointerDownOutside={(e) => e.preventDefault()}
+              className="sm:max-w-4xl max-h-[85vh] overflow-y-auto bg-white p-6 rounded-2xl border border-slate-200 text-slate-900"
+            >
               <DialogHeader>
                 <DialogTitle className="text-sm font-black text-slate-900 uppercase tracking-wider">
                   PIC Assignment & Distribution
@@ -382,18 +433,45 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                         <p className="text-[10px] text-slate-400 font-medium truncate">
                                           {company} • {phone}
                                         </p>
+                                        <div className="flex items-center gap-1.5 mt-1">
+                                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                                            p.confirmationStatus === 'approve' || p.confirmationStatus === 'confirmed' 
+                                              ? 'bg-emerald-50 text-emerald-700' 
+                                              : p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined'
+                                                ? 'bg-rose-50 text-rose-700'
+                                                : 'bg-amber-50 text-amber-700'
+                                          }`}>
+                                            {p.confirmationStatus === 'approve' || p.confirmationStatus === 'confirmed' ? 'Approve' : p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined' ? 'Declined' : 'Pending'}
+                                          </span>
+                                          {p.participantStatus?.toLowerCase() === 'registered' && (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                                              Registered
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
-                                      {onAssignPic && (
-                                        <button
-                                          onClick={async () => {
-                                            await onAssignPic([p.id], 'not set');
-                                          }}
-                                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100 shrink-0"
-                                          title="Hapus dari PIC ini"
-                                        >
-                                          <UserMinus className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {onOpenEngagementModal && (
+                                          <button
+                                            onClick={() => onOpenEngagementModal(p)}
+                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                                            title="Lihat Telemarketing Logs (Call, Email, WA)"
+                                          >
+                                            <History className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                        {onAssignPic && (
+                                          <button
+                                            onClick={async () => {
+                                              await onAssignPic([p.id], 'not set');
+                                            }}
+                                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+                                            title="Hapus dari PIC ini"
+                                          >
+                                            <UserMinus className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                   );
                                 })
@@ -512,23 +590,21 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           <button
                             onClick={async () => {
                               const unassigned = participants.filter(p => {
-                                const picName = extractPicFromNotes(p.notes).pic;
-                                if (!picName || picName.trim() === '' || picName.toLowerCase() === 'not set') return true;
-                                const isMatched = usersList.some(usr => {
-                                  const name = usr.fullName || usr.username;
-                                  return picName.toLowerCase() === name.toLowerCase() ||
-                                         (picName.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                                });
-                                return !isMatched;
+                                const notes = p.notes || '';
+                                if (!notes.includes('[PIC:')) return true; // Unassigned lead!
+                                const picName = extractPicFromNotes(notes).pic;
+                                return !picName || picName.trim() === '' || picName.toLowerCase() === 'not set';
                               });
-                              if (unassigned.length === 0) return;
+                              if (unassigned.length === 0) {
+                                toast.info('Semua peserta sudah memiliki PIC!');
+                                return;
+                              }
 
                               setConfirmConfig({
                                 title: "Konfirmasi Bagi Rata Sisa",
-                                description: "Apakah Anda yakin ingin membagi sisa peserta (yang belum memiliki PIC) ke semua PIC secara merata?",
+                                description: `Apakah Anda yakin ingin membagi ${unassigned.length} peserta sisa (belum ada PIC) ke seluruh PIC secara merata?`,
                                 onConfirm: async () => {
-                                  const activePics = usersList.filter(u => u.username !== 'admin');
-                                  const targetPics = activePics.length > 0 ? activePics : usersList;
+                                  const targetPics = usersList.length > 0 ? usersList : [{ username: adminName, fullName: adminName }];
                                   const groupings: { [picName: string]: number[] } = {};
                                   targetPics.forEach(u => groupings[u.fullName || u.username] = []);
                                   unassigned.forEach((lead, idx) => {
@@ -538,10 +614,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   for (const picName of Object.keys(groupings)) {
                                     if (groupings[picName].length > 0) await onAssignPic(groupings[picName], picName);
                                   }
+                                  toast.success(`Berhasil membagi rata ${unassigned.length} peserta ke ${targetPics.length} PIC!`);
                                 }
                               });
                             }}
-                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all duration-150 shadow-sm"
+                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all duration-150 shadow-sm cursor-pointer"
                           >
                             Bagi Rata Sisa Peserta
                           </button>
@@ -551,10 +628,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                               setConfirmConfig({
                                 title: "Peringatan Bagi Ulang Semua",
-                                description: "PERINGATAN: Apakah Anda yakin ingin membagi ulang SEMUA peserta secara merata? Tindakan ini akan menghapus pembagian PIC yang sudah ada sebelumnya dan mengocok ulang alokasi.",
+                                description: `PERINGATAN: Apakah Anda yakin ingin membagi ulang SEMUA ${participants.length} peserta secara merata? Tindakan ini akan mengocok ulang alokasi PIC.`,
                                 onConfirm: async () => {
-                                  const activePics = usersList.filter(u => u.username !== 'admin');
-                                  const targetPics = activePics.length > 0 ? activePics : usersList;
+                                  const targetPics = usersList.length > 0 ? usersList : [{ username: adminName, fullName: adminName }];
                                   const groupings: { [picName: string]: number[] } = {};
                                   targetPics.forEach(u => groupings[u.fullName || u.username] = []);
                                   participants.forEach((lead, idx) => {
@@ -564,6 +640,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   for (const picName of Object.keys(groupings)) {
                                     if (groupings[picName].length > 0) await onAssignPic(groupings[picName], picName);
                                   }
+                                  toast.success(`Berhasil membagi ulang seluruh ${participants.length} peserta ke ${targetPics.length} PIC!`);
                                 }
                               });
                             }}
@@ -679,42 +756,77 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                           return activePics.map(({ usr, name, count }) => {
                             const initials = name ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) : '??';
+                            
+                            const picParticipants = participants.filter(p => {
+                              const pic = extractPicFromNotes(p.notes).pic;
+                              return pic.toLowerCase() === name.toLowerCase() || 
+                                     (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
+                            });
+
+                            const approveCount = picParticipants.filter(p => p.confirmationStatus === 'approve' || p.confirmationStatus === 'confirmed').length;
+                            const pendingCount = picParticipants.filter(p => p.confirmationStatus === 'pending' || !p.confirmationStatus).length;
+                            const declineCount = picParticipants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length;
+                            const registeredCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'registered').length;
+
                             return (
                               <div
                                 key={usr.id}
                                 onClick={() => setSelectedPic(name)}
-                                className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col justify-between group cursor-pointer animate-in fade-in zoom-in-95 duration-150"
+                                className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-200 flex flex-col justify-between group cursor-pointer animate-in fade-in zoom-in-95 duration-150"
                               >
                                 <div>
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 min-w-0">
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs shadow-inner shrink-0">
+                                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-sm shrink-0">
                                         {initials}
                                       </div>
                                       <div className="min-w-0">
-                                        <h4 className="text-xs font-bold text-slate-800 truncate" title={name}>{name}</h4>
-                                        <span className="text-[10px] text-slate-400 capitalize font-medium block truncate">
+                                        <h4 className="text-xs font-black text-slate-900 truncate" title={name}>{name}</h4>
+                                        <span className="text-[10px] text-slate-400 capitalize font-semibold block truncate">
                                           {usr.roles?.[0]?.replace('ROLE_', '') || 'PIC'}
                                         </span>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/30 self-start sm:self-center shrink-0">
-                                      <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                                      <span className="text-[8px] font-bold text-emerald-700 uppercase">Active</span>
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                      <span className="text-[8px] font-black text-emerald-700 uppercase">Active</span>
                                     </div>
                                   </div>
 
-                                  <div className="mb-3.5">
-                                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-1.5">
-                                      <span>Assigned Participants</span>
-                                      <span className="text-slate-800 font-extrabold">{count}</span>
+                                  {/* Assigned Progress */}
+                                  <div className="mb-3">
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-1">
+                                      <span>Total Assigned</span>
+                                      <span className="text-slate-900 font-black">{count} Peserta</span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100 shadow-inner">
+                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                       <div 
                                         className="bg-blue-600 h-full rounded-full transition-all duration-300" 
                                         style={{ width: `${Math.min(100, (count / Math.max(1, participants.length)) * 100)}%` }} 
                                       />
                                     </div>
+                                  </div>
+
+                                  {/* Registration Status Breakdown Grid */}
+                                  <div className="grid grid-cols-3 gap-1.5 p-2 bg-slate-50/80 rounded-xl border border-slate-100 mb-3">
+                                    <div className="text-center p-1.5 bg-emerald-50/60 border border-emerald-100/50 rounded-lg">
+                                      <span className="block text-[9px] font-extrabold text-emerald-700 uppercase">Approve</span>
+                                      <span className="text-xs font-black text-emerald-800">{approveCount}</span>
+                                    </div>
+                                    <div className="text-center p-1.5 bg-amber-50/60 border border-amber-100/50 rounded-lg">
+                                      <span className="block text-[9px] font-extrabold text-amber-700 uppercase">Pending</span>
+                                      <span className="text-xs font-black text-amber-800">{pendingCount}</span>
+                                    </div>
+                                    <div className="text-center p-1.5 bg-rose-50/60 border border-rose-100/50 rounded-lg">
+                                      <span className="block text-[9px] font-extrabold text-rose-700 uppercase">Declined</span>
+                                      <span className="text-xs font-black text-rose-800">{declineCount}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Telemarketing Remarks Summary Pill */}
+                                  <div className="flex items-center justify-between text-[10px] px-2.5 py-1.5 bg-blue-50/40 rounded-xl border border-blue-100/40 text-slate-600 font-semibold">
+                                    <span>Telemarketing Registered:</span>
+                                    <span className="font-black text-blue-700">{registeredCount} Peserta</span>
                                   </div>
                                 </div>
 
@@ -730,9 +842,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                         }
                                       });
                                     }}
-                                    className="w-full mt-2 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-[10px] font-bold transition-all duration-150"
+                                    className="w-full mt-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-bold transition-all duration-150 shadow-xs cursor-pointer"
                                   >
-                                    Tugaskan {unassignedIds.length} Sisa Ke Sini
+                                    Tugaskan {unassignedIds.length} Sisa Ke {name.split(' ')[0]}
                                   </button>
                                 )}
                               </div>

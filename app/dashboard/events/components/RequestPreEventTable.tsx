@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
-import { AlertCircle, Phone, Mail, Edit2, Trash2 } from 'lucide-react';
+import { AlertCircle, Phone, Mail, Edit2, Trash2, History } from 'lucide-react';
 
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg 
@@ -16,7 +16,7 @@ interface RequestPreEventTableProps {
   filteredParticipants: EventParticipant[];
   selectedParticipantIds: number[];
   setSelectedParticipantIds: React.Dispatch<React.SetStateAction<number[]>>;
-  activeTab: 'request' | 'pre_event' | 'reminder' | 'reminder_dday';
+  activeTab: 'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday';
   checkDatabaseCompleteness: (c: any) => { isIncomplete: boolean; missingFields: string[] };
   handleToggleEngagement: (participant: EventParticipant, type: 'CALL' | 'EMAIL' | 'WHATSAPP') => void;
   handleDirectUpdateParticipant: (
@@ -32,6 +32,7 @@ interface RequestPreEventTableProps {
   extractPicFromNotes: (notes: string | null | undefined) => { pic: string; cleanNotes: string };
   getStatusBadgeStyle: (status: string) => string;
   getConfirmationStatusBadgeStyle: (status: string) => string;
+  onOpenEngagementModal?: (participant: EventParticipant) => void;
 }
 
 export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
@@ -49,7 +50,8 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   adminName,
   extractPicFromNotes,
   getStatusBadgeStyle,
-  getConfirmationStatusBadgeStyle
+  getConfirmationStatusBadgeStyle,
+  onOpenEngagementModal
 }) => {
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -115,9 +117,9 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             <th className="py-2 px-3">Mobile Phone</th>
             <th className="py-2 px-3">Office Email</th>
             <th className="py-2 px-3">Personal Email</th>
-            {activeTab !== 'request' && <th className="py-2 px-3">Engagement</th>}
-            {activeTab !== 'request' && <th className="py-2 px-3">Tele Remarks</th>}
-            <th className="py-2 px-3 text-center">Confirmation Status</th>
+            {activeTab !== 'request' && <th className="py-2 px-3">Telemarketing Logs</th>}
+            {activeTab !== 'request' && <th className="py-2 px-3">Remarks</th>}
+            <th className="py-2 px-3 text-center">Registration Status</th>
             {isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
             <th className="py-2 px-3">Notes</th>
             <th className="py-2 px-3 text-right">Actions</th>
@@ -186,54 +188,14 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 </td>
                 {activeTab !== 'request' && (
                   <td className="py-1.5 px-3">
-                    <div className="flex items-center gap-2.5 text-slate-400">
-                      {/* Call Engagement */}
-                      <button
-                        onDoubleClick={() => handleToggleEngagement(p, 'CALL')}
-                        className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        title={`Call Status: ${p.callStatus || 'NOT_CONTACTED'} (Double-click to toggle)`}
-                      >
-                        <Phone 
-                          className={`w-4 h-4 transition-all ${
-                            p.callStatus === 'CONNECTED' 
-                              ? 'text-blue-600 fill-blue-500/10 scale-110 font-bold' 
-                              : p.callStatus && p.callStatus !== 'NOT_CONTACTED' 
-                                ? 'text-slate-600' 
-                                : 'text-slate-300'
-                          }`} 
-                        />
-                      </button>
-
-                      {/* Email Engagement */}
-                      <button
-                        onDoubleClick={() => handleToggleEngagement(p, 'EMAIL')}
-                        className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                        title={`Email Status: ${p.emailStatus || 'NOT_SENT'} (Double-click to toggle)`}
-                      >
-                        <Mail 
-                          className={`w-4 h-4 transition-all ${
-                            p.emailStatus === 'SENT' || p.emailStatus === 'OPENED' || p.emailStatus === 'RESPONDED'
-                              ? 'text-rose-500 fill-rose-500/10 scale-110' 
-                              : 'text-slate-300'
-                          }`} 
-                        />
-                      </button>
-
-                      {/* WhatsApp Engagement */}
-                      <button
-                        onDoubleClick={() => handleToggleEngagement(p, 'WHATSAPP')}
-                        className="p-1 hover:bg-slate-100 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        title={`WhatsApp Status: ${p.whatsappStatus || 'NOT_SENT'} (Double-click to toggle)`}
-                      >
-                        <WhatsAppIcon 
-                          className={`w-4 h-4 transition-all ${
-                            p.whatsappStatus === 'SENT' || p.whatsappStatus === 'RESPONDED'
-                              ? 'text-[#25D366] scale-110 filter drop-shadow-[0_1px_2px_rgba(37,211,102,0.2)]' 
-                              : 'text-slate-300'
-                          }`} 
-                        />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onOpenEngagementModal && onOpenEngagementModal(p)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-700 text-xs font-bold rounded-xl border border-slate-200/80 transition-all shadow-2xs focus:outline-none cursor-pointer"
+                      title="Buka Telemarketing Logs (Call, Email, WA)"
+                    >
+                      <History className="w-3.5 h-3.5 text-blue-600" />
+                      <span>View Logs</span>
+                    </button>
                   </td>
                 )}
                 {activeTab !== 'request' && (
@@ -256,13 +218,13 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   <div className="flex justify-center">
                     <select
                       disabled={isUser}
-                      value={p.confirmationStatus || 'pending'}
+                      value={p.confirmationStatus === 'confirmed' ? 'approve' : p.confirmationStatus === 'declined' ? 'decline' : p.confirmationStatus || 'pending'}
                       onChange={(e) => handleDirectUpdateParticipant(p, 'confirmationStatus', e.target.value)}
-                      className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(p.confirmationStatus || 'pending')}`}
+                      className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(p.confirmationStatus || 'pending')}`}
                     >
-                      <option value="pending" className="text-slate-700 bg-white font-extrabold">Pending</option>
-                      <option value="approve" className="text-indigo-950 bg-white font-extrabold">Approve</option>
-                      <option value="decline" className="text-slate-400 bg-white font-extrabold">Decline</option>
+                      <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
+                      <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>
+                      <option value="decline" className="text-rose-800 bg-white font-extrabold">Decline</option>
                     </select>
                   </div>
                 </td>

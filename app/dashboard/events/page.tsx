@@ -18,6 +18,7 @@ import { DeleteEventConfirmModal } from './components/DeleteEventConfirmModal';
 import { DeleteParticipantConfirmModal } from './components/DeleteParticipantConfirmModal';
 import { AddParticipantModal } from './components/AddParticipantModal';
 import { UpdateParticipantModal } from './components/UpdateParticipantModal';
+import { EngagementModal } from './components/EngagementModal';
 import { EventStatistics } from './components/EventStatistics';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
@@ -48,6 +49,7 @@ export default function EventsPage() {
   const [filterCompany, setFilterCompany] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
+  const [filterConfirmationStatus, setFilterConfirmationStatus] = useState('');
 
   const setParticipantsSorted = (participantsList: EventParticipant[]) => {
     const sorted = [...participantsList].sort((a, b) => a.id - b.id);
@@ -116,7 +118,7 @@ export default function EventsPage() {
   // Form states for adding/updating participants
   const [submittingParticipant, setSubmittingParticipant] = useState(false);
   const [activeParticipant, setActiveParticipant] = useState<EventParticipant | null>(null);
-  const [activeTab, setActiveTab] = useState<'request' | 'pre_event' | 'reminder' | 'reminder_dday'>('request');
+  const [activeTab, setActiveTab] = useState<'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday'>('request');
   const [usersList, setUsersList] = useState<AppUser[]>([]);
   const [filterPic, setFilterPic] = useState('');
   
@@ -126,7 +128,13 @@ export default function EventsPage() {
   const [importParticipantsProgress, setImportParticipantsProgress] = useState(0);
   const [isImportingParticipants, setIsImportingParticipants] = useState(false);
 
-  const [submittingParticipantUpdate, setSubmittingParticipantUpdate] = useState(false);
+  const [isEngagementModalOpen, setIsEngagementModalOpen] = useState(false);
+  const [selectedEngagementParticipant, setSelectedEngagementParticipant] = useState<EventParticipant | null>(null);
+
+  const handleOpenEngagementModal = (participant: EventParticipant) => {
+    setSelectedEngagementParticipant(participant);
+    setIsEngagementModalOpen(true);
+  };
 
   const [allEventParticipants, setAllEventParticipants] = useState<EventParticipant[]>([]);
 
@@ -328,11 +336,19 @@ export default function EventsPage() {
     }
   };
 
-  const loadParticipantsForEvent = async (event: Event) => {
+  const handleSwitchTab = (tab: 'request' | 'pre_event' | 'reminder' | 'reminder_dday' | 'declined') => {
+    setActiveTab(tab);
+    setSelectedParticipantIds([]);
+    handleResetFilters();
+  };
+
+  const loadParticipantsForEvent = async (event: Event, targetTab?: 'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday') => {
     setSelectedEvent(event);
     setLoadingParticipants(true);
     setSelectedParticipantIds([]); // reset selection
-    setActiveTab('request'); // default to Data List tab
+    if (targetTab) {
+      setActiveTab(targetTab);
+    }
     try {
       if (event.emsEventId && event.emsEventId > 0) {
         try {
@@ -589,6 +605,7 @@ export default function EventsPage() {
     setFilterCompany('');
     setFilterPosition('');
     setFilterIndustry('');
+    setFilterConfirmationStatus('');
     setFilterPic('');
   };
 
@@ -979,23 +996,50 @@ export default function EventsPage() {
 
 
   const filteredParticipants = participants.filter((l) => {
+    const confStatus = l.confirmationStatus?.toLowerCase() || 'pending';
+    const attStatus = l.attendanceStatus?.toLowerCase();
+    const isEms = l.notes?.includes('[Origin: EMS Sync]') || 
+                  l.notes?.includes('[EMS]') || 
+                  l.database?.source === 'event_registration' ||
+                  attStatus === 'registered' ||
+                  attStatus === 'attended';
+
     if (activeTab === 'request') {
-      const confStatus = l.confirmationStatus?.toLowerCase();
-      if (confStatus === 'approve') {
-        const hasRequestOrigin = l.notes?.includes('[Origin: Request]');
-        if (!hasRequestOrigin) {
-          return false;
-        }
+      // Data List tab: Master DB candidates for lead vetting only (not EMS, and not yet approved/declined)
+      if (isEms || confStatus === 'approve' || confStatus === 'confirmed' || confStatus === 'decline' || confStatus === 'declined') {
+        return false;
       }
     } else if (activeTab === 'pre_event') {
-      const confStatus = l.confirmationStatus?.toLowerCase();
-      if (confStatus !== 'approve') {
+      // Pre-Event tab: All EMS registrants (Pending & Approved) + Approved DB candidates
+      if (confStatus === 'decline' || confStatus === 'declined') {
+        return false;
+      }
+      if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') {
+        return false;
+      }
+    } else if (activeTab === 'declined') {
+      // Declined tab: All declined registrants (EMS declined & DB declined)
+      if (confStatus !== 'decline' && confStatus !== 'declined') {
         return false;
       }
     } else if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
-      const confStatus = l.confirmationStatus?.toLowerCase();
       const participantStatus = l.participantStatus?.toLowerCase();
-      if (confStatus !== 'approve' || participantStatus !== 'registered') {
+      if ((confStatus !== 'approve' && confStatus !== 'confirmed') || participantStatus !== 'registered') {
+        return false;
+      }
+    }
+
+    // Confirmation Status filter
+    if (filterConfirmationStatus) {
+      const confStatus = l.confirmationStatus?.toLowerCase() || 'pending';
+      const targetConf = filterConfirmationStatus.toLowerCase();
+      if (targetConf === 'approve') {
+        if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
+      } else if (targetConf === 'decline') {
+        if (confStatus !== 'decline' && confStatus !== 'declined') return false;
+      } else if (targetConf === 'pending') {
+        if (confStatus !== 'pending') return false;
+      } else if (confStatus !== targetConf) {
         return false;
       }
     }
@@ -1285,10 +1329,7 @@ export default function EventsPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200 mb-4 gap-3 shrink-0">
             <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
               <button
-                onClick={() => {
-                  setActiveTab('request');
-                  setSelectedParticipantIds([]);
-                }}
+                onClick={() => handleSwitchTab('request')}
                 className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
                   activeTab === 'request'
                     ? 'border-blue-600 text-blue-600'
@@ -1298,10 +1339,7 @@ export default function EventsPage() {
                 Data List
               </button>
               <button
-                onClick={() => {
-                  setActiveTab('pre_event');
-                  setSelectedParticipantIds([]);
-                }}
+                onClick={() => handleSwitchTab('pre_event')}
                 className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
                   activeTab === 'pre_event'
                     ? 'border-blue-600 text-blue-600'
@@ -1311,10 +1349,7 @@ export default function EventsPage() {
                 Pre-Event
               </button>
               <button
-                onClick={() => {
-                  setActiveTab('reminder');
-                  setSelectedParticipantIds([]);
-                }}
+                onClick={() => handleSwitchTab('reminder')}
                 className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
                   activeTab === 'reminder'
                     ? 'border-blue-600 text-blue-600'
@@ -1324,10 +1359,7 @@ export default function EventsPage() {
                 Reminder
               </button>
               <button
-                onClick={() => {
-                  setActiveTab('reminder_dday');
-                  setSelectedParticipantIds([]);
-                }}
+                onClick={() => handleSwitchTab('reminder_dday')}
                 className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
                   activeTab === 'reminder_dday'
                     ? 'border-blue-600 text-blue-600'
@@ -1335,6 +1367,21 @@ export default function EventsPage() {
                 }`}
               >
                 Reminder Dday
+              </button>
+              <button
+                onClick={() => handleSwitchTab('declined')}
+                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${
+                  activeTab === 'declined'
+                    ? 'border-rose-600 text-rose-600 font-black'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span>Declined</span>
+                {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length > 0 && (
+                  <span className="px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700 rounded-full">
+                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -1344,8 +1391,18 @@ export default function EventsPage() {
                 <button
                   onClick={async () => {
                     if (selectedEvent) {
-                      toast.info('Memulai sinkronisasi data EMS...');
-                      await handleSelectEvent(selectedEvent);
+                      setLoadingParticipants(true);
+                      try {
+                        toast.info('Memulai sinkronisasi data EMS...');
+                        const res = await crmService.syncEmsParticipants(selectedEvent.id);
+                        toast.success(`Berhasil menyinkronkan ${res?.count || 0} peserta dari EMS!`);
+                        // Auto-reload data & switch tab to 'pre_event' so telemarketing instantly sees all synced registrants!
+                        await loadParticipantsForEvent(selectedEvent, 'pre_event');
+                      } catch (err: any) {
+                        toast.error(err?.message || 'Gagal menyinkronkan data EMS');
+                      } finally {
+                        setLoadingParticipants(false);
+                      }
                     }
                   }}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition-all shadow-sm"
@@ -1430,9 +1487,10 @@ export default function EventsPage() {
               }));
               setIsBatchUpdating(false);
               if (selectedEvent) {
-                handleSelectEvent(selectedEvent);
+                await loadParticipantsForEvent(selectedEvent, activeTab);
               }
             }}
+            onOpenEngagementModal={handleOpenEngagementModal}
           />
 
           {/* Batch Actions Status Bar */}
@@ -1460,6 +1518,8 @@ export default function EventsPage() {
               setFilterPosition={setFilterPosition}
               filterIndustry={filterIndustry}
               setFilterIndustry={setFilterIndustry}
+              filterConfirmationStatus={filterConfirmationStatus}
+              setFilterConfirmationStatus={setFilterConfirmationStatus}
               filterPic={filterPic}
               setFilterPic={setFilterPic}
               activeTab={activeTab}
@@ -1485,7 +1545,7 @@ export default function EventsPage() {
               <p className="text-sm font-semibold text-slate-500">No matching participants found</p>
               <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms.</p>
             </div>
-          ) : activeTab === 'request' || activeTab === 'pre_event' ? (
+          ) : activeTab === 'request' || activeTab === 'pre_event' || activeTab === 'declined' ? (
             <RequestPreEventTable
               filteredParticipants={filteredParticipants}
               selectedParticipantIds={selectedParticipantIds}
@@ -1502,6 +1562,7 @@ export default function EventsPage() {
               extractPicFromNotes={extractPicFromNotes}
               getStatusBadgeStyle={getStatusBadgeStyle}
               getConfirmationStatusBadgeStyle={getConfirmationStatusBadgeStyle}
+              onOpenEngagementModal={handleOpenEngagementModal}
             />
           ) : activeTab === 'reminder' ? (
             <ReminderTable
@@ -1514,6 +1575,7 @@ export default function EventsPage() {
               openDeleteParticipantConfirm={openDeleteParticipantConfirm}
               isUser={isUser}
               getStatusBadgeStyle={getStatusBadgeStyle}
+              onOpenEngagementModal={handleOpenEngagementModal}
             />
           ) : (
             <ReminderDdayTable
@@ -1526,6 +1588,7 @@ export default function EventsPage() {
               openDeleteParticipantConfirm={openDeleteParticipantConfirm}
               isUser={isUser}
               getStatusBadgeStyle={getStatusBadgeStyle}
+              onOpenEngagementModal={handleOpenEngagementModal}
             />
           )}
         </div>
@@ -1655,6 +1718,19 @@ export default function EventsPage() {
         onImport={handleImportParticipantsExcel}
         onDownloadTemplate={handleDownloadTemplate}
         participants={participants}
+      />
+
+      {/* Engagement History Modal */}
+      <EngagementModal
+        isOpen={isEngagementModalOpen}
+        onClose={() => {
+          setIsEngagementModalOpen(false);
+          setSelectedEngagementParticipant(null);
+        }}
+        participant={selectedEngagementParticipant}
+        onActivityLogged={() => {
+          if (selectedEvent) loadParticipantsForEvent(selectedEvent, activeTab);
+        }}
       />
     </div>
   );
