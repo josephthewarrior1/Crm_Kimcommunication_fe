@@ -95,71 +95,62 @@ export class CrmService extends ApiService {
 
   // --- EVENTS ---
   async getEvents(): Promise<Event[]> {
-    let pmsEvents: Event[] = [];
-    try {
-      const response = await fetch('http://146.190.101.90:8081/api/public/events');
-      if (response.ok) {
-        const data = await response.json();
-        pmsEvents = data.map((item: any) => ({
-          ...item,
-          id: item.id,
-          name: item.name || 'Untitled Event',
-          eventType: ['partner', 'end_user', 'internal', 'other'].includes((item.eventType || '').toLowerCase())
-            ? (item.eventType || '').toLowerCase()
-            : 'partner',
-          clientName: item.client || item.clientName || '',
-          dateStart: item.startDate || item.dateStart || '',
-          dateEnd: item.endDate || item.dateEnd || '',
-          notes: item.description || item.notes || item.venueName || '',
-          targetParticipants: item.targetPax || item.targetParticipants || 0,
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching events from PMS:', error);
-    }
+    return this.get<Event[]>('/api/events');
+  }
 
-    let crmEvents: Event[] = [];
-    try {
-      crmEvents = await this.get<Event[]>('/api/events');
-    } catch (error) {
-      console.error('Error fetching local CRM events:', error);
-    }
-
-    if (pmsEvents.length === 0) {
-      return crmEvents;
-    }
-
-    const crmById = new Map<number | string, Event>();
-    const crmByName = new Map<string, Event>();
-    crmEvents.forEach((ev) => {
-      if (ev.id) crmById.set(ev.id, ev);
-      if (ev.name) crmByName.set(ev.name.trim().toLowerCase(), ev);
+  async syncPmsEvents(): Promise<{ syncedCount: number; totalCount: number }> {
+    // ponytail: manual on-demand sync from PMS endpoint (configurable via NEXT_PUBLIC_PMS_URL) to local CRM DB
+    const pmsUrl = process.env.NEXT_PUBLIC_PMS_URL || 'http://146.190.101.90:8081/api/public/events';
+    const response = await fetch(pmsUrl, {
+      signal: AbortSignal.timeout(5000),
     });
 
-    const merged = pmsEvents.map((pmsEv) => {
-      const match = crmById.get(pmsEv.id) || (pmsEv.name ? crmByName.get(pmsEv.name.trim().toLowerCase()) : undefined);
-      if (match) {
-        return {
-          ...pmsEv,
-          id: match.id || pmsEv.id,
-          emsEventId: match.emsEventId || pmsEv.emsEventId,
-          targetParticipants: match.targetParticipants || pmsEv.targetParticipants,
-          notes: match.notes || pmsEv.notes,
-        };
-      }
-      return pmsEv;
-    });
+    if (!response.ok) {
+      throw new Error(`PMS server returned status ${response.status}`);
+    }
 
-    crmEvents.forEach((crmEv) => {
-      const exists = merged.some(
-        (m) => m.id === crmEv.id || (m.name && crmEv.name && m.name.trim().toLowerCase() === crmEv.name.trim().toLowerCase())
+    const data = await response.json();
+    if (!Array.isArray(data)) {
+      return { syncedCount: 0, totalCount: 0 };
+    }
+
+    const crmEvents = await this.getEvents();
+    let syncedCount = 0;
+
+    for (const item of data) {
+      const pmsEvId = item.id;
+      const pmsName = item.name || 'Untitled Event';
+
+      const exists = crmEvents.some(
+        (crmEv) =>
+          (crmEv.pmsEventId && crmEv.pmsEventId === pmsEvId) ||
+          (crmEv.name && pmsName && crmEv.name.trim().toLowerCase() === pmsName.trim().toLowerCase())
       );
-      if (!exists) {
-        merged.push(crmEv);
-      }
-    });
 
-    return merged;
+      if (!exists) {
+        try {
+          const eventType = ['partner', 'end_user', 'internal', 'other'].includes((item.eventType || '').toLowerCase())
+            ? (item.eventType || '').toLowerCase()
+            : 'partner';
+
+          await this.createEvent({
+            name: pmsName,
+            eventType,
+            clientName: item.client || item.clientName || '',
+            dateStart: item.startDate || item.dateStart || '',
+            dateEnd: item.endDate || item.dateEnd || '',
+            notes: item.description || item.notes || item.venueName || '',
+            targetParticipants: item.targetPax || item.targetParticipants || 0,
+            pmsEventId: pmsEvId,
+          });
+          syncedCount++;
+        } catch (err) {
+          console.error(`Failed to sync PMS event "${pmsName}":`, err);
+        }
+      }
+    }
+
+    return { syncedCount, totalCount: data.length };
   }
 
   async createEvent(event: Partial<Event>): Promise<Event> {
@@ -271,6 +262,14 @@ export class CrmService extends ApiService {
 
   async getEventParticipantActivities(participantId: number): Promise<EventParticipantActivity[]> {
     return this.get<EventParticipantActivity[]>(`/api/event-participants/${participantId}/activities`);
+  }
+
+  async getAllEventActivities(eventId: number, startDate?: string, endDate?: string): Promise<EventParticipantActivity[]> {
+    let url = `/api/event-participants/event/${eventId}/activities`;
+    if (startDate && endDate) {
+      url += `?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+    }
+    return this.get<EventParticipantActivity[]>(url);
   }
 
   async getEventReport(eventId: number): Promise<any> {

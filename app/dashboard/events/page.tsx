@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { crmService } from '../../../lib/services/crmService';
 import { Event, EventParticipant, Database, AppUser } from '../../../lib/types';
-import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload } from 'lucide-react';
+import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import * as XLSX from 'xlsx';
@@ -38,6 +38,7 @@ export default function EventsPage() {
   const [databases, setDatabases] = useState<Database[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSyncingPms, setIsSyncingPms] = useState(false);
 
   // Selected Event & Participants state
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -86,6 +87,7 @@ export default function EventsPage() {
   const [isDeleteParticipantConfirmOpen, setIsDeleteParticipantConfirmOpen] = useState(false);
   const [deletingParticipant, setDeletingParticipant] = useState<EventParticipant | null>(null);
   const [submittingParticipantDelete, setSubmittingParticipantDelete] = useState(false);
+  const [submittingParticipantUpdate, setSubmittingParticipantUpdate] = useState(false);
 
   // Form inputs for Event creation
   const [name, setName] = useState('');
@@ -225,6 +227,23 @@ export default function EventsPage() {
     }
   }
 
+  const handleSyncPmsEvents = async () => {
+    setIsSyncingPms(true);
+    try {
+      const res = await crmService.syncPmsEvents();
+      if (res.syncedCount > 0) {
+        toast.success(`Berhasil menyinkronkan ${res.syncedCount} event baru dari PMS!`);
+      } else {
+        toast.info(`Semua event PMS (${res.totalCount}) sudah tersimpan di lokal CRM.`);
+      }
+      loadData();
+    } catch (err: any) {
+      toast.error('Gagal terhubung ke server PMS (146.190.101.90:8081). Periksa koneksi/server PMS.');
+    } finally {
+      setIsSyncingPms(false);
+    }
+  };
+
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -265,7 +284,7 @@ export default function EventsPage() {
   const openEditEventModal = (event: Event) => {
     setEditingEvent(event);
     setEditName(event.name);
-    setEditEventType(event.eventType);
+    setEditEventType(event.eventType || 'partner');
     setEditClientName(event.clientName || '');
     setEditDateStart(event.dateStart || '');
     setEditDateEnd(event.dateEnd || '');
@@ -350,16 +369,6 @@ export default function EventsPage() {
       setActiveTab(targetTab);
     }
     try {
-      if (event.emsEventId && event.emsEventId > 0) {
-        try {
-          const res = await crmService.syncEmsParticipants(event.id);
-          if (res && res.count > 0) {
-            toast.success(`Tersinkronkan ${res.count} peserta baru dari EMS!`);
-          }
-        } catch (syncErr) {
-          console.error("EMS sync error:", syncErr);
-        }
-      }
       const allParticipants = await crmService.getEventParticipants();
       setAllEventParticipants(allParticipants);
       const filteredParticipants = allParticipants.filter((l) => 
@@ -1005,8 +1014,8 @@ export default function EventsPage() {
                   attStatus === 'attended';
 
     if (activeTab === 'request') {
-      // Data List tab: Master DB candidates for lead vetting only (not EMS, and not yet approved/declined)
-      if (isEms || confStatus === 'approve' || confStatus === 'confirmed' || confStatus === 'decline' || confStatus === 'declined') {
+      // Data List tab: Master DB candidates for lead vetting (non-EMS candidates stay in Data List regardless of approval status)
+      if (isEms) {
         return false;
       }
     } else if (activeTab === 'pre_event') {
@@ -1023,8 +1032,8 @@ export default function EventsPage() {
         return false;
       }
     } else if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
-      const participantStatus = l.participantStatus?.toLowerCase();
-      if ((confStatus !== 'approve' && confStatus !== 'confirmed') || participantStatus !== 'registered') {
+      // Reminder & Reminder Dday tabs: All approved participants
+      if (confStatus !== 'approve' && confStatus !== 'confirmed') {
         return false;
       }
     }
@@ -1102,13 +1111,23 @@ export default function EventsPage() {
           <p className="text-sm text-slate-500 mt-1">Track event attendance, confirmation color statuses, and client targets.</p>
         </div>
         {!isUser && !selectedEvent && (
-          <button
-            onClick={() => setIsCreateEventModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            Create Event
-          </button>
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <button
+              onClick={handleSyncPmsEvents}
+              disabled={isSyncingPms}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-emerald-400 text-white text-sm font-bold rounded-xl shadow-md shadow-emerald-600/10 transition-all cursor-pointer disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncingPms ? 'animate-spin' : ''}`} />
+              {isSyncingPms ? 'Syncing PMS...' : 'Sync PMS Events'}
+            </button>
+            <button
+              onClick={() => setIsCreateEventModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Create Event
+            </button>
+          </div>
         )}
       </div>
 
@@ -1144,7 +1163,7 @@ export default function EventsPage() {
                   )
                 );
                 const registeredCount = eventParticipants.filter(p => p.participantStatus === 'registered' || p.participantStatus === 'green').length;
-                const onLocationCount = eventParticipants.filter(p => p.reminderHariH === 'on_location').length;
+                const onLocationCount = eventParticipants.filter(p => p.reminderHariH === 'on_location' || p.attendanceStatus?.toLowerCase() === 'attended').length;
                 const target = evt.targetParticipants || 0;
                 const isAchieved = target > 0 && onLocationCount >= target;
                 
@@ -1154,7 +1173,7 @@ export default function EventsPage() {
                   internal: 'bg-violet-600',
                   other: 'bg-slate-400'
                 };
-                const accentColor = typeColorMap[evt.eventType] || 'bg-slate-400';
+                const accentColor = typeColorMap[evt.eventType || 'other'] || 'bg-slate-400';
 
                 return (
                   <div
@@ -1282,11 +1301,11 @@ export default function EventsPage() {
                   <>
                     <span> | Target: <strong className="text-slate-700">{selectedEvent.targetParticipants} pax</strong></span>
                     <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ml-1 ${
-                      participants.filter(p => p.reminderHariH === 'on_location').length >= selectedEvent.targetParticipants
+                      participants.filter(p => p.reminderHariH === 'on_location' || p.attendanceStatus?.toLowerCase() === 'attended').length >= selectedEvent.targetParticipants
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-slate-100 text-slate-550 border border-slate-200'
                     }`}>
-                      {participants.filter(p => p.reminderHariH === 'on_location').length >= selectedEvent.targetParticipants
+                      {participants.filter(p => p.reminderHariH === 'on_location' || p.attendanceStatus?.toLowerCase() === 'attended').length >= selectedEvent.targetParticipants
                         ? 'Target Achieved'
                         : 'Not Achieved'}
                     </span>
@@ -1451,6 +1470,7 @@ export default function EventsPage() {
             usersList={usersList}
             isAdmin={isAdmin}
             adminName={adminName}
+            eventId={selectedEvent?.id}
             onAssignPic={async (ids, picName) => {
               setIsBatchUpdating(true);
               let successCount = 0;

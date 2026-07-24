@@ -20,6 +20,7 @@ import { TakeoutModal } from './components/TakeoutModal';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { ExportConfigModal } from './components/ExportConfigModal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 
 const EXPORT_COLUMNS = [
   { key: 'groupName', label: 'Nama Group' },
@@ -276,7 +277,7 @@ export default function DatabasesPage() {
   const handleIndustryChange = (industry: string) => {
     setFilterIndustry(industry);
     if (industry && filterCompanyId) {
-      const selectedComp = companies.find((c) => c.id.toString() === companyId);
+      const selectedComp = companies.find((c) => c.id.toString() === filterCompanyId);
       if (selectedComp?.industry && !matchesIndustryFilter(selectedComp.industry, industry)) {
         setFilterCompanyId('');
       }
@@ -501,59 +502,75 @@ export default function DatabasesPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Group</label>
-            <select
-              value={filterGroupId}
-              onChange={(e) => handleGroupChange(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+            <Select
+              value={filterGroupId || 'ALL'}
+              onValueChange={(val) => handleGroupChange(val === 'ALL' ? '' : val)}
             >
-              <option value="">All Groups</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full h-9 px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white shadow-none">
+                <SelectValue placeholder="All Groups" />
+              </SelectTrigger>
+              <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+                <SelectItem value="ALL">All Groups</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company</label>
-            <select
-              value={filterCompanyId}
-              onChange={(e) => handleCompanyChange(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+            <Select
+              value={filterCompanyId || 'ALL'}
+              onValueChange={(val) => handleCompanyChange(val === 'ALL' ? '' : val)}
             >
-              <option value="">All Companies</option>
-              {filteredCompanyOptions.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full h-9 px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white shadow-none">
+                <SelectValue placeholder="All Companies" />
+              </SelectTrigger>
+              <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+                <SelectItem value="ALL">All Companies</SelectItem>
+                {filteredCompanyOptions.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
-            <select
-              value={filterIndustry}
-              onChange={(e) => handleIndustryChange(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+            <Select
+              value={filterIndustry || 'ALL'}
+              onValueChange={(val) => handleIndustryChange(val === 'ALL' ? '' : val)}
             >
-              <option value="">All Industries</option>
-              {filteredIndustryOptions.map((ind) => (
-                <option key={ind} value={ind}>{ind}</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full h-9 px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white shadow-none">
+                <SelectValue placeholder="All Industries" />
+              </SelectTrigger>
+              <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+                <SelectItem value="ALL">All Industries</SelectItem>
+                {filteredIndustryOptions.map((ind) => (
+                  <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Position Level</label>
-            <select
-              value={filterPositionLevel}
-              onChange={(e) => setFilterPositionLevel(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+            <Select
+              value={filterPositionLevel || 'ALL'}
+              onValueChange={(val) => setFilterPositionLevel(val === 'ALL' ? '' : val)}
             >
-              <option value="">All Levels</option>
-              <option value="unknown">unknown</option>
-              <option value="C-level//GM/Director">C-level//GM/Director</option>
-              <option value="Manajerial/Head">Manajerial/Head</option>
-              <option value="Staff">Staff</option>
-            </select>
+              <SelectTrigger className="w-full h-9 px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white shadow-none">
+                <SelectValue placeholder="All Levels" />
+              </SelectTrigger>
+              <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+                <SelectItem value="ALL">All Levels</SelectItem>
+                <SelectItem value="unknown">unknown</SelectItem>
+                <SelectItem value="C-level//GM/Director">C-level//GM/Director</SelectItem>
+                <SelectItem value="Manajerial/Head">Manajerial/Head</SelectItem>
+                <SelectItem value="Staff">Staff</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -905,7 +922,7 @@ export default function DatabasesPage() {
                       </td>
                       <td
                         onClick={(e) => e.stopPropagation()}
-                        className="py-4 px-4 text-sm text-right sticky right-0 bg-white group-hover:bg-slate-50/90 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors"
+                        className={`py-4 px-4 text-sm text-right sticky right-0 bg-white group-hover:bg-slate-50/90 ${activeDropdownId === c.id ? 'z-30' : 'z-10'} shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors`}
                       >
                       <div className="inline-block text-left">
                         <button
@@ -920,10 +937,10 @@ export default function DatabasesPage() {
                           <>
                             {/* Overlay to close when clicking outside */}
                             <div
-                              className="fixed inset-0 z-10"
+                              className="fixed inset-0 z-20"
                               onClick={() => setActiveDropdownId(null)}
                             />
-                            <div className={`absolute right-6 ${isNearBottom ? 'bottom-full mb-1 origin-bottom animate-in fade-in slide-in-from-bottom-2' : 'mt-1 origin-top animate-in fade-in slide-in-from-top-2'} w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1.5 duration-100 text-left`}>
+                            <div className={`absolute right-6 ${isNearBottom ? 'bottom-full mb-1 origin-bottom animate-in fade-in slide-in-from-bottom-2' : 'mt-1 origin-top animate-in fade-in slide-in-from-top-2'} w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 duration-100 text-left`}>
                               {!isUser && (
                                 <button
                                   onClick={() => {

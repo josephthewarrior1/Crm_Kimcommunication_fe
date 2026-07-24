@@ -1,7 +1,9 @@
 import React from 'react';
-import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus, History } from 'lucide-react';
+import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus, History, Phone, Mail, MessageSquare, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { EventParticipant, AppUser } from '../../../../lib/types';
 import { extractPicFromNotes } from '../utils/notesHelper';
+import { crmService } from '../../../../lib/services/crmService';
+import { toast } from 'sonner';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../components/ui/dialog';
 import { 
   AlertDialog, 
@@ -20,6 +22,7 @@ interface EventStatisticsProps {
   usersList: AppUser[];
   isAdmin: boolean;
   adminName: string;
+  eventId?: number;
   onAssignPic?: (participantIds: number[], picName: string) => Promise<void>;
   onOpenEngagementModal?: (participant: EventParticipant) => void;
 }
@@ -30,6 +33,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   usersList,
   isAdmin,
   adminName,
+  eventId,
   onAssignPic,
   onOpenEngagementModal,
 }) => {
@@ -40,6 +44,64 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     description: string;
     onConfirm: () => void;
   } | null>(null);
+
+  // Date Range Report States
+  const [picViewTab, setPicViewTab] = React.useState<'report' | 'participants'>('report');
+  const [datePreset, setDatePreset] = React.useState<'today' | '7days' | '30days' | 'all' | 'custom'>('today');
+  const [startDate, setStartDate] = React.useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = React.useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [activitiesReport, setActivitiesReport] = React.useState<any[]>([]);
+  const [loadingReport, setLoadingReport] = React.useState(false);
+
+  React.useEffect(() => {
+    if (selectedPic && eventId) {
+      loadActivitiesReport();
+    }
+  }, [selectedPic, eventId, startDate, endDate]);
+
+  const loadActivitiesReport = async () => {
+    if (!eventId) return;
+    setLoadingReport(true);
+    try {
+      const data = await crmService.getAllEventActivities(eventId, startDate, endDate);
+      setActivitiesReport(data || []);
+    } catch (err) {
+      console.error('Failed to load activity report:', err);
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
+  const handleSetPreset = (preset: 'today' | '7days' | '30days' | 'all') => {
+    setDatePreset(preset);
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    
+    if (preset === 'today') {
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else if (preset === '7days') {
+      const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      setStartDate(past.toISOString().split('T')[0]);
+      setEndDate(todayStr);
+    } else if (preset === '30days') {
+      const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      setStartDate(past.toISOString().split('T')[0]);
+      setEndDate(todayStr);
+    } else if (preset === 'all') {
+      setStartDate('');
+      setEndDate('');
+    }
+  };
+
+  const filteredPicActivities = React.useMemo(() => {
+    if (!selectedPic) return [];
+    return activitiesReport.filter(a => {
+      const picName = a.createdBy || '';
+      return picName.toLowerCase() === selectedPic.toLowerCase() ||
+        (picName.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
+    });
+  }, [activitiesReport, selectedPic, adminName]);
 
   return (
     <>
@@ -288,7 +350,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">On Location</span>
                   <span className="text-xl font-extrabold text-emerald-900">
-                    {participants.filter(p => p.reminderHariH === 'on_location').length}
+                    {participants.filter(p => p.reminderHariH === 'on_location' || p.attendanceStatus?.toLowerCase() === 'attended').length}
                   </span>
                 </div>
               </div>
@@ -300,7 +362,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">On The Way</span>
                   <span className="text-xl font-extrabold text-blue-900">
-                    {participants.filter(p => p.reminderHariH === 'on_the_way').length}
+                    {participants.filter(p => p.reminderHariH === 'on_the_way' && p.attendanceStatus?.toLowerCase() !== 'attended').length}
                   </span>
                 </div>
               </div>
@@ -312,7 +374,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Not Respond Yet</span>
                   <span className="text-xl font-extrabold text-amber-900">
-                    {participants.filter(p => !p.reminderHariH || p.reminderHariH === 'not_respon_yet').length}
+                    {participants.filter(p => p.attendanceStatus?.toLowerCase() !== 'attended' && (!p.reminderHariH || p.reminderHariH === 'not_respon_yet')).length}
                   </span>
                 </div>
               </div>
@@ -384,8 +446,8 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {/* Header/Back button */}
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
                       <button 
-                        onClick={() => { setSelectedPic(null); setSearchQuery(''); }}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider font-semibold"
+                        onClick={() => { setSelectedPic(null); setSearchQuery(''); setPicViewTab('report'); }}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider font-semibold cursor-pointer"
                       >
                         <ArrowLeft className="w-4 h-4" />
                         Kembali ke Daftar PIC
@@ -396,7 +458,225 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[55vh]">
+                    {/* Sub-tab Switcher for Selected PIC */}
+                    <div className="flex items-center gap-2 mb-4 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80">
+                      <button
+                        type="button"
+                        onClick={() => setPicViewTab('report')}
+                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          picViewTab === 'report' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <History className="w-4 h-4 text-blue-400" />
+                        <span>Daily Report (Telemarketing Logs)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPicViewTab('participants')}
+                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          picViewTab === 'participants' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Users className="w-4 h-4 text-emerald-400" />
+                        <span>Kelola Peserta ({participants.filter(p => {
+                          const pic = extractPicFromNotes(p.notes).pic;
+                          return pic.toLowerCase() === selectedPic.toLowerCase() || 
+                                 (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
+                        }).length})</span>
+                      </button>
+                    </div>
+
+                    {picViewTab === 'report' ? (
+                      /* Daily Telemarketing & Activity Report Bar */
+                      <div className="bg-slate-900 text-white rounded-2xl p-5 space-y-4 border border-slate-800 shadow-xl mb-2">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg">
+                                <History className="w-4 h-4" />
+                              </span>
+                              <h5 className="text-xs font-black uppercase tracking-wider text-white">
+                                Daily Telemarketing Report — <span className="text-blue-400">{selectedPic}</span>
+                              </h5>
+                            </div>
+                            <p className="text-[11px] text-slate-400 font-medium mt-1">
+                              Laporan lengkap aktivitas telepon, WhatsApp, dan email yang dikerjakan oleh PIC {selectedPic}.
+                            </p>
+                          </div>
+
+                          {/* Date Range Presets */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleSetPreset('today')}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${datePreset === 'today' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                            >
+                              Hari Ini (Today)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetPreset('7days')}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${datePreset === '7days' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                            >
+                              7 Hari Terakhir
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetPreset('30days')}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${datePreset === '30days' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                            >
+                              30 Hari
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetPreset('all')}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${datePreset === 'all' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                            >
+                              Semua
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Custom Date Pickers & Metrics */}
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs">
+                          <div className="flex items-center gap-2 flex-wrap bg-slate-800/60 p-2 rounded-xl border border-slate-700/50">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Filter Date:</span>
+                            <input
+                              type="date"
+                              value={startDate}
+                              onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); }}
+                              className="bg-slate-900 border border-slate-700 text-white px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-blue-500 cursor-pointer font-mono"
+                            />
+                            <span className="text-slate-500 font-bold">s/d</span>
+                            <input
+                              type="date"
+                              value={endDate}
+                              onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); }}
+                              className="bg-slate-900 border border-slate-700 text-white px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-blue-500 cursor-pointer font-mono"
+                            />
+                            {loadingReport && <Loader2 className="w-4 h-4 animate-spin text-blue-400" />}
+                          </div>
+
+                          {/* Activity Metrics Badges */}
+                          {(() => {
+                            const callsCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'CALL').length;
+                            const waCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'WHATSAPP').length;
+                            const emailCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'EMAIL').length;
+                            const totalActivities = filteredPicActivities.length;
+
+                            return (
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <div className="bg-blue-500/10 border border-blue-500/30 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                  <Phone className="w-4 h-4 text-blue-400" />
+                                  <span className="text-[11px] text-slate-300 font-semibold">Telepon:</span>
+                                  <strong className="text-base font-black text-blue-400">{callsCount}</strong>
+                                </div>
+                                <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                                  <span className="text-[11px] text-slate-300 font-semibold">WhatsApp:</span>
+                                  <strong className="text-base font-black text-emerald-400">{waCount}</strong>
+                                </div>
+                                <div className="bg-purple-500/10 border border-purple-500/30 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                  <Mail className="w-4 h-4 text-purple-400" />
+                                  <span className="text-[11px] text-slate-300 font-semibold">Email:</span>
+                                  <strong className="text-base font-black text-purple-400">{emailCount}</strong>
+                                </div>
+                                <div className="bg-blue-600 px-4 py-1.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-blue-600/30">
+                                  <span className="text-[11px] text-white/90">Total Activity:</span>
+                                  <strong className="text-base font-black text-white">{totalActivities}</strong>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Activity History Stream Details */}
+                        <div className="pt-2">
+                          <div className="flex justify-between items-center mb-2">
+                            <h6 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                              <span>Riwayat Log Telemarketing Dalam Periode Ini ({filteredPicActivities.length})</span>
+                            </h6>
+                          </div>
+
+                          {filteredPicActivities.length === 0 ? (
+                            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4 text-center">
+                              <p className="text-xs text-slate-400 italic">Belum ada aktivitas telepon, WA, atau email yang tercatat pada periode ini.</p>
+                            </div>
+                          ) : (
+                            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1.5 custom-scrollbar">
+                              {filteredPicActivities.map((act) => {
+                                const timeStr = act.createdAt ? new Date(act.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                                const type = (act.activityType || '').toUpperCase();
+                                
+                                let targetName = act.participantName;
+                                let targetCompany = act.companyName;
+                                let targetPhone = act.mobilePhone;
+
+                                if (!targetName && act.eventParticipant?.database) {
+                                  targetName = `${act.eventParticipant.database.firstName || ''} ${act.eventParticipant.database.lastName || ''}`.trim();
+                                  targetCompany = act.eventParticipant.database.company?.name;
+                                  targetPhone = act.eventParticipant.database.mobilePhone;
+                                }
+
+                                return (
+                                  <div key={act.id} className="bg-slate-800/70 border border-slate-700/70 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-600 transition-colors">
+                                    <div className="flex items-start gap-3 min-w-0">
+                                      <div className={`p-2 rounded-xl shrink-0 ${
+                                        type === 'CALL' ? 'bg-blue-500/20 text-blue-400' :
+                                        type === 'WHATSAPP' ? 'bg-emerald-500/20 text-emerald-400' :
+                                        'bg-purple-500/20 text-purple-400'
+                                      }`}>
+                                        {type === 'CALL' && <Phone className="w-4 h-4" />}
+                                        {type === 'WHATSAPP' && <MessageSquare className="w-4 h-4" />}
+                                        {type === 'EMAIL' && <Mail className="w-4 h-4" />}
+                                      </div>
+
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-md tracking-wider ${
+                                            type === 'CALL' ? 'bg-blue-500/30 text-blue-300' :
+                                            type === 'WHATSAPP' ? 'bg-emerald-500/30 text-emerald-300' :
+                                            'bg-purple-500/30 text-purple-300'
+                                          }`}>
+                                            {type}
+                                          </span>
+                                          <h6 className="text-xs font-bold text-white truncate">
+                                            {targetName || 'Peserta Event'}
+                                          </h6>
+                                          {targetCompany && (
+                                            <span className="text-[10px] text-slate-400 font-medium truncate">
+                                              • {targetCompany}
+                                            </span>
+                                          )}
+                                          {targetPhone && (
+                                            <span className="text-[10px] text-slate-400 font-mono">
+                                              ({targetPhone})
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-[11px] text-slate-300 mt-1 italic bg-slate-900/50 p-1.5 rounded-lg border border-slate-800/60">
+                                          "{act.notes || 'Activity logged'}"
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="text-right shrink-0 self-end sm:self-center">
+                                      <span className="text-[10px] text-slate-400 font-mono block">
+                                        {timeStr}
+                                      </span>
+                                      <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block mt-0.5 border border-emerald-500/20">
+                                        {act.status || 'COMPLETED'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[55vh]">
                       {/* Left Column: Managed Participants */}
                       {(() => {
                         const picParticipants = participants.filter(p => {
@@ -576,8 +856,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         );
                       })()}
                     </div>
-                  </div>
-                ) : (
+                  )}
+                </div>
+              ) : (
                   <>
                     {/* Auto Distribution Control Panel */}
                     {onAssignPic && (
@@ -824,9 +1105,37 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   </div>
 
                                   {/* Telemarketing Remarks Summary Pill */}
-                                  <div className="flex items-center justify-between text-[10px] px-2.5 py-1.5 bg-blue-50/40 rounded-xl border border-blue-100/40 text-slate-600 font-semibold">
+                                  <div className="flex items-center justify-between text-[10px] px-2.5 py-1.5 bg-blue-50/40 rounded-xl border border-blue-100/40 text-slate-600 font-semibold mb-1">
                                     <span>Telemarketing Registered:</span>
                                     <span className="font-black text-blue-700">{registeredCount} Peserta</span>
+                                  </div>
+
+                                  {/* Dedicated Action Buttons on PIC Card */}
+                                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedPic(name);
+                                        setPicViewTab('report');
+                                      }}
+                                      className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-[10px] font-extrabold transition-all flex items-center justify-center gap-1 border border-blue-100/60 cursor-pointer shadow-2xs"
+                                    >
+                                      <History className="w-3.5 h-3.5 text-blue-600" />
+                                      <span>Lihat Daily Log</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedPic(name);
+                                        setPicViewTab('participants');
+                                      }}
+                                      className="px-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                                    >
+                                      <Users className="w-3.5 h-3.5 text-slate-300" />
+                                      <span>Kelola Peserta</span>
+                                    </button>
                                   </div>
                                 </div>
 

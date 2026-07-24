@@ -173,26 +173,31 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
               {/* Hari H Dropdown */}
               <td className="py-1.5 px-3">
                 <div className="flex justify-center">
-                  <select
-                    value={p.reminderHariH || ''}
-                    disabled={isUser}
-                    onChange={(e) => handleDirectUpdateParticipant(p, 'reminderHariH', e.target.value)}
-                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.reminderHariH || '')}`}
-                  >
-                    <option value="" className="text-slate-500 bg-white font-normal">- None</option>
-                    <option value="on_location" className="text-indigo-950 bg-white font-extrabold">On Location</option>
-                    <option value="on_the_way" className="text-slate-700 bg-white font-extrabold">On The Way</option>
-                    <option value="not_respon_yet" className="text-slate-500 bg-white font-normal">Not Respond Yet</option>
-                    <option value="not_respond_2x" className="text-slate-400 bg-white font-normal">Not Respond 2x</option>
-                    <option value="not_respond_3x" className="text-slate-400 bg-white font-normal">Not Respond 3x</option>
-                    <option value="not_respond_4x" className="text-slate-400 bg-white font-normal">Not Respond 4x</option>
-                    <option value="not_respond_5x" className="text-slate-400 bg-white font-normal">Not Respond 5x</option>
-                    <option value="not_respond_6x" className="text-slate-400 bg-white font-normal">Not Respond 6x</option>
-                    <option value="not_respond_7x" className="text-slate-400 bg-white font-normal">Not Respond 7x</option>
-                    <option value="not_respond_8x" className="text-slate-400 bg-white font-normal">Not Respond 8x</option>
-                    <option value="not_respond_9x" className="text-slate-400 bg-white font-normal">Not Respond 9x</option>
-                    <option value="unable_to_attend" className="text-slate-400 bg-white font-extrabold">Unable Attend</option>
-                  </select>
+                  {(() => {
+                    const effectiveHariH = p.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : (p.reminderHariH || '');
+                    return (
+                      <select
+                        value={effectiveHariH}
+                        disabled={isUser}
+                        onChange={(e) => handleDirectUpdateParticipant(p, 'reminderHariH', e.target.value)}
+                        className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(effectiveHariH)}`}
+                      >
+                        <option value="" className="text-slate-500 bg-white font-normal">- None</option>
+                        <option value="on_location" className="text-indigo-950 bg-white font-extrabold">On Location</option>
+                        <option value="on_the_way" className="text-slate-700 bg-white font-extrabold">On The Way</option>
+                        <option value="not_respon_yet" className="text-slate-500 bg-white font-normal">Not Respond Yet</option>
+                        <option value="not_respond_2x" className="text-slate-400 bg-white font-normal">Not Respond 2x</option>
+                        <option value="not_respond_3x" className="text-slate-400 bg-white font-normal">Not Respond 3x</option>
+                        <option value="not_respond_4x" className="text-slate-400 bg-white font-normal">Not Respond 4x</option>
+                        <option value="not_respond_5x" className="text-slate-400 bg-white font-normal">Not Respond 5x</option>
+                        <option value="not_respond_6x" className="text-slate-400 bg-white font-normal">Not Respond 6x</option>
+                        <option value="not_respond_7x" className="text-slate-400 bg-white font-normal">Not Respond 7x</option>
+                        <option value="not_respond_8x" className="text-slate-400 bg-white font-normal">Not Respond 8x</option>
+                        <option value="not_respond_9x" className="text-slate-400 bg-white font-normal">Not Respond 9x</option>
+                        <option value="unable_to_attend" className="text-slate-400 bg-white font-extrabold">Unable Attend</option>
+                      </select>
+                    );
+                  })()}
                 </div>
               </td>
               <td className="py-1.5 px-3 text-slate-500 max-w-[120px] truncate" title={extractPicFromNotes(p.notes).cleanNotes}>

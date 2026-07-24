@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { RemovalRequest } from '../../../lib/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 
@@ -37,6 +37,23 @@ export default function SettingsPage() {
       loadTabDetails();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update removal status');
+    }
+  };
+
+  const handleRestoreContact = async (rem: RemovalRequest) => {
+    try {
+      if (rem.database?.id) {
+        // Reactivate soft-deleted contact in local CRM database (send both isActive & active for Jackson compatibility)
+        await crmService.updateDatabase(rem.database.id, {
+          isActive: true,
+          active: true,
+        } as any);
+      }
+      await crmService.updateRemovalRequestStatus(rem.id, 'rejected');
+      toast.success(`Kontak ID ${rem.database?.id} berhasil dipulihkan / diaktifkan kembali!`);
+      loadTabDetails();
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal memulihkan kontak');
     }
   };
 
@@ -100,9 +117,11 @@ export default function SettingsPage() {
                         <tr key={rem.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="py-4 px-4">
                             <p className="font-bold text-slate-900">
-                              {rem.database.firstName} {rem.database.lastName}
+                              {rem.database?.firstName || rem.database?.lastName
+                                ? `${rem.database.firstName || ''} ${rem.database.lastName || ''}`.trim()
+                                : `Record #${rem.database?.id || '-'}`}
                             </p>
-                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{rem.database.id}</p>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">ID: {rem.database?.id}</p>
                           </td>
                           <td className="py-4 px-4 font-semibold text-slate-700 capitalize">{rem.reason.replace(/_/g, ' ')}</td>
                           <td className="py-4 px-4 text-slate-600">{rem.requestedBy || '-'}</td>
@@ -120,19 +139,32 @@ export default function SettingsPage() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleUpdateRemovalStatus(rem.id, 'done')}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-md"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-sm transition-all"
+                                  title="Approve Takeout & Soft-Delete Contact"
                                 >
+                                  <Check className="w-3.5 h-3.5" />
                                   Approve
                                 </button>
                                 <button
-                                  onClick={() => handleUpdateRemovalStatus(rem.id, 'rejected')}
-                                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-md"
+                                  onClick={() => handleRestoreContact(rem)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all"
+                                  title="Reject Request & Keep Active"
                                 >
+                                  <X className="w-3.5 h-3.5" />
                                   Reject
                                 </button>
                               </div>
                             ) : (
-                              <span className="text-slate-500 font-medium">Archived</span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleRestoreContact(rem)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-extrabold rounded-lg shadow-sm transition-all"
+                                  title="Restore / Reactivate Contact back to Database directory"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                  Restore Contact
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>

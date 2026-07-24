@@ -202,7 +202,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   <td className="py-1.5 px-3">
                     <select
                       disabled={isUser}
-                      value={p.participantStatus || 'not_respon_yet'}
+                      value={p.participantStatus === 'confirm' ? 'registered' : (p.participantStatus || 'not_respon_yet')}
                       onChange={(e) => handleDirectUpdateParticipant(p, 'remarks', e.target.value)}
                       className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.participantStatus)}`}
                     >
@@ -211,6 +211,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                       <option value="registered" className="text-indigo-950 bg-white font-extrabold">Registered</option>
                       <option value="tentative" className="text-slate-700 bg-white font-extrabold">Tentative</option>
                       <option value="not_interest" className="text-slate-400 bg-white font-extrabold">Not Interest</option>
+                      <option value="unable_to_attend" className="text-slate-400 bg-white font-extrabold">Unable Attend</option>
                     </select>
                   </td>
                 )}

@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -192,5 +192,32 @@
 
 html {
   font-size: var(--font-size);
+}
+
+/* Force visible scrollbar for Radix Select Viewport */
+[data-radix-select-viewport] {
+  scrollbar-width: auto !important;
+  scrollbar-color: #94a3b8 #f1f5f9 !important;
+  -ms-overflow-style: auto !important;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar {
+  display: block !important;
+  width: 10px !important;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 9999px !important;
+  border: 2px solid #f1f5f9 !important;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
 }
 

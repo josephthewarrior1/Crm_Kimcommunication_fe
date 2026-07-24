@@ -1,0 +1,1701 @@
+{
+  "overview": "{\"kind\":\"workbook\",\"id\":\"wb/02swpq\",\"sheets\":8,\"tables\":8}\n{\"kind\":\"sheet\",\"id\":\"ws/sfm8bf\",\"name\":\"Brand Strategy\",\"index\":0,\"range\":\"A1:D9\",\"address\":\"A1:D9\",\"tables\":1}\n{\"kind\":\"table\",\"sheet\":\"Brand Strategy\",\"address\":\"A1:D9\",\"rows\":9,\"cols\":4,\"values\":[[\"Field\",\"Recommended Direction\",\"Why It Matters\",\"Website Application\"],[\"Platform Positioning\",\"nx:edu is a future education ecosystem platform where learning, family decisions, industry realities, technology, finance, and future careers meet in one public-facing experience.\",\"This moves nx:edu beyond an event or exhibition. It becomes a meeting point for everyone shaping the next generation’s choices.\",\"Use this as the foundation for About, Partners, and Sponsor pages.\"],[\"Master Tagline\",\"At nx:edu, the classroom has left the classroom.\",\"The line works because it creates a visual shift: education is no longer locked inside formal spaces. It has moved into the world students must understand.\",\"Use as the hero tagline and recurring brand line.\"],[\"Tagline Treatment\",\"Use sentence case for modernity: “At nx:edu, the classroom has left the classroom.”\\nOptional campaign treatment: “At nx:edu, the Classroom Has Left the Classroom.”\",\"Sentence case feels more editorial and less poster-like. Title case can still be used for key visuals, banners, or campaign lockups.\",\"Keep one consistent treatment on the website.\"],[\"Core Narrative\",\"The world students are preparing for is changing faster than the systems that guide them. nx:edu brings that world closer—so students, parents, educators, and industry can make better decisions together.\",\"This frames nx:edu as necessary, not decorative.\",\"Use in homepage intro, About page, and opening video script.\"],[\"Emotional Hook\",\"Students want direction. Parents want confidence. Schools want relevance. Industry wants talent. nx:edu brings them into the same room.\",\"This is simple, human, and ecosystem-specific.\",\"Use as the second homepage section or social campaign copy.\"],[\"Strategic Tone\",\"Bold, warm, modern, grounded, and human. Avoid jargon-heavy phrases like ‘future-ready ecosystem transformation’ unless supported by concrete examples.\",\"The target ecosystem is broad, so clarity and emotional relevance matter.\",\"Use active verbs, clear benefits, and relatable tensions.\"],[\"Primary Website Goal\",\"Convert visitors into participants, partners, sponsors, exhibitors, speakers, media/community partners, or subscribers.\",\"The website should not only inform. It should guide each stakeholder to the right action.\",\"Audience pathways and CTAs must appear early.\"],[\"Creative Rule\",\"Every major section should answer one of these: Where did the classroom go? Who is now inside it? What can visitors discover there? Why should they join?\",\"This keeps the metaphor alive across the site.\",\"Use as editorial checklist before launch.\"]]}\n{\"kind\":\"sheet\",\"id\":\"ws/54r7ku\",\"name\":\"Sitemap & Flow\",\"index\":1,\"range\":\"A1:F10\",\"address\":\"A1:F10\",\"tables\":1}\n{\"kind\":\"table\",\"sheet\":\"Sitemap & Flow\",\"address\":\"A1:F10\",\"rows\":10,\"cols\":6,\"values\":[[\"Nav Item\",\"Page / Section\",\"Purpose\",\"Recommended Structure\",\"Primary CTA\",\"Notes\"],[\"Home\",\"Homepage\",\"Create instant understanding and desire to explore.\",\"Hero → Why nx:edu → The New Classroom → Choose Your Path → Program Universe → Featured Experiences → Partners → Insights → Registration\",\"Register Interest\",\"Make the homepage feel like an invitation into a movement, not a static event page.\"],[\"About\",\"About nx:edu\",\"Explain the platform’s reason for being and its ecosystem role.\",\"What nx:edu is → Why now → Who it connects → What it changes → Founders/partners → FAQ\",\"Explore the Platform\",\"Use the tagline as the central framing device.\"],[\"Programs\",\"Program Universe\",\"Show the different experiences under nx:edu.\",\"Summit → Future Careers Forum → Parent Planning Hub → AI & EdTech Showcase → University Showcase → Gaming & Esports Arena → Workshops → Awards\",\"View Programs\",\"Use cards with short benefit-led copy.\"],[\"For You\",\"Audience Pathways\",\"Segment users by stakeholder group.\",\"Students → Parents → Schools/Universities → Educators/Policy → Industry → EdTech → Financial Institutions → Sponsors → Media/Community\",\"Choose Your Path\",\"Important for conversion because each audience has different motivations.\"],[\"Future Careers\",\"Signature Content Pillar\",\"Make nx:edu distinct through emerging industries and career literacy.\",\"Why future careers → Industries to explore → Career maps → Talks → Youth stories → Parent guide\",\"Explore Future Careers\",\"This should become one of the strongest SEO and social content pillars.\"],[\"Parent Hub\",\"Parent Planning Hub\",\"Convert parents and families through practical relevance.\",\"Education pathways → Financial planning → Talent mapping → Wellbeing → Talks/consultations → Parent resources\",\"Join Parent Hub\",\"Parents are a major decision-making audience; make this accessible and reassuring.\"],[\"Partners\",\"Partnership & Sponsorship\",\"Turn institutional and commercial interest into serious conversations.\",\"Why partner → Audience value → Partnership formats → Sponsorship tiers → Activation ideas → Contact form\",\"Become a Partner\",\"Make this more strategic than logo placement.\"],[\"Insights\",\"Editorial / Resource Hub\",\"Build authority and search relevance before and after the event.\",\"Future careers → Parent guides → Education trends → Industry explainers → Interviews → Media releases\",\"Read Insights\",\"Supports long-term platform value.\"],[\"Register\",\"Registration / Interest Form\",\"Capture participant and partner leads.\",\"Participant type → Interest area → Contact details → Consent → Confirmation\",\"Register Interest\",\"Use simple language and segment data for follow-up.\"]]}\n{\"kind\":\"sheet\",\"id\":\"ws/257k5i\",\"name\":\"Homepage Copy\",\"index\":2,\"range\":\"A1:F25\",\"address\":\"A1:F25\",\"tables\":1}\n{\"kind\":\"table\",\"sheet\":\"Homepage Copy\",\"address\":\"A1:F25\",\"rows\":25,\"cols\":6,\"values\":[[\"Order\",\"Section\",\"Website Copy / Content\",\"CTA\",\"Design / UX Notes\",\"Strategic Purpose\"],[1,\"Hero Eyebrow\",\"nx:edu — A future education ecosystem platform\",null,\"Small line above headline.\",\"Sets category without overexplaining.\"],[2,\"Hero Tagline\",\"At nx:edu, the classroom has left the classroom.\",\"Register Interest\",\"Make this the hero H1 or dominant line. Use strong visual of students/parents/industry in one dynamic environment.\",\"Creates the core creative idea.\"],[3,\"Hero Supporting Copy\",\"Learning is no longer only shaped by schools and syllabuses. It is shaped by technology, industry, parents, culture, finance, communities, and the careers young people are about to enter. nx:edu brings all of them into one platform—so the next generation can see more clearly where they are going.\",\"Explore the Platform\",\"Keep text concise on live site; full copy can be used in About section.\",\"Explains the tagline with emotional and practical relevance.\"],[4,\"Hero Microcopy\",\"For students. For parents. For educators. For industry. For everyone preparing the next generation for life after school.\",null,\"Can appear as scrolling stakeholder labels or animated chips.\",\"Shows ecosystem immediately.\"],[5,\"Why Now\",\"The future is arriving faster than most education decisions are made. Students are choosing paths in a world where industries change quickly, careers are no longer linear, and skills are shaped by technology, creativity, culture, and human judgment. nx:edu exists to make those changes visible, discussable, and useful.\",\"See Why nx:edu Matters\",\"Use 3 tension cards: Career Confusion, Parent Anxiety, Industry Shift.\",\"Creates urgency without sounding alarmist.\"],[6,\"The New Classroom\",\"The new classroom is not a room. It is a conversation between students, parents, teachers, universities, companies, policymakers, creators, communities, and technologies. At nx:edu, that conversation becomes a real experience.\",\"Discover the New Classroom\",\"This is where the metaphor becomes the website architecture.\",\"Makes the tagline ownable.\"],[7,\"What nx:edu Is\",\"nx:edu is a platform that brings together a summit, future career forums, parent planning sessions, education showcases, AI and EdTech experiences, gaming and esports programs, workshops, communities, and strategic partnerships under one future-facing education movement.\",\"View Programs\",\"Can use visual ecosystem map.\",\"Clarifies that it is not only a seminar or expo.\"],[8,\"Choose Your Path Intro\",\"Everyone enters nx:edu with a different question. Choose the path that speaks to yours.\",null,\"Use audience cards below.\",\"Improves navigation and conversion.\"],[9,\"Audience Card: Students\",\"For students and young talent: explore the industries, skills, communities, and career possibilities that school may not have fully shown you yet.\",\"Start Exploring\",\"Youthful image, energetic tone.\",\"Attracts student audience.\"],[10,\"Audience Card: Parents\",\"For parents and families: understand the choices, risks, opportunities, and planning tools that can help your child step into the future with more confidence.\",\"Explore Parent Hub\",\"Warm, reassuring tone.\",\"Converts parents.\"],[11,\"Audience Card: Educators\",\"For schools, universities, educators, and policymakers: join the conversation on how learning can stay relevant in a world that keeps moving.\",\"Join the Conversation\",\"Credible and institutional tone.\",\"Builds legitimacy.\"],[12,\"Audience Card: Industry\",\"For companies and employers: help future talent understand the real sectors, skills, and mindsets your industry needs.\",\"Collaborate with nx:edu\",\"Industry visuals, not overly corporate.\",\"Recruit partners and speakers.\"],[13,\"Audience Card: Sponsors & Partners\",\"For brands and institutions: build relevance where education decisions, youth aspiration, family priorities, and future talent meet.\",\"Become a Partner\",\"Strategic sponsorship tone.\",\"Sales conversion.\"],[14,\"Program Universe Intro\",\"Step inside the nx:edu platform.\",null,\"Use interactive cards or modular grid.\",\"Frames the platform as an experience.\"],[15,\"Program Card: nx:edu Summit\",\"A flagship forum for education leaders, policymakers, institutions, industry, technology, finance, and communities to discuss what education must become next.\",\"View Summit\",\"Premium card.\",\"Credibility and thought leadership.\"],[16,\"Program Card: Future Careers Forum\",\"A signature forum that opens students and parents to emerging industries—from AI, gaming, esports, creative economy, media, sustainability, digital business, and beyond.\",\"Explore Future Careers\",\"Make this highly visual and content-rich.\",\"Differentiation.\"],[17,\"Program Card: Parent Planning Hub\",\"A practical space for families to explore education pathways, financial planning, talent mapping, wellbeing, and future career decisions.\",\"Explore Parent Hub\",\"Use parent-focused icons.\",\"Family conversion.\"],[18,\"Program Card: AI & EdTech Experience\",\"Hands-on exposure to the tools, platforms, and technologies changing how people learn, create, teach, and work.\",\"Experience AI & EdTech\",\"Demo-oriented visuals.\",\"Innovation relevance.\"],[19,\"Program Card: University & School Showcase\",\"A stage for institutions to present programs, scholarships, achievements, student projects, and future-oriented learning opportunities.\",\"Join the Showcase\",\"Good for exhibitor sales.\",\"Institution recruitment.\"],[20,\"Program Card: Gaming & Esports Arena\",\"A window into one of today’s most visible youth industries—showing not only competition, but also careers in content, production, law, business, marketing, analysis, events, and community.\",\"Explore Esports Arena\",\"Vibrant, but credible.\",\"Youth/career hook.\"],[21,\"Featured Statement\",\"When the classroom leaves the classroom, learning becomes something people can see, touch, question, and choose.\",null,\"Quote-like section, strong typography.\",\"Reinforces brand idea.\"],[22,\"Partner Section\",\"Bring your institution, brand, community, or industry into the room where future education decisions are being shaped.\",\"Become a Partner\",\"Logo wall + partner benefits.\",\"Convert sponsors and partners.\"],[23,\"Insights Section\",\"Ideas for the new classroom.\",\"Read Insights\",\"Editorial cards.\",\"Build authority and SEO.\"],[24,\"Final CTA\",\"Be part of the platform where education meets the world beyond school.\",\"Register Interest\",\"Strong closing banner.\",\"Final conversion.\"]]}\n{\"kind\":\"sheet\",\"id\":\"ws/z0dnji\",\"name\":\"Audience Pathways\",\"index\":3,\"range\":\"A1:F10\",\"address\":\"A1:F10\",\"tables\":1}\n{\"kind\":\"table\",\"sheet\":\"Audience Pathways\",\"address\":\"A1:F10\",\"rows\":10,\"cols\":6,\"values\":[[\"Audience\",\"Headline\",\"Intro Copy\",\"Key Benefits\",\"Primary CTA\",\"Tone / Notes\"],[\"Students & Young Talent\",\"There is more after school than one straight road.\",\"nx:edu helps students discover future careers, new industries, creative pathways, technology-driven opportunities, and communities that can help them imagine a wider life after school or university.\",\"Discover emerging industries\\nMeet real practitioners\\nUnderstand skills beyond grades\\nExperience AI, EdTech, gaming, creative, and community showcases\\nFind new directions before making major choices\",\"Start Exploring\",\"Energetic, honest, not patronizing.\"],[\"Parents & Families\",\"Help your child see the world they are preparing for.\",\"Parents are asked to guide children through choices that are more complex than ever. nx:edu gives families a clearer view of education pathways, future careers, financial planning, talent mapping, wellbeing, and the changing world of work.\",\"Understand future career options\\nCompare education pathways more confidently\\nExplore financing and preparation tools\\nSupport wellbeing and readiness\\nAsk better questions before making big decisions\",\"Explore Parent Planning Hub\",\"Warm, practical, reassuring.\"],[\"Schools & Universities\",\"Show the world your learning prepares students for.\",\"nx:edu gives schools, universities, and education institutions a platform to showcase programs, achievements, scholarships, student projects, industry links, and future-ready learning experiences to students, parents, and partners.\",\"Strengthen institutional visibility\\nReach students and parents\\nShowcase innovation and achievements\\nBuild industry and ecosystem networks\\nPresent scholarship and admissions pathways\",\"Join the Showcase\",\"Good for exhibitor recruitment.\"],[\"Educators & Policy Leaders\",\"Bring education strategy closer to real-world change.\",\"For educators, leaders, and policymakers, nx:edu is a forum to exchange ideas and explore how learning systems can respond to industry shifts, technology, youth culture, community needs, and national development priorities.\",\"Share insights and best practices\\nJoin strategic discussions\\nConnect across sectors\\nSupport public literacy on education transformation\\nBuild credibility as a future-facing institution\",\"Join the Summit\",\"Credible, intellectually strong.\"],[\"Industry & Employers\",\"Let future talent meet the world of work before they enter it.\",\"nx:edu invites companies and industry leaders to help students, parents, and educators understand the sectors, skills, roles, and expectations shaping tomorrow’s workforce.\",\"Build early talent awareness\\nExplain emerging industry needs\\nSupport career-readiness conversations\\nConnect with education institutions\\nStrengthen reputation as a talent-supporting organization\",\"Explore Industry Collaboration\",\"Important for technology, gaming, finance, creative, sustainability, media, health, logistics, and other sectors.\"],[\"Technology & EdTech Providers\",\"Make learning innovation visible, usable, and trusted.\",\"nx:edu gives technology and EdTech providers a credible space to demonstrate tools, AI applications, platforms, smart learning solutions, and digital experiences to the people who make or influence education decisions.\",\"Showcase products through live demos\\nEducate users through practical sessions\\nReach schools, universities, parents, and students\\nBuild trust through meaningful use cases\\nConnect with strategic partners\",\"Showcase Your Solution\",\"Avoid vendor-heavy language.\"],[\"Financial Institutions\",\"Meet families where education becomes a long-term decision.\",\"Education is also a financial journey. nx:edu creates a relevant environment for banks, insurers, and financial institutions to help parents explore savings, protection, financing, and planning solutions in a context that feels useful—not intrusive.\",\"Reach parents with relevant needs\\nEducate through useful content\\nBuild trust around education planning\\nSupport access and readiness\\nConnect financial literacy with future pathways\",\"Partner on Education Planning\",\"Good sponsorship category.\"],[\"Communities & Media\",\"Help make the new classroom visible to more people.\",\"nx:edu welcomes media, communities, creators, youth networks, parent groups, learning communities, and esports communities that want to make future education conversations more accessible, inclusive, and alive.\",\"Amplify meaningful stories\\nReach youth and parent communities\\nSupport education literacy\\nCreate collaborative content\\nBuild public participation\",\"Become a Community or Media Partner\",\"Good for reach and cultural relevance.\"],[\"Sponsors & Strategic Partners\",\"Own relevance in the room where the future is being discussed.\",\"nx:edu offers sponsors and strategic partners a high-value platform to engage students, parents, educators, institutions, policymakers, industry leaders, and communities through thought leadership, activation, content, visibility, and long-term collaboration.\",\"Build strategic visibility\\nCreate meaningful audience engagement\\nSupport education transformation\\nStrengthen reputation and trust\\nAccess a multi-stakeholder ecosystem\",\"Become a Sponsor\",\"Lead with value, not logo placement.\"]]}\n{\"kind\":\"sheet\",\"id\":\"ws/zyk7yr\",\"name\":\"Program Pages\",\"index\":4,\"range\":\"A1:F11\",\"address\":\"A1:F11\",\"tables\":1}\n{\"kind\":\"notice\",\"message\":\"Truncated: omitted 7 lines. Increase maxChars, narrow range, or use tableMaxRows/tableMaxCols/tableMaxCellChars.\"}",
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Brand Strategy",
+      "usedAddress": "A1:D9",
+      "values": [
+        [
+          "Field",
+          "Recommended Direction",
+          "Why It Matters",
+          "Website Application"
+        ],
+        [
+          "Platform Positioning",
+          "nx:edu is a future education ecosystem platform where learning, family decisions, industry realities, technology, finance, and future careers meet in one public-facing experience.",
+          "This moves nx:edu beyond an event or exhibition. It becomes a meeting point for everyone shaping the next generation’s choices.",
+          "Use this as the foundation for About, Partners, and Sponsor pages."
+        ],
+        [
+          "Master Tagline",
+          "At nx:edu, the classroom has left the classroom.",
+          "The line works because it creates a visual shift: education is no longer locked inside formal spaces. It has moved into the world students must understand.",
+          "Use as the hero tagline and recurring brand line."
+        ],
+        [
+          "Tagline Treatment",
+          "Use sentence case for modernity: “At nx:edu, the classroom has left the classroom.”\nOptional campaign treatment: “At nx:edu, the Classroom Has Left the Classroom.”",
+          "Sentence case feels more editorial and less poster-like. Title case can still be used for key visuals, banners, or campaign lockups.",
+          "Keep one consistent treatment on the website."
+        ],
+        [
+          "Core Narrative",
+          "The world students are preparing for is changing faster than the systems that guide them. nx:edu brings that world closer—so students, parents, educators, and industry can make better decisions together.",
+          "This frames nx:edu as necessary, not decorative.",
+          "Use in homepage intro, About page, and opening video script."
+        ],
+        [
+          "Emotional Hook",
+          "Students want direction. Parents want confidence. Schools want relevance. Industry wants talent. nx:edu brings them into the same room.",
+          "This is simple, human, and ecosystem-specific.",
+          "Use as the second homepage section or social campaign copy."
+        ],
+        [
+          "Strategic Tone",
+          "Bold, warm, modern, grounded, and human. Avoid jargon-heavy phrases like ‘future-ready ecosystem transformation’ unless supported by concrete examples.",
+          "The target ecosystem is broad, so clarity and emotional relevance matter.",
+          "Use active verbs, clear benefits, and relatable tensions."
+        ],
+        [
+          "Primary Website Goal",
+          "Convert visitors into participants, partners, sponsors, exhibitors, speakers, media/community partners, or subscribers.",
+          "The website should not only inform. It should guide each stakeholder to the right action.",
+          "Audience pathways and CTAs must appear early."
+        ],
+        [
+          "Creative Rule",
+          "Every major section should answer one of these: Where did the classroom go? Who is now inside it? What can visitors discover there? Why should they join?",
+          "This keeps the metaphor alive across the site.",
+          "Use as editorial checklist before launch."
+        ]
+      ],
+      "formulas": [
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Sitemap & Flow",
+      "usedAddress": "A1:F10",
+      "values": [
+        [
+          "Nav Item",
+          "Page / Section",
+          "Purpose",
+          "Recommended Structure",
+          "Primary CTA",
+          "Notes"
+        ],
+        [
+          "Home",
+          "Homepage",
+          "Create instant understanding and desire to explore.",
+          "Hero → Why nx:edu → The New Classroom → Choose Your Path → Program Universe → Featured Experiences → Partners → Insights → Registration",
+          "Register Interest",
+          "Make the homepage feel like an invitation into a movement, not a static event page."
+        ],
+        [
+          "About",
+          "About nx:edu",
+          "Explain the platform’s reason for being and its ecosystem role.",
+          "What nx:edu is → Why now → Who it connects → What it changes → Founders/partners → FAQ",
+          "Explore the Platform",
+          "Use the tagline as the central framing device."
+        ],
+        [
+          "Programs",
+          "Program Universe",
+          "Show the different experiences under nx:edu.",
+          "Summit → Future Careers Forum → Parent Planning Hub → AI & EdTech Showcase → University Showcase → Gaming & Esports Arena → Workshops → Awards",
+          "View Programs",
+          "Use cards with short benefit-led copy."
+        ],
+        [
+          "For You",
+          "Audience Pathways",
+          "Segment users by stakeholder group.",
+          "Students → Parents → Schools/Universities → Educators/Policy → Industry → EdTech → Financial Institutions → Sponsors → Media/Community",
+          "Choose Your Path",
+          "Important for conversion because each audience has different motivations."
+        ],
+        [
+          "Future Careers",
+          "Signature Content Pillar",
+          "Make nx:edu distinct through emerging industries and career literacy.",
+          "Why future careers → Industries to explore → Career maps → Talks → Youth stories → Parent guide",
+          "Explore Future Careers",
+          "This should become one of the strongest SEO and social content pillars."
+        ],
+        [
+          "Parent Hub",
+          "Parent Planning Hub",
+          "Convert parents and families through practical relevance.",
+          "Education pathways → Financial planning → Talent mapping → Wellbeing → Talks/consultations → Parent resources",
+          "Join Parent Hub",
+          "Parents are a major decision-making audience; make this accessible and reassuring."
+        ],
+        [
+          "Partners",
+          "Partnership & Sponsorship",
+          "Turn institutional and commercial interest into serious conversations.",
+          "Why partner → Audience value → Partnership formats → Sponsorship tiers → Activation ideas → Contact form",
+          "Become a Partner",
+          "Make this more strategic than logo placement."
+        ],
+        [
+          "Insights",
+          "Editorial / Resource Hub",
+          "Build authority and search relevance before and after the event.",
+          "Future careers → Parent guides → Education trends → Industry explainers → Interviews → Media releases",
+          "Read Insights",
+          "Supports long-term platform value."
+        ],
+        [
+          "Register",
+          "Registration / Interest Form",
+          "Capture participant and partner leads.",
+          "Participant type → Interest area → Contact details → Consent → Confirmation",
+          "Register Interest",
+          "Use simple language and segment data for follow-up."
+        ]
+      ],
+      "formulas": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Homepage Copy",
+      "usedAddress": "A1:F25",
+      "values": [
+        [
+          "Order",
+          "Section",
+          "Website Copy / Content",
+          "CTA",
+          "Design / UX Notes",
+          "Strategic Purpose"
+        ],
+        [
+          1,
+          "Hero Eyebrow",
+          "nx:edu — A future education ecosystem platform",
+          null,
+          "Small line above headline.",
+          "Sets category without overexplaining."
+        ],
+        [
+          2,
+          "Hero Tagline",
+          "At nx:edu, the classroom has left the classroom.",
+          "Register Interest",
+          "Make this the hero H1 or dominant line. Use strong visual of students/parents/industry in one dynamic environment.",
+          "Creates the core creative idea."
+        ],
+        [
+          3,
+          "Hero Supporting Copy",
+          "Learning is no longer only shaped by schools and syllabuses. It is shaped by technology, industry, parents, culture, finance, communities, and the careers young people are about to enter. nx:edu brings all of them into one platform—so the next generation can see more clearly where they are going.",
+          "Explore the Platform",
+          "Keep text concise on live site; full copy can be used in About section.",
+          "Explains the tagline with emotional and practical relevance."
+        ],
+        [
+          4,
+          "Hero Microcopy",
+          "For students. For parents. For educators. For industry. For everyone preparing the next generation for life after school.",
+          null,
+          "Can appear as scrolling stakeholder labels or animated chips.",
+          "Shows ecosystem immediately."
+        ],
+        [
+          5,
+          "Why Now",
+          "The future is arriving faster than most education decisions are made. Students are choosing paths in a world where industries change quickly, careers are no longer linear, and skills are shaped by technology, creativity, culture, and human judgment. nx:edu exists to make those changes visible, discussable, and useful.",
+          "See Why nx:edu Matters",
+          "Use 3 tension cards: Career Confusion, Parent Anxiety, Industry Shift.",
+          "Creates urgency without sounding alarmist."
+        ],
+        [
+          6,
+          "The New Classroom",
+          "The new classroom is not a room. It is a conversation between students, parents, teachers, universities, companies, policymakers, creators, communities, and technologies. At nx:edu, that conversation becomes a real experience.",
+          "Discover the New Classroom",
+          "This is where the metaphor becomes the website architecture.",
+          "Makes the tagline ownable."
+        ],
+        [
+          7,
+          "What nx:edu Is",
+          "nx:edu is a platform that brings together a summit, future career forums, parent planning sessions, education showcases, AI and EdTech experiences, gaming and esports programs, workshops, communities, and strategic partnerships under one future-facing education movement.",
+          "View Programs",
+          "Can use visual ecosystem map.",
+          "Clarifies that it is not only a seminar or expo."
+        ],
+        [
+          8,
+          "Choose Your Path Intro",
+          "Everyone enters nx:edu with a different question. Choose the path that speaks to yours.",
+          null,
+          "Use audience cards below.",
+          "Improves navigation and conversion."
+        ],
+        [
+          9,
+          "Audience Card: Students",
+          "For students and young talent: explore the industries, skills, communities, and career possibilities that school may not have fully shown you yet.",
+          "Start Exploring",
+          "Youthful image, energetic tone.",
+          "Attracts student audience."
+        ],
+        [
+          10,
+          "Audience Card: Parents",
+          "For parents and families: understand the choices, risks, opportunities, and planning tools that can help your child step into the future with more confidence.",
+          "Explore Parent Hub",
+          "Warm, reassuring tone.",
+          "Converts parents."
+        ],
+        [
+          11,
+          "Audience Card: Educators",
+          "For schools, universities, educators, and policymakers: join the conversation on how learning can stay relevant in a world that keeps moving.",
+          "Join the Conversation",
+          "Credible and institutional tone.",
+          "Builds legitimacy."
+        ],
+        [
+          12,
+          "Audience Card: Industry",
+          "For companies and employers: help future talent understand the real sectors, skills, and mindsets your industry needs.",
+          "Collaborate with nx:edu",
+          "Industry visuals, not overly corporate.",
+          "Recruit partners and speakers."
+        ],
+        [
+          13,
+          "Audience Card: Sponsors & Partners",
+          "For brands and institutions: build relevance where education decisions, youth aspiration, family priorities, and future talent meet.",
+          "Become a Partner",
+          "Strategic sponsorship tone.",
+          "Sales conversion."
+        ],
+        [
+          14,
+          "Program Universe Intro",
+          "Step inside the nx:edu platform.",
+          null,
+          "Use interactive cards or modular grid.",
+          "Frames the platform as an experience."
+        ],
+        [
+          15,
+          "Program Card: nx:edu Summit",
+          "A flagship forum for education leaders, policymakers, institutions, industry, technology, finance, and communities to discuss what education must become next.",
+          "View Summit",
+          "Premium card.",
+          "Credibility and thought leadership."
+        ],
+        [
+          16,
+          "Program Card: Future Careers Forum",
+          "A signature forum that opens students and parents to emerging industries—from AI, gaming, esports, creative economy, media, sustainability, digital business, and beyond.",
+          "Explore Future Careers",
+          "Make this highly visual and content-rich.",
+          "Differentiation."
+        ],
+        [
+          17,
+          "Program Card: Parent Planning Hub",
+          "A practical space for families to explore education pathways, financial planning, talent mapping, wellbeing, and future career decisions.",
+          "Explore Parent Hub",
+          "Use parent-focused icons.",
+          "Family conversion."
+        ],
+        [
+          18,
+          "Program Card: AI & EdTech Experience",
+          "Hands-on exposure to the tools, platforms, and technologies changing how people learn, create, teach, and work.",
+          "Experience AI & EdTech",
+          "Demo-oriented visuals.",
+          "Innovation relevance."
+        ],
+        [
+          19,
+          "Program Card: University & School Showcase",
+          "A stage for institutions to present programs, scholarships, achievements, student projects, and future-oriented learning opportunities.",
+          "Join the Showcase",
+          "Good for exhibitor sales.",
+          "Institution recruitment."
+        ],
+        [
+          20,
+          "Program Card: Gaming & Esports Arena",
+          "A window into one of today’s most visible youth industries—showing not only competition, but also careers in content, production, law, business, marketing, analysis, events, and community.",
+          "Explore Esports Arena",
+          "Vibrant, but credible.",
+          "Youth/career hook."
+        ],
+        [
+          21,
+          "Featured Statement",
+          "When the classroom leaves the classroom, learning becomes something people can see, touch, question, and choose.",
+          null,
+          "Quote-like section, strong typography.",
+          "Reinforces brand idea."
+        ],
+        [
+          22,
+          "Partner Section",
+          "Bring your institution, brand, community, or industry into the room where future education decisions are being shaped.",
+          "Become a Partner",
+          "Logo wall + partner benefits.",
+          "Convert sponsors and partners."
+        ],
+        [
+          23,
+          "Insights Section",
+          "Ideas for the new classroom.",
+          "Read Insights",
+          "Editorial cards.",
+          "Build authority and SEO."
+        ],
+        [
+          24,
+          "Final CTA",
+          "Be part of the platform where education meets the world beyond school.",
+          "Register Interest",
+          "Strong closing banner.",
+          "Final conversion."
+        ]
+      ],
+      "formulas": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Audience Pathways",
+      "usedAddress": "A1:F10",
+      "values": [
+        [
+          "Audience",
+          "Headline",
+          "Intro Copy",
+          "Key Benefits",
+          "Primary CTA",
+          "Tone / Notes"
+        ],
+        [
+          "Students & Young Talent",
+          "There is more after school than one straight road.",
+          "nx:edu helps students discover future careers, new industries, creative pathways, technology-driven opportunities, and communities that can help them imagine a wider life after school or university.",
+          "Discover emerging industries\nMeet real practitioners\nUnderstand skills beyond grades\nExperience AI, EdTech, gaming, creative, and community showcases\nFind new directions before making major choices",
+          "Start Exploring",
+          "Energetic, honest, not patronizing."
+        ],
+        [
+          "Parents & Families",
+          "Help your child see the world they are preparing for.",
+          "Parents are asked to guide children through choices that are more complex than ever. nx:edu gives families a clearer view of education pathways, future careers, financial planning, talent mapping, wellbeing, and the changing world of work.",
+          "Understand future career options\nCompare education pathways more confidently\nExplore financing and preparation tools\nSupport wellbeing and readiness\nAsk better questions before making big decisions",
+          "Explore Parent Planning Hub",
+          "Warm, practical, reassuring."
+        ],
+        [
+          "Schools & Universities",
+          "Show the world your learning prepares students for.",
+          "nx:edu gives schools, universities, and education institutions a platform to showcase programs, achievements, scholarships, student projects, industry links, and future-ready learning experiences to students, parents, and partners.",
+          "Strengthen institutional visibility\nReach students and parents\nShowcase innovation and achievements\nBuild industry and ecosystem networks\nPresent scholarship and admissions pathways",
+          "Join the Showcase",
+          "Good for exhibitor recruitment."
+        ],
+        [
+          "Educators & Policy Leaders",
+          "Bring education strategy closer to real-world change.",
+          "For educators, leaders, and policymakers, nx:edu is a forum to exchange ideas and explore how learning systems can respond to industry shifts, technology, youth culture, community needs, and national development priorities.",
+          "Share insights and best practices\nJoin strategic discussions\nConnect across sectors\nSupport public literacy on education transformation\nBuild credibility as a future-facing institution",
+          "Join the Summit",
+          "Credible, intellectually strong."
+        ],
+        [
+          "Industry & Employers",
+          "Let future talent meet the world of work before they enter it.",
+          "nx:edu invites companies and industry leaders to help students, parents, and educators understand the sectors, skills, roles, and expectations shaping tomorrow’s workforce.",
+          "Build early talent awareness\nExplain emerging industry needs\nSupport career-readiness conversations\nConnect with education institutions\nStrengthen reputation as a talent-supporting organization",
+          "Explore Industry Collaboration",
+          "Important for technology, gaming, finance, creative, sustainability, media, health, logistics, and other sectors."
+        ],
+        [
+          "Technology & EdTech Providers",
+          "Make learning innovation visible, usable, and trusted.",
+          "nx:edu gives technology and EdTech providers a credible space to demonstrate tools, AI applications, platforms, smart learning solutions, and digital experiences to the people who make or influence education decisions.",
+          "Showcase products through live demos\nEducate users through practical sessions\nReach schools, universities, parents, and students\nBuild trust through meaningful use cases\nConnect with strategic partners",
+          "Showcase Your Solution",
+          "Avoid vendor-heavy language."
+        ],
+        [
+          "Financial Institutions",
+          "Meet families where education becomes a long-term decision.",
+          "Education is also a financial journey. nx:edu creates a relevant environment for banks, insurers, and financial institutions to help parents explore savings, protection, financing, and planning solutions in a context that feels useful—not intrusive.",
+          "Reach parents with relevant needs\nEducate through useful content\nBuild trust around education planning\nSupport access and readiness\nConnect financial literacy with future pathways",
+          "Partner on Education Planning",
+          "Good sponsorship category."
+        ],
+        [
+          "Communities & Media",
+          "Help make the new classroom visible to more people.",
+          "nx:edu welcomes media, communities, creators, youth networks, parent groups, learning communities, and esports communities that want to make future education conversations more accessible, inclusive, and alive.",
+          "Amplify meaningful stories\nReach youth and parent communities\nSupport education literacy\nCreate collaborative content\nBuild public participation",
+          "Become a Community or Media Partner",
+          "Good for reach and cultural relevance."
+        ],
+        [
+          "Sponsors & Strategic Partners",
+          "Own relevance in the room where the future is being discussed.",
+          "nx:edu offers sponsors and strategic partners a high-value platform to engage students, parents, educators, institutions, policymakers, industry leaders, and communities through thought leadership, activation, content, visibility, and long-term collaboration.",
+          "Build strategic visibility\nCreate meaningful audience engagement\nSupport education transformation\nStrengthen reputation and trust\nAccess a multi-stakeholder ecosystem",
+          "Become a Sponsor",
+          "Lead with value, not logo placement."
+        ]
+      ],
+      "formulas": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 4,
+      "name": "Program Pages",
+      "usedAddress": "A1:F11",
+      "values": [
+        [
+          "Program / Page",
+          "Recommended Headline",
+          "Website Copy",
+          "Recommended Modules",
+          "Primary CTA",
+          "Tagline Relevance"
+        ],
+        [
+          "nx:edu Summit",
+          "The main stage for the new classroom.",
+          "The nx:edu Summit is the platform’s flagship forum, bringing together education leaders, policymakers, institutions, industry, technology providers, financial institutions, and communities to discuss what learning must become next.\n\nThe Summit is designed to move beyond inspiration. It connects ideas, challenges, and opportunities into practical conversations that can shape a more relevant education ecosystem.",
+          "Keynote sessions\nPanel discussions\nPolicy and industry dialogues\nSpeaker profiles\nSession schedule\nMedia quotes",
+          "View Summit Agenda",
+          "This is where the ‘classroom’ becomes a strategic public conversation."
+        ],
+        [
+          "Future Careers Forum",
+          "Because the future of work should not be discovered too late.",
+          "Many students are still unsure where to go after graduation. Many parents still define a good career through older categories. The Future Careers Forum opens a broader view—AI, gaming, esports, creative economy, digital business, communications, sustainability, media, cybersecurity, data, and other emerging sectors.\n\nThe forum helps students, parents, and educators understand that future industries need many kinds of talent, including people from law, business, communication, design, psychology, education, operations, and creative fields.",
+          "Industry talks\nCareer pathway explainers\nTalent skill maps\nYouth Q&A\nParent guidance sessions\nCareer mentor moments",
+          "Explore Future Careers",
+          "This is the clearest proof that the classroom has moved into the world."
+        ],
+        [
+          "Parent Planning Hub",
+          "A calmer space for parents facing bigger decisions.",
+          "The Parent Planning Hub helps families make better-informed education decisions. Through talks, consultations, articles, and partner sessions, parents can explore education pathways, financing options, talent mapping, student wellbeing, and the skills children may need in the future.",
+          "Education pathway talks\nFinancial planning sessions\nTalent mapping booths\nPsychology and wellbeing talks\nParent Q&A\nPractical guides",
+          "Explore Parent Hub",
+          "Makes parents part of the new classroom."
+        ],
+        [
+          "AI Experience Zone",
+          "See how AI is changing learning, creativity, and work.",
+          "The AI Experience Zone gives visitors hands-on exposure to AI tools and applications that are transforming learning, productivity, creativity, research, content creation, and future work. The goal is to make AI understandable, useful, and relevant for students, parents, educators, and institutions.",
+          "AI demos\nSmart learning tools\nCreative AI booths\nTeacher productivity demos\nStudent project showcase\nResponsible AI mini-sessions",
+          "Explore AI Zone",
+          "Turns abstract technology into a direct learning experience."
+        ],
+        [
+          "EdTech Showcase",
+          "Meet the tools shaping how people learn.",
+          "The EdTech Showcase presents digital platforms, learning management systems, immersive learning tools, assessment solutions, student support platforms, smart classroom technologies, and other innovations that help learning become more adaptive, engaging, and accessible.",
+          "Exhibitor booths\nLive demos\nProduct explainers\nInstitution use cases\nPartner sessions",
+          "Showcase Your EdTech",
+          "Shows the new classroom’s tools."
+        ],
+        [
+          "University & School Showcase",
+          "Where institutions show what learning can lead to.",
+          "The University & School Showcase gives education institutions dedicated visibility to present academic programs, scholarship pathways, student achievements, international collaborations, research, creative projects, and future-oriented learning opportunities.",
+          "Institution profiles\nProgram booths\nScholarship information\nStudent project displays\nAdmissions information\nCampus talk sessions",
+          "Join the Showcase",
+          "Connects formal education with public discovery."
+        ],
+        [
+          "Gaming & Esports Arena",
+          "A youth industry that teaches more than play.",
+          "The Gaming & Esports Arena highlights esports as more than competition. It introduces the ecosystem behind the game: players, coaches, analysts, casters, event organizers, production crews, team managers, content creators, marketers, lawyers, business managers, and communications specialists.\n\nThrough tournaments, showmatches, and industry conversations, nx:edu connects gaming culture with education and future career literacy.",
+          "Tournaments\nShowmatches\nCareer talks\nCaster/analyst sessions\nTeam management insight\nProduction showcase",
+          "Explore Esports Arena",
+          "A strong example of careers that many classrooms still underexplain."
+        ],
+        [
+          "Nusantara Playground",
+          "Where learning becomes something people can experience.",
+          "The Nusantara Future Playground is the experiential heart of nx:edu—a lively zone where learning meets culture, technology, creativity, gaming, communities, and hands-on activities. It is designed to make education feel visible, memorable, and relevant to young audiences.",
+          "Interactive booths\nSponsor challenges\nCommunity activities\nLearning games\nCreative installations\nYouth performances",
+          "Explore Experiences",
+          "Makes the metaphor physical and memorable."
+        ],
+        [
+          "Workshops & Clinics",
+          "Practical sessions for real decisions.",
+          "nx:edu workshops and clinics help visitors go deeper into specific needs: career mapping, portfolio building, education financing, AI literacy, content creation, admissions preparation, student wellbeing, and institutional innovation.",
+          "Small-group sessions\nClinics\nMini classes\nMentoring corners\nPractical worksheets",
+          "Join a Workshop",
+          "Extends the platform from inspiration to action."
+        ],
+        [
+          "Awards / Recognition",
+          "Celebrating people and institutions moving education forward.",
+          "The nx:edu Awards can recognize schools, universities, communities, students, teachers, creators, and organizations that are helping education become more relevant, inclusive, creative, and connected to the future.",
+          "Award categories\nNomination process\nJudging panel\nWinner stories\nPartner recognition",
+          "Explore Awards",
+          "Creates aspiration and media value."
+        ]
+      ],
+      "formulas": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 5,
+      "name": "Partners & Sponsors",
+      "usedAddress": "A1:F13",
+      "values": [
+        [
+          "Section",
+          "Recommended Headline",
+          "Website Copy",
+          "Benefit Emphasis",
+          "Primary CTA",
+          "Notes"
+        ],
+        [
+          "Partner Landing Intro",
+          "Bring your brand into the new classroom.",
+          "At nx:edu, the classroom has left the classroom—and that creates a new space for brands, institutions, communities, and industries to contribute to education in a way people can see and feel.\n\nPartnership with nx:edu is not only about visibility. It is about relevance, trust, usefulness, and presence in the conversations that shape future choices.",
+          "Impact + reputation + relevance",
+          "Become a Partner",
+          "This directly connects the partner proposition to the tagline."
+        ],
+        [
+          "Why Partner",
+          "Be present where students, parents, educators, and future talent meet.",
+          "Sponsors and partners can use nx:edu to introduce ideas, showcase solutions, support public literacy, build thought leadership, engage families and students, and connect with institutions and industry stakeholders in one integrated platform.",
+          "Audience access + strategic positioning",
+          "Discuss Partnership",
+          "Avoid generic sponsor language."
+        ],
+        [
+          "Partnership Promise",
+          "Not a logo wall. A role in the room.",
+          "nx:edu is designed for partners who want more than passive exposure. Through stages, content, experiences, workshops, showcases, and community programs, partners can take an active role in helping audiences understand the world beyond the classroom.",
+          "Active contribution",
+          "Build a Partnership Plan",
+          "Strong line for sales deck and website."
+        ],
+        [
+          "Title Sponsor",
+          "Own the main stage of the new classroom.",
+          "As Title Sponsor, your brand becomes the leading strategic supporter of nx:edu, receiving the highest level of visibility, naming association, stage presence, content integration, experience-zone exposure, and recognition across key communication channels.",
+          "Highest visibility + thought leadership",
+          "Inquire as Title Sponsor",
+          "Premium tier."
+        ],
+        [
+          "Platinum Sponsor",
+          "Lead a conversation people are ready to hear.",
+          "Platinum Sponsors receive strong brand presence across the nx:edu platform, including premium logo placement, strategic session involvement, high-impact booth or activation opportunities, digital exposure, and curated audience engagement.",
+          "Premium visibility + session involvement",
+          "Inquire as Platinum Sponsor",
+          "Strong for banks, tech, telco, EdTech, FMCG, media."
+        ],
+        [
+          "Gold Sponsor",
+          "Show how your brand helps the future feel more possible.",
+          "Gold Sponsors can present solutions, initiatives, and commitments to the education ecosystem through selected visibility, booth presence, content opportunities, and program participation aligned with their audience and objectives.",
+          "Visibility + content + activation",
+          "Inquire as Gold Sponsor",
+          "Mid-high tier."
+        ],
+        [
+          "Silver Sponsor",
+          "Connect with the nx:edu audience through focused engagement.",
+          "Silver Sponsors gain brand exposure and selected engagement opportunities through event communication, booth or activation presence, and participation in relevant program areas.",
+          "Focused exposure",
+          "Inquire as Silver Sponsor",
+          "Focused tier."
+        ],
+        [
+          "Bronze Sponsor",
+          "Support future education and gain meaningful presence.",
+          "Bronze Sponsors support the nx:edu mission while gaining selected visibility and access to the platform’s education ecosystem audience.",
+          "Entry-level participation",
+          "Inquire as Bronze Sponsor",
+          "Entry tier."
+        ],
+        [
+          "Strategic Partner",
+          "Create long-term ecosystem impact.",
+          "Strategic Partners collaborate with nx:edu on knowledge exchange, ecosystem development, thought leadership, community programs, policy conversations, or other long-term initiatives that support education transformation in Indonesia.",
+          "Long-term collaboration",
+          "Become a Strategic Partner",
+          "Use for associations, government-adjacent institutions, NGOs, academia."
+        ],
+        [
+          "Community Partner",
+          "Bring real communities into the room.",
+          "Community Partners help connect students, educators, creators, youth networks, learning communities, esports communities, parent communities, and other relevant groups to the nx:edu platform.",
+          "Community reach and relevance",
+          "Become a Community Partner",
+          "Organic reach and authenticity."
+        ],
+        [
+          "Media Partner",
+          "Make the new classroom visible to the wider public.",
+          "Media Partners help broaden public understanding of education transformation by sharing nx:edu stories, insights, interviews, program updates, and future-focused content.",
+          "Public awareness + amplification",
+          "Become a Media Partner",
+          "Media value."
+        ],
+        [
+          "Partner Logo Section",
+          "Together with those building what comes after the classroom.",
+          "nx:edu is supported by organizations and communities that share a commitment to building a more connected, relevant, and future-facing education ecosystem.",
+          "Credibility proof",
+          "See Our Partners",
+          "Logo wall caption."
+        ]
+      ],
+      "formulas": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 6,
+      "name": "Microcopy & SEO",
+      "usedAddress": "A1:E20",
+      "values": [
+        [
+          "Category",
+          "Item",
+          "Recommended Copy",
+          "Alternative Copy",
+          "Notes"
+        ],
+        [
+          "Tagline",
+          "Master Tagline",
+          "At nx:edu, the classroom has left the classroom.",
+          "At nx:edu, the Classroom Has Left the Classroom.",
+          "Use sentence case on website for a modern editorial feel; use title case only for campaign visuals if preferred."
+        ],
+        [
+          "Hero",
+          "Hero H1 Option",
+          "At nx:edu, the classroom has left the classroom.",
+          "The classroom has left the classroom.",
+          "If using the brand name separately in logo lockup, the shorter version may look cleaner."
+        ],
+        [
+          "Hero",
+          "Hero Subline",
+          "A platform where students, parents, educators, industry, and future careers meet before the next generation chooses its path.",
+          "Where education meets the world beyond school.",
+          "Use the first for clarity; second for banners."
+        ],
+        [
+          "Hero CTA",
+          "Main CTA",
+          "Register Interest",
+          "Reserve Your Spot",
+          "Use if registration is not final."
+        ],
+        [
+          "Hero CTA",
+          "Secondary CTA",
+          "Explore the Platform",
+          "See What’s Inside",
+          "Good for first-time visitors."
+        ],
+        [
+          "Audience CTA",
+          "Segment CTA",
+          "Choose Your Path",
+          "Find What’s Relevant to You",
+          "Use near audience cards."
+        ],
+        [
+          "Partner CTA",
+          "Sponsor CTA",
+          "Become a Partner",
+          "Bring Your Brand Into nx:edu",
+          "Use partner page and footer."
+        ],
+        [
+          "Program CTA",
+          "Program CTA",
+          "Explore the Program Universe",
+          "View All Programs",
+          "More distinctive than generic program CTA."
+        ],
+        [
+          "Insights",
+          "Section Headline",
+          "Ideas for the new classroom.",
+          "Stories from beyond the classroom.",
+          "Use as editorial hub line."
+        ],
+        [
+          "Registration Form",
+          "Participant Category Label",
+          "I am joining nx:edu as a…",
+          "Choose your participant category",
+          "Dropdown: Student, Parent, Educator, School/University, Industry, Sponsor/Partner, Media, Community, Other."
+        ],
+        [
+          "Registration Form",
+          "Interest Area Label",
+          "What part of the new classroom are you most interested in?",
+          "Select your area of interest",
+          "Options: Summit, Future Careers, Parent Hub, AI & EdTech, University Showcase, Esports, Sponsorship, Media, Community."
+        ],
+        [
+          "Registration Confirmation",
+          "Success Message",
+          "Thank you for joining the nx:edu update list. We’ll share the next platform update with you soon.",
+          "You are now connected to nx:edu.",
+          "Use after form submission."
+        ],
+        [
+          "Footer",
+          "Footer Line",
+          "nx:edu brings education closer to the world students are preparing for.",
+          "The classroom has left the classroom. Welcome to nx:edu.",
+          "Footer brand reminder."
+        ],
+        [
+          "SEO",
+          "Homepage Meta Title",
+          "nx:edu | Future Education, Career & Innovation Platform in Indonesia",
+          "nx:edu | Where Education Meets the World Beyond School",
+          "Keep concise."
+        ],
+        [
+          "SEO",
+          "Homepage Meta Description",
+          "nx:edu connects students, parents, educators, institutions, industry, technology, finance, and communities to explore future education and career pathways in Indonesia.",
+          null,
+          "Use around 155–160 characters if possible."
+        ],
+        [
+          "SEO",
+          "Programs Meta Title",
+          "nx:edu Programs | Summit, Future Careers, AI, EdTech & Parent Hub",
+          null,
+          null
+        ],
+        [
+          "SEO",
+          "Partners Meta Title",
+          "Partner with nx:edu | Education Ecosystem Sponsorship & Collaboration",
+          null,
+          null
+        ],
+        [
+          "Social Bio",
+          "Instagram / LinkedIn Bio",
+          "The classroom has left the classroom. nx:edu connects education, parents, students, industry, technology, and future careers in Indonesia.",
+          "A future education ecosystem platform for students, parents, educators, industry, and partners.",
+          "Use across official channels."
+        ],
+        [
+          "Newsletter",
+          "Signup Headline",
+          "Stay close to the world beyond the classroom.",
+          "Get nx:edu insights in your inbox.",
+          "Editorial CTA."
+        ]
+      ],
+      "formulas": [
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 7,
+      "name": "CATATAN!",
+      "usedAddress": "A1:D11",
+      "values": [
+        [
+          "Area",
+          "Recommendation",
+          "Rationale",
+          "Execution Notes"
+        ],
+        [
+          "Homepage Visual Direction",
+          "Show the ‘classroom’ as a living ecosystem: students, parents, industry booths, speakers, demos, creators, universities, and technology—not a literal classroom.",
+          "The tagline should not be contradicted by conventional school imagery.",
+          "Avoid stock photos of empty classrooms, chalkboards, or generic graduation caps."
+        ],
+        [
+          "Information Architecture",
+          "Put audience pathways high on the homepage.",
+          "Students, parents, sponsors, and institutions have different needs. Segmentation increases relevance and conversion.",
+          "Use cards, filters, or ‘I am here as…’ entry points."
+        ],
+        [
+          "Copy Style",
+          "Use short, human sentences followed by clear benefit paragraphs.",
+          "The audience is broad and cross-sector. Overly abstract copy will lose people.",
+          "Avoid repeated ‘future-ready’ and ‘ecosystem’ unless grounded in specifics."
+        ],
+        [
+          "Tagline Consistency",
+          "Repeat the metaphor selectively, not everywhere.",
+          "Overuse can make the line feel gimmicky.",
+          "Use in hero, About intro, partner intro, and final CTA only."
+        ],
+        [
+          "Sponsor Conversion",
+          "Lead with role and relevance before benefits.",
+          "Sponsors need a strategic reason to participate beyond event visibility.",
+          "Use language like ‘a role in the room’ and ‘bring your brand into the new classroom.’"
+        ],
+        [
+          "Parent Conversion",
+          "Give parents practical reasons to care.",
+          "Parents are likely to respond to clarity, confidence, and their child’s future direction.",
+          "Highlight future careers, planning, financing, talent mapping, wellbeing."
+        ],
+        [
+          "Student Conversion",
+          "Make it feel like discovery, not counseling.",
+          "Youth audiences resist formal guidance language.",
+          "Use phrases like ‘more after school than one straight road.’"
+        ],
+        [
+          "SEO / Content",
+          "Build an Insights hub around future careers, parent guides, AI in education, EdTech, gaming careers, and education financing.",
+          "This creates search relevance and campaign longevity.",
+          "Each article can map to a stakeholder and CTA."
+        ],
+        [
+          "UX Priority",
+          "Make Register Interest and Become a Partner persistent but not aggressive.",
+          "The website has multiple conversion types.",
+          "Use sticky CTA on desktop; compact mobile CTA drawer."
+        ],
+        [
+          "Launch Content",
+          "Prepare 5–7 cornerstone articles before launch.",
+          "The tagline promises substance; the website should not feel empty.",
+          "Suggested articles: future career confusion, gaming careers beyond players, parent guide to AI, how universities can show relevance, education financing as future planning."
+        ]
+      ],
+      "formulas": [
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    }
+  ]
+}
