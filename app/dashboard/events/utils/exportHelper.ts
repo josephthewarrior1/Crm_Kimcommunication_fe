@@ -28,12 +28,6 @@ export const exportParticipantsToExcel = (
     fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_${activeTab === 'request' ? 'Request' : 'PreEvent'}_Report.xlsx`;
     
     dataToExport = filteredParticipants.map((p, index) => {
-      // Map Call Status label
-      let callLabel = 'Belum Telpon';
-      if (p.callStatus === 'CONNECTED') callLabel = 'Sudah Telpon';
-      else if (p.callStatus === 'NO_ANSWER') callLabel = 'Tidak Diangkat';
-      else if (p.callStatus === 'BUSY') callLabel = 'Sibuk';
-
       // Map Confirmation Status Label
       const confirmationLabels: Record<string, string> = {
         pending: 'Pending',
@@ -56,9 +50,6 @@ export const exportParticipantsToExcel = (
         'Mobile Phone': p.database.mobilePhone || '-',
         'Office Email': p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
         'Personal Email': p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
-        'Call Status': callLabel,
-        'WhatsApp Status': p.whatsappStatus === 'SENT' ? 'Sudah WhatsApp' : 'Belum WhatsApp',
-        'Email Status': p.emailStatus === 'SENT' ? 'Sudah Email' : 'Belum Email',
         'Tele Remarks': getStatusLabel(p.participantStatus),
         'Confirmation Status': confirmationLabel,
       };

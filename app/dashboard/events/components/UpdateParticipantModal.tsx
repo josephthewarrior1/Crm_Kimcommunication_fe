@@ -182,7 +182,11 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                 />
                 <datalist id="pic-list">
                   <option value="Admin" />
-                  {(usersList || []).map((u) => {
+                  {(usersList || []).filter(u => {
+                    const uname = (u.username || '').toLowerCase();
+                    const fname = (u.fullName || '').toLowerCase();
+                    return uname !== 'kevin' && !fname.includes('kevin');
+                  }).map((u) => {
                     const name = u.fullName || u.username;
                     return <option key={u.id} value={name} />;
                   })}
@@ -272,55 +276,6 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                   <option value="not_respond_8x">Not Respond 8x</option>
                   <option value="not_respond_9x">Not Respond 9x</option>
                   <option value="unable_to_attend">Unable Attend</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                  <Phone className="w-3 h-3 text-sky-500" />
-                  Call Status
-                </label>
-                <select
-                  value={updateCallStatusStr}
-                  onChange={(e) => setUpdateCallStatusStr(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                >
-                  <option value="NOT_CONTACTED">Belum Telpon</option>
-                  <option value="CONNECTED">Sudah Telpon</option>
-                  <option value="NO_ANSWER">Tidak Diangkat</option>
-                  <option value="BUSY">Sibuk</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                  <MessageSquare className="w-3 h-3 text-emerald-500" />
-                  WhatsApp Status
-                </label>
-                <select
-                  value={updateWhatsappStatusStr}
-                  onChange={(e) => setUpdateWhatsappStatusStr(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                >
-                  <option value="NOT_SENT">Belum WA</option>
-                  <option value="SENT">Sudah WA</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                  <Mail className="w-3 h-3 text-amber-500" />
-                  Email Status
-                </label>
-                <select
-                  value={updateEmailStatusStr}
-                  onChange={(e) => setUpdateEmailStatusStr(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                >
-                  <option value="NOT_SENT">Belum Email</option>
-                  <option value="SENT">Sudah Email</option>
                 </select>
               </div>
             </div>

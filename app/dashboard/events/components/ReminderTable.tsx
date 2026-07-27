@@ -232,15 +232,6 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               <td className="py-1.5 px-3 text-right whitespace-nowrap space-x-1">
                 {!isUser && (
                   <button
-                    onClick={() => handleOpenUpdateParticipantModal(p)}
-                    className="inline-flex p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-500 transition-all"
-                    title="Update Status"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {!isUser && (
-                  <button
                     onClick={() => openDeleteParticipantConfirm(p)}
                     className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
                     title="Remove Participant"

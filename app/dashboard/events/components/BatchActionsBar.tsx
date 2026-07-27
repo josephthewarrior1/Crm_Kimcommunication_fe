@@ -106,7 +106,11 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
                 className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer shadow-sm transition-all duration-200"
               >
                 <option value="">- Choose PIC -</option>
-                {usersList.map((u) => (
+                {usersList.filter(u => {
+                  const uname = (u.username || '').toLowerCase();
+                  const fname = (u.fullName || '').toLowerCase();
+                  return uname !== 'kevin' && !fname.includes('kevin');
+                }).map((u) => (
                   <option key={u.id} value={u.fullName || u.username}>
                     {u.fullName || u.username}
                   </option>

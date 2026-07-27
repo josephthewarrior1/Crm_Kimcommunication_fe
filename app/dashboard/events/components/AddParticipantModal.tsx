@@ -38,18 +38,25 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
 
   // Filter active databases not currently participants in the selected event
   const databasesNotInEvent = databases.filter(
-    (c) => !participants.some((p) => p.database.id === c.id)
+    (c) => !participants.some((p) => p.database && String(p.database.id) === String(c.id))
   );
 
   const visibleDatabases = databasesNotInEvent.filter((c) => {
     // 1. Search Query
     if (databaseSearch) {
-      const term = databaseSearch.toLowerCase();
-      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+      const term = databaseSearch.toLowerCase().trim();
+      const fn = c.firstName || '';
+      const ln = c.lastName || '';
+      const fullName = `${fn} ${ln}`.trim().toLowerCase();
       const companyName = c.company?.name?.toLowerCase() || '';
-      if (!fullName.includes(term) && !companyName.includes(term)) {
-        return false;
-      }
+      const jobTitle = c.jobTitle?.toLowerCase() || '';
+      const email = c.emails?.map(e => e.email.toLowerCase()).join(' ') || '';
+      const phone = c.mobilePhone || '';
+
+      const combinedText = `${fullName} ${fn} ${ln} ${companyName} ${jobTitle} ${email} ${phone}`.toLowerCase();
+      const words = term.split(/\s+/).filter(Boolean);
+      const matchesSearch = words.every(w => combinedText.includes(w));
+      if (!matchesSearch) return false;
     }
 
     // 2. Company filter
@@ -74,9 +81,36 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
 
     // 6. Event Participation history filter
     if (filterAddParticipantEventId) {
-      const isInvited = allEventParticipants.some(
-        (p) => p.database.id === c.id && p.event.id === Number(filterAddParticipantEventId)
-      );
+      const targetEvt = events.find(e => String(e.id) === String(filterAddParticipantEventId));
+      const targetEvtName = targetEvt?.name?.trim().toLowerCase();
+
+      const isInvited = allEventParticipants.some((p) => {
+        if (!p.database) return false;
+
+        // 1. Check if p belongs to target event (by ID, PMS ID, EMS ID, or Name)
+        const matchEvtId = p.event && (
+          String(p.event.id) === String(filterAddParticipantEventId) ||
+          (targetEvt?.pmsEventId && String(p.event.id) === String(targetEvt.pmsEventId)) ||
+          (targetEvt?.emsEventId && String(p.event.id) === String(targetEvt.emsEventId))
+        );
+        const matchEvtName = Boolean(targetEvtName && p.event?.name && p.event.name.trim().toLowerCase() === targetEvtName);
+
+        if (!matchEvtId && !matchEvtName) return false;
+
+        // 2. Check if p is the same database person as c (by DB ID, Email, or Phone)
+        const matchDbId = String(p.database.id) === String(c.id);
+        const matchEmail = Boolean(
+          p.database.emails?.some(e1 => 
+            c.emails?.some(e2 => e1.email && e2.email && e1.email.trim().toLowerCase() === e2.email.trim().toLowerCase())
+          )
+        );
+        const pPhone = (p.database.mobilePhone || '').replace(/\D/g, '');
+        const cPhone = (c.mobilePhone || '').replace(/\D/g, '');
+        const matchPhone = Boolean(pPhone && cPhone && pPhone.length > 5 && pPhone === cPhone);
+
+        return matchDbId || matchEmail || matchPhone;
+      });
+
       if (!isInvited) return false;
     }
 

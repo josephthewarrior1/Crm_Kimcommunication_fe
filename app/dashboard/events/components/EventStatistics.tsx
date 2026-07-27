@@ -407,6 +407,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               <p className="text-[11px] text-slate-555 font-medium">
                 {(() => {
                   const activePicsCount = usersList.filter((usr) => {
+                    const uname = (usr.username || '').toLowerCase();
+                    const fname = (usr.fullName || '').toLowerCase();
+                    if (uname === 'kevin' || fname.includes('kevin')) return false;
                     const name = usr.fullName || usr.username;
                     return participants.some(p => {
                       const pic = extractPicFromNotes(p.notes).pic;
@@ -464,20 +467,20 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         type="button"
                         onClick={() => setPicViewTab('report')}
                         className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          picViewTab === 'report' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+                          picViewTab === 'report' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        <History className="w-4 h-4 text-blue-400" />
+                        <History className="w-4 h-4 text-blue-100" />
                         <span>Daily Report (Telemarketing Logs)</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPicViewTab('participants')}
                         className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          picViewTab === 'participants' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+                          picViewTab === 'participants' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        <Users className="w-4 h-4 text-emerald-400" />
+                        <Users className="w-4 h-4 text-emerald-100" />
                         <span>Kelola Peserta ({participants.filter(p => {
                           const pic = extractPicFromNotes(p.notes).pic;
                           return pic.toLowerCase() === selectedPic.toLowerCase() || 
@@ -488,73 +491,61 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                     {picViewTab === 'report' ? (
                       /* Daily Telemarketing & Activity Report Bar */
-                      <div className="bg-slate-900 text-white rounded-2xl p-5 space-y-4 border border-slate-800 shadow-xl mb-2">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs mb-2">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg">
+                              <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
                                 <History className="w-4 h-4" />
                               </span>
-                              <h5 className="text-xs font-black uppercase tracking-wider text-white">
-                                Daily Telemarketing Report — <span className="text-blue-400">{selectedPic}</span>
+                              <h5 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                                Daily Telemarketing Report — <span className="text-blue-600">{selectedPic}</span>
                               </h5>
                             </div>
-                            <p className="text-[11px] text-slate-400 font-medium mt-1">
+                            <p className="text-[11px] text-slate-500 font-medium mt-1">
                               Laporan lengkap aktivitas telepon, WhatsApp, dan email yang dikerjakan oleh PIC {selectedPic}.
                             </p>
                           </div>
 
-                          {/* Date Range Presets */}
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleSetPreset('today')}
-                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${datePreset === 'today' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                          {/* Date Range Presets Dropdown */}
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={datePreset}
+                              onChange={(e) => {
+                                const val = e.target.value as 'today' | '7days' | '30days' | 'all';
+                                if (val !== 'custom') {
+                                  handleSetPreset(val);
+                                }
+                              }}
+                              className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs hover:bg-slate-50 transition-colors"
                             >
-                              Hari Ini (Today)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSetPreset('7days')}
-                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${datePreset === '7days' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
-                            >
-                              7 Hari Terakhir
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSetPreset('30days')}
-                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${datePreset === '30days' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
-                            >
-                              30 Hari
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSetPreset('all')}
-                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${datePreset === 'all' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
-                            >
-                              Semua
-                            </button>
+                              <option value="today">Hari Ini (Today)</option>
+                              <option value="7days">7 Hari Terakhir</option>
+                              <option value="30days">30 Hari Terakhir</option>
+                              <option value="all">Semua Periode</option>
+                              {datePreset === 'custom' && <option value="custom">Custom Date</option>}
+                            </select>
                           </div>
                         </div>
 
                         {/* Custom Date Pickers & Metrics */}
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs">
-                          <div className="flex items-center gap-2 flex-wrap bg-slate-800/60 p-2 rounded-xl border border-slate-700/50">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Filter Date:</span>
+                          <div className="flex items-center gap-1.5 flex-nowrap bg-white px-2.5 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs shrink-0">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Filter Date:</span>
                             <input
                               type="date"
                               value={startDate}
                               onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); }}
-                              className="bg-slate-900 border border-slate-700 text-white px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-blue-500 cursor-pointer font-mono"
+                              className="bg-slate-50 border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg text-xs focus:outline-none focus:border-blue-500 cursor-pointer font-mono shrink-0"
                             />
-                            <span className="text-slate-500 font-bold">s/d</span>
+                            <span className="text-slate-400 font-bold text-[11px] shrink-0">s/d</span>
                             <input
                               type="date"
                               value={endDate}
                               onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); }}
-                              className="bg-slate-900 border border-slate-700 text-white px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-blue-500 cursor-pointer font-mono"
+                              className="bg-slate-50 border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg text-xs focus:outline-none focus:border-blue-500 cursor-pointer font-mono shrink-0"
                             />
-                            {loadingReport && <Loader2 className="w-4 h-4 animate-spin text-blue-400" />}
+                            {loadingReport && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />}
                           </div>
 
                           {/* Activity Metrics Badges */}
@@ -566,22 +557,22 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                             return (
                               <div className="flex items-center gap-2.5 flex-wrap">
-                                <div className="bg-blue-500/10 border border-blue-500/30 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                  <Phone className="w-4 h-4 text-blue-400" />
-                                  <span className="text-[11px] text-slate-300 font-semibold">Telepon:</span>
-                                  <strong className="text-base font-black text-blue-400">{callsCount}</strong>
+                                <div className="bg-blue-50/80 border border-blue-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                  <Phone className="w-4 h-4 text-blue-600" />
+                                  <span className="text-[11px] text-slate-600 font-semibold">Telepon:</span>
+                                  <strong className="text-base font-black text-blue-700">{callsCount}</strong>
                                 </div>
-                                <div className="bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                  <MessageSquare className="w-4 h-4 text-emerald-400" />
-                                  <span className="text-[11px] text-slate-300 font-semibold">WhatsApp:</span>
-                                  <strong className="text-base font-black text-emerald-400">{waCount}</strong>
+                                <div className="bg-emerald-50/80 border border-emerald-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                                  <span className="text-[11px] text-slate-600 font-semibold">WhatsApp:</span>
+                                  <strong className="text-base font-black text-emerald-700">{waCount}</strong>
                                 </div>
-                                <div className="bg-purple-500/10 border border-purple-500/30 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                  <Mail className="w-4 h-4 text-purple-400" />
-                                  <span className="text-[11px] text-slate-300 font-semibold">Email:</span>
-                                  <strong className="text-base font-black text-purple-400">{emailCount}</strong>
+                                <div className="bg-purple-50/80 border border-purple-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                  <Mail className="w-4 h-4 text-purple-600" />
+                                  <span className="text-[11px] text-slate-600 font-semibold">Email:</span>
+                                  <strong className="text-base font-black text-purple-700">{emailCount}</strong>
                                 </div>
-                                <div className="bg-blue-600 px-4 py-1.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-blue-600/30">
+                                <div className="bg-blue-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-2 font-bold shadow-2xs">
                                   <span className="text-[11px] text-white/90">Total Activity:</span>
                                   <strong className="text-base font-black text-white">{totalActivities}</strong>
                                 </div>
@@ -593,13 +584,13 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         {/* Activity History Stream Details */}
                         <div className="pt-2">
                           <div className="flex justify-between items-center mb-2">
-                            <h6 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <h6 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                               <span>Riwayat Log Telemarketing Dalam Periode Ini ({filteredPicActivities.length})</span>
                             </h6>
                           </div>
 
                           {filteredPicActivities.length === 0 ? (
-                            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4 text-center">
+                            <div className="bg-white border border-slate-200/80 rounded-xl p-4 text-center">
                               <p className="text-xs text-slate-400 italic">Belum ada aktivitas telepon, WA, atau email yang tercatat pada periode ini.</p>
                             </div>
                           ) : (
@@ -619,12 +610,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 }
 
                                 return (
-                                  <div key={act.id} className="bg-slate-800/70 border border-slate-700/70 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-600 transition-colors">
+                                  <div key={act.id} className="bg-white border border-slate-200/80 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-300 shadow-2xs transition-colors">
                                     <div className="flex items-start gap-3 min-w-0">
                                       <div className={`p-2 rounded-xl shrink-0 ${
-                                        type === 'CALL' ? 'bg-blue-500/20 text-blue-400' :
-                                        type === 'WHATSAPP' ? 'bg-emerald-500/20 text-emerald-400' :
-                                        'bg-purple-500/20 text-purple-400'
+                                        type === 'CALL' ? 'bg-blue-50 text-blue-600' :
+                                        type === 'WHATSAPP' ? 'bg-emerald-50 text-emerald-600' :
+                                        'bg-purple-50 text-purple-600'
                                       }`}>
                                         {type === 'CALL' && <Phone className="w-4 h-4" />}
                                         {type === 'WHATSAPP' && <MessageSquare className="w-4 h-4" />}
@@ -634,37 +625,37 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <span className={`text-[9px] font-black px-2 py-0.5 rounded-md tracking-wider ${
-                                            type === 'CALL' ? 'bg-blue-500/30 text-blue-300' :
-                                            type === 'WHATSAPP' ? 'bg-emerald-500/30 text-emerald-300' :
-                                            'bg-purple-500/30 text-purple-300'
+                                            type === 'CALL' ? 'bg-blue-100 text-blue-700' :
+                                            type === 'WHATSAPP' ? 'bg-emerald-100 text-emerald-700' :
+                                            'bg-purple-100 text-purple-700'
                                           }`}>
                                             {type}
                                           </span>
-                                          <h6 className="text-xs font-bold text-white truncate">
+                                          <h6 className="text-xs font-bold text-slate-900 truncate">
                                             {targetName || 'Peserta Event'}
                                           </h6>
                                           {targetCompany && (
-                                            <span className="text-[10px] text-slate-400 font-medium truncate">
+                                            <span className="text-[10px] text-slate-500 font-medium truncate">
                                               • {targetCompany}
                                             </span>
                                           )}
                                           {targetPhone && (
-                                            <span className="text-[10px] text-slate-400 font-mono">
+                                            <span className="text-[10px] text-slate-500 font-mono">
                                               ({targetPhone})
                                             </span>
                                           )}
                                         </div>
-                                        <p className="text-[11px] text-slate-300 mt-1 italic bg-slate-900/50 p-1.5 rounded-lg border border-slate-800/60">
+                                        <p className="text-[11px] text-slate-600 mt-1 italic bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
                                           "{act.notes || 'Activity logged'}"
                                         </p>
                                       </div>
                                     </div>
 
                                     <div className="text-right shrink-0 self-end sm:self-center">
-                                      <span className="text-[10px] text-slate-400 font-mono block">
+                                      <span className="text-[10px] text-slate-500 font-mono block">
                                         {timeStr}
                                       </span>
-                                      <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block mt-0.5 border border-emerald-500/20">
+                                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-0.5 border border-emerald-200/80">
                                         {act.status || 'COMPLETED'}
                                       </span>
                                     </div>
@@ -885,7 +876,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 title: "Konfirmasi Bagi Rata Sisa",
                                 description: `Apakah Anda yakin ingin membagi ${unassigned.length} peserta sisa (belum ada PIC) ke seluruh PIC secara merata?`,
                                 onConfirm: async () => {
-                                  const targetPics = usersList.length > 0 ? usersList : [{ username: adminName, fullName: adminName }];
+                                  const eligibleUsers = usersList.filter(u => {
+                                    const uname = (u.username || '').toLowerCase();
+                                    const fname = (u.fullName || '').toLowerCase();
+                                    return uname !== 'kevin' && !fname.includes('kevin');
+                                  });
+                                  const targetPics = eligibleUsers.length > 0 ? eligibleUsers : [{ username: adminName, fullName: adminName }];
                                   const groupings: { [picName: string]: number[] } = {};
                                   targetPics.forEach(u => groupings[u.fullName || u.username] = []);
                                   unassigned.forEach((lead, idx) => {
@@ -911,7 +907,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 title: "Peringatan Bagi Ulang Semua",
                                 description: `PERINGATAN: Apakah Anda yakin ingin membagi ulang SEMUA ${participants.length} peserta secara merata? Tindakan ini akan mengocok ulang alokasi PIC.`,
                                 onConfirm: async () => {
-                                  const targetPics = usersList.length > 0 ? usersList : [{ username: adminName, fullName: adminName }];
+                                  const eligibleUsers = usersList.filter(u => {
+                                    const uname = (u.username || '').toLowerCase();
+                                    const fname = (u.fullName || '').toLowerCase();
+                                    return uname !== 'kevin' && !fname.includes('kevin');
+                                  });
+                                  const targetPics = eligibleUsers.length > 0 ? eligibleUsers : [{ username: adminName, fullName: adminName }];
                                   const groupings: { [picName: string]: number[] } = {};
                                   targetPics.forEach(u => groupings[u.fullName || u.username] = []);
                                   participants.forEach((lead, idx) => {
@@ -935,7 +936,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                     {/* Allocation Balance Stacked Bar */}
                     {(() => {
-                      const activePics = usersList.map((usr) => {
+                      const activePics = usersList.filter(usr => {
+                        const uname = (usr.username || '').toLowerCase();
+                        const fname = (usr.fullName || '').toLowerCase();
+                        return uname !== 'kevin' && !fname.includes('kevin');
+                      }).map((usr) => {
                         const name = usr.fullName || usr.username;
                         const count = participants.filter(p => {
                           const pic = extractPicFromNotes(p.notes).pic;
@@ -1014,7 +1019,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             return !isMatched;
                           }).map(p => p.id);
 
-                          const activePics = usersList.map((usr) => {
+                          const activePics = usersList.filter(usr => {
+                            const uname = (usr.username || '').toLowerCase();
+                            const fname = (usr.fullName || '').toLowerCase();
+                            return uname !== 'kevin' && !fname.includes('kevin');
+                          }).map((usr) => {
                             const name = usr.fullName || usr.username;
                             
                             const picParticipants = participants.filter(p => {

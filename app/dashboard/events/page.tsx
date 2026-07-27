@@ -831,7 +831,7 @@ export default function EventsPage() {
       setActiveParticipant(null);
       
       // Reload participants
-      handleSelectEvent(selectedEvent);
+      await loadParticipantsForEvent(selectedEvent);
     } catch (err: any) {
       toast.error(err.message || 'Failed to update lead');
     } finally {
@@ -1076,11 +1076,19 @@ export default function EventsPage() {
 
     // 1. General search query
     if (participantSearchQuery) {
-      const term = participantSearchQuery.toLowerCase();
-      const fullName = `${l.database.firstName} ${l.database.lastName}`.toLowerCase();
-      const companyName = l.database.company?.name?.toLowerCase() || '';
-      const jobTitle = l.database.jobTitle?.toLowerCase() || '';
-      const matchesSearch = fullName.includes(term) || companyName.includes(term) || jobTitle.includes(term);
+      const term = participantSearchQuery.toLowerCase().trim();
+      const fn = l.database?.firstName || '';
+      const ln = l.database?.lastName || '';
+      const fullName = `${fn} ${ln}`.trim().toLowerCase();
+      const companyName = l.database?.company?.name?.toLowerCase() || '';
+      const jobTitle = l.database?.jobTitle?.toLowerCase() || '';
+      const email = l.database?.emails?.map(e => e.email.toLowerCase()).join(' ') || '';
+      const mobilePhone = l.database?.mobilePhone || '';
+      const officePhone = l.database?.company?.officePhone || '';
+
+      const combinedText = `${fullName} ${fn} ${ln} ${companyName} ${jobTitle} ${email} ${mobilePhone} ${officePhone}`.toLowerCase();
+      const words = term.split(/\s+/).filter(Boolean);
+      const matchesSearch = words.every(w => combinedText.includes(w));
       if (!matchesSearch) return false;
     }
 
@@ -1749,10 +1757,9 @@ export default function EventsPage() {
         }}
         participant={selectedEngagementParticipant}
         onActivityLogged={() => {
-          if (selectedEvent) loadParticipantsForEvent(selectedEvent, activeTab);
+          if (selectedEvent) loadParticipantsForEvent(selectedEvent);
         }}
       />
     </div>
   );
 }
-

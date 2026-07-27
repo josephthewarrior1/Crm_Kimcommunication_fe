@@ -44,8 +44,6 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
   const hasActiveFilters =
     searchQuery ||
     filterCompany ||
-    filterPosition ||
-    filterIndustry ||
     filterConfirmationStatus ||
     filterPic;
 
@@ -75,7 +73,7 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
       </div>
 
       {/* Row 2: Grid Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 pt-3 border-t border-slate-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-3 border-t border-slate-100">
         <div>
           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Filter by Company</label>
           <select
@@ -90,46 +88,20 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
           </select>
         </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Position Level</label>
-          <select
-            value={filterPosition}
-            onChange={(e) => setFilterPosition(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
-          >
-            <option value="">All Levels</option>
-            {Array.from(new Set(participants.map(p => p.database.positionLevel).filter(Boolean))).sort().map((lvl) => (
-              <option key={lvl} value={lvl}>{lvl}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Industry</label>
-          <select
-            value={filterIndustry}
-            onChange={(e) => setFilterIndustry(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
-          >
-            <option value="">All Industries</option>
-            {Array.from(new Set(participants.map(p => p.database.company?.industry).filter(Boolean))).sort().map((ind) => (
-              <option key={ind} value={ind}>{ind}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Registration Status</label>
-          <select
-            value={filterConfirmationStatus}
-            onChange={(e) => setFilterConfirmationStatus(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300 font-semibold"
-          >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approve">Approve</option>
-          </select>
-        </div>
+        {activeTab === 'pre_event' && (
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Registration Status</label>
+            <select
+              value={filterConfirmationStatus}
+              onChange={(e) => setFilterConfirmationStatus(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300 font-semibold"
+            >
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approve">Approve</option>
+            </select>
+          </div>
+        )}
 
         {isAdmin && activeTab !== 'request' && (
           <div>
@@ -140,7 +112,11 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
               className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
             >
               <option value="">All PICs</option>
-              {usersList.map((user) => {
+              {usersList.filter(user => {
+                const uname = (user.username || '').toLowerCase();
+                const fname = (user.fullName || '').toLowerCase();
+                return uname !== 'kevin' && !fname.includes('kevin');
+              }).map((user) => {
                 const name = user.fullName || user.username;
                 return <option key={user.id} value={name}>{name}</option>;
               })}
