@@ -1251,7 +1251,11 @@ export default function EventsPage() {
                     (l.event.name && evt.name && l.event.name.trim().toLowerCase() === evt.name.trim().toLowerCase())
                   )
                 );
-                const registeredCount = eventParticipants.filter(p => p.participantStatus === 'registered' || p.participantStatus === 'green').length;
+                const registeredCount = eventParticipants.filter(p => {
+                  const ps = (p.participantStatus || '').toLowerCase();
+                  const att = (p.attendanceStatus || '').toLowerCase();
+                  return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
+                }).length;
                 const onLocationCount = eventParticipants.filter(p => p.reminderHariH === 'on_location' || p.attendanceStatus?.toLowerCase() === 'attended').length;
                 const target = evt.targetParticipants || 0;
                 const isAchieved = target > 0 && onLocationCount >= target;

@@ -53,6 +53,58 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   const [activitiesReport, setActivitiesReport] = React.useState<any[]>([]);
   const [loadingReport, setLoadingReport] = React.useState(false);
 
+  // Auto Split Selected PICs States
+  const [isSplitModalOpen, setIsSplitModalOpen] = React.useState(false);
+  const [selectedSplitPics, setSelectedSplitPics] = React.useState<string[]>([]);
+  const [splitMode, setSplitMode] = React.useState<'all' | 'unassigned'>('all');
+
+  const toggleSplitPic = (picName: string) => {
+    setSelectedSplitPics(prev => 
+      prev.includes(picName) ? prev.filter(p => p !== picName) : [...prev, picName]
+    );
+  };
+
+  const handleExecuteSplitSelected = async () => {
+    if (selectedSplitPics.length === 0) {
+      toast.error('Silakan pilih minimal 1 PIC untuk pembagian peserta');
+      return;
+    }
+
+    let targetList = participants;
+    if (splitMode === 'unassigned') {
+      targetList = participants.filter(p => {
+        const notes = p.notes || '';
+        if (!notes.includes('[PIC:')) return true;
+        const picName = extractPicFromNotes(notes).pic;
+        return !picName || picName.trim() === '' || picName.toLowerCase() === 'not set';
+      });
+    }
+
+    if (targetList.length === 0) {
+      toast.info('Tidak ada peserta yang memenuhi kriteria pembagian');
+      return;
+    }
+
+    const groupings: { [picName: string]: number[] } = {};
+    selectedSplitPics.forEach(pic => groupings[pic] = []);
+
+    targetList.forEach((p, idx) => {
+      const assignedPic = selectedSplitPics[idx % selectedSplitPics.length];
+      groupings[assignedPic].push(p.id);
+    });
+
+    if (onAssignPic) {
+      for (const picName of Object.keys(groupings)) {
+        if (groupings[picName].length > 0) {
+          await onAssignPic(groupings[picName], picName);
+        }
+      }
+    }
+
+    toast.success(`Berhasil membagi rata ${targetList.length} peserta ke ${selectedSplitPics.length} PIC terpilih (${selectedSplitPics.join(', ')})!`);
+    setIsSplitModalOpen(false);
+  };
+
   React.useEffect(() => {
     if (selectedPic && eventId) {
       loadActivitiesReport();
@@ -162,7 +214,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Register</span>
                   <span className="text-xl font-extrabold text-emerald-900">
-                    {participants.filter(p => p.participantStatus === 'registered' || p.participantStatus === 'green').length}
+                    {participants.filter(p => {
+                      const ps = (p.participantStatus || '').toLowerCase();
+                      const att = (p.attendanceStatus || '').toLowerCase();
+                      return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
+                    }).length}
                   </span>
                 </div>
               </div>
@@ -293,7 +349,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Approved Register Total</span>
                   <span className="text-xl font-extrabold text-blue-900">
-                    {participants.filter(p => p.confirmationStatus === 'approve' && (p.participantStatus === 'registered' || p.participantStatus === 'green')).length}
+                    {participants.filter(p => {
+                      const ps = (p.participantStatus || '').toLowerCase();
+                      const att = (p.attendanceStatus || '').toLowerCase();
+                      const conf = (p.confirmationStatus || '').toLowerCase();
+                      const isConfApprove = conf === 'approve' || conf === 'confirmed';
+                      const isReg = ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
+                      return isConfApprove && isReg;
+                    }).length}
                   </span>
                 </div>
               </div>
@@ -928,6 +991,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           >
                             Bagi Ulang Semua Peserta
                           </button>
+                          <button
+                            onClick={() => setIsSplitModalOpen(true)}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black transition-all duration-150 shadow-sm flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>⚡ Auto Split PIC Event</span>
+                          </button>
                         </div>
                       </div>
                     )}
@@ -1205,6 +1274,119 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
           </AlertDialogContent>
         </AlertDialog>
       )}
+      {/* Auto Split Selected PICs Dialog Modal */}
+      <Dialog open={isSplitModalOpen} onOpenChange={setIsSplitModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white p-6 rounded-2xl border border-slate-200 text-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+              <span>⚡ Auto Split PIC Event</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium mt-1">
+              Pilih PIC mana saja yang akan menangani event ini. Sistem akan membagi rata peserta ke PIC terpilih secara otomatis.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-slate-700">
+                  Pilih Tim PIC Bertugas ({selectedSplitPics.length} Terpilih)
+                </label>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allEligible = usersList.filter(u => {
+                        const uname = (u.username || '').toLowerCase();
+                        const fname = (u.fullName || '').toLowerCase();
+                        return uname !== 'kevin' && !fname.includes('kevin');
+                      }).map(u => u.fullName || u.username);
+                      setSelectedSplitPics(allEligible);
+                    }}
+                    className="text-blue-600 font-bold hover:underline cursor-pointer"
+                  >
+                    Pilih Semua
+                  </button>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSplitPics([])}
+                    className="text-slate-500 font-bold hover:underline cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-2.5 space-y-1.5 bg-slate-50/50">
+                {usersList.filter(u => {
+                  const uname = (u.username || '').toLowerCase();
+                  const fname = (u.fullName || '').toLowerCase();
+                  return uname !== 'kevin' && !fname.includes('kevin');
+                }).map(u => {
+                  const name = u.fullName || u.username;
+                  const isChecked = selectedSplitPics.includes(name);
+                  return (
+                    <label
+                      key={u.id}
+                      className={`flex items-center justify-between p-2 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${
+                        isChecked
+                          ? 'bg-blue-50/80 text-blue-900 border-blue-200 shadow-2xs'
+                          : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100/60'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSplitPic(name)}
+                          className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span>{name}</span>
+                      </span>
+                      {isChecked && (
+                        <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md">
+                          PIC Event
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Target Peserta Yang Dibagi</label>
+              <select
+                value={splitMode}
+                onChange={(e) => setSplitMode(e.target.value as 'all' | 'unassigned')}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value="all">Bagi Seluruh Peserta Event ({participants.length} pax)</option>
+                <option value="unassigned">Hanya Bagi Peserta Sisa / Belum Ada PIC</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsSplitModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteSplitSelected}
+                disabled={selectedSplitPics.length === 0}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
+              >
+                Jalankan Auto Split ({selectedSplitPics.length} PIC)
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
