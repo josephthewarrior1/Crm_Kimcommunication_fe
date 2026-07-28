@@ -348,12 +348,6 @@ export default function EventsPage() {
       setIsEditEventModalOpen(false);
       setEditingEvent(null);
       setSelectedEvent(updated);
-
-      if (updated.emsEventId && updated.emsEventId > 0) {
-        toast.info('Menyinkronkan data peserta dari EMS...');
-        await crmService.syncEmsParticipants(updated.id).catch((e) => console.error('Auto EMS sync after edit error:', e));
-      }
-
       await loadParticipantsForEvent(updated);
       loadData();
     } catch (err: any) {
@@ -400,18 +394,6 @@ export default function EventsPage() {
       setActiveTab(targetTab);
     }
     try {
-      // ponytail: auto-sync EMS participants with toast pop-up notification whenever opening event detail
-      if (event.emsEventId && event.emsEventId > 0) {
-        toast.info('Menyinkronkan data peserta dari EMS...');
-        const res = await crmService.syncEmsParticipants(event.id).catch((e) => {
-          console.error('Auto EMS sync on event open error:', e);
-          return null;
-        });
-        if (res && res.count > 0) {
-          toast.success(`Berhasil menyinkronkan ${res.count} peserta dari EMS!`);
-        }
-      }
-
       const allParticipants = await crmService.getEventParticipants();
       setAllEventParticipants(allParticipants);
       const filteredParticipants = allParticipants.filter((l) => 
@@ -1038,6 +1020,43 @@ export default function EventsPage() {
     }
   };
 
+  const handleFlagAsTikus = async (p: EventParticipant) => {
+    try {
+      if (!p.database) return;
+      await crmService.createFlaggedIdentity({
+        nameUsed: `${p.database.firstName} ${p.database.lastName || ''}`.trim(),
+        phoneUsed: p.database.mobilePhone || '',
+        flagReason: 'multiple_identity',
+        status: 'confirmed',
+        database: p.database,
+        event: selectedEvent || undefined
+      });
+      await crmService.updateParticipantStatus(
+        p.id,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'decline'
+      );
+      toast.success(`Peserta ${p.database.firstName} berhasil ditandai sebagai Tikus & dipindahkan ke Declined`);
+      await loadData();
+    } catch (err: any) {
+      toast.error('Gagal menandai peserta sebagai Tikus');
+    }
+  };
+
 
 
   // Filter events based on search and viewer allowed permissions
@@ -1080,9 +1099,15 @@ export default function EventsPage() {
       if (confStatus !== 'decline' && confStatus !== 'declined') {
         return false;
       }
-    } else if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
-      // Reminder & Reminder Dday tabs: All approved participants
+    } else if (activeTab === 'reminder') {
+      // Reminder tab: All approved participants
       if (confStatus !== 'approve' && confStatus !== 'confirmed') {
+        return false;
+      }
+    } else if (activeTab === 'reminder_dday') {
+      // Reminder Dday tab: All approved participants + anyone who physically checked in / on location
+      const isOnLocation = attStatus === 'attended' || l.reminderHariH === 'on_location';
+      if (!isOnLocation && confStatus !== 'approve' && confStatus !== 'confirmed') {
         return false;
       }
     }
@@ -1862,6 +1887,7 @@ export default function EventsPage() {
           usersList={usersList}
           onSubmit={handleUpdateParticipantStatus}
           submittingParticipantUpdate={submittingParticipantUpdate}
+          onFlagAsTikus={handleFlagAsTikus}
         />
       )}
 

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
-import { AlertCircle, Edit2, Trash2, History } from 'lucide-react';
+import { AlertCircle, Edit2, Trash2, History, ShieldAlert } from 'lucide-react';
 import { extractPicFromNotes } from '../utils/notesHelper';
 
 interface ReminderTableProps {
@@ -105,36 +105,56 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {filteredParticipants.map((p) => (
-            <tr key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
-              <td className="py-1.5 px-2 text-center">
-                {checkDatabaseCompleteness(p.database).isIncomplete && (
-                  <span
-                    className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                    title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(p.database).missingFields.join("\n• ")}`}
-                  >
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                  </span>
-                )}
-              </td>
-              <td className="py-1.5 px-2 text-center">
-                <input
-                  type="checkbox"
-                  disabled={isUser}
-                  checked={selectedParticipantIds.includes(p.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedParticipantIds([...selectedParticipantIds, p.id]);
-                    } else {
-                      setSelectedParticipantIds(selectedParticipantIds.filter((id) => id !== p.id));
-                    }
-                  }}
-                  className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
-                />
-              </td>
-              <td className="py-1.5 px-3 font-semibold text-slate-700">
-                {p.database.company?.name || <span className="text-slate-400">-</span>}
-              </td>
+          {filteredParticipants.map((p) => {
+            const isTikusOrDeclined = !p.database?.isActive || p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
+            return (
+              <tr
+                key={p.id}
+                className={`transition-colors border-b border-slate-100 ${
+                  isTikusOrDeclined
+                    ? 'bg-red-50/70 hover:bg-red-100/70'
+                    : 'hover:bg-slate-50/50'
+                }`}
+              >
+                <td className="py-1.5 px-2 text-center">
+                  {checkDatabaseCompleteness(p.database).isIncomplete && (
+                    <span
+                      className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
+                      title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(p.database).missingFields.join("\n• ")}`}
+                    >
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    </span>
+                  )}
+                </td>
+                <td className="py-1.5 px-2 text-center">
+                  <input
+                    type="checkbox"
+                    disabled={isUser}
+                    checked={selectedParticipantIds.includes(p.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedParticipantIds([...selectedParticipantIds, p.id]);
+                      } else {
+                        setSelectedParticipantIds(selectedParticipantIds.filter((id) => id !== p.id));
+                      }
+                    }}
+                    className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
+                  />
+                </td>
+                <td className="py-1.5 px-3 font-semibold text-slate-700">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span>{p.database.company?.name || <span className="text-slate-400">-</span>}</span>
+                    {isTikusOrDeclined && (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-red-100/90 border border-red-200 text-red-700 rounded-md shrink-0 cursor-help shadow-2xs"
+                        title="PERINGATAN: Peserta ini terdaftar sebagai Tikus!"
+                      >
+                        <ShieldAlert className="w-3 h-3 text-red-600 shrink-0" />
+                        TIKUS
+                      </span>
+                    )}
+                  </div>
+                </td>
               <td className="py-1.5 px-3 text-slate-500">
                 {p.database.salutation || '-'}
               </td>
@@ -254,7 +274,8 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 )}
               </td>
             </tr>
-          ))}
+          );
+        })}
         </tbody>
       </table>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2, Users } from 'lucide-react';
+import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2, Users, ShieldAlert } from 'lucide-react';
 import { EventParticipant, AppUser } from '../../../../lib/types';
 import { extractPicFromNotes } from '../utils/notesHelper';
 
@@ -22,6 +22,7 @@ interface UpdateParticipantModalProps {
     confirmationStatus: string;
   }) => Promise<void>;
   submittingParticipantUpdate: boolean;
+  onFlagAsTikus?: (participant: EventParticipant) => void;
 }
 
 export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
@@ -30,7 +31,8 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   activeParticipant,
   usersList,
   onSubmit,
-  submittingParticipantUpdate
+  submittingParticipantUpdate,
+  onFlagAsTikus
 }) => {
   const [updateParticipantStatusStr, setUpdateParticipantStatusStr] = useState('white');
   const [updateConfirmationStatusStr, setUpdateConfirmationStatusStr] = useState('pending');
@@ -43,9 +45,11 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   const [updateEmailStatusStr, setUpdateEmailStatusStr] = useState('NOT_SENT');
   const [updateParticipantNotes, setUpdateParticipantNotes] = useState('');
   const [updatePic, setUpdatePic] = useState('Admin');
+  const [showFlagConfirm, setShowFlagConfirm] = useState(false);
 
   useEffect(() => {
     if (activeParticipant) {
+      setShowFlagConfirm(false);
       setUpdateParticipantStatusStr(activeParticipant.participantStatus);
       setUpdateConfirmationStatusStr(activeParticipant.confirmationStatus || 'pending');
       setUpdateReminderH7(activeParticipant.reminderH7 || '');
@@ -294,11 +298,46 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               />
             </div>
 
-            <div className="flex gap-3 justify-end pt-3 border-t border-slate-100 mt-4">
+            <div className="flex gap-3 justify-between items-center pt-3 border-t border-slate-100 mt-4">
+              {onFlagAsTikus ? (
+                showFlagConfirm ? (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-1.5 px-3 animate-in fade-in duration-200">
+                    <ShieldAlert className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                    <span className="text-[11px] font-bold text-red-700">Yakin tandai sebagai Tikus?</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onFlagAsTikus(activeParticipant);
+                        onClose();
+                      }}
+                      className="px-2.5 py-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-[10px] font-bold rounded-lg transition-all shadow-xs cursor-pointer"
+                    >
+                      Ya, Flag Tikus
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowFlagConfirm(false)}
+                      className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowFlagConfirm(true)}
+                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    Tandain Tikus (Report Spam)
+                  </button>
+                )
+              ) : <div />}
+
               <button
                 type="submit"
                 disabled={submittingParticipantUpdate}
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all disabled:opacity-50"
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all disabled:opacity-50 shadow-sm cursor-pointer"
               >
                 {submittingParticipantUpdate ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                 Save Qualification Info
