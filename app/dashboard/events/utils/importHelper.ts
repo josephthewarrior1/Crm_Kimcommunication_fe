@@ -45,15 +45,23 @@ export const importParticipantsFromExcel = async (
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const firstName = String(row['First Name'] || '').trim();
-    const lastName = String(row['Last Name'] || '').trim();
+    let firstName = String(row['First Name'] || row['FirstName'] || row['First_Name'] || row['Nama Depan'] || row['Name'] || row['Nama'] || '').trim();
+    let lastName = String(row['Last Name'] || row['LastName'] || row['Last_Name'] || row['Nama Belakang'] || '').trim();
     
-    if (!firstName || !lastName) {
+    if (!firstName && !lastName) {
       errorCount++;
       continue;
     }
 
-    const companyNameRaw = String(row['Company Name'] || '').trim();
+    if (!lastName && firstName.includes(' ')) {
+      const parts = firstName.split(/\s+/);
+      firstName = parts[0];
+      lastName = parts.slice(1).join(' ');
+    } else if (!lastName) {
+      lastName = '-';
+    }
+
+    const companyNameRaw = String(row['Company Name'] || row['CompanyName'] || row['Company'] || row['Perusahaan'] || '').trim();
     
     try {
       let resolvedCompanyId: number | undefined = undefined;
@@ -66,7 +74,7 @@ export const importParticipantsFromExcel = async (
         }
         
         const existingCompany = allCompanies.find((c: any) => 
-          c.name.toLowerCase().trim() === companyName.toLowerCase().trim()
+          c.name && c.name.toLowerCase().trim() === companyName.toLowerCase().trim()
         );
 
         if (existingCompany) {
@@ -74,15 +82,15 @@ export const importParticipantsFromExcel = async (
         } else {
           const newCompany = await crmService.createCompany({
             name: companyName,
-            brandName: String(row['Nama Brand'] || '').trim() || undefined,
-            address: String(row['Address'] || '').trim() || undefined,
-            officePhone: String(row['Office Phone'] || '').trim() || undefined,
-            website: String(row['Company Website'] || '').trim() || undefined,
-            industry: String(row['Industry'] || '').trim() || undefined,
+            brandName: String(row['Nama Brand'] || row['Brand Name'] || row['Brand'] || '').trim() || undefined,
+            address: String(row['Address'] || row['Alamat'] || '').trim() || undefined,
+            officePhone: String(row['Office Phone'] || row['Telepon Kantor'] || '').trim() || undefined,
+            website: String(row['Company Website'] || row['Website'] || '').trim() || undefined,
+            industry: String(row['Industry'] || row['Industri'] || '').trim() || undefined,
             companySizeRevenue: String(row['Company Size (Revenue)'] || '').trim() || undefined,
             companySizeEmployee: String(row['Company Size (Employee)'] || '').trim() || undefined,
             companyHardware: String(row['Company Hardware'] || '').trim() || undefined,
-            city: String(row['City'] || '').trim() || undefined
+            city: String(row['City'] || row['Kota'] || '').trim() || undefined
           });
           resolvedCompanyId = newCompany.id;
           allCompanies.push(newCompany);
@@ -91,6 +99,7 @@ export const importParticipantsFromExcel = async (
 
       let resolvedContactId: number;
       const existingContact = allDbContacts.find((c: any) => 
+        c.firstName && c.lastName &&
         c.firstName.toLowerCase().trim() === firstName.toLowerCase() &&
         c.lastName.toLowerCase().trim() === lastName.toLowerCase()
       );
@@ -102,11 +111,11 @@ export const importParticipantsFromExcel = async (
           firstName,
           lastName,
           salutation: String(row['Salutation'] || 'Mr').trim(),
-          positionLevel: String(row['Position'] || 'unknown').trim().toLowerCase(),
-          specialityDivision: String(row['Speciality/Division'] || '').trim() || undefined,
-          jobTitle: String(row['Jobtitle'] || '').trim() || undefined,
-          mobilePhone: String(row['Mobile Phone'] || '').trim() || undefined,
-          linkedinUrl: String(row['Linkedin Link'] || '').trim() || undefined,
+          positionLevel: String(row['Position'] || row['Position Level'] || 'unknown').trim().toLowerCase(),
+          specialityDivision: String(row['Speciality/Division'] || row['Division'] || '').trim() || undefined,
+          jobTitle: String(row['Jobtitle'] || row['Job Title'] || row['Jabatan'] || '').trim() || undefined,
+          mobilePhone: String(row['Mobile Phone'] || row['Phone'] || row['No HP'] || row['Whatsapp'] || '').trim() || undefined,
+          linkedinUrl: String(row['Linkedin Link'] || row['LinkedIn'] || row['Linkedin'] || '').trim() || undefined,
           databaseType: 'unknown',
           source: 'excel_import',
           isActive: true
@@ -115,8 +124,8 @@ export const importParticipantsFromExcel = async (
         resolvedContactId = newContact.id;
         allDbContacts.push(newContact);
 
-        const companyEmail = String(row['Company Email Address'] || '').trim().toLowerCase();
-        const personalEmail = String(row['Personal Email Address'] || '').trim().toLowerCase();
+        const companyEmail = String(row['Company Email Address'] || row['Company Email'] || row['Email'] || '').trim().toLowerCase();
+        const personalEmail = String(row['Personal Email Address'] || row['Personal Email'] || '').trim().toLowerCase();
 
         if (companyEmail) {
           await crmService.addDatabaseEmail(newContact.id, {
@@ -127,7 +136,7 @@ export const importParticipantsFromExcel = async (
             isCorporate: true
           });
         }
-        if (personalEmail) {
+        if (personalEmail && personalEmail !== companyEmail) {
           await crmService.addDatabaseEmail(newContact.id, {
             email: personalEmail,
             emailType: 'personal',
@@ -138,7 +147,7 @@ export const importParticipantsFromExcel = async (
         }
       }
       
-      const isAlreadyParticipant = participants.some(p => p.database.id === resolvedContactId);
+      const isAlreadyParticipant = participants.some(p => p.database && p.database.id === resolvedContactId);
       if (!isAlreadyParticipant) {
         await crmService.createEventParticipant({
           eventId: selectedEventId,

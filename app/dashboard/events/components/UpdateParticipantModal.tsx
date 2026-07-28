@@ -65,7 +65,10 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalNotes = `[PIC: ${updatePic}] ${updateParticipantNotes}`.trim();
+    const originTag = activeParticipant.notes?.includes('[Origin: EMS Sync]') ? '[Origin: EMS Sync]' : 
+                      activeParticipant.notes?.includes('[Origin: Request]') ? '[Origin: Request]' : '';
+    const cleanUserText = updateParticipantNotes.replace(/\[Origin:\s*[^\]]+\]/gi, '').replace(/\[PIC:\s*[^\]]+\]/gi, '').trim();
+    const finalNotes = `[PIC: ${updatePic}] ${originTag} ${cleanUserText}`.replace(/\s+/g, ' ').trim();
     onSubmit({
       participantStatus: updateParticipantStatusStr,
       attendanceStatus: activeParticipant.attendanceStatus,

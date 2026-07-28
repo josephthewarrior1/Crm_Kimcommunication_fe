@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { Group } from '../../../../lib/types';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../../lib/constants';
@@ -42,6 +42,23 @@ export const AddCompanyModal: React.FC<AddCompanyModalProps> = ({
   const [companyHardware, setCompanyHardware] = useState('');
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setBrandName('');
+      setSelectedGroupId('');
+      setAddress('');
+      setOfficePhone('');
+      setWebsite('');
+      setIndustry('');
+      setCompanySizeRevenue('');
+      setCompanySizeEmployee('');
+      setCompanyHardware('');
+      setCity('');
+      setPostalCode('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

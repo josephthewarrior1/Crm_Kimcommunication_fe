@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Loader2, Upload, Download, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Loader2, Upload, Download, AlertCircle, RefreshCw } from 'lucide-react';
 import { EventParticipant } from '../../../../lib/types';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -29,6 +29,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   onDownloadTemplate,
   participants
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [importPreview, setImportPreview] = useState<{
     totalRows: number;
     newCount: number;
@@ -45,6 +46,21 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }>;
   } | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+  const resetState = () => {
+    setImportPreview(null);
+    setImportParticipantsFile(null);
+    setLoadingPreview(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      resetState();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -127,8 +143,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   };
 
   const handleClose = () => {
-    setImportPreview(null);
-    setImportParticipantsFile(null);
+    resetState();
     onClose();
   };
 
@@ -168,8 +183,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <form onSubmit={handlePreviewExcel} className="space-y-4">
               <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer relative group">
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept=".xlsx, .xls"
+                  onClick={(e) => {
+                    (e.target as HTMLInputElement).value = '';
+                  }}
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       setImportParticipantsFile(e.target.files[0]);
@@ -182,9 +201,20 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   <Upload className="w-5 h-5" />
                 </div>
                 {importParticipantsFile ? (
-                  <div className="text-center">
+                  <div className="text-center z-10">
                     <p className="text-sm font-bold text-slate-800 break-all">{importParticipantsFile.name}</p>
-                    <p className="text-xs text-slate-500">{(importParticipantsFile.size / 1024).toFixed(1)} KB</p>
+                    <p className="text-xs text-slate-500 mb-1.5">{(importParticipantsFile.size / 1024).toFixed(1)} KB</p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        resetState();
+                      }}
+                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] font-bold rounded-lg transition-colors inline-flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Reset / Ganti File
+                    </button>
                   </div>
                 ) : (
                   <div className="text-center">
@@ -285,24 +315,34 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             </div>
 
             {/* Footer buttons */}
-            <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+            <div className="flex gap-3 justify-between pt-4 border-t border-slate-100 mt-6">
               <button
                 type="button"
-                onClick={handleClose}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-205 text-slate-700 text-xs font-medium rounded-xl transition-all"
+                onClick={resetState}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all"
                 disabled={isImportingParticipants}
               >
-                Batal
+                Kembali ke Upload
               </button>
-              <button
-                type="button"
-                onClick={onImport}
-                disabled={isImportingParticipants}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50 shadow-sm"
-              >
-                {isImportingParticipants ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                Mulai Impor
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-4 py-2 hover:bg-slate-100 text-slate-600 text-xs font-medium rounded-xl transition-all"
+                  disabled={isImportingParticipants}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={onImport}
+                  disabled={isImportingParticipants}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50 shadow-sm"
+                >
+                  {isImportingParticipants ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  Mulai Impor
+                </button>
+              </div>
             </div>
           </div>
         )}

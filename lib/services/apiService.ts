@@ -54,7 +54,10 @@ export class ApiService {
         await this.handleErrorResponse(response);
       }
 
-      return await response.json();
+      if (response.status === 204) return undefined as T;
+      const text = await response.text();
+      if (!text || !text.trim()) return undefined as T;
+      try { return JSON.parse(text) as T; } catch { return text as unknown as T; }
     } catch (error) {
       console.error(`GET ${endpoint} failed:`, error);
       throw error;
@@ -82,7 +85,10 @@ export class ApiService {
         await this.handleErrorResponse(response);
       }
 
-      return await response.json();
+      if (response.status === 204) return undefined as T;
+      const text = await response.text();
+      if (!text || !text.trim()) return undefined as T;
+      try { return JSON.parse(text) as T; } catch { return text as unknown as T; }
     } catch (error) {
       console.error(`POST ${endpoint} failed:`, error);
       throw error;
@@ -111,7 +117,10 @@ export class ApiService {
         await this.handleErrorResponse(response);
       }
 
-      return await response.json();
+      if (response.status === 204) return undefined as T;
+      const text = await response.text();
+      if (!text || !text.trim()) return undefined as T;
+      try { return JSON.parse(text) as T; } catch { return text as unknown as T; }
     } catch (error) {
       console.error(`PUT ${endpoint} failed:`, error);
       throw error;

@@ -107,7 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username: response.username,
         email: response.email,
         fullName: response.fullName,
-        roles: response.roles || []
+        roles: response.roles || [],
+        allowedEventIds: response.allowedEventIds || []
       };
       
       localStorage.setItem('user', JSON.stringify(userData));

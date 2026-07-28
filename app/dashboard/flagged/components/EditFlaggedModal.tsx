@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { Database, Event, FlaggedIdentity } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
+import { normalizePhone } from '../../database/utils/phoneHelper';
 
 interface EditFlaggedModalProps {
   isOpen: boolean;
@@ -80,10 +81,11 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const formattedPhone = phoneUsed ? normalizePhone(phoneUsed) : undefined;
     onSubmit({
       nameUsed: nameUsed.trim() || undefined,
       emailUsed: emailUsed.trim() || undefined,
-      phoneUsed: phoneUsed.trim() || undefined,
+      phoneUsed: formattedPhone,
       flagReason,
       evidenceNotes: evidenceNotes.trim() || undefined,
       status,
@@ -130,13 +132,18 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Used</label>
-              <input
-                type="text"
-                placeholder="0812..."
-                value={phoneUsed}
-                onChange={(e) => setPhoneUsed(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-              />
+              <div className="flex items-center">
+                <span className="px-3 py-2 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-slate-700 font-bold text-xs shrink-0 select-none shadow-2xs">
+                  +62
+                </span>
+                <input
+                  type="text"
+                  placeholder="81934158888"
+                  value={phoneUsed}
+                  onChange={(e) => setPhoneUsed(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-r-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
+                />
+              </div>
             </div>
           </div>
 

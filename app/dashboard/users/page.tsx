@@ -5,11 +5,12 @@ import { crmService } from '../../../lib/services/crmService';
 import { authService } from '../../../lib/services/authService';
 import { AppUser } from '../../../lib/types';
 import { useAuth } from '../../../lib/context/AuthContext';
-import { Users, Loader2, Trash2, Shield, UserPlus, AlertCircle, Lock } from 'lucide-react';
+import { Users, Loader2, Trash2, Shield, UserPlus, AlertCircle, Lock, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddUserModal } from './components/AddUserModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { DeleteUserConfirmModal } from './components/DeleteUserConfirmModal';
+import { ManageViewerEventsModal } from './components/ManageViewerEventsModal';
 
 export default function UserManagementPage() {
   const { user: currentUser, isAdmin } = useAuth();
@@ -26,6 +27,7 @@ export default function UserManagementPage() {
 
   const [changingPasswordUser, setChangingPasswordUser] = useState<AppUser | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
+  const [managingViewerEventsUser, setManagingViewerEventsUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
     if (isAdmin) {
@@ -223,6 +225,16 @@ export default function UserManagementPage() {
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {currentRole === 'USER' && (
+                            <button
+                              onClick={() => setManagingViewerEventsUser(u)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition-colors shadow-2xs bg-white"
+                              title="Manage allowed events for Viewer"
+                            >
+                              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Events Access</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => setChangingPasswordUser(u)}
                             className="inline-flex p-1.5 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 hover:border-blue-200 text-slate-400 rounded-lg transition-colors shadow-sm bg-white"
@@ -249,7 +261,9 @@ export default function UserManagementPage() {
             </table>
           </div>
         </div>
-      )}      {/* Provision New User Modal */}
+      )}
+
+      {/* Provision New User Modal */}
       <AddUserModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
@@ -281,6 +295,13 @@ export default function UserManagementPage() {
           loading={resetLoading}
         />
       )}
+
+      {/* Manage Viewer Allowed Events Modal */}
+      <ManageViewerEventsModal
+        isOpen={managingViewerEventsUser !== null}
+        onClose={() => setManagingViewerEventsUser(null)}
+        targetUser={managingViewerEventsUser}
+      />
     </div>
   );
 }

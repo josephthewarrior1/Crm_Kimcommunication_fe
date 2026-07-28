@@ -2,9 +2,8 @@ export const extractPicFromNotes = (notes: string | null | undefined): { pic: st
   if (!notes) return { pic: 'Admin', cleanNotes: '-' };
   let clean = notes;
   
-  // Clean [Origin: Request] tag
-  const originRegex = /\[Origin:\s*Request\]/gi;
-  clean = clean.replace(originRegex, '').trim();
+  // Clean origin tags from display
+  clean = clean.replace(/\[Origin:\s*Request\]/gi, '').replace(/\[Origin:\s*EMS Sync\]/gi, '').replace(/\[EMS\]/gi, '').trim();
 
   const picRegex = /^\[PIC:\s*([^\]]+)\]/;
   const match = clean.match(picRegex);

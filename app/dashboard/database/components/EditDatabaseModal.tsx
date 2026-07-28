@@ -104,7 +104,6 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     if (!mobilePhone.trim()) missing.push("Mobile Phone");
     if (!databaseCompanyEmail.trim()) missing.push("Company Email");
     if (!databasePersonalEmail.trim()) missing.push("Personal Email");
-    if (!linkedinUrl.trim()) missing.push("LinkedIn Profile URL");
     if (!selectedCompanyId) missing.push("Associated Company");
 
     if (missing.length > 0) {
@@ -214,7 +213,6 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     !mobilePhone.trim() ||
     !databaseCompanyEmail.trim() ||
     !databasePersonalEmail.trim() ||
-    !linkedinUrl.trim() ||
     !selectedCompanyId;
 
   return (
@@ -233,7 +231,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
             <AlertCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
             <div>
-              <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source</h5>
+              <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, LinkedIn URL, Database Type, dan Data Source</h5>
             </div>
           </div>
         ) : (
@@ -420,20 +418,14 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">LinkedIn Profile URL <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">LinkedIn Profile URL</label>
               <input
                 type="text"
                 placeholder="e.g. https://linkedin.com/..."
                 value={linkedinUrl}
                 onChange={(e) => setLinkedinUrl(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !linkedinUrl.trim()
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
               />
-              {submitAttempted && !linkedinUrl.trim() && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">LinkedIn Profile URL wajib diisi</p>
-              )}
             </div>
 
             <div>

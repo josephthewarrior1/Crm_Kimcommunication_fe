@@ -4,6 +4,7 @@ export interface AppUser {
   email: string;
   fullName?: string;
   roles?: string[];
+  allowedEventIds?: number[];
   createdAt?: string;
 }
 

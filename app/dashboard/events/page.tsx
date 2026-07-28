@@ -27,6 +27,7 @@ import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/st
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { exportParticipantsToExcel } from './utils/exportHelper';
 import { importParticipantsFromExcel } from './utils/importHelper';
+import { isEventAllowedForViewer } from '../../../lib/utils/viewerAccessHelper';
 
 export default function EventsPage() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function EventsPage() {
   const eventIdParam = searchParams.get('eventId') || searchParams.get('id');
 
   const { isAdmin, isManager, isUser, user } = useAuth();
+  const isViewer = isUser || (!isAdmin && !isManager);
   const [events, setEvents] = useState<Event[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
   const [loading, setLoading] = useState(true);
@@ -754,8 +756,7 @@ export default function EventsPage() {
       toast.success(`Impor selesai! Berhasil: ${successCount} baris. Gagal/Skip: ${errorCount} baris.`);
       setIsImportParticipantsModalOpen(false);
       setImportParticipantsFile(null);
-      handleSelectEvent(selectedEvent);
-      loadData();
+      await loadData();
     } catch (err: any) {
       toast.error(err.message || 'Gagal memproses file Excel.');
     } finally {
@@ -1029,7 +1030,7 @@ export default function EventsPage() {
       toast.success('Participant removed from event successfully!');
       setIsDeleteParticipantConfirmOpen(false);
       setDeletingParticipant(null);
-      handleSelectEvent(selectedEvent);
+      await loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to remove participant');
     } finally {
@@ -1039,11 +1040,16 @@ export default function EventsPage() {
 
 
 
-  // Filter events based on search
-  const filteredEvents = events.filter((e) =>
-    e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (e.clientName && e.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Filter events based on search and viewer allowed permissions
+  const filteredEvents = events.filter((e) => {
+    if (isViewer && !isEventAllowedForViewer(e.id, user)) {
+      return false;
+    }
+    return (
+      e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.clientName && e.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  });
 
 
 
@@ -1118,8 +1124,8 @@ export default function EventsPage() {
     // PIC filter (only apply for non-request tabs)
     if (activeTab !== 'request') {
       const { pic } = extractPicFromNotes(l.notes);
-      if (!isAdmin && user) {
-        // Regular staff (non-admin) only sees their own assigned participants
+      if (!isAdmin && !isViewer && user) {
+        // ponytail: Manager (non-admin, non-viewer) only sees their assigned participants; Viewers see all data in allowed events
         const myName = user.fullName || user.username;
         const isMyPic = pic.toLowerCase() === myName.toLowerCase() || 
                         (pic.toLowerCase() === 'admin' && myName.toLowerCase() === adminName.toLowerCase());
@@ -1199,7 +1205,7 @@ export default function EventsPage() {
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Event & Participant Management</h2>
           <p className="text-sm text-slate-500 mt-1">Track event attendance, confirmation color statuses, and client targets.</p>
         </div>
-        {!isUser && !selectedEvent && (
+        {!isViewer && !selectedEvent && (
           <div className="flex items-center gap-2.5 self-start sm:self-auto">
             <button
               onClick={handleSyncPmsEvents}
@@ -1278,7 +1284,7 @@ export default function EventsPage() {
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <h4 className="font-extrabold text-slate-900 text-base group-hover:text-blue-600 transition-colors line-clamp-2">{evt.name}</h4>
-                        {!isUser && (
+                        {!isViewer && (
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                             <button
                               onClick={(e) => {
@@ -1415,7 +1421,7 @@ export default function EventsPage() {
               )}
             </div>
             
-            {!isUser && (
+            {!isViewer && (
               <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
                 <button
                   onClick={() => openEditEventModal(selectedEvent)}
@@ -1499,7 +1505,7 @@ export default function EventsPage() {
 
             {/* Participant Management Buttons */}
             <div className="flex flex-wrap items-center gap-2 pb-2 md:pb-0 self-start md:self-auto">
-              {selectedEvent?.emsEventId && selectedEvent.emsEventId > 0 && (
+              {!isViewer && selectedEvent?.emsEventId && selectedEvent.emsEventId > 0 && (
                 <button
                   onClick={async () => {
                     if (selectedEvent) {
@@ -1508,7 +1514,7 @@ export default function EventsPage() {
                         toast.info('Memulai sinkronisasi data EMS...');
                         const res = await crmService.syncEmsParticipants(selectedEvent.id);
                         toast.success(`Berhasil menyinkronkan ${res?.count || 0} peserta dari EMS!`);
-                        // Auto-reload data & switch tab to 'pre_event' so telemarketing instantly sees all synced registrants!
+                        // Auto-reload data & switch tab to 'pre_event' so telemarketing instantly sees all synced EMS registrants!
                         await loadParticipantsForEvent(selectedEvent, 'pre_event');
                       } catch (err: any) {
                         toast.error(err?.message || 'Gagal menyinkronkan data EMS');
@@ -1534,7 +1540,7 @@ export default function EventsPage() {
                   Export Excel
                 </button>
               )}
-              {!isUser && (activeTab === 'request' || activeTab === 'pre_event') && (
+              {!isViewer && (activeTab === 'request' || activeTab === 'pre_event') && (
                 <button
                   onClick={() => setIsImportParticipantsModalOpen(true)}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
@@ -1544,7 +1550,7 @@ export default function EventsPage() {
                   Import Excel
                 </button>
               )}
-              {(activeTab === 'request' || activeTab === 'pre_event') && (
+              {!isViewer && (activeTab === 'request' || activeTab === 'pre_event') && (
                 <button
                   onClick={() => setIsAddParticipantModalOpen(true)}
                   className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
@@ -1607,16 +1613,18 @@ export default function EventsPage() {
           />
 
           {/* Batch Actions Status Bar */}
-          <BatchActionsBar
-            selectedParticipantIds={selectedParticipantIds}
-            setSelectedParticipantIds={setSelectedParticipantIds}
-            activeTab={activeTab}
-            usersList={usersList}
-            handleBatchUpdateConfirmationStatus={handleBatchUpdateConfirmationStatus}
-            handleBatchUpdateParticipantStatus={handleBatchUpdateParticipantStatus}
-            handleBatchAssignPic={handleBatchAssignPic}
-            handleBatchUpdateReminderHariH={handleBatchUpdateReminderHariH}
-          />
+          {!isViewer && (
+            <BatchActionsBar
+              selectedParticipantIds={selectedParticipantIds}
+              setSelectedParticipantIds={setSelectedParticipantIds}
+              activeTab={activeTab}
+              usersList={usersList}
+              handleBatchUpdateConfirmationStatus={handleBatchUpdateConfirmationStatus}
+              handleBatchUpdateParticipantStatus={handleBatchUpdateParticipantStatus}
+              handleBatchAssignPic={handleBatchAssignPic}
+              handleBatchUpdateReminderHariH={handleBatchUpdateReminderHariH}
+            />
+          )}
 
           {/* Toolbar with Search & Advanced Filters */}
           {participants.length > 0 && (
@@ -1638,7 +1646,7 @@ export default function EventsPage() {
               filterPic={filterPic}
               setFilterPic={setFilterPic}
               activeTab={activeTab}
-              isAdmin={isAdmin}
+              isAdmin={isAdmin || isViewer}
               handleResetFilters={handleResetFilters}
             />
           )}
@@ -1671,7 +1679,7 @@ export default function EventsPage() {
               handleDirectUpdateParticipant={handleDirectUpdateParticipant}
               handleOpenUpdateParticipantModal={handleOpenUpdateParticipantModal}
               openDeleteParticipantConfirm={openDeleteParticipantConfirm}
-              isUser={isUser}
+              isUser={isViewer}
               isAdmin={isAdmin}
               adminName={adminName}
               extractPicFromNotes={extractPicFromNotes}
@@ -1688,7 +1696,7 @@ export default function EventsPage() {
               handleDirectUpdateParticipant={handleDirectUpdateParticipant}
               handleOpenUpdateParticipantModal={handleOpenUpdateParticipantModal}
               openDeleteParticipantConfirm={openDeleteParticipantConfirm}
-              isUser={isUser}
+              isUser={isViewer}
               getStatusBadgeStyle={getStatusBadgeStyle}
               onOpenEngagementModal={handleOpenEngagementModal}
             />
@@ -1701,7 +1709,7 @@ export default function EventsPage() {
               handleDirectUpdateParticipant={handleDirectUpdateParticipant}
               handleOpenUpdateParticipantModal={handleOpenUpdateParticipantModal}
               openDeleteParticipantConfirm={openDeleteParticipantConfirm}
-              isUser={isUser}
+              isUser={isViewer}
               getStatusBadgeStyle={getStatusBadgeStyle}
               onOpenEngagementModal={handleOpenEngagementModal}
             />

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Loader2, Upload, Download, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Loader2, Upload, Download, AlertCircle, RefreshCw } from 'lucide-react';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
 
@@ -14,6 +14,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   onClose,
   onImportSuccess
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -35,6 +36,24 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }>;
   } | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+  const resetState = () => {
+    setSelectedImportFile(null);
+    setImportPreview(null);
+    setImportingExcel(false);
+    setImportProgress(0);
+    setImportPhase('');
+    setLoadingPreview(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      resetState();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -120,7 +139,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       await new Promise(r => setTimeout(r, 600));
       toast.success(res.message || `Successfully imported ${res.count} database(s)!`);
       onImportSuccess();
-      onClose();
+      handleClose();
     } catch (err: any) {
       clearInterval(ticker);
       setImportProgress(0);
@@ -133,8 +152,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   };
 
   const handleClose = () => {
-    setSelectedImportFile(null);
-    setImportPreview(null);
+    resetState();
     onClose();
   };
 
@@ -173,8 +191,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <form onSubmit={handlePreviewExcel} className="space-y-4">
               <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer relative group">
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept=".xlsx, .xls"
+                  onClick={(e) => {
+                    (e.target as HTMLInputElement).value = '';
+                  }}
                   onChange={(e) => {
                     if (e.target.files && e.target.files.length > 0) {
                       setSelectedImportFile(e.target.files[0]);
@@ -187,9 +209,20 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   <Upload className="w-5 h-5" />
                 </div>
                 {selectedImportFile ? (
-                  <div className="text-center">
+                  <div className="text-center z-10">
                     <p className="text-sm font-bold text-slate-800 break-all">{selectedImportFile.name}</p>
-                    <p className="text-xs text-slate-500">{(selectedImportFile.size / 1024).toFixed(1)} KB</p>
+                    <p className="text-xs text-slate-500 mb-1.5">{(selectedImportFile.size / 1024).toFixed(1)} KB</p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        resetState();
+                      }}
+                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] font-bold rounded-lg transition-colors inline-flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Reset / Ganti File
+                    </button>
                   </div>
                 ) : (
                   <div className="text-center">
@@ -353,7 +386,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  setImportPreview(null);
+                  resetState();
                 }}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all"
                 disabled={importingExcel}

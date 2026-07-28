@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Phone, Mail, MessageSquare, Clock, Plus, X, Loader2, CheckCircle2, UserCheck } from 'lucide-react';
 import { EventParticipant, EventParticipantActivity } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
+import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
 
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -23,6 +24,9 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
   participant,
   onActivityLogged
 }) => {
+  const { isAdmin, isManager, isUser } = useAuth();
+  const isViewer = isUser || (!isAdmin && !isManager);
+
   const [activities, setActivities] = useState<EventParticipantActivity[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -206,13 +210,15 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
               <p className="text-[10px] text-slate-500 mt-1">
                 Terakhir: <strong className="text-slate-700">{formatTimestamp(callLogs[0]?.createdAt)}</strong>
               </p>
-              <button
-                disabled={submitting}
-                onClick={() => handleLogActivity('CALL')}
-                className="mt-3 w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5" /> + Log Call
-              </button>
+              {!isViewer && (
+                <button
+                  disabled={submitting}
+                  onClick={() => handleLogActivity('CALL')}
+                  className="mt-3 w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  <Plus className="w-3.5 h-3.5" /> + Log Call
+                </button>
+              )}
             </div>
 
             {/* EMAIL Card */}
@@ -226,13 +232,15 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
               <p className="text-[10px] text-slate-500 mt-1">
                 Terakhir: <strong className="text-slate-700">{formatTimestamp(emailLogs[0]?.createdAt)}</strong>
               </p>
-              <button
-                disabled={submitting}
-                onClick={() => handleLogActivity('EMAIL')}
-                className="mt-3 w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5" /> + Log Email
-              </button>
+              {!isViewer && (
+                <button
+                  disabled={submitting}
+                  onClick={() => handleLogActivity('EMAIL')}
+                  className="mt-3 w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  <Plus className="w-3.5 h-3.5" /> + Log Email
+                </button>
+              )}
             </div>
 
             {/* WHATSAPP Card */}
@@ -246,173 +254,179 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
               <p className="text-[10px] text-slate-500 mt-1">
                 Terakhir: <strong className="text-slate-700">{formatTimestamp(waLogs[0]?.createdAt)}</strong>
               </p>
-              <button
-                disabled={submitting}
-                onClick={() => handleLogActivity('WHATSAPP')}
-                className="mt-3 w-full py-1.5 bg-green-600 hover:bg-green-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5" /> + Log WA
-              </button>
+              {!isViewer && (
+                <button
+                  disabled={submitting}
+                  onClick={() => handleLogActivity('WHATSAPP')}
+                  className="mt-3 w-full py-1.5 bg-green-600 hover:bg-green-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  <Plus className="w-3.5 h-3.5" /> + Log WA
+                </button>
+              )}
             </div>
           </div>
 
           {/* Auto-Sync Outcome Status Configuration */}
-          <div className="bg-blue-50/50 border border-blue-100/80 rounded-2xl p-3.5 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                <span>Hasil Follow-Up & Auto Update Status</span>
-              </label>
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-                Auto-Sync ke Tabel
-              </span>
-            </div>
+          {!isViewer && (
+            <div className="bg-blue-50/50 border border-blue-100/80 rounded-2xl p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                  <span>Hasil Follow-Up & Auto Update Status</span>
+                </label>
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                  Auto-Sync ke Tabel
+                </span>
+              </div>
 
-            {/* Current Milestone Status Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-blue-100/80">
-              <span className="text-[10px] font-bold text-slate-500 mr-0.5">Status Tersimpan:</span>
-              {[
-                { id: 'reminderH7', label: 'H-7', val: participant.reminderH7 },
-                { id: 'reminderH3', label: 'H-3', val: participant.reminderH3 },
-                { id: 'reminderH1', label: 'H-1', val: participant.reminderH1 },
-                { id: 'reminderHariH', label: 'Hari H', val: participant.reminderHariH }
-              ].map((chip) => {
-                const isSelected = targetStage === chip.id;
-                const hasValue = Boolean(chip.val);
-                return (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => handleStageSelect(chip.id as any)}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer border ${
-                      isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : hasValue
-                        ? 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
-                        : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200/60'
-                    }`}
-                    title={`Klik untuk lihat/edit ${chip.label}`}
+              {/* Current Milestone Status Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-blue-100/80">
+                <span className="text-[10px] font-bold text-slate-500 mr-0.5">Status Tersimpan:</span>
+                {[
+                  { id: 'reminderH7', label: 'H-7', val: participant.reminderH7 },
+                  { id: 'reminderH3', label: 'H-3', val: participant.reminderH3 },
+                  { id: 'reminderH1', label: 'H-1', val: participant.reminderH1 },
+                  { id: 'reminderHariH', label: 'Hari H', val: participant.reminderHariH }
+                ].map((chip) => {
+                  const isSelected = targetStage === chip.id;
+                  const hasValue = Boolean(chip.val);
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      onClick={() => handleStageSelect(chip.id as any)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer border ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : hasValue
+                          ? 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                          : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200/60'
+                      }`}
+                      title={`Klik untuk lihat/edit ${chip.label}`}
+                    >
+                      {chip.label}: <span className="uppercase">{chip.val || 'Belum'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target Status Milestone</span>
+                  <select
+                    value={targetStage}
+                    onChange={(e) => handleStageSelect(e.target.value as any)}
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
                   >
-                    {chip.label}: <span className="uppercase">{chip.val || 'Belum'}</span>
-                  </button>
-                );
-              })}
-            </div>
+                    <option value="reminderH7">Reminder H-7</option>
+                    <option value="reminderH3">Reminder H-3</option>
+                    <option value="reminderH1">Reminder H-1</option>
+                    <option value="reminderHariH">D-Day (Hari H)</option>
+                    <option value="none">- Hanya Catat Log (Jangan Update Status)</option>
+                  </select>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target Status Milestone</span>
-                <select
-                  value={targetStage}
-                  onChange={(e) => handleStageSelect(e.target.value as any)}
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                >
-                  <option value="reminderH7">Reminder H-7</option>
-                  <option value="reminderH3">Reminder H-3</option>
-                  <option value="reminderH1">Reminder H-1</option>
-                  <option value="reminderHariH">D-Day (Hari H)</option>
-                  <option value="none">- Hanya Catat Log (Jangan Update Status)</option>
-                </select>
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Hasil Respon Peserta</span>
+                  <select
+                    value={outcomeStatus}
+                    disabled={targetStage === 'none'}
+                    onChange={(e) => setOutcomeStatus(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-extrabold text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs disabled:opacity-50"
+                  >
+                    {targetStage === 'reminderHariH' ? (
+                      <>
+                        <option value="on_location">On Location (Hadir)</option>
+                        <option value="on_the_way">On The Way (OTW)</option>
+                        <option value="not_respon_yet">Not Respond Yet</option>
+                        <option value="unable_to_attend">Unable to Attend (Batal)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="confirm">Confirm (Hadir)</option>
+                        <option value="tentative">Tentative (Masih Ragu)</option>
+                        <option value="unable_to_attend">Unable to Attend (Batal)</option>
+                        <option value="not_respon_yet">Not Respond Yet</option>
+                        <option value="not_respond_2x">Not Respond 2x</option>
+                      </>
+                    )}
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Hasil Respon Peserta</span>
-                <select
-                  value={outcomeStatus}
-                  disabled={targetStage === 'none'}
-                  onChange={(e) => setOutcomeStatus(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-extrabold text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs disabled:opacity-50"
+              {/* Explicit Save Status Button */}
+              <div className="pt-1 flex justify-end">
+                <button
+                  type="button"
+                  disabled={submitting || targetStage === 'none'}
+                  onClick={async () => {
+                    if (!participant || targetStage === 'none') return;
+                    setSubmitting(true);
+                    try {
+                      const isReminderStage = targetStage.startsWith('reminder');
+                      const autoApproveConf = (isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
+                        ? 'approve'
+                        : undefined;
+
+                      await crmService.updateParticipantStatus(
+                        participant.id,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        targetStage === 'reminderH7' ? outcomeStatus : undefined,
+                        targetStage === 'reminderH3' ? outcomeStatus : undefined,
+                        targetStage === 'reminderH1' ? outcomeStatus : undefined,
+                        targetStage === 'reminderHariH' ? outcomeStatus : undefined,
+                        autoApproveConf
+                      );
+
+                      if (targetStage === 'reminderH7') participant.reminderH7 = outcomeStatus;
+                      if (targetStage === 'reminderH3') participant.reminderH3 = outcomeStatus;
+                      if (targetStage === 'reminderH1') participant.reminderH1 = outcomeStatus;
+                      if (targetStage === 'reminderHariH') participant.reminderHariH = outcomeStatus;
+                      if (autoApproveConf) participant.confirmationStatus = autoApproveConf;
+
+                      const stageLabel = targetStage === 'reminderH7' ? 'H-7' : targetStage === 'reminderH3' ? 'H-3' : targetStage === 'reminderH1' ? 'H-1' : targetStage === 'reminderHariH' ? 'Hari H' : 'Milestone';
+                      toast.success(`Berhasil menyimpan status ${stageLabel} ke ${outcomeStatus.toUpperCase()}!`);
+
+                      if (onActivityLogged) onActivityLogged();
+                    } catch (err) {
+                      console.error(err);
+                      toast.error('Gagal memperbarui status peserta');
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  {targetStage === 'reminderHariH' ? (
-                    <>
-                      <option value="on_location">On Location (Hadir)</option>
-                      <option value="on_the_way">On The Way (OTW)</option>
-                      <option value="not_respon_yet">Not Respond Yet</option>
-                      <option value="unable_to_attend">Unable to Attend (Batal)</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="confirm">Confirm (Hadir)</option>
-                      <option value="tentative">Tentative (Masih Ragu)</option>
-                      <option value="unable_to_attend">Unable to Attend (Batal)</option>
-                      <option value="not_respon_yet">Not Respond Yet</option>
-                      <option value="not_respond_2x">Not Respond 2x</option>
-                    </>
-                  )}
-                </select>
+                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  <span>Simpan & Sync Status Ke Tabel</span>
+                </button>
               </div>
             </div>
-
-            {/* Explicit Save Status Button */}
-            <div className="pt-1 flex justify-end">
-              <button
-                type="button"
-                disabled={submitting || targetStage === 'none'}
-                onClick={async () => {
-                  if (!participant || targetStage === 'none') return;
-                  setSubmitting(true);
-                  try {
-                    const isReminderStage = targetStage.startsWith('reminder');
-                    const autoApproveConf = (isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
-                      ? 'approve'
-                      : undefined;
-
-                    await crmService.updateParticipantStatus(
-                      participant.id,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      targetStage === 'reminderH7' ? outcomeStatus : undefined,
-                      targetStage === 'reminderH3' ? outcomeStatus : undefined,
-                      targetStage === 'reminderH1' ? outcomeStatus : undefined,
-                      targetStage === 'reminderHariH' ? outcomeStatus : undefined,
-                      autoApproveConf
-                    );
-
-                    if (targetStage === 'reminderH7') participant.reminderH7 = outcomeStatus;
-                    if (targetStage === 'reminderH3') participant.reminderH3 = outcomeStatus;
-                    if (targetStage === 'reminderH1') participant.reminderH1 = outcomeStatus;
-                    if (targetStage === 'reminderHariH') participant.reminderHariH = outcomeStatus;
-                    if (autoApproveConf) participant.confirmationStatus = autoApproveConf;
-
-                    const stageLabel = targetStage === 'reminderH7' ? 'H-7' : targetStage === 'reminderH3' ? 'H-3' : targetStage === 'reminderH1' ? 'H-1' : targetStage === 'reminderHariH' ? 'Hari H' : 'Milestone';
-                    toast.success(`Berhasil menyimpan status ${stageLabel} ke ${outcomeStatus.toUpperCase()}!`);
-
-                    if (onActivityLogged) onActivityLogged();
-                  } catch (err) {
-                    console.error(err);
-                    toast.error('Gagal memperbarui status peserta');
-                  } finally {
-                    setSubmitting(false);
-                  }
-                }}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                <span>Simpan & Sync Status Ke Tabel</span>
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* Quick Notes Input */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5">
-            <label className="block text-xs font-bold text-slate-700">Catatan Engagement (Opsional)</label>
-            <input
-              type="text"
-              placeholder="Misal: 'Sudah ditelpon, konfirmasi hadir membawa 2 rekan'"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-800 shadow-2xs"
-            />
-          </div>
+          {!isViewer && (
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700">Catatan Engagement (Opsional)</label>
+              <input
+                type="text"
+                placeholder="Misal: 'Sudah ditelpon, konfirmasi hadir membawa 2 rekan'"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-800 shadow-2xs"
+              />
+            </div>
+          )}
 
           {/* Activity Timeline List */}
           <div>

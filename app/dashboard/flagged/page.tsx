@@ -209,15 +209,41 @@ export default function FlaggedPage() {
             <div key={flg.id} className="p-3.5 bg-white border border-slate-200 rounded-2xl flex flex-col gap-3 relative overflow-hidden shadow-sm hover:border-slate-300 transition-all">
               
               {/* Badge & Top Row */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">{flg.nameUsed || <span className="text-slate-400 italic">No Name Specified</span>}</h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Linked Profile: {flg.database ? `${flg.database.firstName} ${flg.database.lastName}` : 'No direct link'}</p>
-                </div>
-                <span className={`px-2 py-0.5 text-[8px] font-extrabold rounded-full uppercase tracking-wider ${getRiskColor(flg.status)}`}>
-                  {flg.status}
-                </span>
-              </div>
+              {(() => {
+                const linkedDb = flg.database || databases.find(db => {
+                  if (flg.phoneUsed && db.mobilePhone) {
+                    const fDigits = flg.phoneUsed.replace(/[^0-9]/g, '').replace(/^62|^0/, '');
+                    const dbDigits = db.mobilePhone.replace(/[^0-9]/g, '').replace(/^62|^0/, '');
+                    if (fDigits && fDigits === dbDigits) return true;
+                  }
+                  if (flg.emailUsed && db.emails) {
+                    const fEmail = flg.emailUsed.trim().toLowerCase();
+                    if (db.emails.some(e => e.email && e.email.trim().toLowerCase() === fEmail)) return true;
+                  }
+                  return false;
+                });
+
+                return (
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">{flg.nameUsed || <span className="text-slate-400 italic">No Name Specified</span>}</h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                        Linked Profile:{' '}
+                        {linkedDb ? (
+                          <span className="font-bold text-blue-600">
+                            {linkedDb.firstName} {linkedDb.lastName} {linkedDb.company?.name ? `(${linkedDb.company.name})` : ''}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">No direct link</span>
+                        )}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 text-[8px] font-extrabold rounded-full uppercase tracking-wider ${getRiskColor(flg.status)}`}>
+                      {flg.status}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Duplicate Details */}
               <div className="space-y-1 text-xs border-y border-slate-100 py-2 font-mono bg-slate-50/50 -mx-3.5 px-3.5">

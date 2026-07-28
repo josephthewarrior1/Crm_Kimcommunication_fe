@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 
 interface AddGroupModalProps {
@@ -16,6 +16,13 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setNotes('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

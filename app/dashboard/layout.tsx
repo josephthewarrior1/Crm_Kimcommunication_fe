@@ -23,11 +23,20 @@ import {
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isLoading, isAdmin } = useAuth();
+  const { user, logout, isLoading, isAdmin, isManager, isUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const isViewer = isUser || (!isAdmin && !isManager);
+
+  // ponytail: Viewer role is restricted to Events page only
+  React.useEffect(() => {
+    if (!isLoading && isViewer && pathname !== '/dashboard/events') {
+      router.replace('/dashboard/events');
+    }
+  }, [isLoading, isViewer, pathname, router]);
 
   const getRoleBadge = (roleName?: string) => {
     switch (roleName?.toUpperCase()) {
@@ -87,6 +96,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Filter based on user roles
   const filteredMenuItems = menuItems.filter((item) => {
+    if (isViewer) {
+      return item.path === '/dashboard/events';
+    }
     if (item.path === '/dashboard/takeout' || item.path === '/dashboard/users') {
       return isAdmin;
     }

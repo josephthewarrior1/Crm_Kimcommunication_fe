@@ -9,6 +9,7 @@ export interface LoginResponse {
   email: string;
   fullName: string;
   roles?: string[];
+  allowedEventIds?: number[];
 }
 
 export class AuthService extends ApiService {

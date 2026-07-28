@@ -122,7 +122,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             <th className="py-2 px-3 text-center">Registration Status</th>
             {isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
             <th className="py-2 px-3">Notes</th>
-            <th className="py-2 px-3 text-right">Actions</th>
+            {!isUser && <th className="py-2 px-3 text-right">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -234,18 +234,31 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     {displayPic}
                   </td>
                 )}
-                <td className="py-1.5 px-3 text-slate-500 max-w-[120px] truncate" title={cleanNotes}>
-                  {cleanNotes}
+                <td
+                  onClick={() => handleOpenUpdateParticipantModal(p)}
+                  className="py-1.5 px-3 text-slate-600 max-w-[140px] truncate cursor-pointer hover:text-blue-600 hover:underline transition-all"
+                  title="Click to edit notes & details"
+                >
+                  {cleanNotes || '-'}
                 </td>
                 <td className="py-1.5 px-3 text-right whitespace-nowrap space-x-1">
                   {!isUser && (
-                    <button
-                      onClick={() => openDeleteParticipantConfirm(p)}
-                      className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
-                      title="Remove Participant"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleOpenUpdateParticipantModal(p)}
+                        className="inline-flex p-1.5 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-slate-400 transition-all"
+                        title="Edit Participant & Notes"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => openDeleteParticipantConfirm(p)}
+                        className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
+                        title="Remove Participant"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
                   )}
                 </td>
               </tr>

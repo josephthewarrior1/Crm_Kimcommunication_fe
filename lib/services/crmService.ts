@@ -409,6 +409,10 @@ export class CrmService extends ApiService {
     return this.put<AppUser>(`/api/users/${id}/password`, { password });
   }
 
+  async updateUserAllowedEvents(id: number, eventIds: number[]): Promise<AppUser> {
+    return this.put<AppUser>(`/api/users/${id}/allowed-events`, eventIds);
+  }
+
   async deleteUser(id: number): Promise<void> {
     return this.delete<void>(`/api/users/${id}`);
   }

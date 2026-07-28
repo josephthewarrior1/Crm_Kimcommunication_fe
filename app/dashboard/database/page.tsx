@@ -117,6 +117,26 @@ export default function DatabasesPage() {
   const [databaseEmails, setDatabaseEmails] = useState<DatabaseEmail[]>([]);
   const [loadingDatabaseEmails, setLoadingEmails] = useState(false);
   const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
+
+  const handleToggleDropdown = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    if (activeDropdownId === id) {
+      setActiveDropdownId(null);
+      setDropdownPos(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const dropdownHeight = 160;
+      let top = rect.bottom + 4;
+      if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+        top = rect.top - dropdownHeight - 4;
+      }
+      const right = window.innerWidth - rect.right;
+      setDropdownPos({ top, right });
+      setActiveDropdownId(id);
+    }
+  };
 
   // Focus detail state
   const [detailDatabase, setDetailDatabase] = useState<Database | null>(null);
@@ -242,6 +262,11 @@ export default function DatabasesPage() {
     return matched.length > 0 ? matched : Array.from(activeIndustries);
   })();
 
+  const filteredGroupOptions = groups.filter((g) => {
+    if (!filterIndustry) return true;
+    return companies.some((c) => c.group?.id === g.id && matchesIndustryFilter(c.industry, filterIndustry));
+  });
+
   const handleGroupChange = (groupId: string) => {
     setFilterGroupId(groupId);
     if (groupId && filterCompanyId) {
@@ -280,6 +305,14 @@ export default function DatabasesPage() {
       const selectedComp = companies.find((c) => c.id.toString() === filterCompanyId);
       if (selectedComp?.industry && !matchesIndustryFilter(selectedComp.industry, industry)) {
         setFilterCompanyId('');
+      }
+    }
+    if (industry && filterGroupId) {
+      const isGroupValid = companies.some(
+        (c) => c.group?.id?.toString() === filterGroupId && matchesIndustryFilter(c.industry, industry)
+      );
+      if (!isGroupValid) {
+        setFilterGroupId('');
       }
     }
   };
@@ -511,7 +544,7 @@ export default function DatabasesPage() {
               </SelectTrigger>
               <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
                 <SelectItem value="ALL">All Groups</SelectItem>
-                {groups.map((g) => (
+                {filteredGroupOptions.map((g) => (
                   <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -752,7 +785,7 @@ export default function DatabasesPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {currentDatabases.map((c, idx, slicedArray) => {
-                  const isNearBottom = idx >= slicedArray.length - 2 && idx >= 2;
+                  const isNearBottom = slicedArray.length <= 2 || idx >= slicedArray.length - 2;
                   
                   // 1. Get flags from database
                   const dbFlags = flags.filter(f => f.database?.id === c.id && f.status !== 'cleared');
@@ -791,6 +824,35 @@ export default function DatabasesPage() {
                         localFlags.push({
                           flagReason: 'duplicate_email',
                           evidenceNotes: `Email ${ce.email} sama dengan ${matchingDatabases.map(m => `${m.firstName} ${m.lastName}`).join(', ')}`
+                        });
+                      }
+                    });
+                  }
+                  
+                  // 3. Match unlinked manual Flagged Identities by subscriber phone digits or email
+                  if (flags && flags.length > 0) {
+                    const cPhoneDigits = c.mobilePhone ? c.mobilePhone.replace(/[^0-9]/g, '').replace(/^62|^0/, '') : '';
+                    flags.forEach(f => {
+                      if (f.status === 'cleared') return;
+                      if (f.database?.id === c.id) return; // already in dbFlags
+
+                      let matched = false;
+                      if (f.phoneUsed && cPhoneDigits) {
+                        const fDigits = f.phoneUsed.replace(/[^0-9]/g, '').replace(/^62|^0/, '');
+                        if (fDigits && fDigits === cPhoneDigits) {
+                          matched = true;
+                        }
+                      }
+                      if (!matched && f.emailUsed && c.emails) {
+                        const fEmail = f.emailUsed.trim().toLowerCase();
+                        if (c.emails.some(e => e.email && e.email.trim().toLowerCase() === fEmail)) {
+                          matched = true;
+                        }
+                      }
+                      if (matched) {
+                        localFlags.push({
+                          flagReason: f.flagReason || 'duplicate_phone',
+                          evidenceNotes: `Nomor/email terdaftar di Spam List Flagged Identities (${f.nameUsed || 'Profile ' + f.id})`
                         });
                       }
                     });
@@ -926,25 +988,36 @@ export default function DatabasesPage() {
                       >
                       <div className="inline-block text-left">
                         <button
-                          onClick={() => setActiveDropdownId(activeDropdownId === c.id ? null : c.id)}
+                          onClick={(e) => handleToggleDropdown(e, c.id)}
                           className="inline-flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
                           title="Actions"
                         >
                           <MoreVertical className="w-4 h-4" />
                         </button>
 
-                        {activeDropdownId === c.id && (
+                        {activeDropdownId === c.id && dropdownPos && (
                           <>
                             {/* Overlay to close when clicking outside */}
                             <div
-                              className="fixed inset-0 z-20"
-                              onClick={() => setActiveDropdownId(null)}
+                              className="fixed inset-0 z-40 bg-transparent"
+                              onClick={() => {
+                                setActiveDropdownId(null);
+                                setDropdownPos(null);
+                              }}
                             />
-                            <div className={`absolute right-6 ${isNearBottom ? 'bottom-full mb-1 origin-bottom animate-in fade-in slide-in-from-bottom-2' : 'mt-1 origin-top animate-in fade-in slide-in-from-top-2'} w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 duration-100 text-left`}>
+                            <div
+                              style={{
+                                position: 'fixed',
+                                top: `${dropdownPos.top}px`,
+                                right: `${dropdownPos.right}px`,
+                              }}
+                              className="w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 duration-100 text-left animate-in fade-in zoom-in-95"
+                            >
                               {!isUser && (
                                 <button
                                   onClick={() => {
                                     setActiveDropdownId(null);
+                                    setDropdownPos(null);
                                     openEditModal(c);
                                   }}
                                   className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
@@ -958,6 +1031,7 @@ export default function DatabasesPage() {
                                 <button
                                   onClick={() => {
                                     setActiveDropdownId(null);
+                                    setDropdownPos(null);
                                     handleOpenTakeoutModal(c);
                                   }}
                                   className="w-full px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 hover:text-amber-900 transition-colors flex items-center gap-2"
@@ -973,6 +1047,7 @@ export default function DatabasesPage() {
                                   <button
                                     onClick={() => {
                                       setActiveDropdownId(null);
+                                      setDropdownPos(null);
                                       openDeleteConfirm(c);
                                     }}
                                     className="w-full px-4 py-2 text-xs font-semibold text-red-650 hover:bg-red-50 hover:text-red-900 transition-colors flex items-center gap-2"

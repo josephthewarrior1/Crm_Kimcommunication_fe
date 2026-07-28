@@ -12,6 +12,7 @@ import { AddCompanyModal } from './components/AddCompanyModal';
 import { EditCompanyModal } from './components/EditCompanyModal';
 import { DeleteCompanyConfirmModal } from './components/DeleteCompanyConfirmModal';
 import { CompanyDetailModal } from './components/CompanyDetailModal';
+import { matchesIndustryFilter } from '../database/utils/industryHelper';
 
 export default function CompaniesPage() {
   const { isAdmin, isManager, isUser } = useAuth();
@@ -121,6 +122,23 @@ export default function CompaniesPage() {
       setSubmitting(false);
     }
   };
+  const filteredGroupOptions = groups.filter((g) => {
+    if (!filterIndustry) return true;
+    return companies.some((c) => c.group?.id === g.id && matchesIndustryFilter(c.industry, filterIndustry));
+  });
+
+  const handleIndustryChange = (industry: string) => {
+    setFilterIndustry(industry);
+    if (industry && filterGroup) {
+      const isGroupValid = companies.some(
+        (c) => c.group?.id?.toString() === filterGroup && matchesIndustryFilter(c.industry, industry)
+      );
+      if (!isGroupValid) {
+        setFilterGroup('');
+      }
+    }
+  };
+
   const filteredCompanies = companies.filter((c) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch =
@@ -129,20 +147,7 @@ export default function CompaniesPage() {
       (c.city && c.city.toLowerCase().includes(query)) ||
       (c.group?.name && c.group.name.toLowerCase().includes(query));
 
-    const matchesIndustry = !filterIndustry || (() => {
-      if (!c.industry) return false;
-      const normalize = (str: string) => {
-        return str
-          .trim()
-          .toLowerCase()
-          .replace(/mm/g, 'm')
-          .replace(/s$/, ''); // singularize
-      };
-      const dbInd = normalize(c.industry);
-      const filterInd = normalize(filterIndustry);
-      return dbInd === filterInd || dbInd.includes(filterInd) || filterInd.includes(dbInd);
-    })();
-
+    const matchesIndustry = !filterIndustry || matchesIndustryFilter(c.industry, filterIndustry);
     const matchesGroup = !filterGroup || (c.group && c.group.id === Number(filterGroup));
 
     return matchesSearch && matchesIndustry && matchesGroup;
@@ -191,7 +196,7 @@ export default function CompaniesPage() {
         <div className="w-full sm:w-64">
           <select
             value={filterIndustry}
-            onChange={(e) => setFilterIndustry(e.target.value)}
+            onChange={(e) => handleIndustryChange(e.target.value)}
             className="w-full px-3 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer"
           >
             <option value="">All Industries</option>
@@ -211,7 +216,7 @@ export default function CompaniesPage() {
             className="w-full px-3 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer"
           >
             <option value="">All Groups</option>
-            {groups.map((g) => (
+            {filteredGroupOptions.map((g) => (
               <option key={g.id} value={g.id.toString()}>
                 {g.name}
               </option>

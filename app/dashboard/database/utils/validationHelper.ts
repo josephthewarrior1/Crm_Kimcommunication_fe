@@ -23,7 +23,6 @@ export const checkDatabaseCompleteness = (c: Database) => {
   if (!hasPersonalEmail) missing.push("Personal Email");
 
   if (!c.company?.industry?.trim()) missing.push("Industry");
-  if (!c.linkedinUrl?.trim()) missing.push("LinkedIn Link");
   if (!c.company?.city?.trim()) missing.push("City");
   if (!c.company?.website?.trim()) missing.push("Company Website");
 
