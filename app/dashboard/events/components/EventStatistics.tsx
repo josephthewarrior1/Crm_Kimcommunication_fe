@@ -513,9 +513,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                               value={datePreset}
                               onChange={(e) => {
                                 const val = e.target.value as 'today' | '7days' | '30days' | 'all';
-                                if (val !== 'custom') {
-                                  handleSetPreset(val);
-                                }
+                                handleSetPreset(val);
                               }}
                               className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs hover:bg-slate-50 transition-colors"
                             >

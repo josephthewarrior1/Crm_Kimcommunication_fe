@@ -15,6 +15,8 @@ interface ParticipantToolbarProps {
   setFilterIndustry: (val: string) => void;
   filterConfirmationStatus: string;
   setFilterConfirmationStatus: (val: string) => void;
+  filterReminderHariH?: string;
+  setFilterReminderHariH?: (val: string) => void;
   filterPic: string;
   setFilterPic: (val: string) => void;
   activeTab: string;
@@ -35,6 +37,8 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
   setFilterIndustry,
   filterConfirmationStatus,
   setFilterConfirmationStatus,
+  filterReminderHariH = '',
+  setFilterReminderHariH,
   filterPic,
   setFilterPic,
   activeTab,
@@ -45,6 +49,7 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
     searchQuery ||
     filterCompany ||
     filterConfirmationStatus ||
+    filterReminderHariH ||
     filterPic;
 
   return (
@@ -99,6 +104,23 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
               <option value="">All Statuses</option>
               <option value="pending">Pending</option>
               <option value="approve">Approve</option>
+            </select>
+          </div>
+        )}
+
+        {activeTab === 'reminder_dday' && setFilterReminderHariH && (
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Hari H Status</label>
+            <select
+              value={filterReminderHariH}
+              onChange={(e) => setFilterReminderHariH(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300 font-semibold"
+            >
+              <option value="">All Statuses</option>
+              <option value="on_location">On Location</option>
+              <option value="on_the_way">On The Way</option>
+              <option value="not_respond_yet">Not Respond Yet</option>
+              <option value="unable_to_attend">Unable to Attend</option>
             </select>
           </div>
         )}

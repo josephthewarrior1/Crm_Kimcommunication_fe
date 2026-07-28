@@ -28,7 +28,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<'CALL' | 'EMAIL' | 'WHATSAPP'>('CALL');
   const [notes, setNotes] = useState('');
-  const [targetStage, setTargetStage] = useState<'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH' | 'confirmationStatus' | 'none'>('reminderH7');
+  const [targetStage, setTargetStage] = useState<'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH' | 'none'>('reminderH7');
   const [outcomeStatus, setOutcomeStatus] = useState<string>('confirm');
 
   const getStageStatus = (stage: string, p: EventParticipant) => {
@@ -36,7 +36,6 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
     if (stage === 'reminderH3') return p.reminderH3 || '';
     if (stage === 'reminderH1') return p.reminderH1 || '';
     if (stage === 'reminderHariH') return p.reminderHariH || '';
-    if (stage === 'confirmationStatus') return p.confirmationStatus || '';
     return '';
   };
 
@@ -44,7 +43,6 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
     const existing = getStageStatus(stage, p);
     if (existing) return existing;
     if (stage === 'reminderHariH') return 'on_location';
-    if (stage === 'confirmationStatus') return 'approve';
     return 'confirm';
   };
 
@@ -53,7 +51,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
       loadActivities();
 
       // Auto-select stage: pick next uncompleted stage or default to reminderH7
-      let initialStage: 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH' | 'confirmationStatus' | 'none' = 'reminderH7';
+      let initialStage: 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH' | 'none' = 'reminderH7';
       if (participant.reminderH7 && !participant.reminderH3) {
         initialStage = 'reminderH3';
       } else if (participant.reminderH7 && participant.reminderH3 && !participant.reminderH1) {
@@ -70,7 +68,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
     }
   }, [isOpen, participant]);
 
-  const handleStageSelect = (stage: 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH' | 'confirmationStatus' | 'none') => {
+  const handleStageSelect = (stage: 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH' | 'none') => {
     setTargetStage(stage);
     if (participant && stage !== 'none') {
       setOutcomeStatus(getStageDefaultOutcome(stage, participant));
@@ -277,8 +275,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                 { id: 'reminderH7', label: 'H-7', val: participant.reminderH7 },
                 { id: 'reminderH3', label: 'H-3', val: participant.reminderH3 },
                 { id: 'reminderH1', label: 'H-1', val: participant.reminderH1 },
-                { id: 'reminderHariH', label: 'Hari H', val: participant.reminderHariH },
-                { id: 'confirmationStatus', label: 'Approval', val: participant.confirmationStatus }
+                { id: 'reminderHariH', label: 'Hari H', val: participant.reminderHariH }
               ].map((chip) => {
                 const isSelected = targetStage === chip.id;
                 const hasValue = Boolean(chip.val);
@@ -314,7 +311,6 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                   <option value="reminderH3">Reminder H-3</option>
                   <option value="reminderH1">Reminder H-1</option>
                   <option value="reminderHariH">D-Day (Hari H)</option>
-                  <option value="confirmationStatus">Registration Approval</option>
                   <option value="none">- Hanya Catat Log (Jangan Update Status)</option>
                 </select>
               </div>
@@ -333,12 +329,6 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                       <option value="on_the_way">On The Way (OTW)</option>
                       <option value="not_respon_yet">Not Respond Yet</option>
                       <option value="unable_to_attend">Unable to Attend (Batal)</option>
-                    </>
-                  ) : targetStage === 'confirmationStatus' ? (
-                    <>
-                      <option value="approve">Approve (Disetujui)</option>
-                      <option value="pending">Pending</option>
-                      <option value="decline">Decline (Ditolak)</option>
                     </>
                   ) : (
                     <>
@@ -365,7 +355,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                     const isReminderStage = targetStage.startsWith('reminder');
                     const autoApproveConf = (isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
                       ? 'approve'
-                      : (targetStage === 'confirmationStatus' ? outcomeStatus : undefined);
+                      : undefined;
 
                     await crmService.updateParticipantStatus(
                       participant.id,
@@ -391,10 +381,9 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                     if (targetStage === 'reminderH3') participant.reminderH3 = outcomeStatus;
                     if (targetStage === 'reminderH1') participant.reminderH1 = outcomeStatus;
                     if (targetStage === 'reminderHariH') participant.reminderHariH = outcomeStatus;
-                    if (targetStage === 'confirmationStatus') participant.confirmationStatus = outcomeStatus;
                     if (autoApproveConf) participant.confirmationStatus = autoApproveConf;
 
-                    const stageLabel = targetStage === 'reminderH7' ? 'H-7' : targetStage === 'reminderH3' ? 'H-3' : targetStage === 'reminderH1' ? 'H-1' : targetStage === 'reminderHariH' ? 'Hari H' : 'Registration';
+                    const stageLabel = targetStage === 'reminderH7' ? 'H-7' : targetStage === 'reminderH3' ? 'H-3' : targetStage === 'reminderH1' ? 'H-1' : targetStage === 'reminderHariH' ? 'Hari H' : 'Milestone';
                     toast.success(`Berhasil menyimpan status ${stageLabel} ke ${outcomeStatus.toUpperCase()}!`);
 
                     if (onActivityLogged) onActivityLogged();

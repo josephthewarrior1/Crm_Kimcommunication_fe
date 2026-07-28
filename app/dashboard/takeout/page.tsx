@@ -139,7 +139,7 @@ export default function SettingsPage() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleUpdateRemovalStatus(rem.id, 'done')}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-sm transition-all"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-sm transition-all cursor-pointer"
                                   title="Approve Takeout & Soft-Delete Contact"
                                 >
                                   <Check className="w-3.5 h-3.5" />
@@ -147,24 +147,28 @@ export default function SettingsPage() {
                                 </button>
                                 <button
                                   onClick={() => handleRestoreContact(rem)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all cursor-pointer"
                                   title="Reject Request & Keep Active"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                   Reject
                                 </button>
                               </div>
-                            ) : (
+                            ) : rem.status === 'done' || rem.status === 'approved' ? (
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleRestoreContact(rem)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-extrabold rounded-lg shadow-sm transition-all"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-extrabold rounded-lg shadow-sm transition-all cursor-pointer"
                                   title="Restore / Reactivate Contact back to Database directory"
                                 >
                                   <RotateCcw className="w-3.5 h-3.5" />
                                   Restore Contact
                                 </button>
                               </div>
+                            ) : (
+                              <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                                Contact Active
+                              </span>
                             )}
                           </td>
                         </tr>

@@ -100,7 +100,7 @@ export class CrmService extends ApiService {
 
   async syncPmsEvents(): Promise<{ syncedCount: number; totalCount: number }> {
     // ponytail: manual on-demand sync from PMS endpoint (configurable via NEXT_PUBLIC_PMS_URL) to local CRM DB
-    const pmsUrl = process.env.NEXT_PUBLIC_PMS_URL || 'http://146.190.101.90:8081/api/public/events';
+    const pmsUrl = process.env.NEXT_PUBLIC_PMS_URL || 'https://pms.kimcommunication.com/api/public/events';
     const response = await fetch(pmsUrl, {
       signal: AbortSignal.timeout(5000),
     });

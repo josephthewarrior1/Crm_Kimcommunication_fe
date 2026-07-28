@@ -51,6 +51,9 @@ export default function EventsPage() {
   const [filterPosition, setFilterPosition] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
   const [filterConfirmationStatus, setFilterConfirmationStatus] = useState('');
+  const [filterReminderHariH, setFilterReminderHariH] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const setParticipantsSorted = (participantsList: EventParticipant[]) => {
     const sorted = [...participantsList].sort((a, b) => a.id - b.id);
@@ -76,6 +79,16 @@ export default function EventsPage() {
     } else {
       return { status: 'past', days: 0 };
     }
+  };
+
+  const formatDateDMY = (dateStr?: string | null) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   // Modals state
@@ -238,7 +251,7 @@ export default function EventsPage() {
       }
       loadData();
     } catch (err: any) {
-      toast.error('Gagal terhubung ke server PMS (146.190.101.90:8081). Periksa koneksi/server PMS.');
+      toast.error('Gagal terhubung ke server PMS (pms.kimcommunication.com). Periksa koneksi/server PMS.');
     } finally {
       setIsSyncingPms(false);
     }
@@ -281,15 +294,24 @@ export default function EventsPage() {
     }
   };
 
+  const formatForDateInput = (dStr?: string | null) => {
+    if (!dStr) return '';
+    const match = dStr.match(/^\d{4}-\d{2}-\d{2}/);
+    if (match) return match[0];
+    const d = new Date(dStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().split('T')[0];
+  };
+
   const openEditEventModal = (event: Event) => {
     setEditingEvent(event);
-    setEditName(event.name);
+    setEditName(event.name || '');
     setEditEventType(event.eventType || 'partner');
-    setEditClientName(event.clientName || '');
-    setEditDateStart(event.dateStart || '');
-    setEditDateEnd(event.dateEnd || '');
-    setEditNotes(event.notes || '');
-    setEditTargetParticipants(event.targetParticipants || 0);
+    setEditClientName(event.clientName || event.client || '');
+    setEditDateStart(formatForDateInput(event.dateStart));
+    setEditDateEnd(formatForDateInput(event.dateEnd));
+    setEditNotes(event.notes || event.description || '');
+    setEditTargetParticipants(event.targetParticipants || event.targetPax || 0);
     setEditEmsEventId(event.emsEventId || 0);
     setIsEditEventModalOpen(true);
   };
@@ -324,6 +346,13 @@ export default function EventsPage() {
       setIsEditEventModalOpen(false);
       setEditingEvent(null);
       setSelectedEvent(updated);
+
+      if (updated.emsEventId && updated.emsEventId > 0) {
+        toast.info('Menyinkronkan data peserta dari EMS...');
+        await crmService.syncEmsParticipants(updated.id).catch((e) => console.error('Auto EMS sync after edit error:', e));
+      }
+
+      await loadParticipantsForEvent(updated);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update event');
@@ -369,6 +398,18 @@ export default function EventsPage() {
       setActiveTab(targetTab);
     }
     try {
+      // ponytail: auto-sync EMS participants with toast pop-up notification whenever opening event detail
+      if (event.emsEventId && event.emsEventId > 0) {
+        toast.info('Menyinkronkan data peserta dari EMS...');
+        const res = await crmService.syncEmsParticipants(event.id).catch((e) => {
+          console.error('Auto EMS sync on event open error:', e);
+          return null;
+        });
+        if (res && res.count > 0) {
+          toast.success(`Berhasil menyinkronkan ${res.count} peserta dari EMS!`);
+        }
+      }
+
       const allParticipants = await crmService.getEventParticipants();
       setAllEventParticipants(allParticipants);
       const filteredParticipants = allParticipants.filter((l) => 
@@ -387,6 +428,7 @@ export default function EventsPage() {
 
   const handleSelectEvent = (event: Event) => {
     router.push(`/dashboard/events?eventId=${event.id}`);
+    loadParticipantsForEvent(event);
   };
 
   const handleExportParticipants = () => {
@@ -502,7 +544,7 @@ export default function EventsPage() {
     }
 
     if (selectedEvent) {
-      handleSelectEvent(selectedEvent); // Reload list participants
+      await loadParticipantsForEvent(selectedEvent);
     }
   };
 
@@ -554,7 +596,7 @@ export default function EventsPage() {
     }
 
     if (selectedEvent) {
-      handleSelectEvent(selectedEvent); // Reload list participants
+      await loadParticipantsForEvent(selectedEvent);
     }
   };
 
@@ -605,7 +647,7 @@ export default function EventsPage() {
     }
 
     if (selectedEvent) {
-      handleSelectEvent(selectedEvent);
+      await loadParticipantsForEvent(selectedEvent);
     }
   };
 
@@ -615,6 +657,7 @@ export default function EventsPage() {
     setFilterPosition('');
     setFilterIndustry('');
     setFilterConfirmationStatus('');
+    setFilterReminderHariH('');
     setFilterPic('');
   };
 
@@ -640,8 +683,8 @@ export default function EventsPage() {
       toast.success(`Successfully added ${databaseIds.length} database(s) as lead(s)!`);
       setIsAddParticipantModalOpen(false);
       
-      // Reload participants
-      handleSelectEvent(selectedEvent);
+      // Reload participants & statistics immediately
+      await loadParticipantsForEvent(selectedEvent);
     } catch (err: any) {
       toast.error(err.message || 'Failed to add database(s) to event');
     } finally {
@@ -1053,6 +1096,25 @@ export default function EventsPage() {
       }
     }
 
+    // Hari H Status filter (only apply for reminder_dday tab)
+    if (activeTab === 'reminder_dday' && filterReminderHariH) {
+      const effectiveHariH = l.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : (l.reminderHariH || '');
+      const filterVal = filterReminderHariH.toLowerCase();
+
+      if (filterVal === 'on_location') {
+        if (effectiveHariH !== 'on_location') return false;
+      } else if (filterVal === 'on_the_way') {
+        if (effectiveHariH !== 'on_the_way') return false;
+      } else if (filterVal === 'not_respond_yet') {
+        if (effectiveHariH && effectiveHariH !== 'not_respon_yet' && !effectiveHariH.startsWith('not_respond_')) return false;
+        if (effectiveHariH === 'on_location' || effectiveHariH === 'on_the_way' || effectiveHariH === 'unable_to_attend') return false;
+      } else if (filterVal === 'unable_to_attend') {
+        if (effectiveHariH !== 'unable_to_attend') return false;
+      } else if (effectiveHariH !== filterVal) {
+        return false;
+      }
+    }
+
     // PIC filter (only apply for non-request tabs)
     if (activeTab !== 'request') {
       const { pic } = extractPicFromNotes(l.notes);
@@ -1109,6 +1171,25 @@ export default function EventsPage() {
 
     return true;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedEvent?.id,
+    activeTab,
+    participantSearchQuery,
+    filterCompany,
+    filterPosition,
+    filterIndustry,
+    filterConfirmationStatus,
+    filterReminderHariH,
+    filterPic
+  ]);
+
+  const totalPages = Math.ceil(filteredParticipants.length / pageSize) || 1;
+  const indexOfLastItem = currentPage * pageSize;
+  const indexOfFirstItem = indexOfLastItem - pageSize;
+  const paginatedParticipants = filteredParticipants.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -1252,7 +1333,7 @@ export default function EventsPage() {
                         {evt.eventType}
                       </span>
                       <span className="text-[10px] text-slate-550 font-mono">
-                        {evt.dateStart ? new Date(evt.dateStart).toLocaleDateString() : '-'}
+                        {formatDateDMY(evt.dateStart)}
                       </span>
                     </div>
                   </div>
@@ -1304,7 +1385,7 @@ export default function EventsPage() {
               </h3>
               <div className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span>Client: <strong className="text-slate-700">{selectedEvent.clientName || '-'}</strong></span>
-                {selectedEvent.dateStart && <span> | Duration: <strong className="text-slate-700">{new Date(selectedEvent.dateStart).toLocaleDateString()} - {selectedEvent.dateEnd ? new Date(selectedEvent.dateEnd).toLocaleDateString() : 'End'}</strong></span>}
+                {selectedEvent.dateStart && <span> | Duration: <strong className="text-slate-700">{formatDateDMY(selectedEvent.dateStart)} - {selectedEvent.dateEnd ? formatDateDMY(selectedEvent.dateEnd) : 'End'}</strong></span>}
                 {selectedEvent.targetParticipants !== undefined && selectedEvent.targetParticipants > 0 ? (
                   <>
                     <span> | Target: <strong className="text-slate-700">{selectedEvent.targetParticipants} pax</strong></span>
@@ -1548,6 +1629,8 @@ export default function EventsPage() {
               setFilterIndustry={setFilterIndustry}
               filterConfirmationStatus={filterConfirmationStatus}
               setFilterConfirmationStatus={setFilterConfirmationStatus}
+              filterReminderHariH={filterReminderHariH}
+              setFilterReminderHariH={setFilterReminderHariH}
               filterPic={filterPic}
               setFilterPic={setFilterPic}
               activeTab={activeTab}
@@ -1575,7 +1658,7 @@ export default function EventsPage() {
             </div>
           ) : activeTab === 'request' || activeTab === 'pre_event' || activeTab === 'declined' ? (
             <RequestPreEventTable
-              filteredParticipants={filteredParticipants}
+              filteredParticipants={paginatedParticipants}
               selectedParticipantIds={selectedParticipantIds}
               setSelectedParticipantIds={setSelectedParticipantIds}
               activeTab={activeTab}
@@ -1594,7 +1677,7 @@ export default function EventsPage() {
             />
           ) : activeTab === 'reminder' ? (
             <ReminderTable
-              filteredParticipants={filteredParticipants}
+              filteredParticipants={paginatedParticipants}
               selectedParticipantIds={selectedParticipantIds}
               setSelectedParticipantIds={setSelectedParticipantIds}
               checkDatabaseCompleteness={checkDatabaseCompleteness}
@@ -1607,7 +1690,7 @@ export default function EventsPage() {
             />
           ) : (
             <ReminderDdayTable
-              filteredParticipants={filteredParticipants}
+              filteredParticipants={paginatedParticipants}
               selectedParticipantIds={selectedParticipantIds}
               setSelectedParticipantIds={setSelectedParticipantIds}
               checkDatabaseCompleteness={checkDatabaseCompleteness}
@@ -1618,6 +1701,59 @@ export default function EventsPage() {
               getStatusBadgeStyle={getStatusBadgeStyle}
               onOpenEngagementModal={handleOpenEngagementModal}
             />
+          )}
+
+          {/* Pagination Bar */}
+          {filteredParticipants.length > 0 && (
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-4 py-3 border border-slate-200 rounded-xl shadow-2xs text-xs text-slate-600">
+              <div className="flex flex-wrap items-center gap-2">
+                <span>Tampilkan</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-slate-50 border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>entri per halaman</span>
+                <span className="text-slate-300 mx-1">|</span>
+                <span>
+                  Menampilkan <strong className="text-slate-900">{indexOfFirstItem + 1}</strong> -{' '}
+                  <strong className="text-slate-900">
+                    {Math.min(indexOfLastItem, filteredParticipants.length)}
+                  </strong>{' '}
+                  dari <strong className="text-slate-900">{filteredParticipants.length}</strong> peserta
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  Prev
+                </button>
+
+                <span className="px-3 py-1 font-extrabold text-slate-800 bg-slate-100 rounded-lg">
+                  {currentPage} / {totalPages}
+                </span>
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
