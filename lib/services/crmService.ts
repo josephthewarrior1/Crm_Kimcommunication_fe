@@ -244,10 +244,10 @@ export class CrmService extends ApiService {
     if (businessChallenges) params.append('businessChallenges', businessChallenges);
     if (projectInfo) params.append('projectInfo', projectInfo);
     if (timeline) params.append('timeline', timeline);
-    if (reminderH7) params.append('reminderH7', reminderH7);
-    if (reminderH3) params.append('reminderH3', reminderH3);
-    if (reminderH1) params.append('reminderH1', reminderH1);
-    if (reminderHariH) params.append('reminderHariH', reminderHariH);
+    if (reminderH7 !== undefined) params.append('reminderH7', reminderH7);
+    if (reminderH3 !== undefined) params.append('reminderH3', reminderH3);
+    if (reminderH1 !== undefined) params.append('reminderH1', reminderH1);
+    if (reminderHariH !== undefined) params.append('reminderHariH', reminderHariH);
     if (confirmationStatus) params.append('confirmationStatus', confirmationStatus);
 
     return this.put<EventParticipant>(`/api/event-participants/${participantId}/status?${params.toString()}`);

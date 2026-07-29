@@ -194,7 +194,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
               <td className="py-1.5 px-3">
                 <div className="flex justify-center">
                   {(() => {
-                    const effectiveHariH = p.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : (p.reminderHariH || '');
+                    const effectiveHariH = p.reminderHariH || (p.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : '');
                     return (
                       <select
                         value={effectiveHariH}

@@ -9,6 +9,8 @@ node_modules/
 # outputs & temp scratch
 scratch/
 outputs/
+output/
+tmp/
 
 # testing
 /coverage
@@ -50,6 +52,8 @@ Thumbs.db
 
 # BRD files
 /BRD - CRM Kim Communication (Polished) (1) (1).md
+BRD*.md
+*.pdf
 
 # Antigravity agents & skills
 .agents/

@@ -25,6 +25,7 @@ interface EventStatisticsProps {
   eventId?: number;
   onAssignPic?: (participantIds: number[], picName: string) => Promise<void>;
   onOpenEngagementModal?: (participant: EventParticipant) => void;
+  currentUser?: AppUser | null;
 }
 
 export const EventStatistics: React.FC<EventStatisticsProps> = ({
@@ -36,6 +37,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   eventId,
   onAssignPic,
   onOpenEngagementModal,
+  currentUser,
 }) => {
   const [selectedPic, setSelectedPic] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -361,41 +363,53 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 </div>
               </div>
               
-              <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                  <CheckCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Confirm to Attend</span>
-                  <span className="text-xl font-extrabold text-emerald-900">
-                    {participants.filter(p => p.reminderH7 === 'confirm' || p.reminderH3 === 'confirm' || p.reminderH1 === 'confirm').length}
-                  </span>
-                </div>
-              </div>
+              {(() => {
+                const getLatestReminderStatus = (p: typeof participants[0]) => {
+                  if (p.reminderH1) return p.reminderH1;
+                  if (p.reminderH3) return p.reminderH3;
+                  if (p.reminderH7) return p.reminderH7;
+                  return '';
+                };
+                return (
+                  <>
+                    <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
+                      <div className="p-3 bg-emerald-600 text-white rounded-xl">
+                        <CheckCircle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Confirm to Attend</span>
+                        <span className="text-xl font-extrabold text-emerald-900">
+                          {participants.filter(p => getLatestReminderStatus(p) === 'confirm').length}
+                        </span>
+                      </div>
+                    </div>
 
-              <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-amber-500 text-white rounded-xl">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Tentative</span>
-                  <span className="text-xl font-extrabold text-amber-900">
-                    {participants.filter(p => p.reminderH7 === 'tentative' || p.reminderH3 === 'tentative' || p.reminderH1 === 'tentative').length}
-                  </span>
-                </div>
-              </div>
+                    <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
+                      <div className="p-3 bg-amber-500 text-white rounded-xl">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Tentative</span>
+                        <span className="text-xl font-extrabold text-amber-900">
+                          {participants.filter(p => getLatestReminderStatus(p) === 'tentative').length}
+                        </span>
+                      </div>
+                    </div>
 
-              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-rose-500 text-white rounded-xl">
-                  <X className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable to Attend</span>
-                  <span className="text-xl font-extrabold text-rose-900">
-                    {participants.filter(p => p.reminderH7 === 'unable_to_attend' || p.reminderH3 === 'unable_to_attend' || p.reminderH1 === 'unable_to_attend').length}
-                  </span>
-                </div>
-              </div>
+                    <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
+                      <div className="p-3 bg-rose-500 text-white rounded-xl">
+                        <X className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable to Attend</span>
+                        <span className="text-xl font-extrabold text-rose-900">
+                          {participants.filter(p => getLatestReminderStatus(p) === 'unable_to_attend').length}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -458,99 +472,127 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
         </div>
       )}
 
-      {/* Participant Assignment & Distribution Overview (Admin only) */}
-      {isAdmin && activeTab !== 'request' && (
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 mb-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-800">PIC Assignment & Distribution</h4>
-              <p className="text-[11px] text-slate-555 font-medium">
-                {(() => {
-                  const activePicsCount = usersList.filter((usr) => {
-                    const uname = (usr.username || '').toLowerCase();
-                    const fname = (usr.fullName || '').toLowerCase();
-                    if (uname === 'kevin' || fname.includes('kevin')) return false;
-                    const name = usr.fullName || usr.username;
-                    return participants.some(p => {
-                      const pic = extractPicFromNotes(p.notes).pic;
-                      return pic.toLowerCase() === name.toLowerCase() || 
-                             (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                    });
-                  }).length;
-                  return `${activePicsCount} PIC aktif bertugas`;
-                })()}
-              </p>
-            </div>
-          </div>
+      {/* Participant Assignment & Distribution Overview */}
+      {activeTab !== 'request' && (() => {
+        const myPicName = currentUser?.fullName || currentUser?.username || adminName;
 
-          <Dialog onOpenChange={(open) => { if (!open) { setSelectedPic(null); setSearchQuery(''); } }}>
-            <DialogTrigger asChild>
-              <button className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-sm flex items-center gap-2">
-                <span>View PIC Workload & Balance</span>
-              </button>
-            </DialogTrigger>
-            <DialogContent 
-              onInteractOutside={(e) => e.preventDefault()}
-              onPointerDownOutside={(e) => e.preventDefault()}
-              className="sm:max-w-4xl max-h-[85vh] overflow-y-auto bg-white p-6 rounded-2xl border border-slate-200 text-slate-900"
-            >
-              <DialogHeader>
-                <DialogTitle className="text-sm font-black text-slate-900 uppercase tracking-wider">
-                  PIC Assignment & Distribution
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 font-medium">
-                  Alokasi pembagian tugas follow-up antar PIC aktif.
-                </DialogDescription>
-              </DialogHeader>
+        return (
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 mb-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                {isAdmin ? <Users className="w-5 h-5" /> : <History className="w-5 h-5" />}
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800">
+                  {isAdmin ? 'PIC Assignment & Distribution' : 'Log Aktivitas Saya Hari Ini'}
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  {isAdmin ? (() => {
+                    const activePicsCount = usersList.filter((usr) => {
+                      const uname = (usr.username || '').toLowerCase();
+                      const fname = (usr.fullName || '').toLowerCase();
+                      if (uname === 'kevin' || fname.includes('kevin')) return false;
+                      const name = usr.fullName || usr.username;
+                      return participants.some(p => {
+                        const pic = extractPicFromNotes(p.notes).pic;
+                        return pic.toLowerCase() === name.toLowerCase() || 
+                               (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
+                      });
+                    }).length;
+                    return `${activePicsCount} PIC aktif bertugas`;
+                  })() : `Ringkasan aktivitas telepon, WA, dan email yang dikerjakan oleh ${myPicName}`}
+                </p>
+              </div>
+            </div>
 
-              <div className="space-y-6 mt-4">
-                {selectedPic ? (
-                  <div className="space-y-4">
-                    {/* Header/Back button */}
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
-                      <button 
-                        onClick={() => { setSelectedPic(null); setSearchQuery(''); setPicViewTab('report'); }}
-                        className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider font-semibold cursor-pointer"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        Kembali ke Daftar PIC
-                      </button>
-                      <div className="text-right">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PIC Terpilih</span>
-                        <h4 className="text-sm font-black text-slate-900">{selectedPic}</h4>
+            <Dialog onOpenChange={(open) => {
+              if (open) {
+                if (!isAdmin) {
+                  setSelectedPic(myPicName);
+                  handleSetPreset('today');
+                  setPicViewTab('report');
+                }
+              } else {
+                if (isAdmin) setSelectedPic(null);
+                setSearchQuery('');
+              }
+            }}>
+              <DialogTrigger asChild>
+                <button className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-sm flex items-center gap-2 cursor-pointer">
+                  <History className="w-4 h-4 text-blue-300" />
+                  <span>{isAdmin ? 'View PIC Workload & Balance' : 'Lihat Log Aktivitas Saya'}</span>
+                </button>
+              </DialogTrigger>
+              <DialogContent 
+                onInteractOutside={(e) => e.preventDefault()}
+                onPointerDownOutside={(e) => e.preventDefault()}
+                className="sm:max-w-4xl max-h-[85vh] overflow-y-auto bg-white p-6 rounded-2xl border border-slate-200 text-slate-900"
+              >
+                <DialogHeader>
+                  <DialogTitle className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                    {isAdmin ? 'PIC Assignment & Distribution' : `Laporan Aktivitas Follow-Up — ${myPicName}`}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 font-medium">
+                    {isAdmin ? 'Alokasi pembagian tugas follow-up antar PIC aktif.' : 'Riwayat aktivitas telepon, WhatsApp, dan email yang kamu kerjakan hari ini.'}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6 mt-4">
+                  {selectedPic ? (
+                    <div className="space-y-4">
+                      {/* Header/Back button */}
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
+                        {isAdmin ? (
+                          <button 
+                            onClick={() => { setSelectedPic(null); setSearchQuery(''); setPicViewTab('report'); }}
+                            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider font-semibold cursor-pointer"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                            Kembali ke Daftar PIC
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="p-1.5 bg-blue-50 text-blue-600 rounded-xl">
+                              <History className="w-4 h-4" />
+                            </span>
+                            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Laporan Work Log Saya</span>
+                          </div>
+                        )}
+                        <div className="text-right">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PIC Terpilih</span>
+                          <h4 className="text-sm font-black text-slate-900">{selectedPic}</h4>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Sub-tab Switcher for Selected PIC */}
-                    <div className="flex items-center gap-2 mb-4 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80">
-                      <button
-                        type="button"
-                        onClick={() => setPicViewTab('report')}
-                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          picViewTab === 'report' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        <History className="w-4 h-4 text-blue-100" />
-                        <span>Daily Report (Telemarketing Logs)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPicViewTab('participants')}
-                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          picViewTab === 'participants' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        <Users className="w-4 h-4 text-emerald-100" />
-                        <span>Kelola Peserta ({participants.filter(p => {
-                          const pic = extractPicFromNotes(p.notes).pic;
-                          return pic.toLowerCase() === selectedPic.toLowerCase() || 
-                                 (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
-                        }).length})</span>
-                      </button>
-                    </div>
+                      {/* Sub-tab Switcher for Selected PIC */}
+                      {isAdmin && (
+                        <div className="flex items-center gap-2 mb-4 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80">
+                          <button
+                            type="button"
+                            onClick={() => setPicViewTab('report')}
+                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              picViewTab === 'report' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <History className="w-4 h-4 text-blue-100" />
+                            <span>Daily Report (Telemarketing Logs)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPicViewTab('participants')}
+                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              picViewTab === 'participants' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <Users className="w-4 h-4 text-emerald-100" />
+                            <span>Kelola Peserta ({participants.filter(p => {
+                              const pic = extractPicFromNotes(p.notes).pic;
+                              return pic.toLowerCase() === selectedPic.toLowerCase() || 
+                                     (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
+                            }).length})</span>
+                          </button>
+                        </div>
+                      )}
 
                     {picViewTab === 'report' ? (
                       /* Daily Telemarketing & Activity Report Bar */
@@ -1244,7 +1286,8 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
             </DialogContent>
           </Dialog>
         </div>
-      )}
+      );
+    })()}
 
       {confirmConfig && (
         <AlertDialog open={!!confirmConfig} onOpenChange={(open) => { if (!open) setConfirmConfig(null); }}>

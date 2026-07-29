@@ -943,13 +943,18 @@ export default function EventsPage() {
     } else if (field === 'confirmationStatus') {
       confirmationStatus = value;
     } else if (field === 'reminderH7') {
-      reminderH7 = value || undefined;
+      reminderH7 = value;
     } else if (field === 'reminderH3') {
-      reminderH3 = value || undefined;
+      reminderH3 = value;
     } else if (field === 'reminderH1') {
-      reminderH1 = value || undefined;
+      reminderH1 = value;
     } else if (field === 'reminderHariH') {
-      reminderHariH = value || undefined;
+      reminderHariH = value;
+      if (value === 'on_location') {
+        attendanceStatus = 'attended';
+      } else if (attendanceStatus === 'attended') {
+        attendanceStatus = 'registered';
+      }
     }
 
     try {
@@ -966,10 +971,10 @@ export default function EventsPage() {
         lead.businessChallenges || undefined,
         lead.projectInfo || undefined,
         lead.timeline || undefined,
-        reminderH7 || undefined,
-        reminderH3 || undefined,
-        reminderH1 || undefined,
-        reminderHariH || undefined,
+        reminderH7,
+        reminderH3,
+        reminderH1,
+        reminderHariH,
         confirmationStatus || undefined
       );
 
@@ -1050,7 +1055,7 @@ export default function EventsPage() {
         undefined,
         'decline'
       );
-      toast.success(`Peserta ${p.database.firstName} berhasil ditandai sebagai Tikus & dipindahkan ke Declined`);
+      toast.success(`Peserta ${p.database.firstName} berhasil ditandai sebagai Tikus!`);
       await loadData();
     } catch (err: any) {
       toast.error('Gagal menandai peserta sebagai Tikus');
@@ -1100,16 +1105,46 @@ export default function EventsPage() {
         return false;
       }
     } else if (activeTab === 'reminder') {
-      // Reminder tab: All approved participants
-      if (confStatus !== 'approve' && confStatus !== 'confirmed') {
+      // Reminder tab: All approved participants + Tikus / flagged participants
+      const isTikus = !l.database?.isActive || confStatus === 'decline' || confStatus === 'declined';
+      if (!isTikus && confStatus !== 'approve' && confStatus !== 'confirmed') {
         return false;
       }
     } else if (activeTab === 'reminder_dday') {
-      // Reminder Dday tab: All approved participants + anyone who physically checked in / on location
-      const isOnLocation = attStatus === 'attended' || l.reminderHariH === 'on_location';
-      if (!isOnLocation && confStatus !== 'approve' && confStatus !== 'confirmed') {
-        return false;
+      // Reminder Dday tab: All EMS registrants + DB candidates + Tikus / flagged participants (stay visible with red TIKUS badge)
+      if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') {
+        const isTikus = !l.database?.isActive || confStatus === 'decline' || confStatus === 'declined';
+        if (!isTikus) return false;
       }
+    }
+
+    // 1. General search query (if typed, search takes priority)
+    if (participantSearchQuery) {
+      const term = participantSearchQuery.toLowerCase().trim();
+      const fn = l.database?.firstName || '';
+      const ln = l.database?.lastName || '';
+      const fullName = `${fn} ${ln}`.trim().toLowerCase();
+      const companyName = l.database?.company?.name?.toLowerCase() || '';
+      const jobTitle = l.database?.jobTitle?.toLowerCase() || '';
+      const email = l.database?.emails?.map(e => e.email.toLowerCase()).join(' ') || '';
+      const mobilePhone = l.database?.mobilePhone || '';
+      const officePhone = l.database?.company?.officePhone || '';
+
+      const combinedText = `${fullName} ${fn} ${ln} ${companyName} ${jobTitle} ${email} ${mobilePhone} ${officePhone}`.toLowerCase();
+      const words = term.split(/\s+/).filter(Boolean);
+      const matchesSearch = words.every(w => combinedText.includes(w));
+      if (!matchesSearch) return false;
+
+      // If non-admin manager, still enforce PIC ownership
+      if (!isAdmin && !isViewer && user) {
+        const { pic } = extractPicFromNotes(l.notes);
+        const myName = user.fullName || user.username;
+        const isMyPic = pic.toLowerCase() === myName.toLowerCase() || 
+                        (pic.toLowerCase() === 'admin' && myName.toLowerCase() === adminName.toLowerCase());
+        if (!isMyPic) return false;
+      }
+
+      return true; // Bypass specific dropdown filters so user can find searched lead!
     }
 
     // Confirmation Status filter
@@ -1129,7 +1164,7 @@ export default function EventsPage() {
 
     // Hari H Status filter (only apply for reminder_dday tab)
     if (activeTab === 'reminder_dday' && filterReminderHariH) {
-      const effectiveHariH = l.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : (l.reminderHariH || '');
+      const effectiveHariH = l.reminderHariH || (l.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : '');
       const filterVal = filterReminderHariH.toLowerCase();
 
       if (filterVal === 'on_location') {
@@ -1150,7 +1185,6 @@ export default function EventsPage() {
     if (activeTab !== 'request') {
       const { pic } = extractPicFromNotes(l.notes);
       if (!isAdmin && !isViewer && user) {
-        // ponytail: Manager (non-admin, non-viewer) only sees their assigned participants; Viewers see all data in allowed events
         const myName = user.fullName || user.username;
         const isMyPic = pic.toLowerCase() === myName.toLowerCase() || 
                         (pic.toLowerCase() === 'admin' && myName.toLowerCase() === adminName.toLowerCase());
@@ -1158,7 +1192,6 @@ export default function EventsPage() {
           return false;
         }
       } else {
-        // Admin/Manager filters by the dropdown selection
         if (filterPic) {
           const isMatch = pic.toLowerCase() === filterPic.toLowerCase() || 
                           (pic.toLowerCase() === 'admin' && filterPic.toLowerCase() === adminName.toLowerCase());
@@ -1539,8 +1572,8 @@ export default function EventsPage() {
                         toast.info('Memulai sinkronisasi data EMS...');
                         const res = await crmService.syncEmsParticipants(selectedEvent.id);
                         toast.success(`Berhasil menyinkronkan ${res?.count || 0} peserta dari EMS!`);
-                        // Auto-reload data & switch tab to 'pre_event' so telemarketing instantly sees all synced EMS registrants!
-                        await loadParticipantsForEvent(selectedEvent, 'pre_event');
+                        // Auto-reload data and stay on the current tab
+                        await loadParticipantsForEvent(selectedEvent, activeTab);
                       } catch (err: any) {
                         toast.error(err?.message || 'Gagal menyinkronkan data EMS');
                       } finally {
@@ -1595,6 +1628,7 @@ export default function EventsPage() {
             isAdmin={isAdmin}
             adminName={adminName}
             eventId={selectedEvent?.id}
+            currentUser={user}
             onAssignPic={async (ids, picName) => {
               setIsBatchUpdating(true);
               let successCount = 0;
