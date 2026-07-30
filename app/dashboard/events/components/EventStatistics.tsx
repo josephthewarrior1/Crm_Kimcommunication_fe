@@ -168,13 +168,46 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   };
 
   const filteredPicActivities = React.useMemo(() => {
-    if (!selectedPic) return [];
+    const targetPicName = selectedPic || currentUser?.fullName || currentUser?.username || adminName;
+    if (!targetPicName) return [];
+    
+    const selLower = targetPicName.toLowerCase().trim();
+    const validPicNames = new Set<string>();
+    validPicNames.add(selLower);
+
+    if (currentUser) {
+      if (currentUser.username) validPicNames.add(currentUser.username.toLowerCase().trim());
+      if (currentUser.fullName) validPicNames.add(currentUser.fullName.toLowerCase().trim());
+    }
+
+    // Look up user in usersList to match both username and fullName
+    const matchedUser = usersList.find(u => 
+      (u.fullName || '').toLowerCase().trim() === selLower ||
+      (u.username || '').toLowerCase().trim() === selLower
+    );
+    if (matchedUser) {
+      if (matchedUser.fullName) validPicNames.add(matchedUser.fullName.toLowerCase().trim());
+      if (matchedUser.username) validPicNames.add(matchedUser.username.toLowerCase().trim());
+    }
+
+    if (selLower === 'admin' || selLower === (adminName || '').toLowerCase().trim()) {
+      validPicNames.add('admin');
+      if (adminName) validPicNames.add(adminName.toLowerCase().trim());
+    }
+
     return activitiesReport.filter(a => {
-      const picName = a.createdBy || '';
-      return picName.toLowerCase() === selectedPic.toLowerCase() ||
-        (picName.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
+      const creator = (a.createdBy || '').toLowerCase().trim();
+      if (creator && validPicNames.has(creator)) return true;
+
+      // Also check participant PIC from notes if creator was admin or matched user
+      if (a.eventParticipant?.notes) {
+        const participantPic = extractPicFromNotes(a.eventParticipant.notes).pic.toLowerCase().trim();
+        if (participantPic && validPicNames.has(participantPic)) return true;
+      }
+
+      return false;
     });
-  }, [activitiesReport, selectedPic, adminName]);
+  }, [activitiesReport, selectedPic, currentUser, adminName, usersList]);
 
   const normalizeStatus = (str?: string) => {
     if (!str) return '';
@@ -577,6 +610,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   handleSetPreset('today');
                   setPicViewTab('report');
                 }
+                loadActivitiesReport();
               } else {
                 if (isAdmin) setSelectedPic(null);
                 setSearchQuery('');

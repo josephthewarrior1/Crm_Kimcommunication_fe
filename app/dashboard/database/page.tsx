@@ -10,6 +10,7 @@ import { useSearchParams } from 'next/navigation';
 import { matchesIndustryFilter } from './utils/industryHelper';
 import { normalizePhone } from './utils/phoneHelper';
 import { checkDatabaseCompleteness } from './utils/validationHelper';
+import { getOfficeEmail, getPersonalEmail } from '../events/utils/notesHelper';
 import { INDUSTRIES } from '../../../lib/constants';
 
 import { DatabaseDetailModal } from './components/DatabaseDetailModal';
@@ -990,10 +991,10 @@ export default function DatabasesPage() {
                         {c.mobilePhone ? normalizePhone(c.mobilePhone) : '-'}
                       </td>
                       <td className="py-4 px-4 text-xs font-mono text-slate-600">
-                        {c.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                        {getOfficeEmail(c.emails)}
                       </td>
                       <td className="py-4 px-4 text-xs font-mono text-slate-600">
-                        {c.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+                        {getPersonalEmail(c.emails)}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-600">
                         {c.company?.industry || '-'}

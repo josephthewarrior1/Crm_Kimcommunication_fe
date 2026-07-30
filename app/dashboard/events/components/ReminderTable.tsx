@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
 import { AlertCircle, Edit2, Trash2, History, ShieldAlert, UserX } from 'lucide-react';
-import { extractPicFromNotes } from '../utils/notesHelper';
+import { extractPicFromNotes, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 
 interface ReminderTableProps {
   filteredParticipants: EventParticipant[];
@@ -101,6 +101,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
             <th className="py-2 px-3">Mobile Phone</th>
             <th className="py-2 px-3">Office Email</th>
             <th className="py-2 px-3">Personal Email</th>
+            <th className="py-2 px-3">Industry</th>
             {onOpenEngagementModal && <th className="py-2 px-3">Telemarketing Logs</th>}
             <th className="py-2 px-3 text-center">H-7</th>
             <th className="py-2 px-3 text-center">H-3</th>
@@ -203,10 +204,13 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 {p.database.mobilePhone || '-'}
               </td>
               <td className="py-1.5 px-3 font-mono text-slate-600">
-                {p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}
+                {getOfficeEmail(p.database.emails)}
               </td>
               <td className="py-1.5 px-3 font-mono text-slate-600">
-                {p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
+                {getPersonalEmail(p.database.emails)}
+              </td>
+              <td className="py-1.5 px-3 text-slate-700 whitespace-nowrap">
+                {p.database.company?.industry || '-'}
               </td>
               {onOpenEngagementModal && (
                 <td className="py-1.5 px-3">

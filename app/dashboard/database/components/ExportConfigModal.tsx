@@ -5,6 +5,8 @@ import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
+import { getOfficeEmail, getPersonalEmail } from '../../events/utils/notesHelper';
+
 interface ExportConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -103,10 +105,10 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
         if (selectedColumns.includes('officePhone')) rowData['Office Phone'] = c.company?.officePhone || '-';
         if (selectedColumns.includes('mobilePhone')) rowData['Mobile Phone'] = c.mobilePhone || '-';
         if (selectedColumns.includes('companyEmail')) {
-          rowData['Company Email Address'] = c.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-';
+          rowData['Company Email Address'] = getOfficeEmail(c.emails);
         }
         if (selectedColumns.includes('personalEmail')) {
-          rowData['Personal Email Address'] = c.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-';
+          rowData['Personal Email Address'] = getPersonalEmail(c.emails);
         }
         if (selectedColumns.includes('industry')) rowData['Industry'] = c.company?.industry || '-';
         if (selectedColumns.includes('revenueSize')) rowData['Company Size (Revenue)'] = c.company?.companySizeRevenue || '-';

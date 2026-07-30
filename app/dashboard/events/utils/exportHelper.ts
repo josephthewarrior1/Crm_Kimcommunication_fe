@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Event, EventParticipant } from '../../../../lib/types';
-import { extractPicFromNotes } from './notesHelper';
+import { extractPicFromNotes, getOfficeEmail, getPersonalEmail } from './notesHelper';
 import { getStatusLabel } from './statusHelper';
 
 export const exportParticipantsToExcel = (
@@ -18,25 +18,31 @@ export const exportParticipantsToExcel = (
     if (status === 'not_respon_yet') return 'Not respond yet';
     if (status === 'not_respond_2x') return 'Not respond 2x';
     if (status === 'tentative') return 'Tentative';
-    if (status === 'confirm') return 'Confirm';
-    if (status === 'unable_to_attend') return 'Unable to attend';
+    if (status === 'attending') return 'Attending';
+    if (status === 'on_location') return 'On Location';
+    if (status === 'not_attending') return 'Unable to attend';
     return status;
   };
 
-  if (activeTab === 'request' || activeTab === 'pre_event') {
-    sheetName = activeTab === 'request' ? 'Request Participants' : 'Pre-Event Participants';
-    fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_${activeTab === 'request' ? 'Request' : 'PreEvent'}_Report.xlsx`;
+  if (activeTab === 'request' || activeTab === 'pre_event' || activeTab === 'declined') {
+    if (activeTab === 'request') {
+      sheetName = 'Request Handover';
+      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Request_Report.xlsx`;
+    } else if (activeTab === 'pre_event') {
+      sheetName = 'Pre Event Approval';
+      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_PreEvent_Report.xlsx`;
+    } else {
+      sheetName = 'Declined Handover';
+      fileName = `${selectedEvent.name.replace(/[^a-z0-9]/gi, '_')}_Declined_Report.xlsx`;
+    }
     
     dataToExport = filteredParticipants.map((p, index) => {
-      // Map Confirmation Status Label
-      const confirmationLabels: Record<string, string> = {
-        pending: 'Pending',
-        approve: 'Approve',
-        decline: 'Decline',
-      };
-      const confirmationLabel = confirmationLabels[p.confirmationStatus || 'pending'] || p.confirmationStatus;
-
       const { pic, cleanNotes } = extractPicFromNotes(p.notes);
+      
+      let confirmationLabel = '-';
+      if (p.confirmationStatus === 'approve') confirmationLabel = 'Approve';
+      else if (p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined') confirmationLabel = 'Decline';
+      else if (p.confirmationStatus === 'pending') confirmationLabel = 'Pending';
 
       const exportObj: Record<string, any> = {
         'No': index + 1,
@@ -48,8 +54,8 @@ export const exportParticipantsToExcel = (
         'Job Title': p.database.jobTitle || '-',
         'Office Phone': p.database.company?.officePhone || '-',
         'Mobile Phone': p.database.mobilePhone || '-',
-        'Office Email': p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-        'Personal Email': p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
+        'Office Email': getOfficeEmail(p.database.emails),
+        'Personal Email': getPersonalEmail(p.database.emails),
         'Tele Remarks': getStatusLabel(p.participantStatus),
         'Confirmation Status': confirmationLabel,
       };
@@ -76,8 +82,8 @@ export const exportParticipantsToExcel = (
         'Job Title': p.database.jobTitle || '-',
         'Office Phone': p.database.company?.officePhone || '-',
         'Mobile Phone': p.database.mobilePhone || '-',
-        'Office Email': p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-        'Personal Email': p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
+        'Office Email': getOfficeEmail(p.database.emails),
+        'Personal Email': getPersonalEmail(p.database.emails),
         'Industry': p.database.company?.industry || '-',
         'H-7 Reminder': getReminderLabel(p.reminderH7),
         'H-3 Reminder': getReminderLabel(p.reminderH3),
@@ -100,8 +106,8 @@ export const exportParticipantsToExcel = (
         'Job Title': p.database.jobTitle || '-',
         'Office Phone': p.database.company?.officePhone || '-',
         'Mobile Phone': p.database.mobilePhone || '-',
-        'Office Email': p.database.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-',
-        'Personal Email': p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-',
+        'Office Email': getOfficeEmail(p.database.emails),
+        'Personal Email': getPersonalEmail(p.database.emails),
         'Industry': p.database.company?.industry || '-',
         'Hari H Reminder': getReminderLabel(p.reminderHariH),
         'Notes': p.notes || '-'

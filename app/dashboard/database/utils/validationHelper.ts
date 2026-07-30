@@ -9,7 +9,7 @@ export const checkDatabaseCompleteness = (c: Database) => {
   if (!c.salutation?.trim()) missing.push("Salutation");
   if (!c.firstName?.trim()) missing.push("First Name");
   if (!c.lastName?.trim()) missing.push("Last Name");
-  if (!c.positionLevel || c.positionLevel === 'unknown' || !c.positionLevel.trim()) missing.push("Position");
+  if (!c.positionLevel || !c.positionLevel.trim()) missing.push("Position");
   if (!c.jobTitle?.trim()) missing.push("Job Title");
   if (!c.company?.address?.trim()) missing.push("Address");
   if (!c.company?.officePhone?.trim()) missing.push("Office Phone");
