@@ -5,13 +5,14 @@ import { crmService } from '../../../lib/services/crmService';
 import { authService } from '../../../lib/services/authService';
 import { AppUser } from '../../../lib/types';
 import { useAuth } from '../../../lib/context/AuthContext';
-import { Users, Loader2, Trash2, Shield, UserPlus, AlertCircle, Lock, Calendar, Edit3 } from 'lucide-react';
+import { Users, Loader2, Trash2, Shield, UserPlus, AlertCircle, Lock, Calendar, Edit3, Columns } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddUserModal } from './components/AddUserModal';
 import { EditUserModal } from './components/EditUserModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { DeleteUserConfirmModal } from './components/DeleteUserConfirmModal';
 import { ManageViewerEventsModal } from './components/ManageViewerEventsModal';
+import { ManageUserColumnsModal } from './components/ManageUserColumnsModal';
 
 export default function UserManagementPage() {
   const { user: currentUser, isAdmin } = useAuth();
@@ -32,6 +33,7 @@ export default function UserManagementPage() {
   const [changingPasswordUser, setChangingPasswordUser] = useState<AppUser | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [managingViewerEventsUser, setManagingViewerEventsUser] = useState<AppUser | null>(null);
+  const [managingColumnsUser, setManagingColumnsUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
     if (isAdmin) {
@@ -243,6 +245,14 @@ export default function UserManagementPage() {
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setManagingColumnsUser(u)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 text-xs font-bold rounded-lg transition-colors shadow-2xs bg-white cursor-pointer"
+                            title="Manage custom table columns visibility"
+                          >
+                            <Columns className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Custom Columns</span>
+                          </button>
                           {currentRole === 'USER' && (
                             <button
                               onClick={() => setManagingViewerEventsUser(u)}
@@ -335,6 +345,13 @@ export default function UserManagementPage() {
         isOpen={managingViewerEventsUser !== null}
         onClose={() => setManagingViewerEventsUser(null)}
         targetUser={managingViewerEventsUser}
+      />
+
+      {/* Custom Event Columns Modal */}
+      <ManageUserColumnsModal
+        isOpen={managingColumnsUser !== null}
+        onClose={() => setManagingColumnsUser(null)}
+        user={managingColumnsUser}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
 import { AlertCircle, Phone, Mail, Edit2, Trash2, History } from 'lucide-react';
+import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
 import { extractPreEventApprovalStatus, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -34,6 +35,7 @@ interface RequestPreEventTableProps {
   getStatusBadgeStyle: (status: string) => string;
   getConfirmationStatusBadgeStyle: (status: string) => string;
   onOpenEngagementModal?: (participant: EventParticipant) => void;
+  columnConfig?: EventColumnConfig;
 }
 
 export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
@@ -52,7 +54,8 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   extractPicFromNotes,
   getStatusBadgeStyle,
   getConfirmationStatusBadgeStyle,
-  onOpenEngagementModal
+  onOpenEngagementModal,
+  columnConfig = DEFAULT_COLUMN_CONFIG
 }) => {
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -110,26 +113,26 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
             </th>
-            <th className="py-2 px-3">Company Name</th>
-            <th className="py-2 px-3">Salutation</th>
-            <th className="py-2 px-3">First Name</th>
-            <th className="py-2 px-3">Last Name</th>
-            <th className="py-2 px-3">Position</th>
-            <th className="py-2 px-3">Job Title</th>
-            <th className="py-2 px-3">Office Phone</th>
-            <th className="py-2 px-3">Mobile Phone</th>
-            <th className="py-2 px-3">Office Email</th>
-            <th className="py-2 px-3">Personal Email</th>
-            <th className="py-2 px-3">Industry</th>
-            {activeTab !== 'request' && onOpenEngagementModal && <th className="py-2 px-3">Telemarketing Logs</th>}
-            {activeTab !== 'request' && <th className="py-2 px-3">Remarks</th>}
-            {showApprovalColumn && (
+            {columnConfig.companyName !== false && <th className="py-2 px-3">Company Name</th>}
+            {columnConfig.salutation !== false && <th className="py-2 px-3">Salutation</th>}
+            {columnConfig.firstName !== false && <th className="py-2 px-3">First Name</th>}
+            {columnConfig.lastName !== false && <th className="py-2 px-3">Last Name</th>}
+            {columnConfig.positionLevel !== false && <th className="py-2 px-3">Position</th>}
+            {columnConfig.jobTitle !== false && <th className="py-2 px-3">Job Title</th>}
+            {columnConfig.officePhone !== false && <th className="py-2 px-3">Office Phone</th>}
+            {columnConfig.mobilePhone !== false && <th className="py-2 px-3">Mobile Phone</th>}
+            {columnConfig.officeEmail !== false && <th className="py-2 px-3">Office Email</th>}
+            {columnConfig.personalEmail !== false && <th className="py-2 px-3">Personal Email</th>}
+            {columnConfig.industry !== false && <th className="py-2 px-3">Industry</th>}
+            {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && <th className="py-2 px-3">Telemarketing Logs</th>}
+            {columnConfig.remarks !== false && activeTab !== 'request' && <th className="py-2 px-3">Remarks</th>}
+            {columnConfig.approvalStatus !== false && showApprovalColumn && (
               <th className="py-2 px-3 text-center">
                 {activeTab === 'pre_event' ? 'Pre Event Approval' : activeTab === 'request' ? 'Client Approval' : 'Client Status'}
               </th>
             )}
-            {isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
-            <th className="py-2 px-3">Notes</th>
+            {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
+            {columnConfig.notes !== false && <th className="py-2 px-3">Notes</th>}
             {!isUser && <th className="py-2 px-3 text-right">Actions</th>}
           </tr>
         </thead>
@@ -164,40 +167,62 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
                   />
                 </td>
-                <td className="py-1.5 px-3 font-semibold text-slate-700">
-                  {p.database.company?.name || <span className="text-slate-400">-</span>}
-                </td>
-                <td className="py-1.5 px-3 text-slate-500">
-                  {p.database.salutation || '-'}
-                </td>
-                <td className="py-1.5 px-3 font-bold text-slate-900">
-                  {p.database.firstName}
-                </td>
-                <td className="py-1.5 px-3 font-bold text-slate-900">
-                  {p.database.lastName || '-'}
-                </td>
-                <td className="py-1.5 px-3 text-slate-655 font-medium">
-                  {p.database.positionLevel || '-'}
-                </td>
-                <td className="py-1.5 px-3 text-slate-950 font-medium">
-                  {p.database.jobTitle || '-'}
-                </td>
-                <td className="py-1.5 px-3 font-mono text-slate-600">
-                  {p.database.company?.officePhone || '-'}
-                </td>
-                <td className="py-1.5 px-3 font-mono text-slate-700">
-                  {p.database.mobilePhone || '-'}
-                </td>
-                <td className="py-1.5 px-3 font-mono text-slate-600">
-                  {getOfficeEmail(p.database.emails)}
-                </td>
-                <td className="py-1.5 px-3 font-mono text-slate-600">
-                  {getPersonalEmail(p.database.emails)}
-                </td>
-                <td className="py-1.5 px-3 text-slate-700 whitespace-nowrap">
-                  {p.database.company?.industry || '-'}
-                </td>
-                {activeTab !== 'request' && onOpenEngagementModal && (
+                {columnConfig.companyName !== false && (
+                  <td className="py-1.5 px-3 font-semibold text-slate-700">
+                    {p.database.company?.name || <span className="text-slate-400">-</span>}
+                  </td>
+                )}
+                {columnConfig.salutation !== false && (
+                  <td className="py-1.5 px-3 text-slate-500">
+                    {p.database.salutation || '-'}
+                  </td>
+                )}
+                {columnConfig.firstName !== false && (
+                  <td className="py-1.5 px-3 font-bold text-slate-900">
+                    {p.database.firstName}
+                  </td>
+                )}
+                {columnConfig.lastName !== false && (
+                  <td className="py-1.5 px-3 font-bold text-slate-900">
+                    {p.database.lastName || '-'}
+                  </td>
+                )}
+                {columnConfig.positionLevel !== false && (
+                  <td className="py-1.5 px-3 text-slate-655 font-medium">
+                    {p.database.positionLevel || '-'}
+                  </td>
+                )}
+                {columnConfig.jobTitle !== false && (
+                  <td className="py-1.5 px-3 text-slate-950 font-medium">
+                    {p.database.jobTitle || '-'}
+                  </td>
+                )}
+                {columnConfig.officePhone !== false && (
+                  <td className="py-1.5 px-3 font-mono text-slate-600">
+                    {p.database.company?.officePhone || '-'}
+                  </td>
+                )}
+                {columnConfig.mobilePhone !== false && (
+                  <td className="py-1.5 px-3 font-mono text-slate-700">
+                    {p.database.mobilePhone || '-'}
+                  </td>
+                )}
+                {columnConfig.officeEmail !== false && (
+                  <td className="py-1.5 px-3 font-mono text-slate-600">
+                    {getOfficeEmail(p.database.emails)}
+                  </td>
+                )}
+                {columnConfig.personalEmail !== false && (
+                  <td className="py-1.5 px-3 font-mono text-slate-600">
+                    {getPersonalEmail(p.database.emails)}
+                  </td>
+                )}
+                {columnConfig.industry !== false && (
+                  <td className="py-1.5 px-3 text-slate-700 whitespace-nowrap">
+                    {p.database.company?.industry || '-'}
+                  </td>
+                )}
+                {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && (
                   <td className="py-1.5 px-3">
                     <button
                       onClick={() => onOpenEngagementModal(p)}
@@ -209,7 +234,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </button>
                   </td>
                 )}
-                {activeTab !== 'request' && (
+                {columnConfig.remarks !== false && activeTab !== 'request' && (
                   <td className="py-1.5 px-3">
                     <select
                       disabled={isUser}
@@ -226,7 +251,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </select>
                   </td>
                 )}
-                {showApprovalColumn && (
+                {columnConfig.approvalStatus !== false && showApprovalColumn && (
                   <td className="py-1.5 px-3">
                     <div className="flex justify-center">
                       {activeTab === 'pre_event' ? (
@@ -277,20 +302,22 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </div>
                   </td>
                 )}
-                {isAdmin && activeTab !== 'request' && (
+                {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && (
                   <td className="py-1.5 px-3 font-bold text-slate-700">
                     {displayPic}
                   </td>
                 )}
-                <td
-                  onClick={() => {
-                    if (!isUser) handleOpenUpdateParticipantModal(p);
-                  }}
-                  className={`py-1.5 px-3 text-slate-600 max-w-[140px] truncate transition-all ${isUser ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
-                  title={isUser ? cleanNotes || '-' : 'Click to edit notes & details'}
-                >
-                  {cleanNotes || '-'}
-                </td>
+                {columnConfig.notes !== false && (
+                  <td
+                    onClick={() => {
+                      if (!isUser) handleOpenUpdateParticipantModal(p);
+                    }}
+                    className={`py-1.5 px-3 text-slate-600 max-w-[140px] truncate transition-all ${isUser ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
+                    title={isUser ? cleanNotes || '-' : 'Click to edit notes & details'}
+                  >
+                    {cleanNotes || '-'}
+                  </td>
+                )}
                 <td className="py-1.5 px-3 text-right whitespace-nowrap space-x-1">
                   {!isUser && (
                     <>

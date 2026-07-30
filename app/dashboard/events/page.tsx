@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { crmService } from '../../../lib/services/crmService';
 import { Event, EventParticipant, Database, AppUser } from '../../../lib/types';
-import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload, RefreshCw } from 'lucide-react';
+import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload, RefreshCw, Columns } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import * as XLSX from 'xlsx';
@@ -23,12 +23,14 @@ import { EngagementModal } from './components/EngagementModal';
 import { EventStatistics } from './components/EventStatistics';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
+import { ManageUserColumnsModal } from '../users/components/ManageUserColumnsModal';
 import { extractPicFromNotes, extractPreEventApprovalStatus, setPreEventApprovalStatus, setPicInNotes } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { exportParticipantsToExcel } from './utils/exportHelper';
 import { importParticipantsFromExcel } from './utils/importHelper';
 import { isEventAllowedForViewer } from '../../../lib/utils/viewerAccessHelper';
+import { getEventColumnConfig } from './utils/columnConfigHelper';
 
 export default function EventsPage() {
   const router = useRouter();
@@ -106,6 +108,9 @@ export default function EventsPage() {
   const [submittingParticipantUpdate, setSubmittingParticipantUpdate] = useState(false);
   const [isTakeoutModalOpen, setIsTakeoutModalOpen] = useState(false);
   const [selectedTakeoutDatabase, setSelectedTakeoutDatabase] = useState<Database | null>(null);
+  const [isManageColumnsModalOpen, setIsManageColumnsModalOpen] = useState(false);
+
+  const columnConfig = getEventColumnConfig(user?.id, selectedEvent?.id);
 
   // Form inputs for Event creation
   const [name, setName] = useState('');
@@ -1795,6 +1800,14 @@ export default function EventsPage() {
                   Export Excel
                 </button>
               )}
+              <button
+                onClick={() => setIsManageColumnsModalOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                title="Atur Kolom Tabel yang Ditampilkan"
+              >
+                <Columns className="w-3.5 h-3.5 text-blue-600" />
+                Columns
+              </button>
               {!isViewer && (activeTab === 'request' || activeTab === 'pre_event') && (
                 <button
                   onClick={() => setIsImportParticipantsModalOpen(true)}
@@ -1945,6 +1958,7 @@ export default function EventsPage() {
               getStatusBadgeStyle={getStatusBadgeStyle}
               getConfirmationStatusBadgeStyle={getConfirmationStatusBadgeStyle}
               onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
+              columnConfig={columnConfig}
             />
           ) : activeTab === 'reminder' ? (
             <ReminderTable
@@ -1958,6 +1972,7 @@ export default function EventsPage() {
               isUser={isViewer}
               getStatusBadgeStyle={getStatusBadgeStyle}
               onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
+              columnConfig={columnConfig}
             />
           ) : (
             <ReminderDdayTable
@@ -1971,6 +1986,7 @@ export default function EventsPage() {
               isUser={isViewer}
               getStatusBadgeStyle={getStatusBadgeStyle}
               onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
+              columnConfig={columnConfig}
             />
           )}
 
@@ -2185,6 +2201,13 @@ export default function EventsPage() {
         onActivityLogged={() => {
           if (selectedEvent) loadParticipantsForEvent(selectedEvent);
         }}
+      />
+
+      {/* Custom Event Columns Modal */}
+      <ManageUserColumnsModal
+        isOpen={isManageColumnsModalOpen}
+        onClose={() => setIsManageColumnsModalOpen(false)}
+        user={user}
       />
     </div>
   );
