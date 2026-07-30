@@ -758,26 +758,66 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             const totalActivities = filteredPicActivities.length;
 
                             return (
-                              <div className="flex items-center gap-2.5 flex-wrap">
-                                <div className="bg-blue-50/80 border border-blue-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                  <Phone className="w-4 h-4 text-blue-600" />
-                                  <span className="text-[11px] text-slate-600 font-semibold">Telepon:</span>
-                                  <strong className="text-base font-black text-blue-700">{callsCount}</strong>
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2.5 flex-wrap">
+                                  <div className="bg-blue-50/80 border border-blue-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                    <Phone className="w-4 h-4 text-blue-600" />
+                                    <span className="text-[11px] text-slate-600 font-semibold">Telepon:</span>
+                                    <strong className="text-base font-black text-blue-700">{callsCount}</strong>
+                                  </div>
+                                  <div className="bg-emerald-50/80 border border-emerald-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                    <MessageSquare className="w-4 h-4 text-emerald-600" />
+                                    <span className="text-[11px] text-slate-600 font-semibold">WhatsApp:</span>
+                                    <strong className="text-base font-black text-emerald-700">{waCount}</strong>
+                                  </div>
+                                  <div className="bg-purple-50/80 border border-purple-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                                    <Mail className="w-4 h-4 text-purple-600" />
+                                    <span className="text-[11px] text-slate-600 font-semibold">Email:</span>
+                                    <strong className="text-base font-black text-purple-700">{emailCount}</strong>
+                                  </div>
+                                  <div className="bg-blue-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-2 font-bold shadow-2xs">
+                                    <span className="text-[11px] text-white/90">Total Activity:</span>
+                                    <strong className="text-base font-black text-white">{totalActivities}</strong>
+                                  </div>
                                 </div>
-                                <div className="bg-emerald-50/80 border border-emerald-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                  <MessageSquare className="w-4 h-4 text-emerald-600" />
-                                  <span className="text-[11px] text-slate-600 font-semibold">WhatsApp:</span>
-                                  <strong className="text-base font-black text-emerald-700">{waCount}</strong>
-                                </div>
-                                <div className="bg-purple-50/80 border border-purple-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                  <Mail className="w-4 h-4 text-purple-600" />
-                                  <span className="text-[11px] text-slate-600 font-semibold">Email:</span>
-                                  <strong className="text-base font-black text-purple-700">{emailCount}</strong>
-                                </div>
-                                <div className="bg-blue-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-2 font-bold shadow-2xs">
-                                  <span className="text-[11px] text-white/90">Total Activity:</span>
-                                  <strong className="text-base font-black text-white">{totalActivities}</strong>
-                                </div>
+
+                                {/* Summary Remarks Badges for Selected PIC */}
+                                {(() => {
+                                  const picParticipants = participants.filter(p => {
+                                    const pic = extractPicFromNotes(p.notes).pic;
+                                    return pic.toLowerCase() === selectedPic.toLowerCase() || 
+                                           (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
+                                  });
+                                  const regCount = picParticipants.filter(p => {
+                                    const ps = (p.participantStatus || '').toLowerCase();
+                                    const att = (p.attendanceStatus || '').toLowerCase();
+                                    return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
+                                  }).length;
+                                  const tentCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'tentative' || p.participantStatus?.toLowerCase() === 'yellow').length;
+                                  const notRespCount = picParticipants.filter(p => {
+                                    const ps = (p.participantStatus || '').toLowerCase();
+                                    return !ps || ps === 'not_respond_yet' || ps === 'not_respon_yet' || ps.startsWith('not_respond_');
+                                  }).length;
+                                  const notIntCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'not_interest' || p.participantStatus?.toLowerCase() === 'red').length;
+
+                                  return (
+                                    <div className="flex items-center gap-2 flex-wrap pt-1 text-[10px] font-bold">
+                                      <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Summary Remarks:</span>
+                                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/80 rounded-md">
+                                        Registered: {regCount}
+                                      </span>
+                                      <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200/80 rounded-md">
+                                        Tentative: {tentCount}
+                                      </span>
+                                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-md">
+                                        Not Respond: {notRespCount}
+                                      </span>
+                                      <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200/80 rounded-md">
+                                        Not Interest: {notIntCount}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             );
                           })()}
@@ -1292,7 +1332,28 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             const approveCount = picParticipants.filter(p => extractPreEventApprovalStatus(p.notes) === 'approve').length;
                             const pendingCount = picParticipants.filter(p => extractPreEventApprovalStatus(p.notes) === 'pending').length;
                             const declineCount = picParticipants.filter(p => extractPreEventApprovalStatus(p.notes) === 'decline').length;
-                            const registeredCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'registered').length;
+                            
+                            // Pre-Event Remarks (Participant Status) breakdown
+                            const registeredCount = picParticipants.filter(p => {
+                              const ps = (p.participantStatus || '').toLowerCase();
+                              const att = (p.attendanceStatus || '').toLowerCase();
+                              return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
+                            }).length;
+
+                            const tentativeCount = picParticipants.filter(p => {
+                              const ps = (p.participantStatus || '').toLowerCase();
+                              return ps === 'tentative' || ps === 'yellow';
+                            }).length;
+
+                            const notRespondCount = picParticipants.filter(p => {
+                              const ps = (p.participantStatus || '').toLowerCase();
+                              return !ps || ps === 'not_respond_yet' || ps === 'not_respon_yet' || ps.startsWith('not_respond_');
+                            }).length;
+
+                            const notInterestCount = picParticipants.filter(p => {
+                              const ps = (p.participantStatus || '').toLowerCase();
+                              return ps === 'not_interest' || ps === 'red';
+                            }).length;
 
                             return (
                               <div
@@ -1334,25 +1395,45 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   </div>
 
                                   {/* Pre Event Approval Breakdown Grid */}
-                                  <div className="grid grid-cols-3 gap-1.5 p-2 bg-slate-50/80 rounded-xl border border-slate-100 mb-3">
-                                    <div className="text-center p-1.5 bg-emerald-50/60 border border-emerald-100/50 rounded-lg">
-                                      <span className="block text-[9px] font-extrabold text-emerald-700 uppercase">Approve</span>
-                                      <span className="text-xs font-black text-emerald-800">{approveCount}</span>
-                                    </div>
-                                    <div className="text-center p-1.5 bg-amber-50/60 border border-amber-100/50 rounded-lg">
-                                      <span className="block text-[9px] font-extrabold text-amber-700 uppercase">Pending</span>
-                                      <span className="text-xs font-black text-amber-800">{pendingCount}</span>
-                                    </div>
-                                    <div className="text-center p-1.5 bg-rose-50/60 border border-rose-100/50 rounded-lg">
-                                      <span className="block text-[9px] font-extrabold text-rose-700 uppercase">Declined</span>
-                                      <span className="text-xs font-black text-rose-800">{declineCount}</span>
+                                  <div className="space-y-1 mb-2">
+                                    <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Approval Status</span>
+                                    <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-50/80 rounded-xl border border-slate-100">
+                                      <div className="text-center p-1 bg-emerald-50/60 border border-emerald-100/50 rounded-lg">
+                                        <span className="block text-[8px] font-extrabold text-emerald-700 uppercase">Approve</span>
+                                        <span className="text-xs font-black text-emerald-800">{approveCount}</span>
+                                      </div>
+                                      <div className="text-center p-1 bg-amber-50/60 border border-amber-100/50 rounded-lg">
+                                        <span className="block text-[8px] font-extrabold text-amber-700 uppercase">Pending</span>
+                                        <span className="text-xs font-black text-amber-800">{pendingCount}</span>
+                                      </div>
+                                      <div className="text-center p-1 bg-rose-50/60 border border-rose-100/50 rounded-lg">
+                                        <span className="block text-[8px] font-extrabold text-rose-700 uppercase">Declined</span>
+                                        <span className="text-xs font-black text-rose-800">{declineCount}</span>
+                                      </div>
                                     </div>
                                   </div>
 
-                                  {/* Telemarketing Remarks Summary Pill */}
-                                  <div className="flex items-center justify-between text-[10px] px-2.5 py-1.5 bg-blue-50/40 rounded-xl border border-blue-100/40 text-slate-600 font-semibold mb-1">
-                                    <span>Telemarketing Registered:</span>
-                                    <span className="font-black text-blue-700">{registeredCount} Peserta</span>
+                                  {/* Pre Event Summary Remarks Grid */}
+                                  <div className="space-y-1 mb-1">
+                                    <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Summary Remarks</span>
+                                    <div className="grid grid-cols-2 gap-1 text-[9px] font-bold">
+                                      <div className="flex items-center justify-between px-2 py-1 bg-indigo-50/80 border border-indigo-100/70 rounded-lg">
+                                        <span className="text-indigo-800">Registered</span>
+                                        <span className="font-black text-indigo-950">{registeredCount}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between px-2 py-1 bg-amber-50/80 border border-amber-100/70 rounded-lg">
+                                        <span className="text-amber-800">Tentative</span>
+                                        <span className="font-black text-amber-950">{tentativeCount}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between px-2 py-1 bg-slate-100/80 border border-slate-200/80 rounded-lg">
+                                        <span className="text-slate-600">Not Respond</span>
+                                        <span className="font-black text-slate-900">{notRespondCount}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between px-2 py-1 bg-rose-50/80 border border-rose-100/70 rounded-lg">
+                                        <span className="text-rose-800">Not Interest</span>
+                                        <span className="font-black text-rose-950">{notInterestCount}</span>
+                                      </div>
+                                    </div>
                                   </div>
 
                                   {/* Dedicated Action Buttons on PIC Card */}
