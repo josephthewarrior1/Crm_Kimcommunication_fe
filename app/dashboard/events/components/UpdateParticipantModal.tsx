@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2, Users, ShieldAlert } from 'lucide-react';
-import { EventParticipant, AppUser } from '../../../../lib/types';
-import { extractPicFromNotes } from '../utils/notesHelper';
+import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2, Users, ShieldAlert, UserX } from 'lucide-react';
+import { EventParticipant, AppUser, Database } from '../../../../lib/types';
+import { extractPicFromNotes, extractPreEventApprovalStatus } from '../utils/notesHelper';
 
 interface UpdateParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeParticipant: EventParticipant;
+  activeTab?: string;
   usersList: AppUser[];
   onSubmit: (data: {
     participantStatus: string;
@@ -20,22 +21,27 @@ interface UpdateParticipantModalProps {
     reminderH1: string;
     reminderHariH: string;
     confirmationStatus: string;
+    preEventApprovalStatus: string;
   }) => Promise<void>;
   submittingParticipantUpdate: boolean;
   onFlagAsTikus?: (participant: EventParticipant) => void;
+  onRequestTakeout?: (database: Database) => void;
 }
 
 export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   isOpen,
   onClose,
   activeParticipant,
+  activeTab,
   usersList,
   onSubmit,
   submittingParticipantUpdate,
-  onFlagAsTikus
+  onFlagAsTikus,
+  onRequestTakeout
 }) => {
   const [updateParticipantStatusStr, setUpdateParticipantStatusStr] = useState('white');
   const [updateConfirmationStatusStr, setUpdateConfirmationStatusStr] = useState('pending');
+  const [updatePreEventApprovalStatusStr, setUpdatePreEventApprovalStatusStr] = useState('pending');
   const [updateReminderH7, setUpdateReminderH7] = useState('');
   const [updateReminderH3, setUpdateReminderH3] = useState('');
   const [updateReminderH1, setUpdateReminderH1] = useState('');
@@ -52,6 +58,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       setShowFlagConfirm(false);
       setUpdateParticipantStatusStr(activeParticipant.participantStatus);
       setUpdateConfirmationStatusStr(activeParticipant.confirmationStatus || 'pending');
+      setUpdatePreEventApprovalStatusStr(extractPreEventApprovalStatus(activeParticipant.notes, activeParticipant.confirmationStatus));
       setUpdateReminderH7(activeParticipant.reminderH7 || '');
       setUpdateReminderH3(activeParticipant.reminderH3 || '');
       setUpdateReminderH1(activeParticipant.reminderH1 || '');
@@ -66,12 +73,18 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   }, [activeParticipant]);
 
   if (!isOpen) return null;
+  const showClientApproval = activeTab === 'request' || activeTab === 'declined';
+  const showPreEventApproval = activeTab === 'pre_event';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const originTag = activeParticipant.notes?.includes('[Origin: EMS Sync]') ? '[Origin: EMS Sync]' : 
                       activeParticipant.notes?.includes('[Origin: Request]') ? '[Origin: Request]' : '';
-    const cleanUserText = updateParticipantNotes.replace(/\[Origin:\s*[^\]]+\]/gi, '').replace(/\[PIC:\s*[^\]]+\]/gi, '').trim();
+    const cleanUserText = updateParticipantNotes
+      .replace(/\[Origin:\s*[^\]]+\]/gi, '')
+      .replace(/\[PIC:\s*[^\]]+\]/gi, '')
+      .replace(/\[PreEventApproval:\s*[^\]]+\]/gi, '')
+      .trim();
     const finalNotes = `[PIC: ${updatePic}] ${originTag} ${cleanUserText}`.replace(/\s+/g, ' ').trim();
     onSubmit({
       participantStatus: updateParticipantStatusStr,
@@ -84,7 +97,8 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       reminderH3: updateReminderH3,
       reminderH1: updateReminderH1,
       reminderHariH: updateReminderHariH,
-      confirmationStatus: updateConfirmationStatusStr
+      confirmationStatus: updateConfirmationStatusStr,
+      preEventApprovalStatus: updatePreEventApprovalStatusStr
     });
   };
 
@@ -130,7 +144,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-3">
             <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1">Participant Qualification</h4>
             
-            <div className="grid grid-cols-3 gap-3">
+            <div className={`grid ${showClientApproval || showPreEventApproval ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
               <div>
                 <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
                   <CheckCircle className="w-3 h-3 text-emerald-500" />
@@ -158,21 +172,41 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                 </select>
               </div>
 
-              <div>
-                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                  <CheckCircle className="w-3 h-3 text-blue-500" />
-                  Registration Status
-                </label>
-                <select
-                  value={updateConfirmationStatusStr}
-                  onChange={(e) => setUpdateConfirmationStatusStr(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="approve">Approve</option>
-                  <option value="decline">Decline</option>
-                </select>
-              </div>
+              {showClientApproval && (
+                <div>
+                  <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
+                    <CheckCircle className="w-3 h-3 text-blue-500" />
+                    Client Approval
+                  </label>
+                  <select
+                    value={updateConfirmationStatusStr}
+                    onChange={(e) => setUpdateConfirmationStatusStr(e.target.value)}
+                    className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="approve">Approve</option>
+                    <option value="decline">Decline</option>
+                  </select>
+                </div>
+              )}
+
+              {showPreEventApproval && (
+                <div>
+                  <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
+                    <CheckCircle className="w-3 h-3 text-blue-500" />
+                    Pre Event Approval
+                  </label>
+                  <select
+                    value={updatePreEventApprovalStatusStr}
+                    onChange={(e) => setUpdatePreEventApprovalStatusStr(e.target.value)}
+                    className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="approve">Approve</option>
+                    <option value="decline">Decline</option>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
@@ -298,41 +332,60 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               />
             </div>
 
-            <div className="flex gap-3 justify-between items-center pt-3 border-t border-slate-100 mt-4">
-              {onFlagAsTikus ? (
-                showFlagConfirm ? (
-                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-1.5 px-3 animate-in fade-in duration-200">
-                    <ShieldAlert className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                    <span className="text-[11px] font-bold text-red-700">Yakin tandai sebagai Tikus?</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onFlagAsTikus(activeParticipant);
-                        onClose();
-                      }}
-                      className="px-2.5 py-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-[10px] font-bold rounded-lg transition-all shadow-xs cursor-pointer"
-                    >
-                      Ya, Flag Tikus
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowFlagConfirm(false)}
-                      className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
-                    >
-                      Batal
-                    </button>
-                  </div>
-                ) : (
+            <div className="flex gap-2 justify-between items-center pt-3 border-t border-slate-100 mt-4">
+              <div className="flex items-center gap-2">
+                {onRequestTakeout && (
                   <button
                     type="button"
-                    onClick={() => setShowFlagConfirm(true)}
-                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                    onClick={() => {
+                      if (activeParticipant.database) {
+                        onRequestTakeout(activeParticipant.database);
+                        onClose();
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                    title="Request Data Takeout for this contact"
                   >
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    Tandain Tikus (Report Spam)
+                    <UserX className="w-3.5 h-3.5 text-slate-600" />
+                    Request Takeout
                   </button>
-                )
-              ) : <div />}
+                )}
+
+                {onFlagAsTikus ? (
+                  showFlagConfirm ? (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-1.5 px-3 animate-in fade-in duration-200">
+                      <ShieldAlert className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                      <span className="text-[11px] font-bold text-red-700">Yakin tandai sebagai Tikus?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onFlagAsTikus(activeParticipant);
+                          onClose();
+                        }}
+                        className="px-2.5 py-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-[10px] font-bold rounded-lg transition-all shadow-xs cursor-pointer"
+                      >
+                        Ya, Flag Tikus
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowFlagConfirm(false)}
+                        className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowFlagConfirm(true)}
+                      className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      Tandain Tikus (Report Spam)
+                    </button>
+                  )
+                ) : null}
+              </div>
 
               <button
                 type="submit"

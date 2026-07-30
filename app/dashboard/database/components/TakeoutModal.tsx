@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Loader2, ShieldAlert } from 'lucide-react';
+import { X, Loader2, UserX } from 'lucide-react';
 import { Database } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
@@ -59,8 +59,8 @@ export const TakeoutModal: React.FC<TakeoutModalProps> = ({
         </button>
 
         <div className="text-center mb-6">
-          <div className="inline-flex p-3 bg-amber-50 border border-amber-100 text-amber-600 rounded-xl mb-3">
-            <ShieldAlert className="w-6 h-6" />
+          <div className="inline-flex p-3 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl mb-3">
+            <UserX className="w-6 h-6" />
           </div>
           <h3 className="text-xl font-extrabold text-slate-900">Request Data Takeout</h3>
           <p className="text-xs text-slate-500 mt-1">

@@ -18,11 +18,12 @@ import { DeleteEventConfirmModal } from './components/DeleteEventConfirmModal';
 import { DeleteParticipantConfirmModal } from './components/DeleteParticipantConfirmModal';
 import { AddParticipantModal } from './components/AddParticipantModal';
 import { UpdateParticipantModal } from './components/UpdateParticipantModal';
+import { TakeoutModal } from '../database/components/TakeoutModal';
 import { EngagementModal } from './components/EngagementModal';
 import { EventStatistics } from './components/EventStatistics';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
-import { extractPicFromNotes } from './utils/notesHelper';
+import { extractPicFromNotes, extractPreEventApprovalStatus, setPreEventApprovalStatus } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { exportParticipantsToExcel } from './utils/exportHelper';
@@ -103,6 +104,8 @@ export default function EventsPage() {
   const [deletingParticipant, setDeletingParticipant] = useState<EventParticipant | null>(null);
   const [submittingParticipantDelete, setSubmittingParticipantDelete] = useState(false);
   const [submittingParticipantUpdate, setSubmittingParticipantUpdate] = useState(false);
+  const [isTakeoutModalOpen, setIsTakeoutModalOpen] = useState(false);
+  const [selectedTakeoutDatabase, setSelectedTakeoutDatabase] = useState<Database | null>(null);
 
   // Form inputs for Event creation
   const [name, setName] = useState('');
@@ -157,6 +160,59 @@ export default function EventsPage() {
 
   const adminUser = usersList.find(u => u.roles?.includes('ADMIN'));
   const adminName = adminUser ? (adminUser.fullName || adminUser.username) : 'Admin';
+  const isEmsParticipant = (p: EventParticipant) => {
+    const attStatus = p.attendanceStatus?.toLowerCase();
+    return p.notes?.includes('[Origin: EMS Sync]') ||
+      p.notes?.includes('[EMS]') ||
+      p.database?.source === 'event_registration' ||
+      attStatus === 'registered' ||
+      attStatus === 'attended';
+  };
+
+  const isPublicEmsOnlyParticipant = (p: EventParticipant) => {
+    const notes = p.notes || '';
+    const hasRequestOrigin = notes.includes('[Origin: Request]');
+    const hasEmsOrigin = notes.includes('[Origin: EMS Sync]') || notes.includes('[EMS]');
+    return !hasRequestOrigin && (hasEmsOrigin || p.database?.source === 'event_registration');
+  };
+
+  const getEffectiveConfirmationStatus = (p: EventParticipant) => {
+    const confStatus = p.confirmationStatus?.toLowerCase() || 'pending';
+    const attStatus = p.attendanceStatus?.toLowerCase();
+    const notes = p.notes?.toLowerCase() || '';
+    const participantStatus = p.participantStatus?.toLowerCase();
+    const isExplicitlyDeclined = attStatus === 'cancelled' ||
+      attStatus === 'canceled' ||
+      attStatus === 'no_show' ||
+      notes.includes('[ems declined]') ||
+      notes.includes('declined_at');
+    const isActiveEms = isEmsParticipant(p) && !isExplicitlyDeclined && (
+      attStatus === 'registered' ||
+      attStatus === 'attended' ||
+      participantStatus === 'registered' ||
+      participantStatus === 'green' ||
+      participantStatus === 'confirm' ||
+      participantStatus === 'confirmed' ||
+      p.reminderHariH === 'on_location'
+    );
+
+    if (isActiveEms && (confStatus === 'decline' || confStatus === 'declined')) {
+      return 'approve';
+    }
+    return confStatus;
+  };
+
+  const isRegisteredParticipant = (p: EventParticipant) => {
+    const ps = p.participantStatus?.toLowerCase();
+    const att = p.attendanceStatus?.toLowerCase();
+    return ps === 'registered' ||
+      ps === 'green' ||
+      ps === 'confirm' ||
+      ps === 'confirmed' ||
+      att === 'registered' ||
+      att === 'attended';
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -584,6 +640,44 @@ export default function EventsPage() {
     }
   };
 
+  const handleBatchUpdatePreEventApprovalStatus = async (status: string) => {
+    if (selectedParticipantIds.length === 0) return;
+    setIsBatchUpdating(true);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    await Promise.all(selectedParticipantIds.map(async (participantId) => {
+      try {
+        const lead = participants.find(l => l.id === participantId);
+        if (lead) {
+          await crmService.updateParticipantStatus(
+            participantId,
+            undefined,
+            undefined,
+            setPreEventApprovalStatus(lead.notes, status)
+          );
+          successCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }));
+
+    setIsBatchUpdating(false);
+    setSelectedParticipantIds([]);
+
+    if (failCount > 0) {
+      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
+    } else {
+      toast.success(`Berhasil mengupdate Pre Event approval ${successCount} participants!`);
+    }
+
+    if (selectedEvent) {
+      await loadParticipantsForEvent(selectedEvent, activeTab);
+    }
+  };
+
   const handleBatchUpdateReminderHariH = async (status: string) => {
     if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
@@ -635,6 +729,34 @@ export default function EventsPage() {
     }
   };
 
+  const handleBatchDeleteParticipants = async () => {
+    if (!selectedEvent || selectedParticipantIds.length === 0) return;
+    setIsBatchUpdating(true);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    await Promise.all(selectedParticipantIds.map(async (participantId) => {
+      try {
+        await crmService.deleteEventParticipant(participantId);
+        successCount++;
+      } catch (err) {
+        failCount++;
+      }
+    }));
+
+    setIsBatchUpdating(false);
+    setSelectedParticipantIds([]);
+
+    if (failCount > 0) {
+      toast.warning(`Berhasil menghapus ${successCount} participants dari event, gagal ${failCount} participants.`);
+    } else {
+      toast.success(`Berhasil menghapus ${successCount} participants dari event!`);
+    }
+
+    await loadParticipantsForEvent(selectedEvent, activeTab);
+  };
+
   const handleResetFilters = () => {
     setParticipantSearchQuery('');
     setFilterCompany('');
@@ -658,7 +780,7 @@ export default function EventsPage() {
         databaseIds,
         participantStatus: 'white',
         attendanceStatus: 'invited',
-        confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
+        confirmationStatus: 'pending',
         notes: activeTab === 'request'
           ? `[Origin: Request] ${notes.trim()}`.trim()
           : notes.trim() || undefined
@@ -820,16 +942,21 @@ export default function EventsPage() {
     reminderH1: string;
     reminderHariH: string;
     confirmationStatus: string;
+    preEventApprovalStatus: string;
   }) => {
     if (!selectedEvent || !activeParticipant) return;
 
     setSubmittingParticipantUpdate(true);
     try {
+      const nextNotes = activeTab === 'pre_event'
+        ? setPreEventApprovalStatus(data.notes, data.preEventApprovalStatus)
+        : data.notes;
+
       await crmService.updateParticipantStatus(
         activeParticipant.id,
         data.participantStatus,
         data.attendanceStatus,
-        data.notes || undefined,
+        nextNotes || undefined,
         undefined, // participantCategory (removed)
         data.callStatus || undefined,
         data.emailStatus || undefined,
@@ -925,7 +1052,7 @@ export default function EventsPage() {
 
   const handleDirectUpdateParticipant = async (
     lead: EventParticipant,
-    field: 'remarks' | 'attendance' | 'confirmationStatus' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH',
+    field: 'remarks' | 'attendance' | 'confirmationStatus' | 'preEventApprovalStatus' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH',
     value: string
   ) => {
     let participantStatus = lead.participantStatus;
@@ -992,32 +1119,48 @@ export default function EventsPage() {
         return;
       }
 
+      if (field === 'preEventApprovalStatus') {
+        await crmService.updateParticipantStatus(
+          lead.id,
+          undefined,
+          undefined,
+          setPreEventApprovalStatus(lead.notes, value)
+        );
+        toast.success('Pre Event approval updated successfully!');
+        if (selectedEvent) {
+          await loadParticipantsForEvent(selectedEvent, activeTab);
+        }
+        return;
+      }
+
       await crmService.updateParticipantStatus(
         lead.id,
-        participantStatus,
-        attendanceStatus,
-        lead.notes || undefined,
-        undefined, // participantCategory (removed)
-        lead.callStatus || undefined,
-        lead.emailStatus || undefined,
-        lead.whatsappStatus || undefined,
-        lead.meetingStatus || undefined,
-        lead.businessChallenges || undefined,
-        lead.projectInfo || undefined,
-        lead.timeline || undefined,
-        reminderH7,
-        reminderH3,
-        reminderH1,
-        reminderHariH,
-        confirmationStatus || undefined
+        field === 'remarks' ? value : undefined,
+        field === 'attendance' ? value : (field === 'reminderHariH' ? (value === 'on_location' ? 'attended' : (lead.attendanceStatus === 'attended' ? 'registered' : undefined)) : undefined),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        field === 'reminderH7' ? value : undefined,
+        field === 'reminderH3' ? value : undefined,
+        field === 'reminderH1' ? value : undefined,
+        field === 'reminderHariH' ? value : undefined,
+        field === 'confirmationStatus' ? value : undefined
       );
 
-      // Log activity
-      await crmService.addEventParticipantActivity(lead.id, {
-        activityType: 'CALL',
-        status: value,
-        notes: `Directly updated ${field} to ${value || 'None'} from the participants list table.`
-      });
+      // Log activity (skip for Data List fields: remarks & confirmationStatus)
+      if (field !== 'remarks' && field !== 'confirmationStatus') {
+        await crmService.addEventParticipantActivity(lead.id, {
+          activityType: 'CALL',
+          status: value,
+          notes: `Directly updated ${field} to ${value || 'None'} from the participants list table.`
+        });
+      }
 
       toast.success(`Updated ${field} successfully!`);
 
@@ -1062,6 +1205,10 @@ export default function EventsPage() {
   const handleFlagAsTikus = async (p: EventParticipant) => {
     try {
       if (!p.database) return;
+      const nextNotes = p.notes?.includes('[TIKUS]')
+        ? p.notes
+        : `[TIKUS] ${p.notes || ''}`.trim();
+
       await crmService.createFlaggedIdentity({
         nameUsed: `${p.database.firstName} ${p.database.lastName || ''}`.trim(),
         phoneUsed: p.database.mobilePhone || '',
@@ -1070,24 +1217,12 @@ export default function EventsPage() {
         database: p.database,
         event: selectedEvent || undefined
       });
+
       await crmService.updateParticipantStatus(
         p.id,
         undefined,
         undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        'decline'
+        nextNotes
       );
       toast.success(`Peserta ${p.database.firstName} berhasil ditandai sebagai Tikus!`);
       await loadData();
@@ -1096,9 +1231,10 @@ export default function EventsPage() {
     }
   };
 
-
-
-  // Filter events based on search and viewer allowed permissions
+  const handleOpenTakeoutModal = (database: Database) => {
+    setSelectedTakeoutDatabase(database);
+    setIsTakeoutModalOpen(true);
+  };
   const filteredEvents = events.filter((e) => {
     if (isViewer && !isEventAllowedForViewer(e.id, user)) {
       return false;
@@ -1109,20 +1245,15 @@ export default function EventsPage() {
     );
   });
 
-
-
   const filteredParticipants = participants.filter((l) => {
-    const confStatus = l.confirmationStatus?.toLowerCase() || 'pending';
+    const confStatus = getEffectiveConfirmationStatus(l);
     const attStatus = l.attendanceStatus?.toLowerCase();
-    const isEms = l.notes?.includes('[Origin: EMS Sync]') || 
-                  l.notes?.includes('[EMS]') || 
-                  l.database?.source === 'event_registration' ||
-                  attStatus === 'registered' ||
-                  attStatus === 'attended';
+    const isEms = isEmsParticipant(l);
 
     if (activeTab === 'request') {
       // Data List tab: Master DB candidates for lead vetting
-      if (isEms) {
+      // Keep Data List candidates visible even if they also registered via EMS
+      if (isPublicEmsOnlyParticipant(l)) {
         return false;
       }
     } else if (activeTab === 'pre_event') {
@@ -1139,13 +1270,19 @@ export default function EventsPage() {
         return false;
       }
     } else if (activeTab === 'reminder') {
-      // Reminder tab: approved participants
+      // Reminder tab: approved and registered participants only
       if (confStatus !== 'approve' && confStatus !== 'confirmed') {
         return false;
       }
+      if (!isRegisteredParticipant(l)) {
+        return false;
+      }
     } else if (activeTab === 'reminder_dday') {
-      // Reminder Dday tab: EMS registrants + approved DB candidates
-      if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') {
+      // Reminder D-Day tab: same approved and registered base as Reminder
+      if (confStatus !== 'approve' && confStatus !== 'confirmed') {
+        return false;
+      }
+      if (!isRegisteredParticipant(l)) {
         return false;
       }
     }
@@ -1179,24 +1316,27 @@ export default function EventsPage() {
       return true; // Bypass specific dropdown filters so user can find searched lead!
     }
 
-    // Confirmation Status filter
+    // Status filter. In Pre-Event this filters its own approval stored in notes, not Data List client approval.
     if (filterConfirmationStatus) {
-      const confStatus = l.confirmationStatus?.toLowerCase() || 'pending';
       const targetConf = filterConfirmationStatus.toLowerCase();
-      if (targetConf === 'approve') {
-        if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
-      } else if (targetConf === 'decline') {
-        if (confStatus !== 'decline' && confStatus !== 'declined') return false;
-      } else if (targetConf === 'pending') {
-        if (confStatus !== 'pending') return false;
+      if (activeTab === 'pre_event') {
+        if (extractPreEventApprovalStatus(l.notes, l.confirmationStatus) !== targetConf) return false;
       } else if (confStatus !== targetConf) {
-        return false;
+        if (targetConf === 'approve') {
+          if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
+        } else if (targetConf === 'decline') {
+          if (confStatus !== 'decline' && confStatus !== 'declined') return false;
+        } else if (targetConf === 'pending') {
+          if (confStatus !== 'pending') return false;
+        } else {
+          return false;
+        }
       }
     }
 
     // Hari H Status filter (only apply for reminder_dday tab)
     if (activeTab === 'reminder_dday' && filterReminderHariH) {
-      const effectiveHariH = l.reminderHariH || (l.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : '');
+      const effectiveHariH = cleanStatusValue(l.reminderHariH) || (l.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : '');
       const filterVal = filterReminderHariH.toLowerCase();
 
       if (filterVal === 'on_location') {
@@ -1268,6 +1408,12 @@ export default function EventsPage() {
     return true;
   });
 
+  const displayParticipants = filteredParticipants.map((p) => {
+    const effectiveStatus = getEffectiveConfirmationStatus(p);
+    if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
+    return { ...p, confirmationStatus: effectiveStatus };
+  });
+
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -1282,10 +1428,10 @@ export default function EventsPage() {
     filterPic
   ]);
 
-  const totalPages = Math.ceil(filteredParticipants.length / pageSize) || 1;
+  const totalPages = Math.ceil(displayParticipants.length / pageSize) || 1;
   const indexOfLastItem = currentPage * pageSize;
   const indexOfFirstItem = indexOfLastItem - pageSize;
-  const paginatedParticipants = filteredParticipants.slice(indexOfFirstItem, indexOfLastItem);
+  const paginatedParticipants = displayParticipants.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -1595,9 +1741,15 @@ export default function EventsPage() {
                 }`}
               >
                 <span>Declined</span>
-                {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length > 0 && (
+                {participants.filter(p => {
+                  const status = getEffectiveConfirmationStatus(p);
+                  return status === 'decline' || status === 'declined';
+                }).length > 0 && (
                   <span className="px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700 rounded-full">
-                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
+                    {participants.filter(p => {
+                      const status = getEffectiveConfirmationStatus(p);
+                      return status === 'decline' || status === 'declined';
+                    }).length}
                   </span>
                 )}
               </button>
@@ -1665,7 +1817,7 @@ export default function EventsPage() {
 
           <EventStatistics
             activeTab={activeTab}
-            participants={participants}
+            participants={displayParticipants}
             usersList={usersList}
             isAdmin={isAdmin}
             adminName={adminName}
@@ -1722,9 +1874,12 @@ export default function EventsPage() {
               activeTab={activeTab}
               usersList={usersList}
               handleBatchUpdateConfirmationStatus={handleBatchUpdateConfirmationStatus}
+              handleBatchUpdatePreEventApprovalStatus={handleBatchUpdatePreEventApprovalStatus}
               handleBatchUpdateParticipantStatus={handleBatchUpdateParticipantStatus}
               handleBatchAssignPic={handleBatchAssignPic}
               handleBatchUpdateReminderHariH={handleBatchUpdateReminderHariH}
+              handleBatchDeleteParticipants={handleBatchDeleteParticipants}
+              isBatchUpdating={isBatchUpdating}
             />
           )}
 
@@ -1961,12 +2116,28 @@ export default function EventsPage() {
             setActiveParticipant(null);
           }}
           activeParticipant={activeParticipant}
+          activeTab={activeTab}
           usersList={usersList}
           onSubmit={handleUpdateParticipantStatus}
           submittingParticipantUpdate={submittingParticipantUpdate}
           onFlagAsTikus={handleFlagAsTikus}
+          onRequestTakeout={handleOpenTakeoutModal}
         />
       )}
+
+      <TakeoutModal
+        isOpen={isTakeoutModalOpen}
+        onClose={() => {
+          setIsTakeoutModalOpen(false);
+          setSelectedTakeoutDatabase(null);
+        }}
+        database={selectedTakeoutDatabase}
+        onSuccess={() => {
+          setIsTakeoutModalOpen(false);
+          setSelectedTakeoutDatabase(null);
+          loadData();
+        }}
+      />
 
 
 

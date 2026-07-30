@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Loader2, AlertCircle, CheckCircle, Search } from 'lucide-react';
 import { Company } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
@@ -31,6 +31,10 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
   const [source, setSource] = useState('manual');
   const [databaseCompanyEmail, setDatabaseCompanyEmail] = useState('');
   const [databasePersonalEmail, setDatabasePersonalEmail] = useState('');
+  const [isCreatingNewCompany, setIsCreatingNewCompany] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -49,6 +53,10 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     setSource('manual');
     setDatabaseCompanyEmail('');
     setDatabasePersonalEmail('');
+    setIsCreatingNewCompany(false);
+    setNewCompanyName('');
+    setCompanySearchQuery('');
+    setIsCompanyDropdownOpen(false);
     setSubmitAttempted(false);
     setSubmitting(false);
   };
@@ -66,6 +74,10 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
 
   if (!isOpen) return null;
 
+  const filteredCompanies = companies.filter((c) =>
+    (c.name || '').toLowerCase().includes((companySearchQuery || '').toLowerCase().trim())
+  );
+
   const handleCreateDatabase = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitAttempted(true);
@@ -75,11 +87,13 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     if (!lastName.trim()) missing.push("Last Name");
     if (!salutation.trim()) missing.push("Salutation");
     if (!jobTitle.trim()) missing.push("Job Title");
-    if (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim()) missing.push("Position Level");
     if (!mobilePhone.trim()) missing.push("Mobile Phone");
     if (!databaseCompanyEmail.trim()) missing.push("Company Email");
-    if (!databasePersonalEmail.trim()) missing.push("Personal Email");
-    if (!selectedCompanyId) missing.push("Associated Company");
+    if (isCreatingNewCompany) {
+      if (!newCompanyName.trim()) missing.push("New Company Name");
+    } else if (!selectedCompanyId) {
+      missing.push("Associated Company");
+    }
 
     if (missing.length > 0) {
       toast.error(`Harap isi semua kolom wajib: ${missing.join(", ")}`);
@@ -88,6 +102,18 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
 
     setSubmitting(true);
     try {
+      let resolvedCompanyId: number | undefined = selectedCompanyId ? Number(selectedCompanyId) : undefined;
+      if (isCreatingNewCompany && newCompanyName.trim()) {
+        try {
+          const createdComp = await crmService.createCompany({ name: newCompanyName.trim() });
+          resolvedCompanyId = createdComp.id;
+        } catch (compErr: any) {
+          toast.error(`Gagal membuat Perusahaan Baru: ${compErr.message}`);
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const createdDatabase = await crmService.createDatabase(
         {
           salutation,
@@ -103,7 +129,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
           source,
           isActive: true
         },
-        selectedCompanyId ? Number(selectedCompanyId) : undefined
+        resolvedCompanyId
       );
 
       // Save Company Email if filled
@@ -154,8 +180,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     !jobTitle.trim() ||
     !mobilePhone.trim() ||
     !databaseCompanyEmail.trim() ||
-    !databasePersonalEmail.trim() ||
-    !selectedCompanyId;
+    (isCreatingNewCompany ? !newCompanyName.trim() : !selectedCompanyId);
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -205,24 +230,125 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Associated Company <span className="text-red-500 font-bold">*</span></label>
-              <select
-                value={selectedCompanyId}
-                onChange={(e) => setSelectedCompanyId(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${submitAttempted && !selectedCompanyId
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
-              >
-                <option value="">Select a Company</option>
-                {companies.map((comp) => (
-                  <option key={comp.id} value={comp.id}>
-                    {comp.name}
-                  </option>
-                ))}
-              </select>
-              {submitAttempted && !selectedCompanyId && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">Associated Company wajib diisi</p>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700">
+                  Associated Company <span className="text-red-500 font-bold">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingNewCompany(!isCreatingNewCompany);
+                    setSelectedCompanyId('');
+                    setNewCompanyName('');
+                    setCompanySearchQuery('');
+                    setIsCompanyDropdownOpen(false);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 underline focus:outline-none"
+                >
+                  {isCreatingNewCompany ? '← Choose Existing' : '+ Create New Company'}
+                </button>
+              </div>
+
+              {isCreatingNewCompany ? (
+                <input
+                  type="text"
+                  placeholder="Enter new company name (e.g. PT Smartnet Magna Global)"
+                  value={newCompanyName}
+                  onChange={(e) => setNewCompanyName(e.target.value)}
+                  className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !newCompanyName.trim()
+                      ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                      : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
+                    }`}
+                />
+              ) : (
+                <div className="relative">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Type to search company..."
+                      value={isCompanyDropdownOpen ? companySearchQuery : (companySearchQuery || (companies.find(c => c.id.toString() === selectedCompanyId)?.name || ''))}
+                      onFocus={() => {
+                        setCompanySearchQuery('');
+                        setIsCompanyDropdownOpen(true);
+                      }}
+                      onChange={(e) => {
+                        setCompanySearchQuery(e.target.value);
+                        setIsCompanyDropdownOpen(true);
+                        if (selectedCompanyId) setSelectedCompanyId('');
+                      }}
+                      className={`w-full px-4 py-2.5 pr-10 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !selectedCompanyId
+                          ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                          : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
+                        }`}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
+                      {(companySearchQuery || selectedCompanyId) ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCompanySearchQuery('');
+                            setSelectedCompanyId('');
+                            setIsCompanyDropdownOpen(false);
+                          }}
+                          className="hover:text-slate-600 p-0.5 text-xs font-bold"
+                          title="Clear selection"
+                        >
+                          ✕
+                        </button>
+                      ) : (
+                        <Search className="w-4 h-4" />
+                      )}
+                    </div>
+                  </div>
+
+                  {isCompanyDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setIsCompanyDropdownOpen(false)} />
+                      <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-56 overflow-y-auto py-1 animate-in fade-in duration-150">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCreatingNewCompany(true);
+                            setNewCompanyName(companySearchQuery || '');
+                            setCompanySearchQuery('');
+                            setIsCompanyDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-2 border-b border-slate-100"
+                        >
+                          <span>+ Add New Company {companySearchQuery ? `"${companySearchQuery}"` : ''}</span>
+                        </button>
+
+                        {filteredCompanies.length === 0 ? (
+                          <div className="px-3.5 py-3 text-xs text-slate-400 italic">No matching companies found</div>
+                        ) : (
+                          filteredCompanies.map((comp) => (
+                            <button
+                              key={comp.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCompanyId(comp.id.toString());
+                                setCompanySearchQuery('');
+                                setIsCompanyDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3.5 py-2 text-xs transition-colors flex items-center justify-between ${selectedCompanyId === comp.id.toString()
+                                  ? 'bg-blue-50 text-blue-700 font-bold'
+                                  : 'text-slate-700 hover:bg-slate-50 font-medium'
+                                }`}
+                            >
+                              <span>{comp.name}</span>
+                              {comp.industry && <span className="text-[10px] text-slate-400 font-normal">{comp.industry}</span>}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {submitAttempted && (isCreatingNewCompany ? !newCompanyName.trim() : !selectedCompanyId) && (
+                <p className="text-red-500 text-[11px] mt-1 font-semibold">
+                  {isCreatingNewCompany ? 'Nama Perusahaan Baru wajib diisi' : 'Associated Company wajib diisi'}
+                </p>
               )}
             </div>
 
@@ -343,20 +469,14 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Personal Email <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Personal Email <span className="text-slate-400 font-normal text-xs">(Optional)</span></label>
               <input
                 type="email"
                 placeholder="e.g. name@gmail.com"
                 value={databasePersonalEmail}
                 onChange={(e) => setDatabasePersonalEmail(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !databasePersonalEmail.trim()
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
-              {submitAttempted && !databasePersonalEmail.trim() && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">Personal Email wajib diisi</p>
-              )}
             </div>
 
             <div>

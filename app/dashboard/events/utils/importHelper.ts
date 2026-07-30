@@ -157,7 +157,7 @@ export const importParticipantsFromExcel = async (
           databaseId: resolvedContactId,
           participantStatus: 'white',
           attendanceStatus: 'invited',
-          confirmationStatus: activeTab === 'pre_event' ? 'approve' : 'pending',
+          confirmationStatus: 'pending',
           notes: activeTab === 'request' ? '[Origin: Request]' : undefined
         });
       }

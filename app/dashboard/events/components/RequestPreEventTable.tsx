@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
 import { AlertCircle, Phone, Mail, Edit2, Trash2, History } from 'lucide-react';
+import { extractPreEventApprovalStatus } from '../utils/notesHelper';
 
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg 
@@ -21,7 +22,7 @@ interface RequestPreEventTableProps {
   handleToggleEngagement: (participant: EventParticipant, type: 'CALL' | 'EMAIL' | 'WHATSAPP') => void;
   handleDirectUpdateParticipant: (
     participant: EventParticipant,
-    field: 'remarks' | 'attendance' | 'confirmationStatus' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH',
+    field: 'remarks' | 'attendance' | 'confirmationStatus' | 'preEventApprovalStatus' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH',
     value: string
   ) => void;
   handleOpenUpdateParticipantModal: (participant: EventParticipant) => void;
@@ -58,6 +59,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   const tableRef = useRef<HTMLTableElement>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
   const canEditConfirmation = !isUser || activeTab === 'request';
+  const showApprovalColumn = true;
 
   useEffect(() => {
     if (tableRef.current) {
@@ -120,7 +122,11 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             <th className="py-2 px-3">Personal Email</th>
             {activeTab !== 'request' && onOpenEngagementModal && <th className="py-2 px-3">Telemarketing Logs</th>}
             {activeTab !== 'request' && <th className="py-2 px-3">Remarks</th>}
-            <th className="py-2 px-3 text-center">Registration Status</th>
+            {showApprovalColumn && (
+              <th className="py-2 px-3 text-center">
+                {activeTab === 'pre_event' ? 'Pre Event Approval' : activeTab === 'request' ? 'Client Approval' : 'Client Status'}
+              </th>
+            )}
             {isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
             <th className="py-2 px-3">Notes</th>
             {!isUser && <th className="py-2 px-3 text-right">Actions</th>}
@@ -216,20 +222,35 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </select>
                   </td>
                 )}
-                <td className="py-1.5 px-3">
-                  <div className="flex justify-center">
-                    <select
-                      disabled={!canEditConfirmation}
-                      value={p.confirmationStatus === 'confirmed' ? 'approve' : p.confirmationStatus === 'declined' ? 'decline' : p.confirmationStatus || 'pending'}
-                      onChange={(e) => handleDirectUpdateParticipant(p, 'confirmationStatus', e.target.value)}
-                      className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(p.confirmationStatus || 'pending')}`}
-                    >
-                      <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
-                      <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>
-                      <option value="decline" className="text-rose-800 bg-white font-extrabold">Decline</option>
-                    </select>
-                  </div>
-                </td>
+                {showApprovalColumn && (
+                  <td className="py-1.5 px-3">
+                    <div className="flex justify-center">
+                      {activeTab === 'pre_event' ? (
+                        <select
+                          disabled={isUser}
+                          value={extractPreEventApprovalStatus(p.notes, p.confirmationStatus)}
+                          onChange={(e) => handleDirectUpdateParticipant(p, 'preEventApprovalStatus', e.target.value)}
+                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(extractPreEventApprovalStatus(p.notes, p.confirmationStatus))}`}
+                        >
+                          <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
+                          <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>
+                          <option value="decline" className="text-rose-800 bg-white font-extrabold">Decline</option>
+                        </select>
+                      ) : (
+                        <select
+                          disabled={!canEditConfirmation}
+                          value={p.confirmationStatus === 'confirmed' ? 'approve' : p.confirmationStatus === 'declined' ? 'decline' : p.confirmationStatus || 'pending'}
+                          onChange={(e) => handleDirectUpdateParticipant(p, 'confirmationStatus', e.target.value)}
+                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(p.confirmationStatus || 'pending')}`}
+                        >
+                          <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
+                          <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>
+                          <option value="decline" className="text-rose-800 bg-white font-extrabold">Decline</option>
+                        </select>
+                      )}
+                    </div>
+                  </td>
+                )}
                 {isAdmin && activeTab !== 'request' && (
                   <td className="py-1.5 px-3 font-bold text-slate-700">
                     {displayPic}

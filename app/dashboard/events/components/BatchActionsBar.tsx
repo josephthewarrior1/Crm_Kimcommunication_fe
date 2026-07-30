@@ -1,6 +1,17 @@
 import React from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, Trash2, X } from 'lucide-react';
 import { AppUser } from '../../../../lib/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../../../components/ui/alert-dialog';
 
 interface BatchActionsBarProps {
   selectedParticipantIds: number[];
@@ -8,9 +19,12 @@ interface BatchActionsBarProps {
   activeTab: string;
   usersList: AppUser[];
   handleBatchUpdateConfirmationStatus: (status: string) => void;
+  handleBatchUpdatePreEventApprovalStatus: (status: string) => void;
   handleBatchUpdateParticipantStatus: (status: string) => void;
   handleBatchAssignPic: (pic: string) => void;
   handleBatchUpdateReminderHariH: (status: string) => void;
+  handleBatchDeleteParticipants: () => void;
+  isBatchUpdating?: boolean;
 }
 
 export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
@@ -19,9 +33,12 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
   activeTab,
   usersList,
   handleBatchUpdateConfirmationStatus,
+  handleBatchUpdatePreEventApprovalStatus,
   handleBatchUpdateParticipantStatus,
   handleBatchAssignPic,
   handleBatchUpdateReminderHariH,
+  handleBatchDeleteParticipants,
+  isBatchUpdating = false,
 }) => {
   if (selectedParticipantIds.length === 0) return null;
 
@@ -77,17 +94,17 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Confirmation</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Pre Event Approval</span>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
-                    handleBatchUpdateConfirmationStatus(e.target.value);
+                    handleBatchUpdatePreEventApprovalStatus(e.target.value);
                     e.target.value = '';
                   }
                 }}
                 className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer shadow-sm transition-all duration-200"
               >
-                <option value="">- Change Confirmation -</option>
+                <option value="">- Change Approval -</option>
                 <option value="pending">Pending</option>
                 <option value="approve">Approve</option>
                 <option value="decline">Decline</option>
@@ -151,10 +168,44 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
 
         <button
           onClick={() => setSelectedParticipantIds([])}
+          disabled={isBatchUpdating}
           className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 active:bg-slate-300 text-slate-600 text-xs font-black rounded-xl border border-slate-200 transition-all duration-200"
         >
           Clear Selection
         </button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              disabled={isBatchUpdating}
+              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs font-black rounded-xl border border-red-500 transition-all duration-200 inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Remove Selected
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl text-slate-900 max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                Remove selected participants?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-slate-500 font-medium mt-1">
+                This removes {selectedParticipantIds.length} participant{selectedParticipantIds.length === 1 ? '' : 's'} from this event only. Database records stay intact.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-4 flex gap-2 justify-end">
+              <AlertDialogCancel className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleBatchDeleteParticipants}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
-import { AlertCircle, Edit2, Trash2, History, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Edit2, Trash2, History, ShieldAlert, UserX } from 'lucide-react';
 import { extractPicFromNotes } from '../utils/notesHelper';
 
 interface ReminderDdayTableProps {
@@ -42,6 +42,11 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
       setTableScrollWidth(tableRef.current.scrollWidth);
     }
   }, [filteredParticipants]);
+
+  const cleanStatusValue = (value?: string | null) => {
+    if (!value || value === 'null' || value === 'undefined') return '';
+    return value;
+  };
 
   return (
     <div className="flex-1 border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden flex flex-col">
@@ -104,13 +109,20 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {filteredParticipants.map((p) => {
-            const isTikusOrDeclined = !p.database?.isActive || p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
+            const isInactiveOrTakeout = !p.database?.isActive;
+            const isDeclined = p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
+            const isTikus = Boolean((p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus') || p.participantStatus === 'red');
+
             return (
               <tr
                 key={p.id}
                 className={`transition-colors border-b border-slate-100 ${
-                  isTikusOrDeclined
+                  isTikus
                     ? 'bg-red-50/70 hover:bg-red-100/70'
+                    : isInactiveOrTakeout
+                    ? 'bg-slate-50/70 hover:bg-slate-100/70 opacity-80'
+                    : isDeclined
+                    ? 'bg-rose-50/40 hover:bg-rose-100/40'
                     : 'hover:bg-slate-50/50'
                 }`}
               >
@@ -142,7 +154,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
                 <td className="py-1.5 px-3 font-semibold text-slate-700">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span>{p.database.company?.name || <span className="text-slate-400">-</span>}</span>
-                    {isTikusOrDeclined && (
+                    {isTikus ? (
                       <span
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-red-100/90 border border-red-200 text-red-700 rounded-md shrink-0 cursor-help shadow-2xs"
                         title="PERINGATAN: Peserta ini terdaftar sebagai Tikus!"
@@ -150,7 +162,21 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
                         <ShieldAlert className="w-3 h-3 text-red-600 shrink-0" />
                         TIKUS
                       </span>
-                    )}
+                    ) : isInactiveOrTakeout ? (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-amber-50 border border-amber-200 text-amber-700 rounded-md shrink-0 cursor-help shadow-2xs"
+                        title="Status kontak: Non-Aktif / Request Takeout"
+                      >
+                        <UserX className="w-3 h-3 text-amber-600 shrink-0" />
+                        TAKEOUT
+                      </span>
+                    ) : isDeclined ? (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-rose-50 border border-rose-200 text-rose-700 rounded-md shrink-0 shadow-2xs"
+                      >
+                        DECLINED
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td className="py-1.5 px-3 text-slate-500">
@@ -196,7 +222,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
               <td className="py-1.5 px-3">
                 <div className="flex justify-center">
                   {(() => {
-                    const effectiveHariH = p.reminderHariH || (p.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : '');
+                    const effectiveHariH = cleanStatusValue(p.reminderHariH) || (p.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : '');
                     return (
                       <select
                         value={effectiveHariH}

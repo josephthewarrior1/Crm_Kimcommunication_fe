@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
-import { AlertCircle, Edit2, Trash2, History, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Edit2, Trash2, History, ShieldAlert, UserX } from 'lucide-react';
 import { extractPicFromNotes } from '../utils/notesHelper';
 
 interface ReminderTableProps {
@@ -42,6 +42,11 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
       setTableScrollWidth(tableRef.current.scrollWidth);
     }
   }, [filteredParticipants]);
+
+  const cleanStatusValue = (value?: string | null) => {
+    if (!value || value === 'null' || value === 'undefined') return '';
+    return value;
+  };
 
   return (
     <div className="flex-1 border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden flex flex-col">
@@ -106,13 +111,20 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {filteredParticipants.map((p) => {
-            const isTikusOrDeclined = !p.database?.isActive || p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
+            const isInactiveOrTakeout = !p.database?.isActive;
+            const isDeclined = p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
+            const isTikus = Boolean((p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus') || p.participantStatus === 'red');
+            
             return (
               <tr
                 key={p.id}
                 className={`transition-colors border-b border-slate-100 ${
-                  isTikusOrDeclined
+                  isTikus
                     ? 'bg-red-50/70 hover:bg-red-100/70'
+                    : isInactiveOrTakeout
+                    ? 'bg-slate-50/70 hover:bg-slate-100/70 opacity-80'
+                    : isDeclined
+                    ? 'bg-rose-50/40 hover:bg-rose-100/40'
                     : 'hover:bg-slate-50/50'
                 }`}
               >
@@ -144,7 +156,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 <td className="py-1.5 px-3 font-semibold text-slate-700">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span>{p.database.company?.name || <span className="text-slate-400">-</span>}</span>
-                    {isTikusOrDeclined && (
+                    {isTikus ? (
                       <span
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-red-100/90 border border-red-200 text-red-700 rounded-md shrink-0 cursor-help shadow-2xs"
                         title="PERINGATAN: Peserta ini terdaftar sebagai Tikus!"
@@ -152,7 +164,21 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                         <ShieldAlert className="w-3 h-3 text-red-600 shrink-0" />
                         TIKUS
                       </span>
-                    )}
+                    ) : isInactiveOrTakeout ? (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-amber-50 border border-amber-200 text-amber-700 rounded-md shrink-0 cursor-help shadow-2xs"
+                        title="Status kontak: Non-Aktif / Request Takeout"
+                      >
+                        <UserX className="w-3 h-3 text-amber-600 shrink-0" />
+                        TAKEOUT
+                      </span>
+                    ) : isDeclined ? (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-rose-50 border border-rose-200 text-rose-700 rounded-md shrink-0 shadow-2xs"
+                      >
+                        DECLINED
+                      </span>
+                    ) : null}
                   </div>
                 </td>
               <td className="py-1.5 px-3 text-slate-500">
@@ -198,10 +224,10 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               <td className="py-1.5 px-3">
                 <div className="flex justify-center">
                   <select
-                    value={p.reminderH7 || ''}
+                    value={cleanStatusValue(p.reminderH7)}
                     disabled={isUser}
                     onChange={(e) => handleDirectUpdateParticipant(p, 'reminderH7', e.target.value)}
-                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.reminderH7 || '')}`}
+                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(cleanStatusValue(p.reminderH7))}`}
                   >
                     <option value="" className="text-slate-500 bg-white font-normal">- None</option>
                     <option value="not_respon_yet" className="text-slate-500 bg-white font-normal">Not respond yet</option>
@@ -216,10 +242,10 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               <td className="py-1.5 px-3">
                 <div className="flex justify-center">
                   <select
-                    value={p.reminderH3 || ''}
+                    value={cleanStatusValue(p.reminderH3)}
                     disabled={isUser}
                     onChange={(e) => handleDirectUpdateParticipant(p, 'reminderH3', e.target.value)}
-                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.reminderH3 || '')}`}
+                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(cleanStatusValue(p.reminderH3))}`}
                   >
                     <option value="" className="text-slate-500 bg-white font-normal">- None</option>
                     <option value="not_respon_yet" className="text-slate-500 bg-white font-normal">Not respond yet</option>
@@ -234,10 +260,10 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               <td className="py-1.5 px-3">
                 <div className="flex justify-center">
                   <select
-                    value={p.reminderH1 || ''}
+                    value={cleanStatusValue(p.reminderH1)}
                     disabled={isUser}
                     onChange={(e) => handleDirectUpdateParticipant(p, 'reminderH1', e.target.value)}
-                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.reminderH1 || '')}`}
+                    className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(cleanStatusValue(p.reminderH1))}`}
                   >
                     <option value="" className="text-slate-500 bg-white font-normal">- None</option>
                     <option value="not_respon_yet" className="text-slate-500 bg-white font-normal">Not respond yet</option>

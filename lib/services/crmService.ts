@@ -237,40 +237,46 @@ export class CrmService extends ApiService {
 
   async updateParticipantStatus(
     participantId: number,
-    participantStatus?: string,
-    attendanceStatus?: string,
-    notes?: string,
-    participantCategory?: string,
-    callStatus?: string,
-    emailStatus?: string,
-    whatsappStatus?: string,
-    meetingStatus?: string,
-    businessChallenges?: string,
-    projectInfo?: string,
-    timeline?: string,
-    reminderH7?: string,
-    reminderH3?: string,
-    reminderH1?: string,
-    reminderHariH?: string,
-    confirmationStatus?: string
+    participantStatus?: string | null,
+    attendanceStatus?: string | null,
+    notes?: string | null,
+    participantCategory?: string | null,
+    callStatus?: string | null,
+    emailStatus?: string | null,
+    whatsappStatus?: string | null,
+    meetingStatus?: string | null,
+    businessChallenges?: string | null,
+    projectInfo?: string | null,
+    timeline?: string | null,
+    reminderH7?: string | null,
+    reminderH3?: string | null,
+    reminderH1?: string | null,
+    reminderHariH?: string | null,
+    confirmationStatus?: string | null
   ): Promise<EventParticipant> {
     const params = new URLSearchParams();
-    if (participantStatus) params.append('participantStatus', participantStatus);
-    if (attendanceStatus) params.append('attendanceStatus', attendanceStatus);
-    if (notes) params.append('notes', notes);
-    if (participantCategory) params.append('participantCategory', participantCategory);
-    if (callStatus) params.append('callStatus', callStatus);
-    if (emailStatus) params.append('emailStatus', emailStatus);
-    if (whatsappStatus) params.append('whatsappStatus', whatsappStatus);
-    if (meetingStatus) params.append('meetingStatus', meetingStatus);
-    if (businessChallenges) params.append('businessChallenges', businessChallenges);
-    if (projectInfo) params.append('projectInfo', projectInfo);
-    if (timeline) params.append('timeline', timeline);
-    if (reminderH7 !== undefined) params.append('reminderH7', reminderH7);
-    if (reminderH3 !== undefined) params.append('reminderH3', reminderH3);
-    if (reminderH1 !== undefined) params.append('reminderH1', reminderH1);
-    if (reminderHariH !== undefined) params.append('reminderHariH', reminderHariH);
-    if (confirmationStatus) params.append('confirmationStatus', confirmationStatus);
+    const appendParam = (key: string, value?: string | null, allowEmpty = false) => {
+      if (value === undefined || value === null || value === 'null' || value === 'undefined') return;
+      if (!allowEmpty && value === '') return;
+      params.append(key, value);
+    };
+
+    appendParam('participantStatus', participantStatus);
+    appendParam('attendanceStatus', attendanceStatus);
+    appendParam('notes', notes);
+    appendParam('participantCategory', participantCategory);
+    appendParam('callStatus', callStatus);
+    appendParam('emailStatus', emailStatus);
+    appendParam('whatsappStatus', whatsappStatus);
+    appendParam('meetingStatus', meetingStatus);
+    appendParam('businessChallenges', businessChallenges);
+    appendParam('projectInfo', projectInfo);
+    appendParam('timeline', timeline);
+    appendParam('reminderH7', reminderH7, true);
+    appendParam('reminderH3', reminderH3, true);
+    appendParam('reminderH1', reminderH1, true);
+    appendParam('reminderHariH', reminderHariH, true);
+    appendParam('confirmationStatus', confirmationStatus);
 
     return this.put<EventParticipant>(`/api/event-participants/${participantId}/status?${params.toString()}`);
   }
