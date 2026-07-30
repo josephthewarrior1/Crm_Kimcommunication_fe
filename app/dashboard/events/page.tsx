@@ -1800,14 +1800,6 @@ export default function EventsPage() {
                   Export Excel
                 </button>
               )}
-              <button
-                onClick={() => setIsManageColumnsModalOpen(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
-                title="Atur Kolom Tabel yang Ditampilkan"
-              >
-                <Columns className="w-3.5 h-3.5 text-blue-600" />
-                Columns
-              </button>
               {!isViewer && (activeTab === 'request' || activeTab === 'pre_event') && (
                 <button
                   onClick={() => setIsImportParticipantsModalOpen(true)}
@@ -2201,13 +2193,6 @@ export default function EventsPage() {
         onActivityLogged={() => {
           if (selectedEvent) loadParticipantsForEvent(selectedEvent);
         }}
-      />
-
-      {/* Custom Event Columns Modal */}
-      <ManageUserColumnsModal
-        isOpen={isManageColumnsModalOpen}
-        onClose={() => setIsManageColumnsModalOpen(false)}
-        user={user}
       />
     </div>
   );
