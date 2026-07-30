@@ -228,9 +228,9 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                       {activeTab === 'pre_event' ? (
                         <select
                           disabled={isUser}
-                          value={extractPreEventApprovalStatus(p.notes, p.confirmationStatus)}
+                          value={extractPreEventApprovalStatus(p.notes)}
                           onChange={(e) => handleDirectUpdateParticipant(p, 'preEventApprovalStatus', e.target.value)}
-                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(extractPreEventApprovalStatus(p.notes, p.confirmationStatus))}`}
+                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(extractPreEventApprovalStatus(p.notes))}`}
                         >
                           <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
                           <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>

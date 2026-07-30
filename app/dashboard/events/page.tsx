@@ -1320,7 +1320,7 @@ export default function EventsPage() {
     if (filterConfirmationStatus) {
       const targetConf = filterConfirmationStatus.toLowerCase();
       if (activeTab === 'pre_event') {
-        if (extractPreEventApprovalStatus(l.notes, l.confirmationStatus) !== targetConf) return false;
+        if (extractPreEventApprovalStatus(l.notes) !== targetConf) return false;
       } else if (confStatus !== targetConf) {
         if (targetConf === 'approve') {
           if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
@@ -1333,6 +1333,8 @@ export default function EventsPage() {
         }
       }
     }
+
+    const cleanStatusValue = (v?: string | null) => (!v || v === 'null' || v === 'undefined') ? '' : v.toLowerCase();
 
     // Hari H Status filter (only apply for reminder_dday tab)
     if (activeTab === 'reminder_dday' && filterReminderHariH) {
@@ -2125,19 +2127,21 @@ export default function EventsPage() {
         />
       )}
 
-      <TakeoutModal
-        isOpen={isTakeoutModalOpen}
-        onClose={() => {
-          setIsTakeoutModalOpen(false);
-          setSelectedTakeoutDatabase(null);
-        }}
-        database={selectedTakeoutDatabase}
-        onSuccess={() => {
-          setIsTakeoutModalOpen(false);
-          setSelectedTakeoutDatabase(null);
-          loadData();
-        }}
-      />
+      {selectedTakeoutDatabase && (
+        <TakeoutModal
+          isOpen={isTakeoutModalOpen}
+          onClose={() => {
+            setIsTakeoutModalOpen(false);
+            setSelectedTakeoutDatabase(null);
+          }}
+          database={selectedTakeoutDatabase}
+          onSubmitSuccess={() => {
+            setIsTakeoutModalOpen(false);
+            setSelectedTakeoutDatabase(null);
+            loadData();
+          }}
+        />
+      )}
 
 
 

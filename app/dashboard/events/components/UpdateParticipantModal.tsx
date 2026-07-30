@@ -58,7 +58,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       setShowFlagConfirm(false);
       setUpdateParticipantStatusStr(activeParticipant.participantStatus);
       setUpdateConfirmationStatusStr(activeParticipant.confirmationStatus || 'pending');
-      setUpdatePreEventApprovalStatusStr(extractPreEventApprovalStatus(activeParticipant.notes, activeParticipant.confirmationStatus));
+      setUpdatePreEventApprovalStatusStr(extractPreEventApprovalStatus(activeParticipant.notes));
       setUpdateReminderH7(activeParticipant.reminderH7 || '');
       setUpdateReminderH3(activeParticipant.reminderH3 || '');
       setUpdateReminderH1(activeParticipant.reminderH1 || '');
