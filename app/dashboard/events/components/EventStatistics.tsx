@@ -695,24 +695,43 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                     {picViewTab === 'report' ? (
                       /* Daily Telemarketing & Activity Report Bar */
-                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs mb-2">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
-                                <History className="w-4 h-4" />
-                              </span>
-                              <h5 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      <div className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-4 space-y-3 shadow-2xs mb-4">
+                        {/* Header & Controls Toolbar */}
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="p-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100/80 shrink-0">
+                              <History className="w-4 h-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <h5 className="text-xs font-black uppercase tracking-wider text-slate-900 truncate">
                                 Daily Telemarketing Report — <span className="text-blue-600">{selectedPic}</span>
                               </h5>
+                              <p className="text-[11px] text-slate-500 font-medium truncate">
+                                Laporan lengkap aktivitas telepon, WhatsApp, dan email PIC {selectedPic}.
+                              </p>
                             </div>
-                            <p className="text-[11px] text-slate-500 font-medium mt-1">
-                              Laporan lengkap aktivitas telepon, WhatsApp, dan email yang dikerjakan oleh PIC {selectedPic}.
-                            </p>
                           </div>
 
-                          {/* Date Range Presets Dropdown */}
-                          <div className="flex items-center gap-2">
+                          {/* Filter Controls: Date Range & Preset Dropdown */}
+                          <div className="flex items-center gap-2 flex-wrap shrink-0">
+                            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-slate-200/80 shadow-2xs text-xs">
+                              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Filter Date:</span>
+                              <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); }}
+                                className="bg-slate-50 border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg text-xs font-mono focus:outline-none focus:border-blue-500 cursor-pointer"
+                              />
+                              <span className="text-slate-400 font-bold text-[10px]">s/d</span>
+                              <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); }}
+                                className="bg-slate-50 border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg text-xs font-mono focus:outline-none focus:border-blue-500 cursor-pointer"
+                              />
+                              {loadingReport && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />}
+                            </div>
+
                             <select
                               value={datePreset}
                               onChange={(e) => {
@@ -730,98 +749,92 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           </div>
                         </div>
 
-                        {/* Custom Date Pickers & Metrics */}
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs">
-                          <div className="flex items-center gap-1.5 flex-nowrap bg-white px-2.5 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs shrink-0">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Filter Date:</span>
-                            <input
-                              type="date"
-                              value={startDate}
-                              onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); }}
-                              className="bg-slate-50 border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg text-xs focus:outline-none focus:border-blue-500 cursor-pointer font-mono shrink-0"
-                            />
-                            <span className="text-slate-400 font-bold text-[11px] shrink-0">s/d</span>
-                            <input
-                              type="date"
-                              value={endDate}
-                              onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); }}
-                              className="bg-slate-50 border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg text-xs focus:outline-none focus:border-blue-500 cursor-pointer font-mono shrink-0"
-                            />
-                            {loadingReport && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />}
-                          </div>
+                        {/* Activity Metrics Cards */}
+                        {(() => {
+                          const callsCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'CALL').length;
+                          const waCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'WHATSAPP').length;
+                          const emailCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'EMAIL').length;
+                          const totalActivities = filteredPicActivities.length;
 
-                          {/* Activity Metrics Badges */}
-                          {(() => {
-                            const callsCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'CALL').length;
-                            const waCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'WHATSAPP').length;
-                            const emailCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'EMAIL').length;
-                            const totalActivities = filteredPicActivities.length;
-
-                            return (
-                              <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-2.5 flex-wrap">
-                                  <div className="bg-blue-50/80 border border-blue-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                    <Phone className="w-4 h-4 text-blue-600" />
-                                    <span className="text-[11px] text-slate-600 font-semibold">Telepon:</span>
-                                    <strong className="text-base font-black text-blue-700">{callsCount}</strong>
-                                  </div>
-                                  <div className="bg-emerald-50/80 border border-emerald-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                    <MessageSquare className="w-4 h-4 text-emerald-600" />
-                                    <span className="text-[11px] text-slate-600 font-semibold">WhatsApp:</span>
-                                    <strong className="text-base font-black text-emerald-700">{waCount}</strong>
-                                  </div>
-                                  <div className="bg-purple-50/80 border border-purple-200/70 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                                    <Mail className="w-4 h-4 text-purple-600" />
-                                    <span className="text-[11px] text-slate-600 font-semibold">Email:</span>
-                                    <strong className="text-base font-black text-purple-700">{emailCount}</strong>
-                                  </div>
-                                  <div className="bg-blue-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-2 font-bold shadow-2xs">
-                                    <span className="text-[11px] text-white/90">Total Activity:</span>
-                                    <strong className="text-base font-black text-white">{totalActivities}</strong>
-                                  </div>
+                          return (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <div className="bg-blue-50/80 border border-blue-200/70 p-2.5 rounded-xl flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs text-blue-900 font-bold">
+                                  <Phone className="w-4 h-4 text-blue-600" />
+                                  <span>Telepon</span>
                                 </div>
-
-                                {/* Summary Remarks Badges for Selected PIC */}
-                                {(() => {
-                                  const picParticipants = participants.filter(p => {
-                                    const pic = extractPicFromNotes(p.notes).pic;
-                                    return pic.toLowerCase() === selectedPic.toLowerCase() || 
-                                           (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
-                                  });
-                                  const regCount = picParticipants.filter(p => {
-                                    const ps = (p.participantStatus || '').toLowerCase();
-                                    const att = (p.attendanceStatus || '').toLowerCase();
-                                    return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
-                                  }).length;
-                                  const tentCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'tentative' || p.participantStatus?.toLowerCase() === 'yellow').length;
-                                  const notRespCount = picParticipants.filter(p => {
-                                    const ps = (p.participantStatus || '').toLowerCase();
-                                    return !ps || ps === 'not_respond_yet' || ps === 'not_respon_yet' || ps.startsWith('not_respond_');
-                                  }).length;
-                                  const notIntCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'not_interest' || p.participantStatus?.toLowerCase() === 'red').length;
-
-                                  return (
-                                    <div className="flex items-center gap-2 flex-wrap pt-1 text-[10px] font-bold">
-                                      <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Summary Remarks:</span>
-                                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/80 rounded-md">
-                                        Registered: {regCount}
-                                      </span>
-                                      <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200/80 rounded-md">
-                                        Tentative: {tentCount}
-                                      </span>
-                                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-md">
-                                        Not Respond: {notRespCount}
-                                      </span>
-                                      <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200/80 rounded-md">
-                                        Not Interest: {notIntCount}
-                                      </span>
-                                    </div>
-                                  );
-                                })()}
+                                <strong className="text-base font-black text-blue-700">{callsCount}</strong>
                               </div>
-                            );
-                          })()}
-                        </div>
+
+                              <div className="bg-emerald-50/80 border border-emerald-200/70 p-2.5 rounded-xl flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs text-emerald-900 font-bold">
+                                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                                  <span>WhatsApp</span>
+                                </div>
+                                <strong className="text-base font-black text-emerald-700">{waCount}</strong>
+                              </div>
+
+                              <div className="bg-purple-50/80 border border-purple-200/70 p-2.5 rounded-xl flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs text-purple-900 font-bold">
+                                  <Mail className="w-4 h-4 text-purple-600" />
+                                  <span>Email</span>
+                                </div>
+                                <strong className="text-base font-black text-purple-700">{emailCount}</strong>
+                              </div>
+
+                              <div className="bg-blue-600 text-white p-2.5 rounded-xl flex items-center justify-between shadow-2xs">
+                                <span className="text-xs font-bold text-white/90">Total Activity</span>
+                                <strong className="text-base font-black text-white">{totalActivities}</strong>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Summary Remarks Row */}
+                        {(() => {
+                          const picParticipants = participants.filter(p => {
+                            const pic = extractPicFromNotes(p.notes).pic;
+                            return pic.toLowerCase() === selectedPic.toLowerCase() || 
+                                   (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
+                          });
+                          const regCount = picParticipants.filter(p => {
+                            const ps = (p.participantStatus || '').toLowerCase();
+                            const att = (p.attendanceStatus || '').toLowerCase();
+                            return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
+                          }).length;
+                          const tentCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'tentative' || p.participantStatus?.toLowerCase() === 'yellow').length;
+                          const notRespCount = picParticipants.filter(p => {
+                            const ps = (p.participantStatus || '').toLowerCase();
+                            return !ps || ps === 'not_respond_yet' || ps === 'not_respon_yet' || ps.startsWith('not_respond_');
+                          }).length;
+                          const notIntCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'not_interest' || p.participantStatus?.toLowerCase() === 'red').length;
+
+                          return (
+                            <div className="pt-2 border-t border-slate-200/80 space-y-1.5">
+                              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                                Summary Remarks ({picParticipants.length} Peserta Assigned)
+                              </span>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-bold">
+                                <div className="px-3 py-1.5 bg-indigo-50/80 text-indigo-950 border border-indigo-200/80 rounded-xl flex items-center justify-between">
+                                  <span>Registered</span>
+                                  <span className="text-sm font-black text-indigo-700">{regCount}</span>
+                                </div>
+                                <div className="px-3 py-1.5 bg-amber-50/80 text-amber-950 border border-amber-200/80 rounded-xl flex items-center justify-between">
+                                  <span>Tentative</span>
+                                  <span className="text-sm font-black text-amber-700">{tentCount}</span>
+                                </div>
+                                <div className="px-3 py-1.5 bg-slate-100 text-slate-900 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                                  <span>Not Respond</span>
+                                  <span className="text-sm font-black text-slate-900">{notRespCount}</span>
+                                </div>
+                                <div className="px-3 py-1.5 bg-rose-50/80 text-rose-950 border border-rose-200/80 rounded-xl flex items-center justify-between">
+                                  <span>Not Interest</span>
+                                  <span className="text-sm font-black text-rose-700">{notIntCount}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Activity History Stream Details */}
                         <div className="pt-2">
