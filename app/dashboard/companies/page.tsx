@@ -14,6 +14,7 @@ import { DeleteCompanyConfirmModal } from './components/DeleteCompanyConfirmModa
 import { CompanyDetailModal } from './components/CompanyDetailModal';
 import { matchesIndustryFilter } from '../database/utils/industryHelper';
 import { formatCompanyName } from '../../../lib/utils/companyName';
+import { normalizePhone } from '../database/utils/phoneHelper';
 
 export default function CompaniesPage() {
   const { isAdmin, isManager, isUser } = useAuth();
@@ -264,7 +265,7 @@ export default function CompaniesPage() {
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Brand</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Group</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Databases</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Info</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Office Number</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Industry</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">City</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
@@ -313,23 +314,13 @@ export default function CompaniesPage() {
                         <span>{activeContactCount} {activeContactCount === 1 ? 'Contact' : 'Contacts'}</span>
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-xs space-y-1 align-middle">
-                      {c.website && (
-                        <a
-                          href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1.5 text-blue-600 hover:text-blue-500 transition-colors"
-                        >
-                          <Globe className="w-3.5 h-3.5" />
-                          {c.website.replace(/(^\w+:|^)\/\//, '')}
-                        </a>
-                      )}
-                      {c.officePhone && (
-                        <p className="text-slate-500 font-mono">
-                          {c.officePhone}
+                    <td className="py-4 px-6 text-xs align-middle">
+                      {c.officePhone ? (
+                        <p className="text-slate-700 font-mono font-medium">
+                          {normalizePhone(c.officePhone)}
                         </p>
+                      ) : (
+                        <span className="text-slate-400">-</span>
                       )}
                     </td>
                     <td className="py-4 px-6 text-xs space-y-1 align-middle">
@@ -370,23 +361,23 @@ export default function CompaniesPage() {
                           </button>
                         )}
                         {isAdmin && (
-                           <button
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setDeletingCompany(c);
-                               setIsDeleteConfirmOpen(true);
-                             }}
-                             className="inline-flex p-1.5 text-slate-500 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                             title="Delete Company"
-                           >
-                             <Trash2 className="w-4 h-4" />
-                           </button>
-                         )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingCompany(c);
+                              setIsDeleteConfirmOpen(true);
+                            }}
+                            className="inline-flex p-1.5 text-slate-500 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
+                            title="Delete Company"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
-                  );
-                })}
+                );
+              })}
               </tbody>
             </table>
           </div>

@@ -3,7 +3,7 @@ export const INDUSTRIES = [
   "Agriculture & Forestry",
   "Arts, Entertainment & Recreation",
   "Architecture & Construction",
-  "Education",
+  "Education - K-12",
   "Education - Higher",
   "Financial Services (Banking / Insurance / Multifinance / Fintech)",
   "Government - Federal/National",

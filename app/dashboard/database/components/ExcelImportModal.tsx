@@ -23,6 +23,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     totalRows: number;
     newCount: number;
     duplicateCount: number;
+    incompleteCount?: number;
     rows: Array<{
       rowNum: number;
       groupName: string;
@@ -31,7 +32,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       lastName: string;
       jobTitle: string;
       email: string;
-      status: 'NEW' | 'DUPLICATE';
+      status: 'NEW' | 'DUPLICATE' | 'INCOMPLETE';
       message: string;
     }>;
   } | null>(null);
@@ -278,23 +279,39 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center">
-                <span className="block text-2xl font-black text-slate-900">{importPreview.totalRows}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mt-0.5">Total Rows</span>
+            <div className="grid grid-cols-4 gap-2.5">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                <span className="block text-xl font-black text-slate-900">{importPreview.totalRows}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mt-0.5">Total Rows</span>
               </div>
-              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
-                <span className="block text-2xl font-black text-emerald-600">{importPreview.newCount}</span>
-                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block mt-0.5">New Databases</span>
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-center">
+                <span className="block text-xl font-black text-emerald-600">{importPreview.newCount}</span>
+                <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider block mt-0.5">New Databases</span>
               </div>
-              <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-center">
-                <span className="block text-2xl font-black text-amber-600">{importPreview.duplicateCount}</span>
-                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider block mt-0.5">Duplicates</span>
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-center">
+                <span className="block text-xl font-black text-amber-600">{importPreview.duplicateCount}</span>
+                <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider block mt-0.5">Duplicates</span>
+              </div>
+              <div className={`p-3 rounded-xl text-center border ${importPreview.incompleteCount && importPreview.incompleteCount > 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                <span className={`block text-xl font-black ${importPreview.incompleteCount && importPreview.incompleteCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                  {importPreview.incompleteCount || 0}
+                </span>
+                <span className={`text-[9px] font-bold uppercase tracking-wider block mt-0.5 ${importPreview.incompleteCount && importPreview.incompleteCount > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                  Incomplete
+                </span>
               </div>
             </div>
 
-            {/* Warning Alert Banner for Duplicates */}
-            {importPreview.duplicateCount > 0 && (
+            {/* Alert Banner */}
+            {importPreview.incompleteCount && importPreview.incompleteCount > 0 ? (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-800">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Import Ditolak: </span>
+                  Terdapat {importPreview.incompleteCount} baris data yang belum lengkap. Harap lengkapi kolom yang kosong pada file Excel sebelum melakukan import.
+                </div>
+              </div>
+            ) : importPreview.duplicateCount > 0 ? (
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-800">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
@@ -302,7 +319,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   {importPreview.duplicateCount} existing databases/emails detected. These entries will be <span className="font-bold underline">synchronized (details updated)</span> in the database rather than creating duplicate databases.
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Preview Table */}
             <div>
@@ -323,12 +340,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       <th className="py-2 px-3">Group / Company</th>
                       <th className="py-2 px-3">Email</th>
                       <th className="py-2 px-3">Status</th>
-                      <th className="py-2 px-3">Action</th>
+                      <th className="py-2 px-3">Action / Status Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {importPreview.rows.slice(0, 10).map((r) => (
-                      <tr key={r.rowNum} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={r.rowNum} className={`transition-colors ${r.status === 'INCOMPLETE' ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-slate-50/50'}`}>
                         <td className="py-2 px-3 font-semibold text-slate-500 text-center">{r.rowNum}</td>
                         <td className="py-2 px-3 font-bold text-slate-900">{r.firstName} {r.lastName}</td>
                         <td className="py-2 px-3">
@@ -337,7 +354,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         </td>
                         <td className="py-2 px-3 font-mono">{r.email || '-'}</td>
                         <td className="py-2 px-3">
-                          {r.status === 'NEW' ? (
+                          {r.status === 'INCOMPLETE' ? (
+                            <span className="px-1.5 py-0.5 bg-red-100 border border-red-200 text-red-700 text-[9px] font-extrabold rounded">
+                              INCOMPLETE
+                            </span>
+                          ) : r.status === 'NEW' ? (
                             <span className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-600 text-[9px] font-bold rounded">
                               NEW
                             </span>
@@ -347,7 +368,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                             </span>
                           )}
                         </td>
-                        <td className="py-2 px-3 text-slate-500 leading-tight">{r.message}</td>
+                        <td className={`py-2 px-3 leading-tight ${r.status === 'INCOMPLETE' ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>{r.message}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -406,11 +427,19 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <button
                   type="button"
                   onClick={handleImportExcel}
-                  disabled={importingExcel}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+                  disabled={importingExcel || Boolean(importPreview.incompleteCount && importPreview.incompleteCount > 0)}
+                  className={`px-5 py-2 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all ${
+                    importPreview.incompleteCount && importPreview.incompleteCount > 0
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300'
+                      : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50'
+                  }`}
                 >
                   {importingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  {importingExcel ? 'Importing...' : 'Confirm & Import'}
+                  {importingExcel
+                    ? 'Importing...'
+                    : importPreview.incompleteCount && importPreview.incompleteCount > 0
+                    ? 'Import Ditolak (Lengkapi Excel)'
+                    : 'Confirm & Import'}
                 </button>
               </div>
             </div>

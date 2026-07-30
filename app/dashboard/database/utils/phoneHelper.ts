@@ -1,14 +1,23 @@
 export const normalizePhone = (phone: string | null | undefined): string => {
   if (!phone) return '';
-  let digits = phone.trim().replace(/[^0-9]/g, '');
-  if (!digits) return '';
+  const trimmed = phone.trim();
+  if (!trimmed) return '';
 
-  if (digits.startsWith('62')) {
-    digits = digits.slice(2);
-  } else if (digits.startsWith('0')) {
-    digits = digits.slice(1);
+  if (trimmed.startsWith('+')) {
+    const digits = trimmed.slice(1).replace(/[^0-9]/g, '');
+    return digits ? `+${digits}` : '';
   }
 
+  const digits = trimmed.replace(/[^0-9]/g, '');
   if (!digits) return '';
-  return "+62" + digits;
+
+  if (digits.startsWith('0')) {
+    return `+62${digits.slice(1)}`;
+  }
+
+  if (digits.startsWith('65') || digits.startsWith('62') || digits.startsWith('60') || digits.startsWith('1')) {
+    return `+${digits}`;
+  }
+
+  return `+62${digits}`;
 };

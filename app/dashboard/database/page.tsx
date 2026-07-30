@@ -928,10 +928,10 @@ export default function DatabasesPage() {
                         {c.company?.address || '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-mono text-slate-600">
-                        {c.company?.officePhone || '-'}
+                        {c.company?.officePhone ? normalizePhone(c.company.officePhone) : '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-mono text-slate-700">
-                        {c.mobilePhone || '-'}
+                        {c.mobilePhone ? normalizePhone(c.mobilePhone) : '-'}
                       </td>
                       <td className="py-4 px-4 text-xs font-mono text-slate-600">
                         {c.emails?.find(e => e.emailType === 'company' || e.isCorporate)?.email || '-'}

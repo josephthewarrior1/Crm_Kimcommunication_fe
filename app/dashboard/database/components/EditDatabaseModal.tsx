@@ -122,7 +122,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           positionLevel: positionLevel || 'unknown',
           specialityDivision: specialityDivision.trim() || undefined,
           jobTitle: jobTitle.trim() || undefined,
-          mobilePhone: mobilePhone.trim() || undefined,
+          mobilePhone: mobilePhone.trim() ? normalizePhone(mobilePhone) : undefined,
           normalizedPhone: mobilePhone.trim() ? normalizePhone(mobilePhone) : undefined,
           linkedinUrl: linkedinUrl.trim() || undefined,
           databaseType,
