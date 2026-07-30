@@ -103,7 +103,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Legal Company Name *</label>
               <input
                 type="text"
-                placeholder="e.g. PT Toyota Astra Motor"
+                placeholder="e.g. Toyota Astra Motor PT"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"

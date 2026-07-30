@@ -26,6 +26,7 @@ interface EventStatisticsProps {
   onAssignPic?: (participantIds: number[], picName: string) => Promise<void>;
   onOpenEngagementModal?: (participant: EventParticipant) => void;
   currentUser?: AppUser | null;
+  isViewer?: boolean;
 }
 
 export const EventStatistics: React.FC<EventStatisticsProps> = ({
@@ -38,6 +39,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   onAssignPic,
   onOpenEngagementModal,
   currentUser,
+  isViewer = false,
 }) => {
   const [selectedPic, setSelectedPic] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -473,7 +475,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       )}
 
       {/* Participant Assignment & Distribution Overview */}
-      {activeTab !== 'request' && (() => {
+      {activeTab !== 'request' && !isViewer && (() => {
         const myPicName = currentUser?.fullName || currentUser?.username || adminName;
 
         return (
@@ -1433,4 +1435,3 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     </>
   );
 };
-

@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Building2, Info, Users, Globe, Phone, MapPin, ExternalLink, BarChart3, Server } from 'lucide-react';
 import { Company, Database } from '../../../../lib/types';
+import { formatCompanyName } from '../../../../lib/utils/companyName';
 
 interface CompanyDetailModalProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
             <Building2 className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-slate-900 tracking-tight">{company.name}</h3>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">{formatCompanyName(company.name)}</h3>
             {company.brandName && (
               <p className="text-xs font-semibold text-blue-600 mt-1">Brand: {company.brandName}</p>
             )}

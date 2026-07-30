@@ -690,7 +690,7 @@ export default function EventsPage() {
       {
         'Nama Group': 'Kim Holding',
         'Nama Brand': 'Kim Comm',
-        'Company Name': 'PT Kim Communication',
+        'Company Name': 'Kim Communication PT',
         'Salutation': 'Mr',
         'First Name': 'Budi',
         'Last Name': 'Anto',
@@ -958,6 +958,40 @@ export default function EventsPage() {
     }
 
     try {
+      if (isViewer) {
+        if (activeTab !== 'request' || field !== 'confirmationStatus') {
+          toast.error('Viewer can only approve or decline from Data List');
+          return;
+        }
+        await crmService.updateParticipantStatus(
+          lead.id,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          confirmationStatus || undefined
+        );
+        toast.success('Registration status updated successfully!');
+        if (selectedEvent) {
+          const allParticipants = await crmService.getEventParticipants();
+          setAllEventParticipants(allParticipants);
+          const filteredParticipants = allParticipants.filter((l) => l.event.id === selectedEvent.id);
+          setParticipantsSorted(filteredParticipants);
+        }
+        return;
+      }
+
       await crmService.updateParticipantStatus(
         lead.id,
         participantStatus,
@@ -1087,12 +1121,12 @@ export default function EventsPage() {
                   attStatus === 'attended';
 
     if (activeTab === 'request') {
-      // Data List tab: Master DB candidates for lead vetting (non-EMS candidates stay in Data List regardless of approval status)
+      // Data List tab: Master DB candidates for lead vetting
       if (isEms) {
         return false;
       }
     } else if (activeTab === 'pre_event') {
-      // Pre-Event tab: All EMS registrants (Pending & Approved) + Approved DB candidates
+      // Pre-Event tab: EMS registrants + approved DB candidates
       if (confStatus === 'decline' || confStatus === 'declined') {
         return false;
       }
@@ -1105,16 +1139,14 @@ export default function EventsPage() {
         return false;
       }
     } else if (activeTab === 'reminder') {
-      // Reminder tab: All approved participants + Tikus / flagged participants
-      const isTikus = !l.database?.isActive || confStatus === 'decline' || confStatus === 'declined';
-      if (!isTikus && confStatus !== 'approve' && confStatus !== 'confirmed') {
+      // Reminder tab: approved participants
+      if (confStatus !== 'approve' && confStatus !== 'confirmed') {
         return false;
       }
     } else if (activeTab === 'reminder_dday') {
-      // Reminder Dday tab: All EMS registrants + DB candidates + Tikus / flagged participants (stay visible with red TIKUS badge)
+      // Reminder Dday tab: EMS registrants + approved DB candidates
       if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') {
-        const isTikus = !l.database?.isActive || confStatus === 'decline' || confStatus === 'declined';
-        if (!isTikus) return false;
+        return false;
       }
     }
 
@@ -1629,7 +1661,8 @@ export default function EventsPage() {
             adminName={adminName}
             eventId={selectedEvent?.id}
             currentUser={user}
-            onAssignPic={async (ids, picName) => {
+            isViewer={isViewer}
+            onAssignPic={!isViewer ? async (ids, picName) => {
               setIsBatchUpdating(true);
               let successCount = 0;
               await Promise.all(ids.map(async (id) => {
@@ -1667,8 +1700,8 @@ export default function EventsPage() {
               if (selectedEvent) {
                 await loadParticipantsForEvent(selectedEvent, activeTab);
               }
-            }}
-            onOpenEngagementModal={handleOpenEngagementModal}
+            } : undefined}
+            onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
           />
 
           {/* Batch Actions Status Bar */}
@@ -1705,7 +1738,7 @@ export default function EventsPage() {
               filterPic={filterPic}
               setFilterPic={setFilterPic}
               activeTab={activeTab}
-              isAdmin={isAdmin || isViewer}
+              isAdmin={isAdmin}
               handleResetFilters={handleResetFilters}
             />
           )}
@@ -1744,7 +1777,7 @@ export default function EventsPage() {
               extractPicFromNotes={extractPicFromNotes}
               getStatusBadgeStyle={getStatusBadgeStyle}
               getConfirmationStatusBadgeStyle={getConfirmationStatusBadgeStyle}
-              onOpenEngagementModal={handleOpenEngagementModal}
+              onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
             />
           ) : activeTab === 'reminder' ? (
             <ReminderTable
@@ -1757,7 +1790,7 @@ export default function EventsPage() {
               openDeleteParticipantConfirm={openDeleteParticipantConfirm}
               isUser={isViewer}
               getStatusBadgeStyle={getStatusBadgeStyle}
-              onOpenEngagementModal={handleOpenEngagementModal}
+              onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
             />
           ) : (
             <ReminderDdayTable
@@ -1770,7 +1803,7 @@ export default function EventsPage() {
               openDeleteParticipantConfirm={openDeleteParticipantConfirm}
               isUser={isViewer}
               getStatusBadgeStyle={getStatusBadgeStyle}
-              onOpenEngagementModal={handleOpenEngagementModal}
+              onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
             />
           )}
 

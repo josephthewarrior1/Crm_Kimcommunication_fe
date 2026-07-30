@@ -17,10 +17,8 @@ export const checkDatabaseCompleteness = (c: Database) => {
 
   const emails = c.emails || [];
   const hasCompanyEmail = emails.some(e => e.isCorporate || e.emailType === 'company');
-  const hasPersonalEmail = emails.some(e => !e.isCorporate && e.emailType === 'personal');
 
   if (!hasCompanyEmail) missing.push("Company Email");
-  if (!hasPersonalEmail) missing.push("Personal Email");
 
   if (!c.company?.industry?.trim()) missing.push("Industry");
   if (!c.company?.city?.trim()) missing.push("City");

@@ -57,6 +57,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const canEditConfirmation = !isUser || activeTab === 'request';
 
   useEffect(() => {
     if (tableRef.current) {
@@ -117,7 +118,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             <th className="py-2 px-3">Mobile Phone</th>
             <th className="py-2 px-3">Office Email</th>
             <th className="py-2 px-3">Personal Email</th>
-            {activeTab !== 'request' && <th className="py-2 px-3">Telemarketing Logs</th>}
+            {activeTab !== 'request' && onOpenEngagementModal && <th className="py-2 px-3">Telemarketing Logs</th>}
             {activeTab !== 'request' && <th className="py-2 px-3">Remarks</th>}
             <th className="py-2 px-3 text-center">Registration Status</th>
             {isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
@@ -186,10 +187,10 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 <td className="py-1.5 px-3 font-mono text-slate-600">
                   {p.database.emails?.find(e => e.emailType === 'personal' && !e.isCorporate)?.email || '-'}
                 </td>
-                {activeTab !== 'request' && (
+                {activeTab !== 'request' && onOpenEngagementModal && (
                   <td className="py-1.5 px-3">
                     <button
-                      onClick={() => onOpenEngagementModal && onOpenEngagementModal(p)}
+                      onClick={() => onOpenEngagementModal(p)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-700 text-xs font-bold rounded-xl border border-slate-200/80 transition-all shadow-2xs focus:outline-none cursor-pointer"
                       title="Buka Telemarketing Logs (Call, Email, WA)"
                     >
@@ -218,7 +219,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 <td className="py-1.5 px-3">
                   <div className="flex justify-center">
                     <select
-                      disabled={isUser}
+                      disabled={!canEditConfirmation}
                       value={p.confirmationStatus === 'confirmed' ? 'approve' : p.confirmationStatus === 'declined' ? 'decline' : p.confirmationStatus || 'pending'}
                       onChange={(e) => handleDirectUpdateParticipant(p, 'confirmationStatus', e.target.value)}
                       className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(p.confirmationStatus || 'pending')}`}
@@ -235,9 +236,11 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   </td>
                 )}
                 <td
-                  onClick={() => handleOpenUpdateParticipantModal(p)}
-                  className="py-1.5 px-3 text-slate-600 max-w-[140px] truncate cursor-pointer hover:text-blue-600 hover:underline transition-all"
-                  title="Click to edit notes & details"
+                  onClick={() => {
+                    if (!isUser) handleOpenUpdateParticipantModal(p);
+                  }}
+                  className={`py-1.5 px-3 text-slate-600 max-w-[140px] truncate transition-all ${isUser ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
+                  title={isUser ? cleanNotes || '-' : 'Click to edit notes & details'}
                 >
                   {cleanNotes || '-'}
                 </td>

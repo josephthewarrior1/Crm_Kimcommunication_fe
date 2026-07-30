@@ -13,6 +13,7 @@ import { EditCompanyModal } from './components/EditCompanyModal';
 import { DeleteCompanyConfirmModal } from './components/DeleteCompanyConfirmModal';
 import { CompanyDetailModal } from './components/CompanyDetailModal';
 import { matchesIndustryFilter } from '../database/utils/industryHelper';
+import { formatCompanyName } from '../../../lib/utils/companyName';
 
 export default function CompaniesPage() {
   const { isAdmin, isManager, isUser } = useAuth();
@@ -141,8 +142,10 @@ export default function CompaniesPage() {
 
   const filteredCompanies = companies.filter((c) => {
     const query = searchQuery.toLowerCase();
+    const displayName = formatCompanyName(c.name).toLowerCase();
     const matchesSearch =
       c.name.toLowerCase().includes(query) ||
+      displayName.includes(query) ||
       (c.brandName && c.brandName.toLowerCase().includes(query)) ||
       (c.city && c.city.toLowerCase().includes(query)) ||
       (c.group?.name && c.group.name.toLowerCase().includes(query));
@@ -258,6 +261,7 @@ export default function CompaniesPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 text-left">
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Brand</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Group</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Databases</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Info</th>
@@ -267,7 +271,10 @@ export default function CompaniesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {currentCompanies.map((c) => (
+                {currentCompanies.map((c) => {
+                  const activeContactCount = databases.filter(database => database.company?.id === c.id && database.isActive).length;
+
+                  return (
                   <tr
                     key={c.id}
                     onClick={() => {
@@ -276,15 +283,19 @@ export default function CompaniesPage() {
                     }}
                     className="hover:bg-slate-50/80 transition-all cursor-pointer group/row"
                   >
-                    <td className="py-4 px-6">
-                      <p className="text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">{c.name}</p>
-                      {c.brandName && (
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-xs text-blue-650 font-medium">Brand: {c.brandName}</span>
-                        </div>
+                    <td className="py-4 px-6 align-middle">
+                      <p className="text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">{formatCompanyName(c.name)}</p>
+                    </td>
+                    <td className="py-4 px-6 text-sm align-middle">
+                      {c.brandName ? (
+                        <span className="inline-block max-w-[160px] truncate text-xs font-bold text-blue-650" title={c.brandName}>
+                          {c.brandName}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-sm">
+                    <td className="py-4 px-6 text-sm align-middle">
                       {c.group ? (
                         <span 
                           className="inline-block max-w-[180px] truncate px-2.5 py-1 text-xs font-bold bg-blue-50 border border-blue-100 text-blue-600 rounded-lg align-middle"
@@ -296,13 +307,13 @@ export default function CompaniesPage() {
                         <span className="text-slate-400">-</span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-sm">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg shadow-sm">
-                        <Users className="w-3.5 h-3.5 text-slate-500" />
-                        {databases.filter(database => database.company?.id === c.id && database.isActive).length} Contacts
+                    <td className="py-4 px-6 text-sm align-middle">
+                      <span className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-bold leading-none text-slate-700 shadow-sm">
+                        <Users className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                        <span>{activeContactCount} {activeContactCount === 1 ? 'Contact' : 'Contacts'}</span>
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-xs space-y-1">
+                    <td className="py-4 px-6 text-xs space-y-1 align-middle">
                       {c.website && (
                         <a
                           href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
@@ -321,7 +332,7 @@ export default function CompaniesPage() {
                         </p>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-xs space-y-1">
+                    <td className="py-4 px-6 text-xs space-y-1 align-middle">
                       {c.industry ? (
                         <p className="text-sm font-bold text-slate-800">
                           {c.industry}
@@ -335,7 +346,7 @@ export default function CompaniesPage() {
                         </p>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-sm font-medium text-slate-700">
+                    <td className="py-4 px-6 text-sm font-medium text-slate-700 align-middle">
                       <p className="font-semibold text-slate-800">{c.city || '-'}</p>
                       {c.postalCode && (
                         <p className="text-xs text-slate-400 font-mono mt-0.5">
@@ -343,7 +354,7 @@ export default function CompaniesPage() {
                         </p>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-sm text-right whitespace-nowrap">
+                    <td className="py-4 px-6 text-sm text-right whitespace-nowrap align-middle">
                       <div className="flex items-center justify-end gap-1.5">
                         {!isUser && (
                           <button
@@ -374,7 +385,8 @@ export default function CompaniesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

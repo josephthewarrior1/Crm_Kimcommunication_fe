@@ -87,6 +87,14 @@ export default function DatabasesPage() {
   const itemsPerPage = 10;
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
 
+  const initialTab = searchParams ? searchParams.get('tab') : null;
+  const [activeTabFilter, setActiveTabFilter] = useState<'clean' | 'dirty'>(initialTab === 'dirty' ? 'dirty' : 'clean');
+
+  useEffect(() => {
+    const tabParam = searchParams ? searchParams.get('tab') : null;
+    setActiveTabFilter(tabParam === 'dirty' ? 'dirty' : 'clean');
+  }, [searchParams]);
+
   // Selection and Custom Export states
   const [selectedDatabaseIds, setSelectedDatabaseIds] = useState<number[]>([]);
   const [tempSelectedDbIds, setTempSelectedDbIds] = useState<number[]>([]);
@@ -339,6 +347,11 @@ export default function DatabasesPage() {
     const isConfirmedTikus = flags.some(f => f.database?.id === c.id && f.status === 'confirmed');
     if (isConfirmedTikus) return false;
 
+    // Sidebar separates clean Database from Dirty Database.
+    const isDirty = checkDatabaseCompleteness(c).isIncomplete;
+    if (activeTabFilter === 'dirty' && !isDirty) return false;
+    if (activeTabFilter === 'clean' && isDirty) return false;
+
     // 1. General search query
     const query = searchQuery.toLowerCase();
     const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
@@ -446,7 +459,7 @@ export default function DatabasesPage() {
   // Reset current page when query, filter or sorting changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, sortBy, sortOrder]);
+  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, sortBy, sortOrder, activeTabFilter]);
 
   // Update table scroll width for top scrollbar sync
   useEffect(() => {
@@ -510,7 +523,7 @@ export default function DatabasesPage() {
 
       {/* Advanced Filters Area */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div className="flex items-center flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
             <Search className="w-5 h-5 text-slate-400 mr-2" />
             <input
@@ -866,7 +879,13 @@ export default function DatabasesPage() {
                     <tr
                       key={c.id}
                       onClick={() => handleOpenDetailModal(c)}
-                      className={`group hover:bg-slate-50/80 transition-all cursor-pointer group/row ${!c.isActive ? 'opacity-60 bg-slate-50/20' : ''}`}
+                      className={`group transition-all cursor-pointer group/row ${
+                        !c.isActive
+                          ? 'opacity-60 bg-slate-50/20 hover:bg-slate-50/80'
+                          : isFlaggedTikus && !hasConfirmedFlag
+                          ? 'bg-amber-50/40 hover:bg-amber-50/70 border-l-2 border-l-amber-400'
+                          : 'hover:bg-slate-50/80'
+                      }`}
                     >
                       <td className="py-4 px-3 text-center">
                         {checkDatabaseCompleteness(c).isIncomplete && (
@@ -890,26 +909,8 @@ export default function DatabasesPage() {
                       <td className="py-4 px-4 text-sm text-slate-500">
                         {c.salutation || '-'}
                       </td>
-                      <td className="py-4 px-4">
-                        <p className="text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors flex items-center gap-1.5 flex-wrap">
-                          {isFlaggedTikus && !hasConfirmedFlag && (
-                            <span
-                              className="inline-flex items-center gap-1 cursor-help px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 border border-amber-100 text-amber-600 rounded-md shrink-0 transition-colors"
-                              title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
-                            >
-                              <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />
-                              Suspected
-                            </span>
-                          )}
-                          <span className="truncate max-w-[150px] inline-block align-middle font-bold text-slate-900" title={c.firstName}>
-                            {c.firstName}
-                          </span>
-                        </p>
-                        {!c.isActive && (
-                          <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-50 border border-red-100 text-red-600 rounded-md">
-                            INACTIVE
-                          </span>
-                        )}
+                      <td className="py-4 px-4 text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">
+                        {c.firstName}
                       </td>
                       <td className="py-4 px-4 text-sm font-bold text-slate-900">
                         {c.lastName || '-'}
@@ -984,16 +985,37 @@ export default function DatabasesPage() {
                       </td>
                       <td
                         onClick={(e) => e.stopPropagation()}
-                        className={`py-4 px-4 text-sm text-right sticky right-0 bg-white group-hover:bg-slate-50/90 ${activeDropdownId === c.id ? 'z-30' : 'z-10'} shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors`}
+                        className={`py-4 px-4 text-sm text-right sticky right-0 ${
+                          !c.isActive
+                            ? 'bg-slate-50/90'
+                            : isFlaggedTikus && !hasConfirmedFlag
+                            ? 'bg-amber-50/90'
+                            : 'bg-white'
+                        } group-hover:bg-slate-50/90 ${activeDropdownId === c.id ? 'z-30' : 'z-10'} shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors`}
                       >
-                      <div className="inline-block text-left">
-                        <button
-                          onClick={(e) => handleToggleDropdown(e, c.id)}
-                          className="inline-flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                          title="Actions"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+                        <div className="inline-flex items-center justify-end gap-2">
+                          {isFlaggedTikus && !hasConfirmedFlag && (
+                            <span
+                              className="inline-flex items-center gap-1 cursor-help px-2 py-0.5 text-[10px] font-bold bg-amber-100/90 border border-amber-300 text-amber-800 rounded-md shrink-0 transition-colors shadow-2xs"
+                              title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
+                            >
+                              <ShieldAlert className="w-3 h-3 text-amber-600 shrink-0" />
+                              Suspected
+                            </span>
+                          )}
+                          {!c.isActive && (
+                            <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-red-100/90 border border-red-300 text-red-800 rounded-md shrink-0 shadow-2xs">
+                              INACTIVE
+                            </span>
+                          )}
+                          <div className="relative text-left">
+                            <button
+                              onClick={(e) => handleToggleDropdown(e, c.id)}
+                              className="inline-flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
+                              title="Actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
 
                         {activeDropdownId === c.id && dropdownPos && (
                           <>
@@ -1060,6 +1082,7 @@ export default function DatabasesPage() {
                             </div>
                           </>
                         )}
+                        </div>
                       </div>
                     </td>
                   </tr>

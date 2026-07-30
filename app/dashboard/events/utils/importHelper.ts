@@ -67,10 +67,13 @@ export const importParticipantsFromExcel = async (
       let resolvedCompanyId: number | undefined = undefined;
       if (companyNameRaw) {
         let companyName = companyNameRaw;
-        if (companyName.toUpperCase().endsWith(' PT')) {
-          companyName = 'PT ' + companyName.slice(0, -3).trim();
-        } else if (companyName.toUpperCase().endsWith(' PT.')) {
-          companyName = 'PT ' + companyName.slice(0, -4).trim();
+        const upperCompanyName = companyName.toUpperCase();
+        if (upperCompanyName.startsWith('PT ')) {
+          companyName = `${companyName.slice(3).trim()} PT`;
+        } else if (upperCompanyName.startsWith('PT. ')) {
+          companyName = `${companyName.slice(4).trim()} PT`;
+        } else if (upperCompanyName.endsWith(' PT.')) {
+          companyName = `${companyName.slice(0, -4).trim()} PT`;
         }
         
         const existingCompany = allCompanies.find((c: any) => 

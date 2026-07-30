@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/context/AuthContext';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { crmService } from '../../lib/services/crmService';
+import { checkDatabaseCompleteness } from './database/utils/validationHelper';
 import {
   LayoutDashboard,
   Building2,
@@ -19,15 +21,27 @@ import {
   ShieldAlert,
   UserX,
   UserPlus,
-  Shield
+  Shield,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading, isAdmin, isManager, isUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dirtyDbCount, setDirtyDbCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (user && !isUser) {
+      crmService.getDatabases().then(dbs => {
+        const count = dbs.filter((c: any) => c.isActive !== false && checkDatabaseCompleteness(c).isIncomplete).length;
+        setDirtyDbCount(count);
+      }).catch(() => {});
+    }
+  }, [pathname, user]);
 
   const isViewer = isUser || (!isAdmin && !isManager);
 
@@ -82,12 +96,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
+  const currentTab = searchParams ? searchParams.get('tab') : null;
+
   // Define sidebar menu items
   const menuItems = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Groups', path: '/dashboard/groups', icon: FolderTree },
     { name: 'Companies', path: '/dashboard/companies', icon: Building2 },
     { name: 'Database', path: '/dashboard/database', icon: DatabaseIcon },
+    { name: 'Dirty Database', path: '/dashboard/database?tab=dirty', icon: AlertTriangle, badge: dirtyDbCount },
     { name: 'Events', path: '/dashboard/events', icon: CalendarDays },
     { name: 'Flagged Identities', path: '/dashboard/flagged', icon: ShieldAlert },
     { name: 'Takeout Requests', path: '/dashboard/takeout', icon: UserX },
@@ -123,20 +140,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {filteredMenuItems.map((item) => {
-            const isActive = pathname === item.path;
+            const isDirtyMenu = item.path.includes('tab=dirty');
+            const isActive = isDirtyMenu 
+              ? (pathname === '/dashboard/database' && currentTab === 'dirty')
+              : (pathname === item.path && (!item.path.includes('/dashboard/database') || currentTab !== 'dirty'));
             const Icon = item.icon;
             return (
               <button
                 key={item.name}
                 onClick={() => handleNav(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/15'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                {item.name}
+                <div className="flex items-center gap-3">
+                  <Icon className="w-5 h-5" />
+                  <span>{item.name}</span>
+                </div>
+                {item.badge !== undefined && item.badge !== null && item.badge > 0 && (
+                  <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200/60'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -256,20 +285,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <nav className="flex-1 space-y-1">
               {filteredMenuItems.map((item) => {
-                const isActive = pathname === item.path;
+                const isDirtyMenu = item.path.includes('tab=dirty');
+                const isActive = isDirtyMenu 
+                  ? (pathname === '/dashboard/database' && currentTab === 'dirty')
+                  : (pathname === item.path && (!item.path.includes('/dashboard/database') || currentTab !== 'dirty'));
                 const Icon = item.icon;
                 return (
                   <button
                     key={item.name}
                     onClick={() => handleNav(item.path)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/15'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
-                    <Icon className="w-5 h-5" />
-                    {item.name}
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-5 h-5" />
+                      <span>{item.name}</span>
+                    </div>
+                    {item.badge !== undefined && item.badge !== null && item.badge > 0 && (
+                      <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200/60'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
                   </button>
                 );
               })}
