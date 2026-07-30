@@ -790,13 +790,41 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           );
                         })()}
 
-                        {/* Summary Remarks Row */}
+                        {/* Summary Remarks Row (Filtered by Date Range) */}
                         {(() => {
-                          const picParticipants = participants.filter(p => {
+                          const isDateInRange = (dateStr?: string) => {
+                            if (!dateStr) return false;
+                            let s = dateStr.trim();
+                            if (!s.includes('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) s = s.replace(' ', 'T');
+                            const dt = new Date(s);
+                            if (isNaN(dt.getTime())) return false;
+                            const year = dt.getFullYear();
+                            const month = String(dt.getMonth() + 1).padStart(2, '0');
+                            const day = String(dt.getDate()).padStart(2, '0');
+                            const ymd = `${year}-${month}-${day}`;
+
+                            if (startDate && ymd < startDate) return false;
+                            if (endDate && ymd > endDate) return false;
+                            return true;
+                          };
+
+                          const allPicParticipants = participants.filter(p => {
                             const pic = extractPicFromNotes(p.notes).pic;
                             return pic.toLowerCase() === selectedPic.toLowerCase() || 
                                    (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
                           });
+
+                          const picParticipants = (!startDate && !endDate) ? allPicParticipants : allPicParticipants.filter(p => {
+                            if (isDateInRange(p.createdAt) || isDateInRange(p.updatedAt) || isDateInRange(p.requestedAt) || isDateInRange(p.respondedAt)) {
+                              return true;
+                            }
+                            const hasAct = filteredPicActivities.some(a => 
+                              a.eventParticipant?.id === p.id || 
+                              (a.participantName && a.participantName.toLowerCase() === `${p.database?.firstName || ''} ${p.database?.lastName || ''}`.trim().toLowerCase())
+                            );
+                            return hasAct;
+                          });
+
                           const regCount = picParticipants.filter(p => {
                             const ps = (p.participantStatus || '').toLowerCase();
                             const att = (p.attendanceStatus || '').toLowerCase();
@@ -811,9 +839,16 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                           return (
                             <div className="pt-2 border-t border-slate-200/80 space-y-1.5">
-                              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                                Summary Remarks ({picParticipants.length} Peserta Assigned)
-                              </span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                                  Summary Remarks Periode Ini ({picParticipants.length} Peserta)
+                                </span>
+                                {(startDate || endDate) && (
+                                  <span className="text-[9px] font-bold text-slate-400">
+                                    Total Assigned PIC: {allPicParticipants.length}
+                                  </span>
+                                )}
+                              </div>
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-bold">
                                 <div className="px-3 py-1.5 bg-indigo-50/80 text-indigo-950 border border-indigo-200/80 rounded-xl flex items-center justify-between">
                                   <span>Registered</span>
