@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Loader2, Building2, Users, Calendar, Mail, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
 import { Database, DatabaseEmail, EventParticipant, Company } from '../../../../lib/types';
 import { checkFormCompleteness } from '../utils/validationHelper';
+import { getStatusLabel, getStatusBadgeStyle } from '../../events/utils/statusHelper';
 
 interface DatabaseDetailModalProps {
   isOpen: boolean;
@@ -337,8 +338,8 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
                             )}
                           </td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 font-bold rounded border uppercase text-[9px] ${statusColors[p.participantStatus] || statusColors.white}`}>
-                              {p.participantStatus}
+                            <span className={`px-2 py-0.5 font-bold rounded border text-[9px] uppercase ${getStatusBadgeStyle(p.participantStatus)}`}>
+                              {getStatusLabel(p.participantStatus)}
                             </span>
                           </td>
                           <td className="py-3 px-3">

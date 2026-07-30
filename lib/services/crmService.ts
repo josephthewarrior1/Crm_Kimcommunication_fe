@@ -120,18 +120,22 @@ export class CrmService extends ApiService {
     for (const item of data) {
       const pmsEvId = item.id;
       const pmsName = item.name || 'Untitled Event';
+      const addOn = item.addOn || item.add_on || item.package || item.packageName || item.package_name || item.addOnPackage || item.add_on_package || item.servicePackage || item.service_package || null;
 
-      const exists = crmEvents.some(
+      const existingEv = crmEvents.find(
         (crmEv) =>
           (crmEv.pmsEventId && crmEv.pmsEventId === pmsEvId) ||
           (crmEv.name && pmsName && crmEv.name.trim().toLowerCase() === pmsName.trim().toLowerCase())
       );
 
-      if (!exists) {
+      if (!existingEv) {
         try {
           const eventType = ['partner', 'end_user', 'internal', 'other'].includes((item.eventType || '').toLowerCase())
             ? (item.eventType || '').toLowerCase()
             : 'partner';
+
+          const notesText = item.description || item.notes || item.venueName || '';
+          const finalNotes = addOn ? (notesText ? `${notesText} | Package: ${addOn}` : `Package: ${addOn}`) : notesText;
 
           await this.createEvent({
             name: pmsName,
@@ -139,13 +143,31 @@ export class CrmService extends ApiService {
             clientName: item.client || item.clientName || '',
             dateStart: item.startDate || item.dateStart || '',
             dateEnd: item.endDate || item.dateEnd || '',
-            notes: item.description || item.notes || item.venueName || '',
+            notes: finalNotes,
+            addOn: addOn,
             targetParticipants: item.targetPax || item.targetParticipants || 0,
             pmsEventId: pmsEvId,
           });
           syncedCount++;
         } catch (err) {
           console.error(`Failed to sync PMS event "${pmsName}":`, err);
+        }
+      } else {
+        // Sync addOn / package info to existing event if missing
+        if (addOn && (!existingEv.addOn || !existingEv.notes?.includes(addOn))) {
+          try {
+            const updatedNotes = existingEv.notes 
+              ? (existingEv.notes.includes('Package:') ? existingEv.notes : `${existingEv.notes} | Package: ${addOn}`) 
+              : `Package: ${addOn}`;
+            await this.updateEvent(existingEv.id, {
+              ...existingEv,
+              addOn: addOn,
+              notes: updatedNotes
+            });
+            syncedCount++;
+          } catch (err) {
+            console.error(`Failed to update addOn for existing event "${pmsName}":`, err);
+          }
         }
       }
     }

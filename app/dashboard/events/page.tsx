@@ -1363,6 +1363,7 @@ export default function EventsPage() {
                   other: 'bg-slate-400'
                 };
                 const accentColor = typeColorMap[evt.eventType || 'other'] || 'bg-slate-400';
+                const packageBadge = evt.addOn || (evt.notes && evt.notes.toLowerCase().includes('package:') ? evt.notes.split(/package:/i)[1]?.split('\n')[0]?.trim() : null);
 
                 return (
                   <div
@@ -1373,31 +1374,40 @@ export default function EventsPage() {
                     <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${accentColor}`} />
                     <div>
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-extrabold text-slate-900 text-base group-hover:text-blue-600 transition-colors line-clamp-2">{evt.name}</h4>
-                        {!isViewer && (
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditEventModal(evt);
-                              }}
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-all"
-                              title="Edit Event"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDeleteEventConfirm(evt);
-                              }}
-                              className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-650 transition-all"
-                              title="Delete Event"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex-1 pr-1">
+                          <h4 className="font-extrabold text-slate-900 text-base group-hover:text-blue-600 transition-colors line-clamp-2">{evt.name}</h4>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {packageBadge && (
+                            <span className="px-2.5 py-0.5 bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-black rounded-lg uppercase tracking-wider shadow-2xs">
+                              {packageBadge}
+                            </span>
+                          )}
+                          {!isViewer && (
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditEventModal(evt);
+                                }}
+                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-all"
+                                title="Edit Event"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDeleteEventConfirm(evt);
+                                }}
+                                className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-650 transition-all"
+                                title="Delete Event"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs text-slate-550 mt-1">Client: <strong className="text-slate-700">{evt.clientName || 'Independent'}</strong></p>
                       
