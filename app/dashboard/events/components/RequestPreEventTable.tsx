@@ -239,9 +239,31 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                       ) : (
                         <select
                           disabled={!canEditConfirmation}
-                          value={p.confirmationStatus === 'confirmed' ? 'approve' : p.confirmationStatus === 'declined' ? 'decline' : p.confirmationStatus || 'pending'}
-                          onChange={(e) => handleDirectUpdateParticipant(p, 'confirmationStatus', e.target.value)}
-                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(p.confirmationStatus || 'pending')}`}
+                          value={
+                            extractPreEventApprovalStatus(p.notes) === 'decline'
+                              ? 'decline'
+                              : p.confirmationStatus === 'confirmed' || p.confirmationStatus === 'approve'
+                              ? 'approve'
+                              : p.confirmationStatus === 'declined' || p.confirmationStatus === 'decline'
+                              ? 'decline'
+                              : p.confirmationStatus || 'pending'
+                          }
+                          onChange={(e) => {
+                            const newVal = e.target.value;
+                            handleDirectUpdateParticipant(p, 'confirmationStatus', newVal);
+                            if (extractPreEventApprovalStatus(p.notes) === 'decline') {
+                              handleDirectUpdateParticipant(p, 'preEventApprovalStatus', newVal);
+                            }
+                          }}
+                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(
+                            extractPreEventApprovalStatus(p.notes) === 'decline'
+                              ? 'decline'
+                              : p.confirmationStatus === 'confirmed' || p.confirmationStatus === 'approve'
+                              ? 'approve'
+                              : p.confirmationStatus === 'declined' || p.confirmationStatus === 'decline'
+                              ? 'decline'
+                              : p.confirmationStatus || 'pending'
+                          )}`}
                         >
                           <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
                           <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>

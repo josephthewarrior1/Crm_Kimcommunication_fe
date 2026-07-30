@@ -5,9 +5,10 @@ import { crmService } from '../../../lib/services/crmService';
 import { authService } from '../../../lib/services/authService';
 import { AppUser } from '../../../lib/types';
 import { useAuth } from '../../../lib/context/AuthContext';
-import { Users, Loader2, Trash2, Shield, UserPlus, AlertCircle, Lock, Calendar } from 'lucide-react';
+import { Users, Loader2, Trash2, Shield, UserPlus, AlertCircle, Lock, Calendar, Edit3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddUserModal } from './components/AddUserModal';
+import { EditUserModal } from './components/EditUserModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { DeleteUserConfirmModal } from './components/DeleteUserConfirmModal';
 import { ManageViewerEventsModal } from './components/ManageViewerEventsModal';
@@ -21,6 +22,9 @@ export default function UserManagementPage() {
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingUser, setDeletingUser] = useState<AppUser | null>(null);
@@ -109,6 +113,20 @@ export default function UserManagementPage() {
       toast.error(err.message || 'Failed to create user account.');
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const handleEditUserSubmit = async (id: number, data: { fullName: string; email: string }) => {
+    setEditLoading(true);
+    try {
+      await crmService.updateUserProfile(id, data);
+      toast.success('User details updated successfully');
+      setEditingUser(null);
+      loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update user profile');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -236,6 +254,13 @@ export default function UserManagementPage() {
                             </button>
                           )}
                           <button
+                            onClick={() => setEditingUser(u)}
+                            className="inline-flex p-1.5 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 hover:border-blue-200 text-slate-400 rounded-lg transition-colors shadow-sm bg-white"
+                            title="Edit User Info"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => setChangingPasswordUser(u)}
                             className="inline-flex p-1.5 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 hover:border-blue-200 text-slate-400 rounded-lg transition-colors shadow-sm bg-white"
                             title="Change Password"
@@ -269,6 +294,15 @@ export default function UserManagementPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateUserSubmit}
         loading={createLoading}
+      />
+
+      {/* Edit User Profile Details Modal */}
+      <EditUserModal
+        isOpen={editingUser !== null}
+        onClose={() => setEditingUser(null)}
+        targetUser={editingUser}
+        onSubmit={handleEditUserSubmit}
+        loading={editLoading}
       />
 
       {/* Delete User Account Confirmation Modal */}

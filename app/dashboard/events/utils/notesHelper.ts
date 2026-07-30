@@ -27,3 +27,11 @@ export const setPreEventApprovalStatus = (notes: string | null | undefined, stat
   const cleanNotes = (notes || '').replace(/\[PreEventApproval:\s*[^\]]+\]/gi, '').replace(/\s+/g, ' ').trim();
   return `[PreEventApproval: ${cleanStatus}] ${cleanNotes}`.replace(/\s+/g, ' ').trim();
 };
+
+export const setPicInNotes = (notes: string | null | undefined, picName: string): string => {
+  const current = (notes || '').trim();
+  if (/\[PIC:\s*[^\]]+\]/i.test(current)) {
+    return current.replace(/\[PIC:\s*[^\]]+\]/gi, `[PIC: ${picName}]`);
+  }
+  return `[PIC: ${picName}] ${current}`.trim();
+};

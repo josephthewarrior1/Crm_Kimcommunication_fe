@@ -80,12 +80,13 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
     e.preventDefault();
     const originTag = activeParticipant.notes?.includes('[Origin: EMS Sync]') ? '[Origin: EMS Sync]' : 
                       activeParticipant.notes?.includes('[Origin: Request]') ? '[Origin: Request]' : '';
+    const preEventApprovalTag = activeParticipant.notes?.match(/\[PreEventApproval:\s*[^\]]+\]/i)?.[0] || '';
     const cleanUserText = updateParticipantNotes
       .replace(/\[Origin:\s*[^\]]+\]/gi, '')
       .replace(/\[PIC:\s*[^\]]+\]/gi, '')
       .replace(/\[PreEventApproval:\s*[^\]]+\]/gi, '')
       .trim();
-    const finalNotes = `[PIC: ${updatePic}] ${originTag} ${cleanUserText}`.replace(/\s+/g, ' ').trim();
+    const finalNotes = `[PIC: ${updatePic}] ${preEventApprovalTag} ${originTag} ${cleanUserText}`.replace(/\s+/g, ' ').trim();
     onSubmit({
       participantStatus: updateParticipantStatusStr,
       attendanceStatus: activeParticipant.attendanceStatus,

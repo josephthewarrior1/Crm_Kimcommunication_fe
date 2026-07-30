@@ -424,6 +424,7 @@ export class CrmService extends ApiService {
     return response.json();
   }
 
+
   // --- USER MANAGEMENT ---
   async getUsers(): Promise<AppUser[]> {
     return this.get<AppUser[]>('/api/users');
@@ -439,6 +440,10 @@ export class CrmService extends ApiService {
 
   async updateUserAllowedEvents(id: number, eventIds: number[]): Promise<AppUser> {
     return this.put<AppUser>(`/api/users/${id}/allowed-events`, eventIds);
+  }
+
+  async updateUserProfile(id: number, data: { fullName?: string; email?: string }): Promise<AppUser> {
+    return this.put<AppUser>(`/api/users/${id}/profile`, data);
   }
 
   async deleteUser(id: number): Promise<void> {

@@ -99,12 +99,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const currentTab = searchParams ? searchParams.get('tab') : null;
 
   // Define sidebar menu items
-  const menuItems = [
+  const menuItems: Array<{ name: string; path: string; icon: any; badge?: number }> = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Groups', path: '/dashboard/groups', icon: FolderTree },
     { name: 'Companies', path: '/dashboard/companies', icon: Building2 },
     { name: 'Database', path: '/dashboard/database', icon: DatabaseIcon },
-    { name: 'Dirty Database', path: '/dashboard/database?tab=dirty', icon: AlertTriangle, badge: dirtyDbCount },
     { name: 'Events', path: '/dashboard/events', icon: CalendarDays },
     { name: 'Flagged Identities', path: '/dashboard/flagged', icon: ShieldAlert },
     { name: 'Takeout Requests', path: '/dashboard/takeout', icon: UserX },

@@ -23,7 +23,7 @@ import { EngagementModal } from './components/EngagementModal';
 import { EventStatistics } from './components/EventStatistics';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
-import { extractPicFromNotes, extractPreEventApprovalStatus, setPreEventApprovalStatus } from './utils/notesHelper';
+import { extractPicFromNotes, extractPreEventApprovalStatus, setPreEventApprovalStatus, setPicInNotes } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { exportParticipantsToExcel } from './utils/exportHelper';
@@ -880,8 +880,7 @@ export default function EventsPage() {
       try {
         const lead = participants.find(l => l.id === participantId);
         if (lead) {
-          const { cleanNotes } = extractPicFromNotes(lead.notes);
-          const newNotes = `[PIC: ${picName}] ${cleanNotes === '-' ? '' : cleanNotes}`.trim();
+          const newNotes = setPicInNotes(lead.notes, picName);
           
           await crmService.updateParticipantStatus(
             participantId,
@@ -1258,15 +1257,17 @@ export default function EventsPage() {
       }
     } else if (activeTab === 'pre_event') {
       // Pre-Event tab: EMS registrants + approved DB candidates
-      if (confStatus === 'decline' || confStatus === 'declined') {
+      if (confStatus === 'decline' || confStatus === 'declined' || extractPreEventApprovalStatus(l.notes) === 'decline') {
         return false;
       }
       if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') {
         return false;
       }
     } else if (activeTab === 'declined') {
-      // Declined tab: All declined registrants (EMS declined & DB declined)
-      if (confStatus !== 'decline' && confStatus !== 'declined') {
+      // Declined tab: All declined registrants (EMS declined, DB declined, or Pre-Event declined)
+      const isClientDeclined = confStatus === 'decline' || confStatus === 'declined';
+      const isPreEventDeclined = extractPreEventApprovalStatus(l.notes) === 'decline';
+      if (!isClientDeclined && !isPreEventDeclined) {
         return false;
       }
     } else if (activeTab === 'reminder') {
@@ -1745,12 +1746,12 @@ export default function EventsPage() {
                 <span>Declined</span>
                 {participants.filter(p => {
                   const status = getEffectiveConfirmationStatus(p);
-                  return status === 'decline' || status === 'declined';
+                  return status === 'decline' || status === 'declined' || extractPreEventApprovalStatus(p.notes) === 'decline';
                 }).length > 0 && (
                   <span className="px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700 rounded-full">
                     {participants.filter(p => {
                       const status = getEffectiveConfirmationStatus(p);
-                      return status === 'decline' || status === 'declined';
+                      return status === 'decline' || status === 'declined' || extractPreEventApprovalStatus(p.notes) === 'decline';
                     }).length}
                   </span>
                 )}
@@ -1833,8 +1834,7 @@ export default function EventsPage() {
                 try {
                   const lead = participants.find(l => l.id === id);
                   if (lead) {
-                    const { cleanNotes } = extractPicFromNotes(lead.notes);
-                    const newNotes = `[PIC: ${picName}] ${cleanNotes === '-' ? '' : cleanNotes}`.trim();
+                    const newNotes = setPicInNotes(lead.notes, picName);
                     await crmService.updateParticipantStatus(
                       id,
                       lead.participantStatus,
@@ -1852,7 +1852,7 @@ export default function EventsPage() {
                       lead.reminderH3 || undefined,
                       lead.reminderH1 || undefined,
                       lead.reminderHariH || undefined,
-                      lead.confirmationStatus
+                      lead.confirmationStatus || undefined
                     );
                     successCount++;
                   }

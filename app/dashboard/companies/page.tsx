@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Company, Group, Database } from '../../../lib/types';
-import { Building2, Search, Plus, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Users } from 'lucide-react';
+import { Building2, Search, Plus, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Users, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { INDUSTRIES } from '../../../lib/constants';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -27,12 +27,23 @@ export default function CompaniesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
-  // Modal States
+
+  // Sorting state
+  const [sortBy, setSortBy] = useState<string>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -151,17 +162,47 @@ export default function CompaniesPage() {
       (c.city && c.city.toLowerCase().includes(query)) ||
       (c.group?.name && c.group.name.toLowerCase().includes(query));
 
+
     const matchesIndustry = !filterIndustry || matchesIndustryFilter(c.industry, filterIndustry);
     const matchesGroup = !filterGroup || (c.group && c.group.id === Number(filterGroup));
 
     return matchesSearch && matchesIndustry && matchesGroup;
   });
 
-  const totalItems = filteredCompanies.length;
+  const sortedCompanies = [...filteredCompanies].sort((a, b) => {
+    let aVal: any = a.id;
+    let bVal: any = b.id;
+
+    if (sortBy === 'name') {
+      aVal = a.name.toLowerCase();
+      bVal = b.name.toLowerCase();
+    } else if (sortBy === 'brand') {
+      aVal = (a.brandName || '').toLowerCase();
+      bVal = (b.brandName || '').toLowerCase();
+    } else if (sortBy === 'group') {
+      aVal = (a.group?.name || '').toLowerCase();
+      bVal = (b.group?.name || '').toLowerCase();
+    } else if (sortBy === 'industry') {
+      aVal = (a.industry || '').toLowerCase();
+      bVal = (b.industry || '').toLowerCase();
+    } else if (sortBy === 'city') {
+      aVal = (a.city || '').toLowerCase();
+      bVal = (b.city || '').toLowerCase();
+    } else if (sortBy === 'contacts') {
+      aVal = databases.filter(d => d.company?.id === a.id && d.isActive).length;
+      bVal = databases.filter(d => d.company?.id === b.id && d.isActive).length;
+    }
+
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalItems = sortedCompanies.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentCompanies = filteredCompanies.slice(indexOfFirstItem, indexOfLastItem);
+  const currentCompanies = sortedCompanies.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -194,6 +235,28 @@ export default function CompaniesPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
           />
+        </div>
+
+        {/* Sort Order Dropdown */}
+        <div className="w-full sm:w-56">
+          <select
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(e) => {
+              const [b, o] = e.target.value.split('-');
+              setSortBy(b);
+              setSortOrder(o as 'asc' | 'desc');
+            }}
+            className="w-full px-3 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer"
+          >
+            <option value="id-asc">Urutkan: ID Terlama</option>
+            <option value="id-desc">Urutkan: ID Terbaru</option>
+            <option value="name-asc">Urutkan: Company Name (A-Z)</option>
+            <option value="name-desc">Urutkan: Company Name (Z-A)</option>
+            <option value="brand-asc">Urutkan: Brand Name (A-Z)</option>
+            <option value="brand-desc">Urutkan: Brand Name (Z-A)</option>
+            <option value="contacts-desc">Urutkan: Contacts (Terbanyak)</option>
+            <option value="contacts-asc">Urutkan: Contacts (Tersedikit)</option>
+          </select>
         </div>
 
         {/* Industry Filter Dropdown */}
@@ -229,11 +292,13 @@ export default function CompaniesPage() {
         </div>
 
         {/* Reset Filter Button */}
-        {(filterIndustry || filterGroup) && (
+        {(filterIndustry || filterGroup || sortBy !== 'id' || sortOrder !== 'asc') && (
           <button
             onClick={() => {
               setFilterIndustry('');
               setFilterGroup('');
+              setSortBy('id');
+              setSortOrder('asc');
             }}
             className="px-3.5 py-2.5 text-xs font-bold text-red-650 hover:text-red-500 bg-red-50 hover:bg-red-100/55 rounded-xl border border-red-200 transition-all self-start sm:self-auto"
           >
@@ -247,7 +312,7 @@ export default function CompaniesPage() {
         <div className="h-[40vh] flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-605" />
         </div>
-      ) : filteredCompanies.length === 0 ? (
+      ) : sortedCompanies.length === 0 ? (
         <div className="p-12 text-center border border-slate-200 rounded-2xl bg-white shadow-sm">
           <Building2 className="w-10 h-10 text-slate-400 mx-auto mb-3" />
           <h3 className="font-bold text-slate-700">No companies found</h3>
@@ -261,13 +326,43 @@ export default function CompaniesPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 text-left">
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Brand</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Group</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Databases</th>
+                  <th onClick={() => handleSort('name')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Company Name</span>
+                      {sortBy === 'name' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('brand')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Brand</span>
+                      {sortBy === 'brand' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('group')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Parent Group</span>
+                      {sortBy === 'group' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('contacts')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Databases</span>
+                      {sortBy === 'contacts' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Office Number</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Industry</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">City</th>
+                  <th onClick={() => handleSort('industry')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Industry</span>
+                      {sortBy === 'industry' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('city')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>City</span>
+                      {sortBy === 'city' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>

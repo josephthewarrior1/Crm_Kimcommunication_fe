@@ -74,9 +74,26 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       return;
     }
 
+    if (eventId) {
+      try {
+        await crmService.syncEmsParticipants(eventId);
+      } catch (err) {
+        console.warn('Auto EMS Sync during split warning:', err);
+      }
+    }
+
     let targetList = participants;
-    if (splitMode === 'unassigned') {
+    if (activeTab === 'request') {
       targetList = participants.filter(p => {
+        const notes = p.notes || '';
+        const isEms = notes.includes('[Origin: EMS Sync]') || notes.includes('[EMS]');
+        const isPublicEms = isEms && !p.confirmationStatus;
+        return !isPublicEms;
+      });
+    }
+
+    if (splitMode === 'unassigned') {
+      targetList = targetList.filter(p => {
         const notes = p.notes || '';
         if (!notes.includes('[PIC:')) return true;
         const picName = extractPicFromNotes(notes).pic;
@@ -351,7 +368,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider">Total Declined</span>
                   <span className="text-xl font-extrabold text-rose-950">
-                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
+                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined' || extractPreEventApprovalStatus(p.notes) === 'decline').length}
                   </span>
                 </div>
               </div>
@@ -373,9 +390,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <X className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Taken Out (Decline)</span>
+                  <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Declined from Pre-Event</span>
                   <span className="text-xl font-extrabold text-slate-900">
-                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length}
+                    {participants.filter(p => extractPreEventApprovalStatus(p.notes) === 'decline').length}
                   </span>
                 </div>
               </div>
@@ -747,7 +764,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           ) : (
                             <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1.5 custom-scrollbar">
                               {filteredPicActivities.map((act) => {
-                                const timeStr = act.createdAt ? new Date(act.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                                  const formatWib = (ds?: string) => {
+                                    if (!ds) return '-';
+                                    let s = ds.trim();
+                                    if (!s.includes('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+                                    const dt = new Date(s);
+                                    return isNaN(dt.getTime()) ? ds : dt.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+                                  };
+                                  const timeStr = formatWib(act.createdAt);
                                 const type = (act.activityType || '').toUpperCase();
                                 
                                 let targetName = act.participantName;
@@ -1012,12 +1036,19 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <button
                             onClick={async () => {
-                              const unassigned = participants.filter(p => {
+                              let unassigned = participants.filter(p => {
                                 const notes = p.notes || '';
-                                if (!notes.includes('[PIC:')) return true; // Unassigned lead!
+                                if (!notes.includes('[PIC:')) return true;
                                 const picName = extractPicFromNotes(notes).pic;
                                 return !picName || picName.trim() === '' || picName.toLowerCase() === 'not set';
                               });
+                              if (activeTab === 'request') {
+                                unassigned = unassigned.filter(p => {
+                                  const notes = p.notes || '';
+                                  const isEms = notes.includes('[Origin: EMS Sync]') || notes.includes('[EMS]');
+                                  return !(isEms && !p.confirmationStatus);
+                                });
+                              }
                               if (unassigned.length === 0) {
                                 toast.info('Semua peserta sudah memiliki PIC!');
                                 return;
@@ -1027,6 +1058,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 title: "Konfirmasi Bagi Rata Sisa",
                                 description: `Apakah Anda yakin ingin membagi ${unassigned.length} peserta sisa (belum ada PIC) ke seluruh PIC secara merata?`,
                                 onConfirm: async () => {
+                                  if (eventId) {
+                                    try { await crmService.syncEmsParticipants(eventId); } catch (e) {}
+                                  }
                                   const eligibleUsers = usersList.filter(u => {
                                     const uname = (u.username || '').toLowerCase();
                                     const fname = (u.fullName || '').toLowerCase();
@@ -1056,8 +1090,19 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                               setConfirmConfig({
                                 title: "Peringatan Bagi Ulang Semua",
-                                description: `PERINGATAN: Apakah Anda yakin ingin membagi ulang SEMUA ${participants.length} peserta secara merata? Tindakan ini akan mengocok ulang alokasi PIC.`,
+                                description: `PERINGATAN: Apakah Anda yakin ingin membagi ulang peserta secara merata? Tindakan ini akan mengocok ulang alokasi PIC.`,
                                 onConfirm: async () => {
+                                  if (eventId) {
+                                    try { await crmService.syncEmsParticipants(eventId); } catch (e) {}
+                                  }
+                                  let targetAll = participants;
+                                  if (activeTab === 'request') {
+                                    targetAll = participants.filter(p => {
+                                      const notes = p.notes || '';
+                                      const isEms = notes.includes('[Origin: EMS Sync]') || notes.includes('[EMS]');
+                                      return !(isEms && !p.confirmationStatus);
+                                    });
+                                  }
                                   const eligibleUsers = usersList.filter(u => {
                                     const uname = (u.username || '').toLowerCase();
                                     const fname = (u.fullName || '').toLowerCase();
@@ -1066,14 +1111,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   const targetPics = eligibleUsers.length > 0 ? eligibleUsers : [{ username: adminName, fullName: adminName }];
                                   const groupings: { [picName: string]: number[] } = {};
                                   targetPics.forEach(u => groupings[u.fullName || u.username] = []);
-                                  participants.forEach((lead, idx) => {
+                                  targetAll.forEach((lead, idx) => {
                                     const pic = targetPics[idx % targetPics.length];
                                     groupings[pic.fullName || pic.username].push(lead.id);
                                   });
                                   for (const picName of Object.keys(groupings)) {
                                     if (groupings[picName].length > 0) await onAssignPic(groupings[picName], picName);
                                   }
-                                  toast.success(`Berhasil membagi ulang seluruh ${participants.length} peserta ke ${targetPics.length} PIC!`);
+                                  toast.success(`Berhasil membagi ulang seluruh ${targetAll.length} peserta ke ${targetPics.length} PIC!`);
                                 }
                               });
                             }}

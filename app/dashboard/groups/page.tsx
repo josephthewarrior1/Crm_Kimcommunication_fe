@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Group, Company } from '../../../lib/types';
-import { FolderTree, Search, Plus, Loader2, Edit2, Trash2, Building2 } from 'lucide-react';
+import { FolderTree, Search, Plus, Loader2, Edit2, Trash2, Building2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -19,7 +19,20 @@ export default function GroupsPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
+  // Sorting state
+  const [sortBy, setSortBy] = useState<string>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -116,11 +129,31 @@ export default function GroupsPage() {
     g.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalItems = filteredGroups.length;
+  const sortedGroups = [...filteredGroups].sort((a, b) => {
+    let aVal: any = a.id;
+    let bVal: any = b.id;
+
+    if (sortBy === 'name') {
+      aVal = a.name.toLowerCase();
+      bVal = b.name.toLowerCase();
+    } else if (sortBy === 'companies') {
+      aVal = companies.filter(c => c.group?.id === a.id).length;
+      bVal = companies.filter(c => c.group?.id === b.id).length;
+    } else if (sortBy === 'created_at') {
+      aVal = new Date(a.createdAt || 0).getTime();
+      bVal = new Date(b.createdAt || 0).getTime();
+    }
+
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalItems = sortedGroups.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentGroups = filteredGroups.slice(indexOfFirstItem, indexOfLastItem);
+  const currentGroups = sortedGroups.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -142,15 +175,51 @@ export default function GroupsPage() {
       </div>
 
       {/* Control Bar */}
-      <div className="flex items-center max-w-md bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
-        <Search className="w-5 h-5 text-slate-400 mr-2" />
-        <input
-          type="text"
-          placeholder="Search groups by name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
-        />
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+        <div className="flex items-center flex-1 max-w-md bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+          <Search className="w-5 h-5 text-slate-400 mr-2" />
+          <input
+            type="text"
+            placeholder="Search groups by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
+          />
+        </div>
+
+        {/* Sort Order Dropdown */}
+        <div className="w-full sm:w-56">
+          <select
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(e) => {
+              const [b, o] = e.target.value.split('-');
+              setSortBy(b);
+              setSortOrder(o as 'asc' | 'desc');
+            }}
+            className="w-full px-3 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer"
+          >
+            <option value="id-asc">Urutkan: ID Terlama</option>
+            <option value="id-desc">Urutkan: ID Terbaru</option>
+            <option value="name-asc">Urutkan: Nama Group (A-Z)</option>
+            <option value="name-desc">Urutkan: Nama Group (Z-A)</option>
+            <option value="companies-desc">Urutkan: Perusahaan (Terbanyak)</option>
+            <option value="companies-asc">Urutkan: Perusahaan (Tersedikit)</option>
+            <option value="created_at-desc">Urutkan: Tanggal Dibuat (Terbaru)</option>
+            <option value="created_at-asc">Urutkan: Tanggal Dibuat (Terlama)</option>
+          </select>
+        </div>
+
+        {(sortBy !== 'id' || sortOrder !== 'asc') && (
+          <button
+            onClick={() => {
+              setSortBy('id');
+              setSortOrder('asc');
+            }}
+            className="px-3.5 py-2.5 text-xs font-bold text-red-650 hover:text-red-500 bg-red-50 hover:bg-red-100/55 rounded-xl border border-red-200 transition-all self-start sm:self-auto"
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
 
       {/* Groups List Table */}
@@ -158,7 +227,7 @@ export default function GroupsPage() {
         <div className="h-[40vh] flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
-      ) : filteredGroups.length === 0 ? (
+      ) : sortedGroups.length === 0 ? (
         <div className="p-12 text-center border border-slate-200 rounded-2xl bg-white shadow-sm">
           <FolderTree className="w-10 h-10 text-slate-400 mx-auto mb-3" />
           <h3 className="font-bold text-slate-700">No groups found</h3>
@@ -172,10 +241,25 @@ export default function GroupsPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 text-left">
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Group Name</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Group Company</th>
+                  <th onClick={() => handleSort('name')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Group Name</span>
+                      {sortBy === 'name' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('companies')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Group Company</span>
+                      {sortBy === 'companies' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Notes</th>
-                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Created At</th>
+                  <th onClick={() => handleSort('created_at')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Created At</span>
+                      {sortBy === 'created_at' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>

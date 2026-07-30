@@ -88,11 +88,14 @@ export default function DatabasesPage() {
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
 
   const initialTab = searchParams ? searchParams.get('tab') : null;
-  const [activeTabFilter, setActiveTabFilter] = useState<'clean' | 'dirty'>(initialTab === 'dirty' ? 'dirty' : 'clean');
+  const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'clean' | 'dirty'>(
+    initialTab === 'dirty' ? 'dirty' : initialTab === 'clean' ? 'clean' : 'all'
+  );
 
   useEffect(() => {
     const tabParam = searchParams ? searchParams.get('tab') : null;
-    setActiveTabFilter(tabParam === 'dirty' ? 'dirty' : 'clean');
+    if (tabParam === 'dirty') setActiveTabFilter('dirty');
+    else if (tabParam === 'clean') setActiveTabFilter('clean');
   }, [searchParams]);
 
   // Selection and Custom Export states
@@ -325,7 +328,7 @@ export default function DatabasesPage() {
     }
   };
 
-  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterIndustry || sortBy !== 'id' || sortOrder !== 'asc';
+  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterIndustry || sortBy !== 'id' || sortOrder !== 'asc' || activeTabFilter !== 'all';
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -335,6 +338,7 @@ export default function DatabasesPage() {
     setFilterIndustry('');
     setSortBy('id');
     setSortOrder('asc');
+    setActiveTabFilter('all');
   };
 
 
@@ -521,6 +525,42 @@ export default function DatabasesPage() {
         </div>
       </div>
 
+      {/* Quality Status Tab Pills */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+        <button
+          onClick={() => setActiveTabFilter('all')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeTabFilter === 'all'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          Semua Data ({databases.filter(c => c.isActive !== false).length})
+        </button>
+        <button
+          onClick={() => setActiveTabFilter('clean')}
+          className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeTabFilter === 'clean'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <CheckCircle className="w-3.5 h-3.5" />
+          Database Bersih ({databases.filter(c => c.isActive !== false && !checkDatabaseCompleteness(c).isIncomplete).length})
+        </button>
+        <button
+          onClick={() => setActiveTabFilter('dirty')}
+          className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeTabFilter === 'dirty'
+              ? 'bg-amber-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <AlertCircle className="w-3.5 h-3.5" />
+          Database Kotor ({databases.filter(c => c.isActive !== false && checkDatabaseCompleteness(c).isIncomplete).length})
+        </button>
+      </div>
+
       {/* Advanced Filters Area */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
@@ -545,7 +585,23 @@ export default function DatabasesPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status Data</label>
+            <Select
+              value={activeTabFilter}
+              onValueChange={(val) => setActiveTabFilter(val as 'all' | 'clean' | 'dirty')}
+            >
+              <SelectTrigger className="w-full h-9 px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white shadow-none">
+                <SelectValue placeholder="Semua Status" />
+              </SelectTrigger>
+              <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+                <SelectItem value="all">Semua Status Data</SelectItem>
+                <SelectItem value="clean">Database Bersih (Lengkap)</SelectItem>
+                <SelectItem value="dirty">Database Kotor (Incomplete)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Group</label>
             <Select
