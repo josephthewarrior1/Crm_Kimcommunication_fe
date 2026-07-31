@@ -332,16 +332,16 @@ export default function CompaniesPage() {
                       {sortBy === 'group' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
                     </div>
                   </th>
-                  <th onClick={() => handleSort('name')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
-                    <div className="flex items-center gap-1.5">
-                      <span>Company Name</span>
-                      {sortBy === 'name' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
-                    </div>
-                  </th>
                   <th onClick={() => handleSort('brand')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
                     <div className="flex items-center gap-1.5">
                       <span>Brand</span>
                       {sortBy === 'brand' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('name')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
+                    <div className="flex items-center gap-1.5">
+                      <span>Company Name</span>
+                      {sortBy === 'name' ? (sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />) : <ArrowUpDown className="w-3 h-3 text-slate-400" />}
                     </div>
                   </th>
                   <th onClick={() => handleSort('contacts')} className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-all">
@@ -391,9 +391,6 @@ export default function CompaniesPage() {
                         <span className="text-slate-400">-</span>
                       )}
                     </td>
-                    <td className="py-4 px-6 align-middle">
-                      <p className="text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">{formatCompanyName(c.name)}</p>
-                    </td>
                     <td className="py-4 px-6 text-sm align-middle">
                       {c.brandName ? (
                         <span className="inline-block max-w-[160px] truncate text-xs font-bold text-blue-650" title={c.brandName}>
@@ -402,6 +399,9 @@ export default function CompaniesPage() {
                       ) : (
                         <span className="text-slate-400">-</span>
                       )}
+                    </td>
+                    <td className="py-4 px-6 align-middle">
+                      <p className="text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">{formatCompanyName(c.name)}</p>
                     </td>
                     <td className="py-4 px-6 text-sm align-middle">
                       <span className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-bold leading-none text-slate-700 shadow-sm">

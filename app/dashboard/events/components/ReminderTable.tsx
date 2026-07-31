@@ -119,9 +119,9 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {filteredParticipants.map((p) => {
-            const isInactiveOrTakeout = !p.database?.isActive;
+            const isTakeout = Boolean(p.notes?.includes('[TAKEOUT]') || p.notes?.includes('[Opt-Out]') || p.notes?.toLowerCase().includes('takeout') || (p.database as any)?.isRemovalRequested);
+            const isTikus = Boolean(!isTakeout && (!p.database?.isActive || (p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus') || p.participantStatus === 'red'));
             const isDeclined = p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
-            const isTikus = Boolean((p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus') || p.participantStatus === 'red');
             
             return (
               <tr
@@ -129,8 +129,8 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 className={`transition-colors border-b border-slate-100 ${
                   isTikus
                     ? 'bg-red-50/70 hover:bg-red-100/70'
-                    : isInactiveOrTakeout
-                    ? 'bg-slate-50/70 hover:bg-slate-100/70 opacity-80'
+                    : isTakeout
+                    ? 'bg-amber-50/70 hover:bg-amber-100/70 opacity-80'
                     : isDeclined
                     ? 'bg-rose-50/40 hover:bg-rose-100/40'
                     : 'hover:bg-slate-50/50'
@@ -168,15 +168,15 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                       {isTikus ? (
                         <span
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-red-100/90 border border-red-200 text-red-700 rounded-md shrink-0 cursor-help shadow-2xs"
-                          title="PERINGATAN: Peserta ini terdaftar sebagai Tikus!"
+                          title="PERINGATAN: Peserta ini terdaftar sebagai Tikus / Flagged Identity!"
                         >
                           <ShieldAlert className="w-3 h-3 text-red-600 shrink-0" />
                           TIKUS
                         </span>
-                      ) : isInactiveOrTakeout ? (
+                      ) : isTakeout ? (
                         <span
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-extrabold bg-amber-50 border border-amber-200 text-amber-700 rounded-md shrink-0 cursor-help shadow-2xs"
-                          title="Status kontak: Non-Aktif / Request Takeout"
+                          title="Status kontak: Request Takeout"
                         >
                           <UserX className="w-3 h-3 text-amber-600 shrink-0" />
                           TAKEOUT

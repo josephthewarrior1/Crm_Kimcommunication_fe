@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus, History, Phone, Mail, MessageSquare, Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus, History, Phone, Mail, MessageSquare, Loader2, Calendar as CalendarIcon, Sliders } from 'lucide-react';
 import { EventParticipant, AppUser } from '../../../../lib/types';
 import { extractPicFromNotes, extractPreEventApprovalStatus } from '../utils/notesHelper';
 import { crmService } from '../../../../lib/services/crmService';
@@ -912,11 +912,13 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                       <div className={`p-2 rounded-xl shrink-0 ${
                                         type === 'CALL' ? 'bg-blue-50 text-blue-600' :
                                         type === 'WHATSAPP' ? 'bg-emerald-50 text-emerald-600' :
-                                        'bg-purple-50 text-purple-600'
+                                        type === 'EMAIL' ? 'bg-purple-50 text-purple-600' :
+                                        'bg-slate-100 text-slate-600'
                                       }`}>
                                         {type === 'CALL' && <Phone className="w-4 h-4" />}
                                         {type === 'WHATSAPP' && <MessageSquare className="w-4 h-4" />}
                                         {type === 'EMAIL' && <Mail className="w-4 h-4" />}
+                                        {type === 'SYSTEM' && <Sliders className="w-4 h-4" />}
                                       </div>
 
                                       <div className="min-w-0">
@@ -924,7 +926,8 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                           <span className={`text-[9px] font-black px-2 py-0.5 rounded-md tracking-wider ${
                                             type === 'CALL' ? 'bg-blue-100 text-blue-700' :
                                             type === 'WHATSAPP' ? 'bg-emerald-100 text-emerald-700' :
-                                            'bg-purple-100 text-purple-700'
+                                            type === 'EMAIL' ? 'bg-purple-100 text-purple-700' :
+                                            'bg-slate-200 text-slate-700 border border-slate-300'
                                           }`}>
                                             {type}
                                           </span>

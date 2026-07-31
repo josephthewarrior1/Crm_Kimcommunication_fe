@@ -4,6 +4,15 @@ import { AlertCircle, Phone, Mail, Edit2, Trash2, History } from 'lucide-react';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
 import { extractPreEventApprovalStatus, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 
+const formatRegDate = (dateStr?: string | null) => {
+  if (!dateStr) return { date: '-', time: '' };
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return { date: dateStr.split('T')[0] || '-', time: '' };
+  const date = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+  return { date, time };
+};
+
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg 
     className={className} 
@@ -124,6 +133,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             {columnConfig.officeEmail !== false && <th className="py-2 px-3">Office Email</th>}
             {columnConfig.personalEmail !== false && <th className="py-2 px-3">Personal Email</th>}
             {columnConfig.industry !== false && <th className="py-2 px-3">Industry</th>}
+            <th className="py-2 px-3 text-slate-600 font-extrabold">Reg Date</th>
             {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && <th className="py-2 px-3">Telemarketing Logs</th>}
             {columnConfig.remarks !== false && activeTab !== 'request' && <th className="py-2 px-3">Remarks</th>}
             {columnConfig.approvalStatus !== false && showApprovalColumn && (
@@ -140,8 +150,11 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
           {filteredParticipants.map((p) => {
             const { pic, cleanNotes } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
+            const isTakeout = Boolean(p.notes?.includes('[TAKEOUT]') || p.notes?.includes('[Opt-Out]') || p.notes?.toLowerCase().includes('takeout') || (p.database as any)?.isRemovalRequested);
+            const isTikus = Boolean(!isTakeout && (!p.database?.isActive || (p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus')));
+
             return (
-              <tr key={p.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors">
+              <tr key={p.id} className={`border-b border-slate-100 transition-colors ${isTikus ? 'bg-red-50/60 hover:bg-red-100/60' : isTakeout ? 'bg-amber-50/60 hover:bg-amber-100/60' : 'hover:bg-slate-50/50'}`}>
                 <td className="py-1.5 px-2 text-center">
                   {checkDatabaseCompleteness(p.database).isIncomplete && (
                     <span
@@ -179,7 +192,24 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 )}
                 {columnConfig.firstName !== false && (
                   <td className="py-1.5 px-3 font-bold text-slate-900">
-                    {p.database.firstName}
+                    <div className="flex items-center gap-1.5">
+                      <span>{p.database.firstName}</span>
+                      {isTikus ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black bg-rose-100 text-rose-700 rounded-md border border-rose-200 shrink-0"
+                          title="Profil terdeteksi di Daftar Tikus / Suspicious Identity Alerts"
+                        >
+                          ⚠️ Tikus
+                        </span>
+                      ) : isTakeout ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black bg-amber-100 text-amber-800 rounded-md border border-amber-300 shrink-0"
+                          title="Status kontak: Request Data Takeout"
+                        >
+                          🚫 Takeout
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                 )}
                 {columnConfig.lastName !== false && (
@@ -222,6 +252,14 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     {p.database.company?.industry || '-'}
                   </td>
                 )}
+                <td className="py-1.5 px-3 whitespace-nowrap">
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-slate-800">{formatRegDate(p.requestedAt || p.createdAt).date}</span>
+                    {formatRegDate(p.requestedAt || p.createdAt).time && (
+                      <span className="text-[10px] text-slate-400 font-medium">{formatRegDate(p.requestedAt || p.createdAt).time}</span>
+                    )}
+                  </div>
+                </td>
                 {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && (
                   <td className="py-1.5 px-3">
                     <button

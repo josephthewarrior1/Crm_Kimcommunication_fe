@@ -1130,6 +1130,11 @@ export default function EventsPage() {
           undefined,
           setPreEventApprovalStatus(lead.notes, value)
         );
+        await crmService.addEventParticipantActivity(lead.id, {
+          activityType: 'SYSTEM',
+          status: value,
+          notes: `Updated Pre Event Approval to ${value}`
+        });
         toast.success('Pre Event approval updated successfully!');
         if (selectedEvent) {
           await loadParticipantsForEvent(selectedEvent, activeTab);
@@ -1157,14 +1162,23 @@ export default function EventsPage() {
         field === 'confirmationStatus' ? value : undefined
       );
 
-      // Log activity (skip for Data List fields: remarks & confirmationStatus)
-      if (field !== 'remarks' && field !== 'confirmationStatus') {
-        await crmService.addEventParticipantActivity(lead.id, {
-          activityType: 'CALL',
-          status: value,
-          notes: `Directly updated ${field} to ${value || 'None'} from the participants list table.`
-        });
-      }
+      // Log activity for remarks and field updates so it appears in telemarketing activity stream under SYSTEM badge
+      const fieldLabels: Record<string, string> = {
+        remarks: 'Tele Remarks',
+        attendance: 'Attendance',
+        confirmationStatus: 'Client Approval',
+        reminderH7: 'Reminder H-7',
+        reminderH3: 'Reminder H-3',
+        reminderH1: 'Reminder H-1',
+        reminderHariH: 'Reminder Hari-H'
+      };
+
+      const friendlyLabel = fieldLabels[field] || field;
+      await crmService.addEventParticipantActivity(lead.id, {
+        activityType: 'SYSTEM',
+        status: value,
+        notes: `Updated ${friendlyLabel} to ${value || 'None'}`
+      });
 
       toast.success(`Updated ${field} successfully!`);
 
@@ -1249,49 +1263,35 @@ export default function EventsPage() {
     );
   });
 
-  const filteredParticipants = participants.filter((l) => {
+  // ponytail: base tab participants for statistics and PIC modal (unaffected by table filters)
+  const tabParticipants = participants.filter((l) => {
     const confStatus = getEffectiveConfirmationStatus(l);
-    const attStatus = l.attendanceStatus?.toLowerCase();
     const isEms = isEmsParticipant(l);
 
     if (activeTab === 'request') {
-      // Data List tab: Master DB candidates for lead vetting
-      // Keep Data List candidates visible even if they also registered via EMS
-      if (isPublicEmsOnlyParticipant(l)) {
-        return false;
-      }
+      if (isPublicEmsOnlyParticipant(l)) return false;
     } else if (activeTab === 'pre_event') {
-      // Pre-Event tab: EMS registrants + approved DB candidates
-      if (confStatus === 'decline' || confStatus === 'declined' || extractPreEventApprovalStatus(l.notes) === 'decline') {
-        return false;
-      }
-      if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') {
-        return false;
-      }
+      if (confStatus === 'decline' || confStatus === 'declined' || extractPreEventApprovalStatus(l.notes) === 'decline') return false;
+      if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') return false;
     } else if (activeTab === 'declined') {
-      // Declined tab: All declined registrants (EMS declined, DB declined, or Pre-Event declined)
       const isClientDeclined = confStatus === 'decline' || confStatus === 'declined';
       const isPreEventDeclined = extractPreEventApprovalStatus(l.notes) === 'decline';
-      if (!isClientDeclined && !isPreEventDeclined) {
-        return false;
-      }
-    } else if (activeTab === 'reminder') {
-      // Reminder tab: approved and registered participants only
-      if (confStatus !== 'approve' && confStatus !== 'confirmed') {
-        return false;
-      }
-      if (!isRegisteredParticipant(l)) {
-        return false;
-      }
-    } else if (activeTab === 'reminder_dday') {
-      // Reminder D-Day tab: same approved and registered base as Reminder
-      if (confStatus !== 'approve' && confStatus !== 'confirmed') {
-        return false;
-      }
-      if (!isRegisteredParticipant(l)) {
-        return false;
-      }
+      if (!isClientDeclined && !isPreEventDeclined) return false;
+    } else if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
+      if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
+      if (!isRegisteredParticipant(l)) return false;
     }
+    return true;
+  });
+
+  const displayTabParticipants = tabParticipants.map((p) => {
+    const effectiveStatus = getEffectiveConfirmationStatus(p);
+    if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
+    return { ...p, confirmationStatus: effectiveStatus };
+  });
+
+  const filteredParticipants = displayTabParticipants.filter((l) => {
+    const confStatus = l.confirmationStatus?.toLowerCase();
 
     // 1. General search query (if typed, search takes priority)
     if (participantSearchQuery) {
@@ -1380,24 +1380,6 @@ export default function EventsPage() {
       }
     }
 
-    // 1. General search query
-    if (participantSearchQuery) {
-      const term = participantSearchQuery.toLowerCase().trim();
-      const fn = l.database?.firstName || '';
-      const ln = l.database?.lastName || '';
-      const fullName = `${fn} ${ln}`.trim().toLowerCase();
-      const companyName = l.database?.company?.name?.toLowerCase() || '';
-      const jobTitle = l.database?.jobTitle?.toLowerCase() || '';
-      const email = l.database?.emails?.map(e => e.email.toLowerCase()).join(' ') || '';
-      const mobilePhone = l.database?.mobilePhone || '';
-      const officePhone = l.database?.company?.officePhone || '';
-
-      const combinedText = `${fullName} ${fn} ${ln} ${companyName} ${jobTitle} ${email} ${mobilePhone} ${officePhone}`.toLowerCase();
-      const words = term.split(/\s+/).filter(Boolean);
-      const matchesSearch = words.every(w => combinedText.includes(w));
-      if (!matchesSearch) return false;
-    }
-
     // 2. Company filter
     if (filterCompany && l.database.company?.name !== filterCompany) {
       return false;
@@ -1416,11 +1398,7 @@ export default function EventsPage() {
     return true;
   });
 
-  const displayParticipants = filteredParticipants.map((p) => {
-    const effectiveStatus = getEffectiveConfirmationStatus(p);
-    if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
-    return { ...p, confirmationStatus: effectiveStatus };
-  });
+  const displayParticipants = filteredParticipants;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1825,7 +1803,7 @@ export default function EventsPage() {
 
           <EventStatistics
             activeTab={activeTab}
-            participants={displayParticipants}
+            participants={displayTabParticipants}
             usersList={usersList}
             isAdmin={isAdmin}
             adminName={adminName}
