@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '../../lib/context/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { crmService } from '../../lib/services/crmService';
@@ -25,7 +25,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
+
   const { user, logout, isLoading, isAdmin, isManager, isUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -339,3 +340,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 }
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-3" />
+          <p className="text-sm text-slate-500 font-mono">Loading Dashboard...</p>
+        </div>
+      </div>
+    }>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </Suspense>
+  );
+}
+
