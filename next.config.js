@@ -4,6 +4,14 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://crm-api.kimcommunication.id/api/:path*',
+      },
+    ];
+  },
   webpack: (config) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = {
@@ -16,3 +24,4 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
+
