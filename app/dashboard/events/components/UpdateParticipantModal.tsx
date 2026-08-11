@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2, Users, ShieldAlert, UserX } from 'lucide-react';
 import { EventParticipant, AppUser, Database } from '../../../../lib/types';
-import { extractPicFromNotes, extractPreEventApprovalStatus } from '../utils/notesHelper';
+import { extractPicFromNotes, getPreEventApprovalStatus } from '../utils/notesHelper';
 
 interface UpdateParticipantModalProps {
   isOpen: boolean;
@@ -58,7 +58,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       setShowFlagConfirm(false);
       setUpdateParticipantStatusStr(activeParticipant.participantStatus);
       setUpdateConfirmationStatusStr(activeParticipant.confirmationStatus || 'pending');
-      setUpdatePreEventApprovalStatusStr(extractPreEventApprovalStatus(activeParticipant.notes));
+      setUpdatePreEventApprovalStatusStr(getPreEventApprovalStatus(activeParticipant));
       setUpdateReminderH7(activeParticipant.reminderH7 || '');
       setUpdateReminderH3(activeParticipant.reminderH3 || '');
       setUpdateReminderH1(activeParticipant.reminderH1 || '');

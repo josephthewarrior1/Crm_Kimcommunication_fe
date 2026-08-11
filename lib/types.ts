@@ -124,6 +124,7 @@ export interface EventParticipant {
   reminderH1?: string;
   reminderHariH?: string;
   confirmationStatus?: string; // pending | approve | decline
+  preEventApprovalStatus?: string; // pending | approve | decline
   createdAt?: string;
   updatedAt?: string;
 }

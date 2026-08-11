@@ -115,7 +115,7 @@ export const importParticipantsFromExcel = async (
           lastName,
           salutation: String(row['Salutation'] || 'Mr').trim(),
           positionLevel: String(row['Position'] || row['Position Level'] || 'unknown').trim().toLowerCase(),
-          specialityDivision: String(row['Speciality/Division'] || row['Division'] || '').trim() || undefined,
+          specialityDivision: String(row['Division'] || row['Speciality/Division'] || row['Speciality'] || '').trim() || undefined,
           jobTitle: String(row['Jobtitle'] || row['Job Title'] || row['Jabatan'] || '').trim() || undefined,
           mobilePhone: String(row['Mobile Phone'] || row['Phone'] || row['No HP'] || row['Whatsapp'] || '').trim() || undefined,
           linkedinUrl: String(row['Linkedin Link'] || row['LinkedIn'] || row['Linkedin'] || '').trim() || undefined,
@@ -158,6 +158,7 @@ export const importParticipantsFromExcel = async (
           participantStatus: 'white',
           attendanceStatus: 'invited',
           confirmationStatus: 'pending',
+          preEventApprovalStatus: 'pending',
           notes: activeTab === 'request' ? '[Origin: Request]' : undefined
         });
       }

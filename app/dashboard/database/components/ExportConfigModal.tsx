@@ -26,7 +26,7 @@ const EXPORT_COLUMNS = [
   { key: 'firstName', label: 'First Name' },
   { key: 'lastName', label: 'Last Name' },
   { key: 'position', label: 'Position' },
-  { key: 'specialityDivision', label: 'Speciality/Division' },
+  { key: 'specialityDivision', label: 'Division' },
   { key: 'jobTitle', label: 'Job Title' },
   { key: 'address', label: 'Address' },
   { key: 'officePhone', label: 'Office Phone' },
@@ -99,7 +99,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
         if (selectedColumns.includes('firstName')) rowData['First Name'] = c.firstName || '-';
         if (selectedColumns.includes('lastName')) rowData['Last Name'] = c.lastName || '-';
         if (selectedColumns.includes('position')) rowData['Position'] = c.positionLevel || '-';
-        if (selectedColumns.includes('specialityDivision')) rowData['Speciality/Division'] = c.specialityDivision || '-';
+        if (selectedColumns.includes('specialityDivision')) rowData['Division'] = c.specialityDivision || '-';
         if (selectedColumns.includes('jobTitle')) rowData['Job Title'] = c.jobTitle || '-';
         if (selectedColumns.includes('address')) rowData['Address'] = c.company?.address || '-';
         if (selectedColumns.includes('officePhone')) rowData['Office Phone'] = c.company?.officePhone || '-';

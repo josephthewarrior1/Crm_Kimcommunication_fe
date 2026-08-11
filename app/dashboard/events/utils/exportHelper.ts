@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Event, EventParticipant } from '../../../../lib/types';
-import { extractPicFromNotes, getOfficeEmail, getPersonalEmail } from './notesHelper';
+import { extractPicFromNotes, getOfficeEmail, getPersonalEmail, getPreEventApprovalStatus } from './notesHelper';
 import { getStatusLabel } from './statusHelper';
 
 export const exportParticipantsToExcel = (
@@ -59,6 +59,10 @@ export const exportParticipantsToExcel = (
         'Tele Remarks': getStatusLabel(p.participantStatus),
         'Confirmation Status': confirmationLabel,
       };
+
+      if (activeTab === 'pre_event') {
+        exportObj['Pre Event Approval'] = getPreEventApprovalStatus(p);
+      }
 
       if (activeTab !== 'request') {
         exportObj['PIC'] = pic.toLowerCase() === 'admin' ? adminName : pic;

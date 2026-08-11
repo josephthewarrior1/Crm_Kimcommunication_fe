@@ -1,7 +1,7 @@
 import React from 'react';
 import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus, History, Phone, Mail, MessageSquare, Loader2, Calendar as CalendarIcon, Sliders } from 'lucide-react';
 import { EventParticipant, AppUser } from '../../../../lib/types';
-import { extractPicFromNotes, extractPreEventApprovalStatus } from '../utils/notesHelper';
+import { extractPicFromNotes, getPreEventApprovalStatus } from '../utils/notesHelper';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../components/ui/dialog';
@@ -348,7 +348,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
           <div>
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pre Event Approval</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
                 <div className="p-3 bg-emerald-600 text-white rounded-xl">
                   <CheckCircle className="w-5 h-5" />
@@ -356,7 +356,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approve</span>
                   <span className="text-xl font-extrabold text-emerald-900">
-                    {participants.filter(p => extractPreEventApprovalStatus(p.notes) === 'approve').length}
+                    {participants.filter(p => getPreEventApprovalStatus(p) === 'approve').length}
                   </span>
                 </div>
               </div>
@@ -368,19 +368,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Pending</span>
                   <span className="text-xl font-extrabold text-blue-900">
-                    {participants.filter(p => extractPreEventApprovalStatus(p.notes) === 'pending').length}
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-rose-500 text-white rounded-xl">
-                  <X className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Decline</span>
-                  <span className="text-xl font-extrabold text-rose-900">
-                    {participants.filter(p => extractPreEventApprovalStatus(p.notes) === 'decline').length}
+                    {participants.filter(p => getPreEventApprovalStatus(p) === 'pending').length}
                   </span>
                 </div>
               </div>
@@ -401,7 +389,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider">Total Declined</span>
                   <span className="text-xl font-extrabold text-rose-950">
-                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined' || extractPreEventApprovalStatus(p.notes) === 'decline').length}
+                    {participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined' || getPreEventApprovalStatus(p) === 'decline').length}
                   </span>
                 </div>
               </div>
@@ -425,7 +413,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Declined from Pre-Event</span>
                   <span className="text-xl font-extrabold text-slate-900">
-                    {participants.filter(p => extractPreEventApprovalStatus(p.notes) === 'decline').length}
+                    {participants.filter(p => getPreEventApprovalStatus(p) === 'decline').length}
                   </span>
                 </div>
               </div>
@@ -1380,9 +1368,8 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                      (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
                             });
 
-                            const approveCount = picParticipants.filter(p => extractPreEventApprovalStatus(p.notes) === 'approve').length;
-                            const pendingCount = picParticipants.filter(p => extractPreEventApprovalStatus(p.notes) === 'pending').length;
-                            const declineCount = picParticipants.filter(p => extractPreEventApprovalStatus(p.notes) === 'decline').length;
+                            const approveCount = picParticipants.filter(p => getPreEventApprovalStatus(p) === 'approve').length;
+                            const pendingCount = picParticipants.filter(p => getPreEventApprovalStatus(p) === 'pending').length;
                             
                             // Pre-Event Remarks (Participant Status) breakdown
                             const registeredCount = picParticipants.filter(p => {
@@ -1448,7 +1435,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   {/* Pre Event Approval Breakdown Grid */}
                                   <div className="space-y-1 mb-2">
                                     <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Approval Status</span>
-                                    <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-50/80 rounded-xl border border-slate-100">
+                                    <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-50/80 rounded-xl border border-slate-100">
                                       <div className="text-center p-1 bg-emerald-50/60 border border-emerald-100/50 rounded-lg">
                                         <span className="block text-[8px] font-extrabold text-emerald-700 uppercase">Approve</span>
                                         <span className="text-xs font-black text-emerald-800">{approveCount}</span>
@@ -1456,10 +1443,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                       <div className="text-center p-1 bg-amber-50/60 border border-amber-100/50 rounded-lg">
                                         <span className="block text-[8px] font-extrabold text-amber-700 uppercase">Pending</span>
                                         <span className="text-xs font-black text-amber-800">{pendingCount}</span>
-                                      </div>
-                                      <div className="text-center p-1 bg-rose-50/60 border border-rose-100/50 rounded-lg">
-                                        <span className="block text-[8px] font-extrabold text-rose-700 uppercase">Declined</span>
-                                        <span className="text-xs font-black text-rose-800">{declineCount}</span>
                                       </div>
                                     </div>
                                   </div>

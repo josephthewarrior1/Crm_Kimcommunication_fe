@@ -24,7 +24,7 @@ import { EventStatistics } from './components/EventStatistics';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
 import { ManageUserColumnsModal } from '../users/components/ManageUserColumnsModal';
-import { extractPicFromNotes, extractPreEventApprovalStatus, setPreEventApprovalStatus, setPicInNotes } from './utils/notesHelper';
+import { extractPicFromNotes, getPreEventApprovalStatus, setPreEventApprovalStatus, setPicInNotes } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { exportParticipantsToExcel } from './utils/exportHelper';
@@ -656,11 +656,10 @@ export default function EventsPage() {
       try {
         const lead = participants.find(l => l.id === participantId);
         if (lead) {
-          await crmService.updateParticipantStatus(
+          await crmService.updatePreEventApprovalStatus(
             participantId,
-            undefined,
-            undefined,
-            setPreEventApprovalStatus(lead.notes, status)
+            setPreEventApprovalStatus(lead.notes, status),
+            status
           );
           successCount++;
         }
@@ -786,6 +785,7 @@ export default function EventsPage() {
         participantStatus: 'white',
         attendanceStatus: 'invited',
         confirmationStatus: 'pending',
+        preEventApprovalStatus: 'pending',
         notes: activeTab === 'request'
           ? `[Origin: Request] ${notes.trim()}`.trim()
           : notes.trim() || undefined
@@ -806,7 +806,7 @@ export default function EventsPage() {
   const handleDownloadTemplate = () => {
     const headers = [
       'Nama Group', 'Nama Brand', 'Company Name', 'Salutation', 
-      'First Name', 'Last Name', 'Position', 'Speciality/Division', 
+      'First Name', 'Last Name', 'Position', 'Division',
       'Jobtitle', 'Address', 'Office Phone', 'Mobile Phone', 
       'Company Email Address', 'Personal Email Address', 'Industry', 
       'Company Size (Revenue)', 'Company Size (Employee)', 'Company Hardware', 
@@ -822,7 +822,7 @@ export default function EventsPage() {
         'First Name': 'Budi',
         'Last Name': 'Anto',
         'Position': 'manager',
-        'Speciality/Division': 'Marketing',
+        'Division': 'Marketing',
         'Jobtitle': 'Marketing Director',
         'Address': 'Jl. Merdeka No. 10',
         'Office Phone': '021-1234567',
@@ -973,7 +973,8 @@ export default function EventsPage() {
         data.reminderH3 || undefined,
         data.reminderH1 || undefined,
         data.reminderHariH || undefined,
-        data.confirmationStatus || undefined
+        data.confirmationStatus || undefined,
+        activeTab === 'pre_event' ? data.preEventApprovalStatus : undefined
       );
 
       // Log activity in history
@@ -1124,11 +1125,10 @@ export default function EventsPage() {
       }
 
       if (field === 'preEventApprovalStatus') {
-        await crmService.updateParticipantStatus(
+        await crmService.updatePreEventApprovalStatus(
           lead.id,
-          undefined,
-          undefined,
-          setPreEventApprovalStatus(lead.notes, value)
+          setPreEventApprovalStatus(lead.notes, value),
+          value
         );
         await crmService.addEventParticipantActivity(lead.id, {
           activityType: 'SYSTEM',
@@ -1271,11 +1271,11 @@ export default function EventsPage() {
     if (activeTab === 'request') {
       if (isPublicEmsOnlyParticipant(l)) return false;
     } else if (activeTab === 'pre_event') {
-      if (confStatus === 'decline' || confStatus === 'declined' || extractPreEventApprovalStatus(l.notes) === 'decline') return false;
+      if (confStatus === 'decline' || confStatus === 'declined' || getPreEventApprovalStatus(l) === 'decline') return false;
       if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') return false;
     } else if (activeTab === 'declined') {
       const isClientDeclined = confStatus === 'decline' || confStatus === 'declined';
-      const isPreEventDeclined = extractPreEventApprovalStatus(l.notes) === 'decline';
+      const isPreEventDeclined = getPreEventApprovalStatus(l) === 'decline';
       if (!isClientDeclined && !isPreEventDeclined) return false;
     } else if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
       if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
@@ -1326,7 +1326,7 @@ export default function EventsPage() {
     if (filterConfirmationStatus) {
       const targetConf = filterConfirmationStatus.toLowerCase();
       if (activeTab === 'pre_event') {
-        if (extractPreEventApprovalStatus(l.notes) !== targetConf) return false;
+        if (getPreEventApprovalStatus(l) !== targetConf) return false;
       } else if (confStatus !== targetConf) {
         if (targetConf === 'approve') {
           if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
@@ -1729,12 +1729,12 @@ export default function EventsPage() {
                 <span>Declined</span>
                 {participants.filter(p => {
                   const status = getEffectiveConfirmationStatus(p);
-                  return status === 'decline' || status === 'declined' || extractPreEventApprovalStatus(p.notes) === 'decline';
+                  return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                 }).length > 0 && (
                   <span className="px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700 rounded-full">
                     {participants.filter(p => {
                       const status = getEffectiveConfirmationStatus(p);
-                      return status === 'decline' || status === 'declined' || extractPreEventApprovalStatus(p.notes) === 'decline';
+                      return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                     }).length}
                   </span>
                 )}

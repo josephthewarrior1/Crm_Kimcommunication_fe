@@ -230,6 +230,7 @@ export class CrmService extends ApiService {
     participantStatus?: string;
     attendanceStatus?: string;
     confirmationStatus?: string;
+    preEventApprovalStatus?: string;
     notes?: string;
   }): Promise<any> {
     return this.post<any>('/api/event-participants', participant);
@@ -252,7 +253,8 @@ export class CrmService extends ApiService {
     reminderH3?: string | null,
     reminderH1?: string | null,
     reminderHariH?: string | null,
-    confirmationStatus?: string | null
+    confirmationStatus?: string | null,
+    preEventApprovalStatus?: string | null
   ): Promise<EventParticipant> {
     const params = new URLSearchParams();
     const appendParam = (key: string, value?: string | null, allowEmpty = false) => {
@@ -277,7 +279,19 @@ export class CrmService extends ApiService {
     appendParam('reminderH1', reminderH1, true);
     appendParam('reminderHariH', reminderHariH, true);
     appendParam('confirmationStatus', confirmationStatus);
+    appendParam('preEventApprovalStatus', preEventApprovalStatus);
 
+    return this.put<EventParticipant>(`/api/event-participants/${participantId}/status?${params.toString()}`);
+  }
+
+  async updatePreEventApprovalStatus(
+    participantId: number,
+    notes: string | undefined,
+    preEventApprovalStatus: string
+  ): Promise<EventParticipant> {
+    const params = new URLSearchParams();
+    if (notes) params.append('notes', notes);
+    params.append('preEventApprovalStatus', preEventApprovalStatus);
     return this.put<EventParticipant>(`/api/event-participants/${participantId}/status?${params.toString()}`);
   }
 

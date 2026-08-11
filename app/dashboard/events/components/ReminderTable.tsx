@@ -140,7 +140,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                   {checkDatabaseCompleteness(p.database).isIncomplete && (
                     <span
                       className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                      title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(p.database).missingFields.join("\n• ")}`}
+                      title={`Semua kolom wajib diisi kecuali Division, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(p.database).missingFields.join("\n• ")}`}
                     >
                       <AlertCircle className="w-4 h-4 shrink-0" />
                     </span>

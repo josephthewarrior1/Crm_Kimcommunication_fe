@@ -12,6 +12,7 @@ import { normalizePhone } from './utils/phoneHelper';
 import { checkDatabaseCompleteness } from './utils/validationHelper';
 import { getOfficeEmail, getPersonalEmail } from '../events/utils/notesHelper';
 import { INDUSTRIES } from '../../../lib/constants';
+import indonesiaCities from './data/indonesia-cities.json';
 
 import { DatabaseDetailModal } from './components/DatabaseDetailModal';
 import { CreateDatabaseModal } from './components/CreateDatabaseModal';
@@ -31,7 +32,7 @@ const EXPORT_COLUMNS = [
   { key: 'firstName', label: 'First Name' },
   { key: 'lastName', label: 'Last Name' },
   { key: 'position', label: 'Position' },
-  { key: 'specialityDivision', label: 'Speciality/Division' },
+  { key: 'specialityDivision', label: 'Division' },
   { key: 'jobTitle', label: 'Job Title' },
   { key: 'address', label: 'Address' },
   { key: 'officePhone', label: 'Office Phone' },
@@ -49,6 +50,27 @@ const EXPORT_COLUMNS = [
   { key: 'eventHistory', label: 'Event Participation' }
 ];
 
+const normalizeCityName = (city: string | null | undefined): string => {
+  return (city || '')
+    .trim()
+    .toUpperCase()
+    .replace(/^(KABUPATEN|KOTA ADMINISTRASI|KOTA)\s+/i, '')
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const toTitleCase = (value: string): string => {
+  return value.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const CITY_LABELS = new Map(
+  (indonesiaCities as Array<{ name: string }>).map((city) => [
+    normalizeCityName(city.name),
+    toTitleCase(city.name)
+  ])
+);
+
 export default function DatabasesPage() {
   const { isAdmin, isManager, isUser } = useAuth();
   const searchParams = useSearchParams();
@@ -63,6 +85,7 @@ export default function DatabasesPage() {
   const [filterGroupId, setFilterGroupId] = useState('');
   const [filterPositionLevel, setFilterPositionLevel] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
+  const [filterCity, setFilterCity] = useState('');
 
   // Sorting state
   const [sortBy, setSortBy] = useState<string>('id');
@@ -248,16 +271,18 @@ export default function DatabasesPage() {
   const filteredCompanyOptions = companies.filter((c) => {
     if (filterGroupId && c.group?.id?.toString() !== filterGroupId) return false;
     if (filterIndustry && !matchesIndustryFilter(c.industry, filterIndustry)) return false;
+    if (filterCity && normalizeCityName(c.city) !== filterCity) return false;
     return true;
   });
 
   const filteredIndustryOptions = (() => {
-    if (!filterGroupId && !filterCompanyId) {
+    if (!filterGroupId && !filterCompanyId && !filterCity) {
       return INDUSTRIES;
     }
     const scopedCompanies = companies.filter((c) => {
       if (filterGroupId && c.group?.id?.toString() !== filterGroupId) return false;
       if (filterCompanyId && c.id.toString() !== filterCompanyId) return false;
+      if (filterCity && normalizeCityName(c.city) !== filterCity) return false;
       return true;
     });
     const activeIndustries = new Set<string>();
@@ -275,9 +300,28 @@ export default function DatabasesPage() {
   })();
 
   const filteredGroupOptions = groups.filter((g) => {
-    if (!filterIndustry) return true;
-    return companies.some((c) => c.group?.id === g.id && matchesIndustryFilter(c.industry, filterIndustry));
+    return companies.some((c) => {
+      if (c.group?.id !== g.id) return false;
+      if (filterIndustry && !matchesIndustryFilter(c.industry, filterIndustry)) return false;
+      if (filterCity && normalizeCityName(c.city) !== filterCity) return false;
+      return true;
+    });
   });
+
+  const filteredCityOptions = (() => {
+    const cityMap = new Map<string, string>();
+    companies.forEach((c) => {
+      if (filterGroupId && c.group?.id?.toString() !== filterGroupId) return;
+      if (filterCompanyId && c.id.toString() !== filterCompanyId) return;
+      if (filterIndustry && !matchesIndustryFilter(c.industry, filterIndustry)) return;
+
+      const value = normalizeCityName(c.city);
+      if (!value) return;
+      cityMap.set(value, CITY_LABELS.get(value) || toTitleCase(c.city!.trim()));
+    });
+    return Array.from(cityMap, ([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  })();
 
   const handleGroupChange = (groupId: string) => {
     setFilterGroupId(groupId);
@@ -296,6 +340,12 @@ export default function DatabasesPage() {
         setFilterIndustry('');
       }
     }
+    if (groupId && filterCity) {
+      const isCityInGroup = companies.some(
+        (c) => c.group?.id?.toString() === groupId && normalizeCityName(c.city) === filterCity
+      );
+      if (!isCityInGroup) setFilterCity('');
+    }
   };
 
   const handleCompanyChange = (companyId: string) => {
@@ -307,6 +357,9 @@ export default function DatabasesPage() {
       }
       if (selectedComp?.industry) {
         setFilterIndustry(selectedComp.industry);
+      }
+      if (selectedComp?.city) {
+        setFilterCity(normalizeCityName(selectedComp.city));
       }
     }
   };
@@ -327,9 +380,39 @@ export default function DatabasesPage() {
         setFilterGroupId('');
       }
     }
+    if (industry && filterCity) {
+      const isCityValid = companies.some(
+        (c) => matchesIndustryFilter(c.industry, industry) && normalizeCityName(c.city) === filterCity
+      );
+      if (!isCityValid) setFilterCity('');
+    }
   };
 
-  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterIndustry || sortBy !== 'id' || sortOrder !== 'asc' || activeTabFilter !== 'all';
+  const handleCityChange = (city: string) => {
+    setFilterCity(city);
+    if (!city) return;
+
+    if (filterCompanyId) {
+      const selectedComp = companies.find((c) => c.id.toString() === filterCompanyId);
+      if (selectedComp && normalizeCityName(selectedComp.city) !== city) {
+        setFilterCompanyId('');
+      }
+    }
+    if (filterGroupId) {
+      const isGroupValid = companies.some(
+        (c) => c.group?.id?.toString() === filterGroupId && normalizeCityName(c.city) === city
+      );
+      if (!isGroupValid) setFilterGroupId('');
+    }
+    if (filterIndustry) {
+      const isIndustryValid = companies.some(
+        (c) => normalizeCityName(c.city) === city && matchesIndustryFilter(c.industry, filterIndustry)
+      );
+      if (!isIndustryValid) setFilterIndustry('');
+    }
+  };
+
+  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterIndustry || filterCity || sortBy !== 'id' || sortOrder !== 'asc' || activeTabFilter !== 'all';
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -337,6 +420,7 @@ export default function DatabasesPage() {
     setFilterCompanyId('');
     setFilterPositionLevel('');
     setFilterIndustry('');
+    setFilterCity('');
     setSortBy('id');
     setSortOrder('asc');
     setActiveTabFilter('all');
@@ -366,6 +450,7 @@ export default function DatabasesPage() {
       (c.company?.name && c.company.name.toLowerCase().includes(query)) ||
       (c.company?.brandName && c.company.brandName.toLowerCase().includes(query)) ||
       (c.company?.group?.name && c.company.group.name.toLowerCase().includes(query)) ||
+      (c.company?.city && c.company.city.toLowerCase().includes(query)) ||
       (c.jobTitle && c.jobTitle.toLowerCase().includes(query)) ||
       (c.positionLevel && c.positionLevel.toLowerCase().includes(query)) ||
       (c.specialityDivision && c.specialityDivision.toLowerCase().includes(query)) ||
@@ -384,7 +469,10 @@ export default function DatabasesPage() {
     // 5. Industry filter
     const matchesIndustry = !filterIndustry || matchesIndustryFilter(c.company?.industry, filterIndustry);
 
-    return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesIndustry;
+    // 6. City filter
+    const matchesCity = !filterCity || normalizeCityName(c.company?.city) === filterCity;
+
+    return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesIndustry && matchesCity;
   });
 
   // Apply Ascending / Descending sorting
@@ -464,7 +552,7 @@ export default function DatabasesPage() {
   // Reset current page when query, filter or sorting changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, sortBy, sortOrder, activeTabFilter]);
+  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, sortBy, sortOrder, activeTabFilter]);
 
   // Update table scroll width for top scrollbar sync
   useEffect(() => {
@@ -588,18 +676,19 @@ export default function DatabasesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status Data</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">City</label>
             <Select
-              value={activeTabFilter}
-              onValueChange={(val) => setActiveTabFilter(val as 'all' | 'clean' | 'dirty')}
+              value={filterCity || 'ALL'}
+              onValueChange={(val) => handleCityChange(val === 'ALL' ? '' : val)}
             >
               <SelectTrigger className="w-full h-9 px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white shadow-none">
-                <SelectValue placeholder="Semua Status" />
+                <SelectValue placeholder="All Cities" />
               </SelectTrigger>
               <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
-                <SelectItem value="all">Semua Status Data</SelectItem>
-                <SelectItem value="clean">Database Bersih (Lengkap)</SelectItem>
-                <SelectItem value="dirty">Database Kotor (Incomplete)</SelectItem>
+                <SelectItem value="ALL">All Cities</SelectItem>
+                {filteredCityOptions.map((city) => (
+                  <SelectItem key={city.value} value={city.value}>{city.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -799,7 +888,7 @@ export default function DatabasesPage() {
                       )}
                     </div>
                   </th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Speciality/Division</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Division</th>
                   <th
                     onClick={() => handleSort('jobTitle')}
                     className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
@@ -948,7 +1037,7 @@ export default function DatabasesPage() {
                         {checkDatabaseCompleteness(c).isIncomplete && (
                           <span
                             className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                            title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(c).missingFields.join("\n• ")}`}
+                            title={`Semua kolom wajib diisi kecuali Division, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(c).missingFields.join("\n• ")}`}
                           >
                             <AlertCircle className="w-4 h-4 shrink-0" />
                           </span>

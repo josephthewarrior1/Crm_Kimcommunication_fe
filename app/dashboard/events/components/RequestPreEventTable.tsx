@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
 import { AlertCircle, Phone, Mail, Edit2, Trash2, History } from 'lucide-react';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
-import { extractPreEventApprovalStatus, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
+import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 
 const formatRegDate = (dateStr?: string | null) => {
   if (!dateStr) return { date: '-', time: '' };
@@ -159,7 +159,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   {checkDatabaseCompleteness(p.database).isIncomplete && (
                     <span
                       className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                      title={`Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(p.database).missingFields.join("\n• ")}`}
+                      title={`Semua kolom wajib diisi kecuali Division, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(p.database).missingFields.join("\n• ")}`}
                     >
                       <AlertCircle className="w-4 h-4 shrink-0" />
                     </span>
@@ -295,9 +295,9 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                       {activeTab === 'pre_event' ? (
                         <select
                           disabled={isUser}
-                          value={extractPreEventApprovalStatus(p.notes)}
+                          value={getPreEventApprovalStatus(p)}
                           onChange={(e) => handleDirectUpdateParticipant(p, 'preEventApprovalStatus', e.target.value)}
-                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(extractPreEventApprovalStatus(p.notes))}`}
+                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(getPreEventApprovalStatus(p))}`}
                         >
                           <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
                           <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>
@@ -307,7 +307,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                         <select
                           disabled={!canEditConfirmation}
                           value={
-                            extractPreEventApprovalStatus(p.notes) === 'decline'
+                            getPreEventApprovalStatus(p) === 'decline'
                               ? 'decline'
                               : p.confirmationStatus === 'confirmed' || p.confirmationStatus === 'approve'
                               ? 'approve'
@@ -318,12 +318,12 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                           onChange={(e) => {
                             const newVal = e.target.value;
                             handleDirectUpdateParticipant(p, 'confirmationStatus', newVal);
-                            if (extractPreEventApprovalStatus(p.notes) === 'decline') {
+                            if (getPreEventApprovalStatus(p) === 'decline') {
                               handleDirectUpdateParticipant(p, 'preEventApprovalStatus', newVal);
                             }
                           }}
                           className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(
-                            extractPreEventApprovalStatus(p.notes) === 'decline'
+                            getPreEventApprovalStatus(p) === 'decline'
                               ? 'decline'
                               : p.confirmationStatus === 'confirmed' || p.confirmationStatus === 'approve'
                               ? 'approve'

@@ -198,7 +198,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
           <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
             <AlertCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
             <div>
-              <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, LinkedIn URL, Database Type, dan Data Source</h5>
+              <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division, LinkedIn URL, Database Type, dan Data Source</h5>
             </div>
           </div>
         ) : (
@@ -424,7 +424,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Division / Speciality</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Division</label>
               <input
                 type="text"
                 placeholder="e.g. Infrastructure / Sales"

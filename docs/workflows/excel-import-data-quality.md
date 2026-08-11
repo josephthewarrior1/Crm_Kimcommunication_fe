@@ -18,7 +18,7 @@ Data Excel dibaca berdasarkan urutan indeks kolom (1-indexed untuk penomoran vis
 | **5** | First Name | `firstName` | **Wajib Diisi** (Skip baris jika kosong) |
 | **6** | Last Name | `lastName` | **Wajib Diisi** (Skip baris jika kosong) |
 | **7** | Position | `positionStr` | Dikonversi ke enum `PositionLevel` |
-| **8** | Speciality/Division| `specialityDivision` | Detail posisi |
+| **8** | Division | `specialityDivision` | Detail posisi |
 | **9** | Jobtitle | `jobTitle` | Deskripsi posisi |
 | **10** | Address | `address` | Alamat Perusahaan |
 | **11** | Office Phone | `officePhone` | Nomor telepon kantor |

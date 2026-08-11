@@ -1,3 +1,5 @@
+import type { EventParticipant } from '../../../../lib/types';
+
 export const extractPicFromNotes = (notes: string | null | undefined): { pic: string; cleanNotes: string } => {
   if (!notes) return { pic: 'Admin', cleanNotes: '-' };
   let clean = notes;
@@ -20,6 +22,13 @@ export const extractPreEventApprovalStatus = (notes: string | null | undefined):
   const match = notes?.match(/\[PreEventApproval:\s*([^\]]+)\]/i);
   const status = match?.[1]?.trim().toLowerCase();
   return status === 'approve' || status === 'decline' ? status : 'pending';
+};
+
+export const getPreEventApprovalStatus = (participant: Pick<EventParticipant, 'notes' | 'preEventApprovalStatus'> | null | undefined): string => {
+  const status = participant?.preEventApprovalStatus?.trim().toLowerCase();
+  return status === 'approve' || status === 'decline' || status === 'pending'
+    ? status
+    : extractPreEventApprovalStatus(participant?.notes);
 };
 
 export const setPreEventApprovalStatus = (notes: string | null | undefined, status: string): string => {

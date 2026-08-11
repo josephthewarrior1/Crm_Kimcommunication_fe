@@ -66,7 +66,7 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
             <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-extrabold text-red-800">Semua kolom wajib diisi kecuali Division/Speciality, Database Type, dan Data Source</h4>
+                <h4 className="text-sm font-extrabold text-red-800">Semua kolom wajib diisi kecuali Division, Database Type, dan Data Source</h4>
                 <p className="text-xs text-red-600 mt-1">
                   Kolom kosong:{" "}
                   <span className="font-semibold">{completeness.missingFields.join(", ")}</span>
@@ -179,7 +179,7 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
                 <span className="font-medium text-slate-700">{database.positionLevel || '-'}</span>
               </div>
               <div>
-                <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Speciality / Division</span>
+                <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Division</span>
                 <span className="font-medium text-slate-700">{database.specialityDivision || '-'}</span>
               </div>
               <div>
