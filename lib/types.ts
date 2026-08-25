@@ -171,3 +171,18 @@ export interface FlaggedIdentity {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface AuditLog {
+  id: number;
+  userId?: number | null;
+  username: string;
+  userFullName?: string;
+  userRole?: string;
+  module: 'DATABASE' | 'COMPANIES' | 'GROUPS' | 'EVENTS' | 'PARTICIPANTS' | 'FLAGGED' | 'TAKEOUT' | 'USER_MANAGEMENT' | 'AUTH';
+  actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'IMPORT_EXCEL' | 'STATUS_CHANGE' | 'APPROVE_TAKEOUT' | 'REJECT_TAKEOUT' | 'FLAG_TIKUS' | 'LOGIN' | 'LOGOUT';
+  targetId?: string | number | null;
+  targetName?: string | null;
+  description: string;
+  ipAddress?: string | null;
+  createdAt: string;
+}

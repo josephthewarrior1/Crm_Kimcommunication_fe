@@ -21,6 +21,7 @@ import {
   ShieldAlert,
   UserX,
   UserPlus,
+  History,
   Shield,
   AlertTriangle
 } from 'lucide-react';
@@ -108,6 +109,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Events', path: '/dashboard/events', icon: CalendarDays },
     { name: 'Flagged Identities', path: '/dashboard/flagged', icon: ShieldAlert },
     { name: 'Takeout Requests', path: '/dashboard/takeout', icon: UserX },
+    { name: 'Activity Logs', path: '/dashboard/audit-logs', icon: History },
     { name: 'User Management', path: '/dashboard/users', icon: User },
   ];
 
@@ -118,6 +120,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }
     if (item.path === '/dashboard/takeout' || item.path === '/dashboard/users') {
       return isAdmin;
+    }
+    if (item.path === '/dashboard/audit-logs') {
+      return isAdmin || isManager;
     }
     return true;
   });

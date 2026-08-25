@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authService } from '../services/authService';
+import { auditLogService } from '../services/auditLogService';
 import { AppUser } from '../types';
 import { toast } from 'sonner';
 
@@ -114,6 +115,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user', JSON.stringify(userData));
       setToken(response.token);
       setUser(userData);
+
+      auditLogService.recordLog({
+        userId: userData.id,
+        username: userData.username,
+        userFullName: userData.fullName,
+        userRole: userData.roles?.[0] || 'USER',
+        module: 'AUTH',
+        actionType: 'LOGIN',
+        targetName: 'Session Login',
+        description: `Pengguna '${userData.username}' (${userData.fullName || userData.username}) berhasil login ke sistem CRM.`
+      });
       
       toast.success(`Welcome back, ${response.fullName || response.username}!`);
       router.push('/dashboard');
@@ -141,6 +153,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      if (user) {
+        auditLogService.recordLog({
+          userId: user.id,
+          username: user.username,
+          userFullName: user.fullName,
+          userRole: user.roles?.[0] || 'USER',
+          module: 'AUTH',
+          actionType: 'LOGOUT',
+          targetName: 'Session Logout',
+          description: `Pengguna '${user.username}' logout dari sistem CRM.`
+        });
+      }
       if (token) {
         await authService.logout(token);
       }

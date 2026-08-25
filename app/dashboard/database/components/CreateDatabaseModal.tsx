@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader2, AlertCircle, CheckCircle, Search } from 'lucide-react';
 import { Company } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
+import { auditLogService } from '../../../../lib/services/auditLogService';
+import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
 import { normalizePhone } from '../utils/phoneHelper';
 
@@ -18,6 +20,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
   companies,
   onCreated
 }) => {
+  const { user } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [salutation, setSalutation] = useState('Mr');
@@ -160,6 +163,21 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
         } catch (emailErr: any) {
           toast.warning(`Database created, but failed to save personal email: ${emailErr.message}`);
         }
+      }
+
+      // Record audit log
+      if (user) {
+        auditLogService.recordLog({
+          userId: user.id,
+          username: user.username,
+          userFullName: user.fullName,
+          userRole: user.roles?.[0] || 'USER',
+          module: 'DATABASE',
+          actionType: 'CREATE',
+          targetId: createdDatabase.id,
+          targetName: `${firstName.trim()} ${lastName.trim()}`,
+          description: `Menambahkan kontak database baru '${firstName.trim()} ${lastName.trim()}' (Jabatan: ${jobTitle.trim() || '-'}).`
+        });
       }
 
       toast.success('Database created successfully!');

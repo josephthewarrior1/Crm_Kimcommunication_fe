@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
+import { auditLogService } from '../../../lib/services/auditLogService';
 import { RemovalRequest } from '../../../lib/types';
 import { Loader2, RotateCcw, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 
 export default function SettingsPage() {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [removals, setRemovals] = useState<RemovalRequest[]>([]);
 
@@ -30,9 +31,24 @@ export default function SettingsPage() {
     }
   }
 
-  const handleUpdateRemovalStatus = async (id: number, status: string) => {
+  const handleUpdateRemovalStatus = async (id: number, status: string, targetName?: string) => {
     try {
       await crmService.updateRemovalRequestStatus(id, status);
+      
+      if (user) {
+        auditLogService.recordLog({
+          userId: user.id,
+          username: user.username,
+          userFullName: user.fullName,
+          userRole: user.roles?.[0] || 'ADMIN',
+          module: 'TAKEOUT',
+          actionType: status === 'approved' ? 'APPROVE_TAKEOUT' : 'REJECT_TAKEOUT',
+          targetId: id,
+          targetName: targetName || `Takeout #${id}`,
+          description: `Mengubah status Takeout Request #${id} (${targetName || 'Kontak'}) menjadi '${status.toUpperCase()}'.`
+        });
+      }
+
       toast.success(`Request status updated to ${status}.`);
       loadTabDetails();
     } catch (err: any) {
@@ -50,6 +66,22 @@ export default function SettingsPage() {
         } as any);
       }
       await crmService.updateRemovalRequestStatus(rem.id, 'rejected');
+
+      if (user) {
+        const contactName = `${rem.database?.firstName || ''} ${rem.database?.lastName || ''}`.trim();
+        auditLogService.recordLog({
+          userId: user.id,
+          username: user.username,
+          userFullName: user.fullName,
+          userRole: user.roles?.[0] || 'ADMIN',
+          module: 'TAKEOUT',
+          actionType: 'REJECT_TAKEOUT',
+          targetId: rem.id,
+          targetName: contactName || `Kontak #${rem.database?.id}`,
+          description: `Memulihkan kontak '${contactName || rem.database?.id}' dan menolak takeout request.`
+        });
+      }
+
       toast.success(`Kontak ID ${rem.database?.id} berhasil dipulihkan / diaktifkan kembali!`);
       loadTabDetails();
     } catch (err: any) {
@@ -138,7 +170,10 @@ export default function SettingsPage() {
                             {rem.status === 'pending' ? (
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => handleUpdateRemovalStatus(rem.id, 'done')}
+                                  onClick={() => {
+                                    const cName = `${rem.database?.firstName || ''} ${rem.database?.lastName || ''}`.trim() || `Kontak #${rem.database?.id}`;
+                                    handleUpdateRemovalStatus(rem.id, 'done', cName);
+                                  }}
                                   className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-sm transition-all cursor-pointer"
                                   title="Approve Takeout & Soft-Delete Contact"
                                 >
