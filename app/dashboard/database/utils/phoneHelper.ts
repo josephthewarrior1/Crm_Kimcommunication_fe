@@ -3,12 +3,17 @@ export const normalizePhone = (phone: string | null | undefined): string => {
   const trimmed = phone.trim();
   if (!trimmed) return '';
 
-  if (trimmed.startsWith('+')) {
-    const digits = trimmed.slice(1).replace(/[^0-9]/g, '');
+  // Jika terdapat multi-nomor yang dipisah oleh '/', ',', ';', '|', 'atau', 'or', 'ext'
+  // Ambil nomor pertama saja untuk tampilan tabel agar rapi
+  const firstPart = trimmed.split(/[\/,;|\n\r]+|\s+(?:atau|or|ext\.?)\s+/i)[0].trim();
+  if (!firstPart) return '';
+
+  if (firstPart.startsWith('+')) {
+    const digits = firstPart.slice(1).replace(/[^0-9]/g, '');
     return digits ? `+${digits}` : '';
   }
 
-  const digits = trimmed.replace(/[^0-9]/g, '');
+  const digits = firstPart.replace(/[^0-9]/g, '');
   if (!digits) return '';
 
   if (digits.startsWith('0')) {
@@ -21,3 +26,4 @@ export const normalizePhone = (phone: string | null | undefined): string => {
 
   return `+62${digits}`;
 };
+

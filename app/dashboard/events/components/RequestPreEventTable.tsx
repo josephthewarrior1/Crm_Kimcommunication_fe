@@ -23,6 +23,8 @@ const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
+import { normalizePhone } from '../../database/utils/phoneHelper';
+
 interface RequestPreEventTableProps {
   filteredParticipants: EventParticipant[];
   selectedParticipantIds: number[];
@@ -229,12 +231,12 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 )}
                 {columnConfig.officePhone !== false && (
                   <td className="py-1.5 px-3 font-mono text-slate-600">
-                    {p.database.company?.officePhone || '-'}
+                    {p.database.company?.officePhone ? normalizePhone(p.database.company.officePhone) : '-'}
                   </td>
                 )}
                 {columnConfig.mobilePhone !== false && (
                   <td className="py-1.5 px-3 font-mono text-slate-700">
-                    {p.database.mobilePhone || '-'}
+                    {p.database.mobilePhone ? normalizePhone(p.database.mobilePhone) : '-'}
                   </td>
                 )}
                 {columnConfig.officeEmail !== false && (

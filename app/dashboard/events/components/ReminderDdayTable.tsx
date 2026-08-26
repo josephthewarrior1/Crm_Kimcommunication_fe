@@ -4,6 +4,7 @@ import { AlertCircle, Edit2, Trash2, History, ShieldAlert, UserX } from 'lucide-
 import { extractPicFromNotes, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
+import { normalizePhone } from '../../database/utils/phoneHelper';
 
 interface ReminderDdayTableProps {
   filteredParticipants: EventParticipant[];
@@ -213,12 +214,12 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
                 )}
                 {columnConfig.officePhone !== false && (
                   <td className="py-1.5 px-3 font-mono text-slate-600">
-                    {p.database.company?.officePhone || '-'}
+                    {p.database.company?.officePhone ? normalizePhone(p.database.company.officePhone) : '-'}
                   </td>
                 )}
                 {columnConfig.mobilePhone !== false && (
                   <td className="py-1.5 px-3 font-mono text-slate-700">
-                    {p.database.mobilePhone || '-'}
+                    {p.database.mobilePhone ? normalizePhone(p.database.mobilePhone) : '-'}
                   </td>
                 )}
                 {columnConfig.officeEmail !== false && (
