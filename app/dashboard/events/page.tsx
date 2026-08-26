@@ -1227,13 +1227,18 @@ export default function EventsPage() {
         ? p.notes
         : `[TIKUS] ${p.notes || ''}`.trim();
 
+      const fullName = `${p.database.firstName || ''} ${p.database.lastName || ''}`.trim();
+      const phone = (p.database.mobilePhone || '').slice(0, 50);
+      const email = p.database.emails?.[0]?.email ? p.database.emails[0].email.slice(0, 255) : undefined;
+
       await crmService.createFlaggedIdentity({
-        nameUsed: `${p.database.firstName} ${p.database.lastName || ''}`.trim(),
-        phoneUsed: p.database.mobilePhone || '',
+        nameUsed: fullName ? fullName.slice(0, 255) : 'Unknown',
+        phoneUsed: phone || undefined,
+        emailUsed: email || undefined,
         flagReason: 'multiple_identity',
         status: 'confirmed',
-        database: p.database,
-        event: selectedEvent || undefined
+        database: { id: p.database.id } as any,
+        event: selectedEvent ? ({ id: selectedEvent.id } as any) : undefined
       });
 
       await crmService.updateParticipantStatus(

@@ -188,7 +188,7 @@ export default function FlaggedPage() {
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">Audit and manage flagged fraudulent attendees, fake company representations, and phone/email duplications.</p>
         </div>
-        {isAdmin && (
+        {(isAdmin || isManager) && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-red-600 hover:bg-red-550 active:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md shadow-red-600/10 transition-all self-start sm:self-auto"
@@ -335,7 +335,7 @@ export default function FlaggedPage() {
                       View Details
                     </button>
 
-                    {isAdmin && (
+                    {(isAdmin || isManager) && (
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => {
