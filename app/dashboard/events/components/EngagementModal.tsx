@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Phone, Mail, MessageSquare, Clock, Plus, X, Loader2, CheckCircle2, UserCheck } from 'lucide-react';
 import { EventParticipant, EventParticipantActivity } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
@@ -28,11 +28,12 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
   const { isAdmin, isManager, isUser } = useAuth();
   const isViewer = isUser || (!isAdmin && !isManager);
 
-  const [activities, setActivities] = useState<EventParticipantActivity[]>([]);
+  const [activities, setActivities] = useState<EventParticipantActivity[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<'CALL' | 'EMAIL' | 'WHATSAPP'>('CALL');
   const [notes, setNotes] = useState('');
+  const requestIdRef = useRef(0);
   type TargetStage = 'preEventApproval' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH' | 'none';
   const [targetStage, setTargetStage] = useState<TargetStage>('preEventApproval');
   const [outcomeStatus, setOutcomeStatus] = useState<string>('confirm');
@@ -53,6 +54,15 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
     if (stage === 'reminderHariH') return 'on_location';
     return 'confirm';
   };
+
+  useLayoutEffect(() => {
+    if (!isOpen || !participant) {
+      requestIdRef.current += 1;
+      setActivities(null);
+      setLoading(false);
+      setNotes('');
+    }
+  }, [isOpen, participant?.id]);
 
   useEffect(() => {
     if (isOpen && participant) {
@@ -75,7 +85,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
       setTargetStage(initialStage);
       setOutcomeStatus(getStageDefaultOutcome(initialStage, participant));
     } else {
-      setActivities([]);
+      setActivities(null);
       setNotes('');
     }
   }, [isOpen, participant]);
@@ -89,14 +99,22 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
 
   const loadActivities = async () => {
     if (!participant) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
       const data = await crmService.getEventParticipantActivities(participant.id);
-      setActivities(data || []);
+      if (requestId === requestIdRef.current) {
+        setActivities(data || []);
+      }
     } catch (err) {
+      if (requestId === requestIdRef.current) {
+        setActivities([]);
+      }
       toast.error('Failed to load engagement history');
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -137,9 +155,10 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
   const companyName = participant.database.company?.name || 'No Company';
 
   // Calculate counts and last timestamps per activity type
-  const callLogs = activities.filter(a => a.activityType?.toUpperCase() === 'CALL');
-  const emailLogs = activities.filter(a => a.activityType?.toUpperCase() === 'EMAIL');
-  const waLogs = activities.filter(a => a.activityType?.toUpperCase() === 'WHATSAPP');
+  const callLogs = (activities || []).filter(a => a.activityType?.toUpperCase() === 'CALL');
+  const emailLogs = (activities || []).filter(a => a.activityType?.toUpperCase() === 'EMAIL');
+  const waLogs = (activities || []).filter(a => a.activityType?.toUpperCase() === 'WHATSAPP');
+  const isInitialLoading = loading && activities === null;
 
   const formatTimestamp = (dateStr?: string) => {
     if (!dateStr) return '-';
@@ -221,11 +240,19 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                 <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1">
                   <Phone className="w-3.5 h-3.5" /> Call Count
                 </span>
-                <span className="text-lg font-black text-blue-950">{callLogs.length}x</span>
+                {isInitialLoading ? (
+                  <span className="h-7 w-12 rounded-xl bg-blue-200/70 animate-pulse" />
+                ) : (
+                  <span className="text-lg font-black text-blue-950">{callLogs.length}x</span>
+                )}
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Terakhir: <strong className="text-slate-700">{formatTimestamp(callLogs[0]?.createdAt)}</strong>
-              </p>
+              {isInitialLoading ? (
+                <div className="mt-2 h-3.5 w-32 rounded-full bg-blue-100 animate-pulse" />
+              ) : (
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Terakhir: <strong className="text-slate-700">{formatTimestamp(callLogs[0]?.createdAt)}</strong>
+                </p>
+              )}
               {!isViewer && (
                 <button
                   disabled={submitting}
@@ -243,11 +270,19 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                 <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider flex items-center gap-1">
                   <Mail className="w-3.5 h-3.5" /> Email Count
                 </span>
-                <span className="text-lg font-black text-emerald-950">{emailLogs.length}x</span>
+                {isInitialLoading ? (
+                  <span className="h-7 w-12 rounded-xl bg-emerald-200/70 animate-pulse" />
+                ) : (
+                  <span className="text-lg font-black text-emerald-950">{emailLogs.length}x</span>
+                )}
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Terakhir: <strong className="text-slate-700">{formatTimestamp(emailLogs[0]?.createdAt)}</strong>
-              </p>
+              {isInitialLoading ? (
+                <div className="mt-2 h-3.5 w-32 rounded-full bg-emerald-100 animate-pulse" />
+              ) : (
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Terakhir: <strong className="text-slate-700">{formatTimestamp(emailLogs[0]?.createdAt)}</strong>
+                </p>
+              )}
               {!isViewer && (
                 <button
                   disabled={submitting}
@@ -265,11 +300,19 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                 <span className="text-[10px] font-extrabold text-green-700 uppercase tracking-wider flex items-center gap-1">
                   <WhatsAppIcon className="w-3.5 h-3.5 text-green-600" /> WA Count
                 </span>
-                <span className="text-lg font-black text-green-950">{waLogs.length}x</span>
+                {isInitialLoading ? (
+                  <span className="h-7 w-12 rounded-xl bg-green-200/70 animate-pulse" />
+                ) : (
+                  <span className="text-lg font-black text-green-950">{waLogs.length}x</span>
+                )}
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Terakhir: <strong className="text-slate-700">{formatTimestamp(waLogs[0]?.createdAt)}</strong>
-              </p>
+              {isInitialLoading ? (
+                <div className="mt-2 h-3.5 w-32 rounded-full bg-green-100 animate-pulse" />
+              ) : (
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Terakhir: <strong className="text-slate-700">{formatTimestamp(waLogs[0]?.createdAt)}</strong>
+                </p>
+              )}
               {!isViewer && (
                 <button
                   disabled={submitting}
@@ -463,20 +506,39 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
 
           {/* Activity Timeline List */}
           <div>
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">History Engagement ({activities.length})</h4>
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">History Engagement ({activities?.length ?? 0})</h4>
 
-            {loading ? (
+            {isInitialLoading ? (
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Memuat riwayat engagement...</span>
+                </div>
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-start justify-between gap-3 animate-pulse">
+                    <div className="flex items-start gap-2.5 flex-1">
+                      <span className="h-5 w-16 rounded-md bg-slate-200 shrink-0 mt-0.5" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3.5 w-4/5 rounded-full bg-slate-200" />
+                        <div className="h-3 w-1/3 rounded-full bg-slate-150" />
+                      </div>
+                    </div>
+                    <span className="h-3 w-20 rounded-full bg-slate-200 shrink-0 mt-0.5" />
+                  </div>
+                ))}
+              </div>
+            ) : loading ? (
               <div className="py-8 flex justify-center items-center">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
               </div>
-            ) : activities.length === 0 ? (
+            ) : (activities?.length ?? 0) === 0 ? (
               <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
                 <Clock className="w-8 h-8 text-slate-350 mx-auto mb-2" />
                 <p className="text-xs font-medium text-slate-400">Belum ada riwayat engagement. Klik tombol di atas untuk mencatat log.</p>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
-                {activities.map((act) => {
+                {activities!.map((act) => {
                   const typeUpper = act.activityType?.toUpperCase();
                   const typeColorMap: Record<string, string> = {
                     CALL: 'bg-blue-100 text-blue-800 border-blue-200',

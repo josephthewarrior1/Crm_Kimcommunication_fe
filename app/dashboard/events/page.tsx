@@ -42,6 +42,11 @@ export default function EventsPage() {
   const [databases, setDatabases] = useState<Database[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [eventListPage, setEventListPage] = useState(1);
+  const eventListPageSize = 12;
+  const [eventListTotal, setEventListTotal] = useState(0);
+  const [eventListTotalPages, setEventListTotalPages] = useState(1);
+  const [eventListSummary, setEventListSummary] = useState({ total: 0, upcoming: 0, ongoing: 0, past: 0 });
   const [isSyncingPms, setIsSyncingPms] = useState(false);
 
   // Selected Event & Participants state
@@ -179,8 +184,6 @@ export default function EventsPage() {
     setIsEngagementModalOpen(true);
   };
 
-  const [allEventParticipants, setAllEventParticipants] = useState<EventParticipant[]>([]);
-
   useEffect(() => {
     setCurrentAllowedEventIds(Array.isArray(user?.allowedEventIds) ? user.allowedEventIds : []);
   }, [user?.id, user?.allowedEventIds]);
@@ -298,8 +301,10 @@ export default function EventsPage() {
     if (!token || !user) {
       setLoading(false);
       setEvents([]);
+      setEventListTotal(0);
+      setEventListTotalPages(1);
+      setEventListSummary({ total: 0, upcoming: 0, ongoing: 0, past: 0 });
       setDatabases([]);
-      setAllEventParticipants([]);
       setUsersList([]);
       setSelectedEvent(null);
       setParticipants([]);
@@ -313,31 +318,12 @@ export default function EventsPage() {
       setEligibleManagers([]);
       return;
     }
-
-    void loadData();
   }, [authLoading, token, user?.id]);
 
   useEffect(() => {
     if (authLoading || !token || !user) return;
-
-    const handleWindowFocus = () => {
-      void loadData();
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        void loadData();
-      }
-    };
-
-    window.addEventListener('focus', handleWindowFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('focus', handleWindowFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [authLoading, token, user?.id, isAdmin]);
+    void loadData();
+  }, [authLoading, token, user?.id, searchQuery, eventListPage, isAdmin]);
 
   useEffect(() => {
     const syncSelectedEvent = async () => {
@@ -354,12 +340,18 @@ export default function EventsPage() {
         return;
       }
 
-      if (events.length === 0) return;
+      if (events.length === 0 && !eventIdParam) return;
 
       if (eventIdParam) {
-        const matched = events.find(
-          (ev) => String(ev.id) === eventIdParam || String(ev.pmsEventId) === eventIdParam || String(ev.emsEventId) === eventIdParam || (ev.name && eventIdParam.toLowerCase() === ev.name.trim().toLowerCase())
-        );
+        let matched = events.find((ev) => String(ev.id) === eventIdParam);
+        if (!matched && selectedEvent && String(selectedEvent.id) === eventIdParam) {
+          return;
+        }
+        if (!matched && /^\d+$/.test(eventIdParam)) {
+          try {
+            matched = await crmService.getEventById(Number(eventIdParam));
+          } catch {}
+        }
         if (matched) {
           if (!hasEventAccess(matched.id)) {
             toast.error("You don't have access to this event.");
@@ -404,6 +396,10 @@ export default function EventsPage() {
     void syncSelectedEvent();
   }, [authLoading, token, user?.id, eventIdParam, events, currentAllowedEventIds, router]);
 
+  useEffect(() => {
+    setEventListPage(1);
+  }, [searchQuery]);
+
   async function loadData() {
     const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('session') : token;
     if (authLoading) return;
@@ -415,16 +411,22 @@ export default function EventsPage() {
     setLoading(true);
     try {
       const freshUser = user && !isAdmin ? await refreshUser() : user;
-      const [eList, cList, lList, uList, emsList] = await Promise.all([
-        crmService.getEvents(),
+      const [eventListResponse, cList, uList, emsList] = await Promise.all([
+        crmService.getEventsList({
+          search: searchQuery || undefined,
+          page: eventListPage,
+          size: eventListPageSize
+        }),
         crmService.getDatabases(),
-        crmService.getEventParticipants(),
         crmService.getUsers().catch(() => []),
         crmService.getEmsEvents().catch(() => [])
       ]);
-      setEvents(eList);
+      const eventItems = eventListResponse?.items || [];
+      setEvents(eventItems);
+      setEventListTotal(eventListResponse?.total || 0);
+      setEventListTotalPages(eventListResponse?.totalPages || 1);
+      setEventListSummary(eventListResponse?.summary || { total: 0, upcoming: 0, ongoing: 0, past: 0 });
       setDatabases(cList.filter(c => c.isActive)); // only active databases
-      setAllEventParticipants(lList);
       setUsersList(uList);
       setEmsEventsList(emsList);
 
@@ -468,38 +470,32 @@ export default function EventsPage() {
         const urlParams = new URLSearchParams(window.location.search);
         const urlEventId = urlParams.get('eventId') || urlParams.get('id');
         if (urlEventId) {
-          const matchedEvent = eList.find(
-            (ev) => String(ev.id) === urlEventId || String(ev.pmsEventId) === urlEventId || String(ev.emsEventId) === urlEventId || (ev.name && urlEventId.toLowerCase() === ev.name.trim().toLowerCase())
-          );
+          let matchedEvent = eventItems.find((ev) => String(ev.id) === urlEventId);
+          if (!matchedEvent && /^\d+$/.test(urlEventId)) {
+            try {
+              matchedEvent = await crmService.getEventById(Number(urlEventId));
+            } catch {}
+          }
           if (matchedEvent) {
             setSelectedEvent(matchedEvent);
             await loadEligibleManagers(matchedEvent.id);
-            const filtered = lList.filter((l) =>
-              l.event && (
-                l.event.id === matchedEvent.id ||
-                (l.event.name && matchedEvent.name && l.event.name.trim().toLowerCase() === matchedEvent.name.trim().toLowerCase())
-              )
-            );
-            setParticipantsSorted(filtered);
+            await loadParticipantsForEvent(matchedEvent);
             return;
           }
         }
       }
 
       if (selectedEvent) {
-        const updatedSel = eList.find(
-          (ev) => ev.id === selectedEvent.id || (ev.name && selectedEvent.name && ev.name.trim().toLowerCase() === selectedEvent.name.trim().toLowerCase())
-        );
+        let updatedSel = eventItems.find((ev) => ev.id === selectedEvent.id);
+        if (!updatedSel) {
+          try {
+            updatedSel = await crmService.getEventById(selectedEvent.id);
+          } catch {}
+        }
         if (updatedSel) {
           setSelectedEvent(updatedSel);
           await loadEligibleManagers(updatedSel.id);
-          const filtered = lList.filter((l) =>
-            l.event && (
-              l.event.id === updatedSel.id ||
-              (l.event.name && updatedSel.name && l.event.name.trim().toLowerCase() === updatedSel.name.trim().toLowerCase())
-            )
-          );
-          setParticipantsSorted(filtered);
+          await loadParticipantsForEvent(updatedSel);
         }
       }
     } catch (err) {
@@ -689,7 +685,7 @@ export default function EventsPage() {
         crmService.getEventParticipantsByEvent(event.id, allStatsQuery),
         crmService.getEventParticipantsSummary(event.id, allStatsQuery),
         crmService.getEventStatistics(event.id, statisticsQuery),
-        crmService.getEventParticipantFilterOptions(event.id, { tab: effectiveTab })
+        crmService.getEventParticipantFilterOptions(event.id, statisticsQuery)
       ]);
 
       const tableParticipants = tableResponse?.items || [];
@@ -1353,15 +1349,12 @@ export default function EventsPage() {
     setSelectedTakeoutDatabase(database);
     setIsTakeoutModalOpen(true);
   };
-  const filteredEvents = events.filter((e) => {
-    if (!hasEventAccess(e.id)) {
-      return false;
-    }
-    return (
-      e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (e.clientName && e.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  });
+
+  const handleOpenAddParticipantModal = async () => {
+    setIsAddParticipantModalOpen(true);
+  };
+
+  const filteredEvents = events;
 
   const displayStatsParticipants = statsParticipants.map((p) => {
     const effectiveStatus = getEffectiveConfirmationStatus(p);
@@ -1468,31 +1461,22 @@ export default function EventsPage() {
             <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl p-8 space-y-2">
               <CalendarDays className="w-12 h-12 text-slate-350 mx-auto mb-3" />
               <p className="text-base font-bold text-slate-700">
-                {!isAdmin && events.length > 0 ? "You don't have access to any events" : "No events found."}
+                {!isAdmin && !searchQuery && eventListSummary.total === 0 ? "You don't have access to any events" : "No events found."}
               </p>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                {!isAdmin && events.length > 0 
+                {!isAdmin && !searchQuery && eventListSummary.total === 0 
                   ? "Please contact an administrator to assign event permissions to your account."
                   : "There are no events available matching your search criteria."}
               </p>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredEvents.map((evt) => {
-                const eventParticipants = allEventParticipants.filter(
-                  (l) => l.event && (
-                    l.event.id === evt.id ||
-                    (l.event.name && evt.name && l.event.name.trim().toLowerCase() === evt.name.trim().toLowerCase())
-                  )
-                );
-                const registeredCount = eventParticipants.filter(p => {
-                  const ps = (p.participantStatus || '').toLowerCase();
-                  const att = (p.attendanceStatus || '').toLowerCase();
-                  return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
-                }).length;
-                const onLocationCount = eventParticipants.filter(p => p.reminderHariH === 'on_location' || p.attendanceStatus?.toLowerCase() === 'attended').length;
+                const registeredCount = evt.registeredCount || 0;
+                const onLocationCount = evt.onLocationCount || 0;
                 const target = evt.targetParticipants || 0;
-                const isAchieved = target > 0 && onLocationCount >= target;
+                const isAchieved = Boolean(evt.targetAchieved);
                 
                 const typeColorMap: Record<string, string> = {
                   partner: 'bg-blue-600',
@@ -1598,6 +1582,35 @@ export default function EventsPage() {
                 );
               })}
             </div>
+            {eventListTotal > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
+                <p className="text-xs text-slate-500">
+                  Showing <strong className="text-slate-900">{((eventListPage - 1) * eventListPageSize) + 1}</strong> to{' '}
+                  <strong className="text-slate-900">{Math.min(eventListPage * eventListPageSize, eventListTotal)}</strong> of{' '}
+                  <strong className="text-slate-900">{eventListTotal}</strong> events
+                </p>
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    onClick={() => setEventListPage((prev) => Math.max(1, prev - 1))}
+                    disabled={eventListPage === 1}
+                    className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-xs font-bold text-slate-600 min-w-[72px] text-center">
+                    {eventListPage} / {eventListTotalPages}
+                  </span>
+                  <button
+                    onClick={() => setEventListPage((prev) => Math.min(eventListTotalPages, prev + 1))}
+                    disabled={eventListPage >= eventListTotalPages}
+                    className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
       ) : (
@@ -1806,7 +1819,7 @@ export default function EventsPage() {
               )}
               {!isViewer && (activeTab === 'request' || activeTab === 'pre_event') && (
                 <button
-                  onClick={() => setIsAddParticipantModalOpen(true)}
+                  onClick={() => void handleOpenAddParticipantModal()}
                   className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
                   title="Add Participant directly to this Event"
                 >
@@ -1874,6 +1887,16 @@ export default function EventsPage() {
               }
             } : undefined}
             onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
+            participantFilters={{
+              tab: activeTab,
+              pic: isAdmin ? filterPic || undefined : undefined,
+              company: filterCompany || undefined,
+              position: filterPosition || undefined,
+              industry: filterIndustry || undefined,
+              confirmationStatus: filterConfirmationStatus || undefined,
+              reminderHariH: filterReminderHariH || undefined,
+              search: participantSearchQuery || undefined
+            }}
           />
 
           {/* Batch Actions Status Bar */}
@@ -2115,10 +2138,7 @@ export default function EventsPage() {
           isOpen={isAddParticipantModalOpen}
           onClose={() => setIsAddParticipantModalOpen(false)}
           selectedEvent={selectedEvent}
-          databases={databases}
           participants={statsParticipants}
-          allEventParticipants={allEventParticipants}
-          events={events}
           onAddParticipant={handleAddParticipant}
           submittingParticipant={submittingParticipant}
         />

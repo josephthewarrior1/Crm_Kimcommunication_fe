@@ -73,6 +73,27 @@ export interface DatabaseEmail {
   createdAt?: string;
 }
 
+export interface DatabaseListResponse {
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+  items: Database[];
+  summary: {
+    all: number;
+    clean: number;
+    dirty: number;
+  };
+}
+
+export interface DatabaseFilterOptionsResponse {
+  cities: Array<{ value: string; label: string }>;
+  groups: Array<{ id: number; name: string }>;
+  companies: Array<{ id: number; name: string }>;
+  industries: string[];
+  positionLevels: string[];
+}
+
 export interface Event {
   id: number;
   name: string;
@@ -100,6 +121,46 @@ export interface Event {
   emsEventId?: number;
   createdAt?: string;
   updatedAt?: string;
+  registeredCount?: number;
+  onLocationCount?: number;
+  targetAchieved?: boolean;
+}
+
+export interface EventListResponse {
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+  items: Event[];
+  summary: {
+    total: number;
+    upcoming: number;
+    ongoing: number;
+    past: number;
+  };
+}
+
+export interface EventAvailableDatabaseOption {
+  id: number;
+  name: string;
+}
+
+export interface EventAvailableDatabaseItem {
+  database: Database;
+  invitedEvents: EventAvailableDatabaseOption[];
+}
+
+export interface EventAvailableDatabasesResponse {
+  eventId: number;
+  total: number;
+  items: EventAvailableDatabaseItem[];
+  filterOptions: {
+    companies: string[];
+    positions: string[];
+    industries: string[];
+    cities: string[];
+    invitedEvents: EventAvailableDatabaseOption[];
+  };
 }
 
 export interface EventParticipant {
@@ -151,6 +212,29 @@ export interface EventParticipantFilterOptions {
   pics: string[];
 }
 
+export interface EventParticipantPicSummaryItem {
+  userId?: number;
+  name: string;
+  roleLabel?: string;
+  totalAssigned: number;
+  approveCount: number;
+  pendingCount: number;
+  registeredCount: number;
+  tentativeCount: number;
+  notRespondCount: number;
+  notInterestCount: number;
+}
+
+export interface EventParticipantPicSummaryResponse {
+  eventId: number;
+  tab: string;
+  totalParticipants: number;
+  totalAssigned: number;
+  unassignedCount: number;
+  activePicsCount: number;
+  items: EventParticipantPicSummaryItem[];
+}
+
 export interface EventParticipantActivity {
   id: number;
   eventParticipant?: EventParticipant;
@@ -159,6 +243,20 @@ export interface EventParticipantActivity {
   notes?: string;
   createdBy?: string;
   createdAt?: string;
+}
+
+export interface EventActivitySummaryResponse {
+  eventId: number;
+  pic?: string;
+  startDate?: string;
+  endDate?: string;
+  totalActivities: number;
+  byType: {
+    call: number;
+    whatsapp: number;
+    email: number;
+    meeting: number;
+  };
 }
 
 export interface RemovalRequest {

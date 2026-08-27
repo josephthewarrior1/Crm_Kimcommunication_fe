@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus, History, Phone, Mail, MessageSquare, Loader2, Calendar as CalendarIcon, Sliders } from 'lucide-react';
-import { EventParticipant, AppUser, EventParticipantStatisticsResponse } from '../../../../lib/types';
+import { EventParticipant, AppUser, EventParticipantStatisticsResponse, EventActivitySummaryResponse, EventParticipantPicSummaryResponse } from '../../../../lib/types';
 import { extractPicFromNotes, getPreEventApprovalStatus } from '../utils/notesHelper';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
@@ -30,6 +30,16 @@ interface EventStatisticsProps {
   onOpenEngagementModal?: (participant: EventParticipant) => void;
   currentUser?: AppUser | null;
   isViewer?: boolean;
+  participantFilters?: {
+    tab?: string;
+    pic?: string;
+    company?: string;
+    position?: string;
+    industry?: string;
+    confirmationStatus?: string;
+    reminderHariH?: string;
+    search?: string;
+  };
 }
 
 export const EventStatistics: React.FC<EventStatisticsProps> = ({
@@ -46,6 +56,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   onOpenEngagementModal,
   currentUser,
   isViewer = false,
+  participantFilters,
 }) => {
   const [selectedPic, setSelectedPic] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -62,7 +73,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   const [startDate, setStartDate] = React.useState<string>(() => new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = React.useState<string>(() => new Date().toISOString().split('T')[0]);
   const [activitiesReport, setActivitiesReport] = React.useState<any[]>([]);
+  const [activitySummary, setActivitySummary] = React.useState<EventActivitySummaryResponse | null>(null);
+  const [picSummary, setPicSummary] = React.useState<EventParticipantPicSummaryResponse | null>(null);
   const [loadingReport, setLoadingReport] = React.useState(false);
+  const [loadingPicSummary, setLoadingPicSummary] = React.useState(false);
+  const [isWorkloadDialogOpen, setIsWorkloadDialogOpen] = React.useState(false);
 
   // Auto Split Selected PICs States
   const [isSplitModalOpen, setIsSplitModalOpen] = React.useState(false);
@@ -146,14 +161,65 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     if (!eventId) return;
     setLoadingReport(true);
     try {
-      const data = await crmService.getAllEventActivities(eventId, startDate, endDate);
+      const [data, summary] = await Promise.all([
+        crmService.getAllEventActivities(eventId, startDate, endDate),
+        crmService.getEventActivitySummary(eventId, {
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          pic: selectedPic || undefined
+        })
+      ]);
       setActivitiesReport(data || []);
+      setActivitySummary(summary || null);
     } catch (err) {
       console.error('Failed to load activity report:', err);
+      setActivitySummary(null);
     } finally {
       setLoadingReport(false);
     }
   };
+
+  const loadPicSummary = async () => {
+    if (!eventId || !isAdmin) return;
+    setLoadingPicSummary(true);
+    try {
+      const summary = await crmService.getEventParticipantsSummaryByPic(eventId, {
+        tab: participantFilters?.tab || activeTab,
+        pic: participantFilters?.pic,
+        company: participantFilters?.company,
+        position: participantFilters?.position,
+        industry: participantFilters?.industry,
+        confirmationStatus: participantFilters?.confirmationStatus,
+        reminderHariH: participantFilters?.reminderHariH,
+        search: participantFilters?.search
+      });
+      setPicSummary(summary || null);
+    } catch (err) {
+      console.error('Failed to load PIC summary:', err);
+      setPicSummary(null);
+    } finally {
+      setLoadingPicSummary(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!isAdmin || !isWorkloadDialogOpen || selectedPic) return;
+    void loadPicSummary();
+  }, [
+    isAdmin,
+    isWorkloadDialogOpen,
+    selectedPic,
+    eventId,
+    activeTab,
+    participantFilters?.tab,
+    participantFilters?.pic,
+    participantFilters?.company,
+    participantFilters?.position,
+    participantFilters?.industry,
+    participantFilters?.confirmationStatus,
+    participantFilters?.reminderHariH,
+    participantFilters?.search
+  ]);
 
   const handleSetPreset = (preset: 'today' | '7days' | '30days' | 'all') => {
     setDatePreset(preset);
@@ -618,35 +684,39 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   {isAdmin ? 'PIC Assignment & Distribution' : 'Log Aktivitas Saya Hari Ini'}
                 </h4>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  {isAdmin ? (() => {
-                    const activePicsCount = usersList.filter((usr) => {
-                      const uname = (usr.username || '').toLowerCase();
-                      const fname = (usr.fullName || '').toLowerCase();
-                      if (uname === 'kevin' || fname.includes('kevin')) return false;
-                      const name = usr.fullName || usr.username;
-                      return participants.some(p => {
-                        const pic = extractPicFromNotes(p.notes).pic;
-                        return pic.toLowerCase() === name.toLowerCase() || 
-                               (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                      });
-                    }).length;
-                    return `${activePicsCount} PIC aktif bertugas`;
-                  })() : `Ringkasan aktivitas telepon, WA, dan email yang dikerjakan oleh ${myPicName}`}
+                  {isAdmin
+                    ? `${picSummary?.activePicsCount ?? usersList.filter((usr) => {
+                        const uname = (usr.username || '').toLowerCase();
+                        const fname = (usr.fullName || '').toLowerCase();
+                        if (uname === 'kevin' || fname.includes('kevin')) return false;
+                        const name = usr.fullName || usr.username;
+                        return participants.some((participant) => {
+                          const pic = extractPicFromNotes(participant.notes).pic;
+                          return pic.toLowerCase() === name.toLowerCase() ||
+                            (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
+                        });
+                      }).length} PIC aktif bertugas`
+                    : `Ringkasan aktivitas telepon, WA, dan email yang dikerjakan oleh ${myPicName}`}
                 </p>
               </div>
             </div>
 
             <Dialog onOpenChange={(open) => {
+              setIsWorkloadDialogOpen(open);
               if (open) {
                 if (!isAdmin) {
                   setSelectedPic(myPicName);
                   handleSetPreset('today');
                   setPicViewTab('report');
+                  loadActivitiesReport();
+                } else {
+                  void loadPicSummary();
                 }
-                loadActivitiesReport();
               } else {
                 if (isAdmin) setSelectedPic(null);
                 setSearchQuery('');
+                setActivitySummary(null);
+                setPicSummary(null);
               }
             }}>
               <DialogTrigger asChild>
@@ -784,10 +854,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                         {/* Activity Metrics Cards */}
                         {(() => {
-                          const callsCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'CALL').length;
-                          const waCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'WHATSAPP').length;
-                          const emailCount = filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'EMAIL').length;
-                          const totalActivities = filteredPicActivities.length;
+                          const callsCount = activitySummary?.byType?.call ?? filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'CALL').length;
+                          const waCount = activitySummary?.byType?.whatsapp ?? filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'WHATSAPP').length;
+                          const emailCount = activitySummary?.byType?.email ?? filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'EMAIL').length;
+                          const totalActivities = activitySummary?.totalActivities ?? filteredPicActivities.length;
 
                           return (
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1296,21 +1366,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                     {/* Allocation Balance Stacked Bar */}
                     {(() => {
-                      const activePics = usersList.filter(usr => {
-                        const uname = (usr.username || '').toLowerCase();
-                        const fname = (usr.fullName || '').toLowerCase();
-                        return uname !== 'kevin' && !fname.includes('kevin');
-                      }).map((usr) => {
-                        const name = usr.fullName || usr.username;
-                        const count = participants.filter(p => {
-                          const pic = extractPicFromNotes(p.notes).pic;
-                          return pic.toLowerCase() === name.toLowerCase() || 
-                                 (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                        }).length;
-                        return { usr, name, count };
-                      }).filter(item => item.count > 0);
-
-                      const totalAssigned = activePics.reduce((sum, item) => sum + item.count, 0);
+                      const activePics = picSummary?.items || [];
+                      const totalAssigned = picSummary?.totalAssigned || 0;
+                      const totalParticipants = picSummary?.totalParticipants || participants.length;
+                      const unassignedCount = picSummary?.unassignedCount || 0;
                       
                       const colors = [
                         'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 
@@ -1321,41 +1380,41 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
                           <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">
                             <span>Allocation Balance</span>
-                            <span className="text-slate-700 font-extrabold">{totalAssigned} / {participants.length} Assigned ({Math.round((totalAssigned / Math.max(1, participants.length)) * 100)}%)</span>
+                            <span className="text-slate-700 font-extrabold">{totalAssigned} / {totalParticipants} Assigned ({Math.round((totalAssigned / Math.max(1, totalParticipants)) * 100)}%)</span>
                           </div>
                           <div className="w-full h-3 bg-slate-100 rounded-full flex overflow-hidden shadow-inner">
                             {activePics.map((pic, idx) => {
-                              const percentage = (pic.count / Math.max(1, participants.length)) * 100;
+                              const percentage = (pic.totalAssigned / Math.max(1, totalParticipants)) * 100;
                               return (
                                 <div
-                                  key={pic.usr.id}
+                                  key={pic.userId || pic.name}
                                   className={`${colors[idx % colors.length]} transition-all duration-300 h-full`}
                                   style={{ width: `${percentage}%` }}
-                                  title={`${pic.name}: ${pic.count} (${Math.round(percentage)}%)`}
+                                  title={`${pic.name}: ${pic.totalAssigned} (${Math.round(percentage)}%)`}
                                 />
                               );
                             })}
-                            {participants.length > totalAssigned && (
+                            {unassignedCount > 0 && (
                               <div
                                 className="bg-slate-200 h-full"
-                                style={{ width: `${((participants.length - totalAssigned) / participants.length) * 100}%` }}
-                                title={`Unassigned: ${participants.length - totalAssigned}`}
+                                style={{ width: `${(unassignedCount / Math.max(1, totalParticipants)) * 100}%` }}
+                                title={`Unassigned: ${unassignedCount}`}
                               />
                             )}
                           </div>
                           <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
                             {activePics.map((pic, idx) => (
-                              <div key={pic.usr.id} className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
+                              <div key={pic.userId || pic.name} className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
                                 <span className={`w-2 h-2 rounded-full ${colors[idx % colors.length]}`} />
                                 <span>{pic.name}</span>
-                                <span className="text-slate-400 font-normal">({pic.count})</span>
+                                <span className="text-slate-400 font-normal">({pic.totalAssigned})</span>
                               </div>
                             ))}
-                            {participants.length > totalAssigned && (
+                            {unassignedCount > 0 && (
                               <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
                                 <span className="w-2 h-2 rounded-full bg-slate-300" />
                                 <span>Belum Dialokasi</span>
-                                <span className="text-slate-400 font-normal">({participants.length - totalAssigned})</span>
+                                <span className="text-slate-400 font-normal">({unassignedCount})</span>
                               </div>
                             )}
                           </div>
@@ -1379,22 +1438,15 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             return !isMatched;
                           }).map(p => p.id);
 
-                          const activePics = usersList.filter(usr => {
-                            const uname = (usr.username || '').toLowerCase();
-                            const fname = (usr.fullName || '').toLowerCase();
-                            return uname !== 'kevin' && !fname.includes('kevin');
-                          }).map((usr) => {
-                            const name = usr.fullName || usr.username;
-                            
-                            const picParticipants = participants.filter(p => {
-                              const pic = extractPicFromNotes(p.notes).pic;
-                              return pic.toLowerCase() === name.toLowerCase() || 
-                                     (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                            });
-                            const count = picParticipants.length;
+                          const activePics = picSummary?.items || [];
 
-                            return { usr, name, count };
-                          }).filter(item => item.usr.username !== 'admin' || item.count > 0);
+                          if (loadingPicSummary) {
+                            return (
+                              <div className="col-span-full py-8 flex items-center justify-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                              </div>
+                            );
+                          }
 
                           if (activePics.length === 0) {
                             return (
@@ -1404,43 +1456,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             );
                           }
 
-                          return activePics.map(({ usr, name, count }) => {
+                          return activePics.map((picSummaryItem) => {
+                            const name = picSummaryItem.name;
+                            const count = picSummaryItem.totalAssigned;
                             const initials = name ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) : '??';
-                            
-                            const picParticipants = participants.filter(p => {
-                              const pic = extractPicFromNotes(p.notes).pic;
-                              return pic.toLowerCase() === name.toLowerCase() || 
-                                     (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                            });
-
-                            const approveCount = picParticipants.filter(p => getPreEventApprovalStatus(p) === 'approve').length;
-                            const pendingCount = picParticipants.filter(p => getPreEventApprovalStatus(p) === 'pending').length;
-                            
-                            // Pre-Event Remarks (Participant Status) breakdown
-                            const registeredCount = picParticipants.filter(p => {
-                              const ps = (p.participantStatus || '').toLowerCase();
-                              const att = (p.attendanceStatus || '').toLowerCase();
-                              return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
-                            }).length;
-
-                            const tentativeCount = picParticipants.filter(p => {
-                              const ps = (p.participantStatus || '').toLowerCase();
-                              return ps === 'tentative' || ps === 'yellow';
-                            }).length;
-
-                            const notRespondCount = picParticipants.filter(p => {
-                              const ps = (p.participantStatus || '').toLowerCase();
-                              return !ps || ps === 'not_respond_yet' || ps === 'not_respon_yet' || ps.startsWith('not_respond_');
-                            }).length;
-
-                            const notInterestCount = picParticipants.filter(p => {
-                              const ps = (p.participantStatus || '').toLowerCase();
-                              return ps === 'not_interest' || ps === 'red';
-                            }).length;
 
                             return (
                               <div
-                                key={usr.id}
+                                key={picSummaryItem.userId || name}
                                 onClick={() => setSelectedPic(name)}
                                 className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-200 flex flex-col justify-between group cursor-pointer animate-in fade-in zoom-in-95 duration-150"
                               >
@@ -1453,7 +1476,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                       <div className="min-w-0">
                                         <h4 className="text-xs font-black text-slate-900 truncate" title={name}>{name}</h4>
                                         <span className="text-[10px] text-slate-400 capitalize font-semibold block truncate">
-                                          {usr.roles?.[0]?.replace('ROLE_', '') || 'PIC'}
+                                          {picSummaryItem.roleLabel || 'PIC'}
                                         </span>
                                       </div>
                                     </div>
@@ -1472,7 +1495,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                       <div 
                                         className="bg-blue-600 h-full rounded-full transition-all duration-300" 
-                                        style={{ width: `${Math.min(100, (count / Math.max(1, participants.length)) * 100)}%` }} 
+                                        style={{ width: `${Math.min(100, (count / Math.max(1, picSummary?.totalParticipants || participants.length)) * 100)}%` }} 
                                       />
                                     </div>
                                   </div>
@@ -1483,11 +1506,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                     <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-50/80 rounded-xl border border-slate-100">
                                       <div className="text-center p-1 bg-emerald-50/60 border border-emerald-100/50 rounded-lg">
                                         <span className="block text-[8px] font-extrabold text-emerald-700 uppercase">Approve</span>
-                                        <span className="text-xs font-black text-emerald-800">{approveCount}</span>
+                                        <span className="text-xs font-black text-emerald-800">{picSummaryItem.approveCount}</span>
                                       </div>
                                       <div className="text-center p-1 bg-amber-50/60 border border-amber-100/50 rounded-lg">
                                         <span className="block text-[8px] font-extrabold text-amber-700 uppercase">Pending</span>
-                                        <span className="text-xs font-black text-amber-800">{pendingCount}</span>
+                                        <span className="text-xs font-black text-amber-800">{picSummaryItem.pendingCount}</span>
                                       </div>
                                     </div>
                                   </div>
@@ -1498,19 +1521,19 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                     <div className="grid grid-cols-2 gap-1 text-[9px] font-bold">
                                       <div className="flex items-center justify-between px-2 py-1 bg-indigo-50/80 border border-indigo-100/70 rounded-lg">
                                         <span className="text-indigo-800">Registered</span>
-                                        <span className="font-black text-indigo-950">{registeredCount}</span>
+                                        <span className="font-black text-indigo-950">{picSummaryItem.registeredCount}</span>
                                       </div>
                                       <div className="flex items-center justify-between px-2 py-1 bg-amber-50/80 border border-amber-100/70 rounded-lg">
                                         <span className="text-amber-800">Tentative</span>
-                                        <span className="font-black text-amber-950">{tentativeCount}</span>
+                                        <span className="font-black text-amber-950">{picSummaryItem.tentativeCount}</span>
                                       </div>
                                       <div className="flex items-center justify-between px-2 py-1 bg-slate-100/80 border border-slate-200/80 rounded-lg">
                                         <span className="text-slate-600">Not Respond</span>
-                                        <span className="font-black text-slate-900">{notRespondCount}</span>
+                                        <span className="font-black text-slate-900">{picSummaryItem.notRespondCount}</span>
                                       </div>
                                       <div className="flex items-center justify-between px-2 py-1 bg-rose-50/80 border border-rose-100/70 rounded-lg">
                                         <span className="text-rose-800">Not Interest</span>
-                                        <span className="font-black text-rose-950">{notInterestCount}</span>
+                                        <span className="font-black text-rose-950">{picSummaryItem.notInterestCount}</span>
                                       </div>
                                     </div>
                                   </div>

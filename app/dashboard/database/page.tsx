@@ -77,6 +77,20 @@ export default function DatabasesPage() {
   const [databases, setDatabases] = useState<Database[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [databaseSummary, setDatabaseSummary] = useState({ all: 0, clean: 0, dirty: 0 });
+  const [databaseFilterOptions, setDatabaseFilterOptions] = useState<{
+    cities: Array<{ value: string; label: string }>;
+    groups: Array<{ id: number; name: string }>;
+    companies: Array<{ id: number; name: string }>;
+    industries: string[];
+    positionLevels: string[];
+  }>({
+    cities: [],
+    groups: [],
+    companies: [],
+    industries: [],
+    positionLevels: []
+  });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -109,7 +123,10 @@ export default function DatabasesPage() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [serverTotalItems, setServerTotalItems] = useState(0);
+  const [serverTotalPages, setServerTotalPages] = useState(1);
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
+  const [exportDatabases, setExportDatabases] = useState<Database[]>([]);
 
   const initialTab = searchParams ? searchParams.get('tab') : null;
   const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'clean' | 'dirty'>(
@@ -184,7 +201,7 @@ export default function DatabasesPage() {
   const [deletingDatabase, setDeletingDatabase] = useState<Database | null>(null);
 
   useEffect(() => {
-    loadData();
+    void loadAuxiliaryData();
   }, []);
 
   useEffect(() => {
@@ -194,25 +211,84 @@ export default function DatabasesPage() {
     }
   }, [searchParams]);
 
-  async function loadData() {
-    setLoading(true);
+  async function loadAuxiliaryData() {
     try {
-      const [conList, compList, groupList, flagList] = await Promise.all([
-        crmService.getDatabases(),
+      const [compList, groupList, flagList] = await Promise.all([
         crmService.getCompanies(),
         crmService.getGroups(),
         crmService.getFlaggedIdentities()
       ]);
-      setDatabases(conList);
       setCompanies(compList);
       setGroups(groupList);
       setFlags(flagList || []);
     } catch (err) {
-      toast.error('Failed to load databases, companies, groups or flags');
+      toast.error('Failed to load companies, groups or flags');
+    }
+  }
+
+  async function loadDatabasePage(pageOverride?: number) {
+    setLoading(true);
+    try {
+      const response = await crmService.getDatabasesList({
+        search: searchQuery || undefined,
+        groupId: filterGroupId || undefined,
+        companyId: filterCompanyId || undefined,
+        positionLevel: filterPositionLevel || undefined,
+        industry: filterIndustry || undefined,
+        city: filterCity || undefined,
+        tab: activeTabFilter,
+        sortBy,
+        sortOrder,
+        page: pageOverride ?? currentPage,
+        size: itemsPerPage
+      });
+
+      setDatabases(response.items || []);
+      setServerTotalItems(response.total || 0);
+      setServerTotalPages(response.totalPages || 1);
+      setDatabaseSummary(response.summary || { all: 0, clean: 0, dirty: 0 });
+    } catch (err) {
+      toast.error('Failed to load databases list');
     } finally {
       setLoading(false);
     }
   }
+
+  async function loadDatabaseFilterOptions() {
+    try {
+      const response = await crmService.getDatabaseFilterOptions({
+        search: searchQuery || undefined,
+        groupId: filterGroupId || undefined,
+        companyId: filterCompanyId || undefined,
+        positionLevel: filterPositionLevel || undefined,
+        industry: filterIndustry || undefined,
+        city: filterCity || undefined,
+        tab: activeTabFilter
+      });
+      setDatabaseFilterOptions({
+        cities: response.cities || [],
+        groups: response.groups || [],
+        companies: response.companies || [],
+        industries: response.industries || [],
+        positionLevels: response.positionLevels || []
+      });
+    } catch {
+      setDatabaseFilterOptions({
+        cities: [],
+        groups: [],
+        companies: [],
+        industries: [],
+        positionLevels: []
+      });
+    }
+  }
+
+  const refreshDatabasePage = async () => {
+    await Promise.all([
+      loadDatabasePage(currentPage),
+      crmService.getFlaggedIdentities().then((items) => setFlags(items || [])).catch(() => {})
+    ]);
+  };
 
   const openEditModal = (database: Database) => {
     setEditingDatabase(database);
@@ -268,60 +344,11 @@ export default function DatabasesPage() {
   };
 
   // Dynamic dropdown options based on active filters
-  const filteredCompanyOptions = companies.filter((c) => {
-    if (filterGroupId && c.group?.id?.toString() !== filterGroupId) return false;
-    if (filterIndustry && !matchesIndustryFilter(c.industry, filterIndustry)) return false;
-    if (filterCity && normalizeCityName(c.city) !== filterCity) return false;
-    return true;
-  });
-
-  const filteredIndustryOptions = (() => {
-    if (!filterGroupId && !filterCompanyId && !filterCity) {
-      return INDUSTRIES;
-    }
-    const scopedCompanies = companies.filter((c) => {
-      if (filterGroupId && c.group?.id?.toString() !== filterGroupId) return false;
-      if (filterCompanyId && c.id.toString() !== filterCompanyId) return false;
-      if (filterCity && normalizeCityName(c.city) !== filterCity) return false;
-      return true;
-    });
-    const activeIndustries = new Set<string>();
-    scopedCompanies.forEach((c) => {
-      if (c.industry?.trim()) {
-        activeIndustries.add(c.industry.trim());
-      }
-    });
-    if (activeIndustries.size === 0) return INDUSTRIES;
-
-    const matched = INDUSTRIES.filter((ind) =>
-      Array.from(activeIndustries).some((act) => matchesIndustryFilter(act, ind))
-    );
-    return matched.length > 0 ? matched : Array.from(activeIndustries);
-  })();
-
-  const filteredGroupOptions = groups.filter((g) => {
-    return companies.some((c) => {
-      if (c.group?.id !== g.id) return false;
-      if (filterIndustry && !matchesIndustryFilter(c.industry, filterIndustry)) return false;
-      if (filterCity && normalizeCityName(c.city) !== filterCity) return false;
-      return true;
-    });
-  });
-
-  const filteredCityOptions = (() => {
-    const cityMap = new Map<string, string>();
-    companies.forEach((c) => {
-      if (filterGroupId && c.group?.id?.toString() !== filterGroupId) return;
-      if (filterCompanyId && c.id.toString() !== filterCompanyId) return;
-      if (filterIndustry && !matchesIndustryFilter(c.industry, filterIndustry)) return;
-
-      const value = normalizeCityName(c.city);
-      if (!value) return;
-      cityMap.set(value, CITY_LABELS.get(value) || toTitleCase(c.city!.trim()));
-    });
-    return Array.from(cityMap, ([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  })();
+  const filteredCompanyOptions = databaseFilterOptions.companies;
+  const filteredIndustryOptions = databaseFilterOptions.industries.length > 0 ? databaseFilterOptions.industries : INDUSTRIES;
+  const filteredGroupOptions = databaseFilterOptions.groups;
+  const filteredCityOptions = databaseFilterOptions.cities;
+  const filteredPositionOptions = databaseFilterOptions.positionLevels;
 
   const handleGroupChange = (groupId: string) => {
     setFilterGroupId(groupId);
@@ -426,117 +453,16 @@ export default function DatabasesPage() {
     setActiveTabFilter('all');
   };
 
-
-  // Search and Advanced Filters
-  const filteredDatabases = databases.filter((c) => {
-    // Hide opted-out / inactive databases from the active lists
-    if (c.isActive === false) return false;
-
-    // Hide confirmed Tikus/Spam from the main databases directory entirely
-    const isConfirmedTikus = flags.some(f => f.database?.id === c.id && f.status === 'confirmed');
-    if (isConfirmedTikus) return false;
-
-    // Sidebar separates clean Database from Dirty Database.
-    const isDirty = checkDatabaseCompleteness(c).isIncomplete;
-    if (activeTabFilter === 'dirty' && !isDirty) return false;
-    if (activeTabFilter === 'clean' && isDirty) return false;
-
-    // 1. General search query
-    const query = searchQuery.toLowerCase();
-    const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
-    const matchesSearch =
-      !query ||
-      fullName.includes(query) ||
-      (c.company?.name && c.company.name.toLowerCase().includes(query)) ||
-      (c.company?.brandName && c.company.brandName.toLowerCase().includes(query)) ||
-      (c.company?.group?.name && c.company.group.name.toLowerCase().includes(query)) ||
-      (c.company?.city && c.company.city.toLowerCase().includes(query)) ||
-      (c.jobTitle && c.jobTitle.toLowerCase().includes(query)) ||
-      (c.positionLevel && c.positionLevel.toLowerCase().includes(query)) ||
-      (c.specialityDivision && c.specialityDivision.toLowerCase().includes(query)) ||
-      (c.mobilePhone && c.mobilePhone.includes(query)) ||
-      (c.source && c.source.toLowerCase().includes(query));
-
-    // 2. Company filter
-    const matchesCompany = !filterCompanyId || (c.company?.id?.toString() === filterCompanyId);
-
-    // 3. Group filter
-    const matchesGroup = !filterGroupId || (c.company?.group?.id?.toString() === filterGroupId);
-
-    // 4. Position Level filter
-    const matchesPositionLevel = !filterPositionLevel || (c.positionLevel === filterPositionLevel);
-
-    // 5. Industry filter
-    const matchesIndustry = !filterIndustry || matchesIndustryFilter(c.company?.industry, filterIndustry);
-
-    // 6. City filter
-    const matchesCity = !filterCity || normalizeCityName(c.company?.city) === filterCity;
-
-    return matchesSearch && matchesCompany && matchesGroup && matchesPositionLevel && matchesIndustry && matchesCity;
-  });
-
-  // Apply Ascending / Descending sorting
-  const sortedDatabases = [...filteredDatabases].sort((a, b) => {
-    let valA: any = '';
-    let valB: any = '';
-
-    switch (sortBy) {
-      case 'firstName':
-        valA = (a.firstName || '').toLowerCase();
-        valB = (b.firstName || '').toLowerCase();
-        break;
-      case 'lastName':
-        valA = (a.lastName || '').toLowerCase();
-        valB = (b.lastName || '').toLowerCase();
-        break;
-      case 'companyName':
-        valA = (a.company?.name || '').toLowerCase();
-        valB = (b.company?.name || '').toLowerCase();
-        break;
-      case 'groupName':
-        valA = (a.company?.group?.name || '').toLowerCase();
-        valB = (b.company?.group?.name || '').toLowerCase();
-        break;
-      case 'brandName':
-        valA = (a.company?.brandName || '').toLowerCase();
-        valB = (b.company?.brandName || '').toLowerCase();
-        break;
-      case 'jobTitle':
-        valA = (a.jobTitle || '').toLowerCase();
-        valB = (b.jobTitle || '').toLowerCase();
-        break;
-      case 'position':
-        valA = (a.positionLevel || '').toLowerCase();
-        valB = (b.positionLevel || '').toLowerCase();
-        break;
-      case 'industry':
-        valA = (a.company?.industry || '').toLowerCase();
-        valB = (b.company?.industry || '').toLowerCase();
-        break;
-      case 'city':
-        valA = (a.company?.city || '').toLowerCase();
-        valB = (b.company?.city || '').toLowerCase();
-        break;
-      case 'id':
-      default:
-        valA = a.id || 0;
-        valB = b.id || 0;
-        break;
-    }
-
-    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
-    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const isAllSelected = sortedDatabases.length > 0 && sortedDatabases.every(d => selectedDatabaseIds.includes(d.id));
+  const filteredDatabases = databases;
+  const currentDatabases = databases;
+  const isAllSelected = currentDatabases.length > 0 && currentDatabases.every(d => selectedDatabaseIds.includes(d.id));
 
   const handleToggleSelectAll = () => {
     if (isAllSelected) {
-      const filteredIds = sortedDatabases.map(d => d.id);
+      const filteredIds = currentDatabases.map(d => d.id);
       setSelectedDatabaseIds(prev => prev.filter(id => !filteredIds.includes(id)));
     } else {
-      const filteredIds = sortedDatabases.map(d => d.id);
+      const filteredIds = currentDatabases.map(d => d.id);
       setSelectedDatabaseIds(prev => {
         const newSelection = [...prev];
         filteredIds.forEach(id => {
@@ -554,23 +480,48 @@ export default function DatabasesPage() {
     setCurrentPage(1);
   }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, sortBy, sortOrder, activeTabFilter]);
 
+  useEffect(() => {
+    void loadDatabasePage();
+  }, [currentPage, searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, sortBy, sortOrder, activeTabFilter]);
+
+  useEffect(() => {
+    void loadDatabaseFilterOptions();
+  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter]);
+
   // Update table scroll width for top scrollbar sync
   useEffect(() => {
     if (tableRef.current) {
       setTableScrollWidth(tableRef.current.scrollWidth);
     }
-  }, [databases, filteredDatabases, currentPage]);
+  }, [databases, currentPage]);
 
-  const totalItems = sortedDatabases.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentDatabases = sortedDatabases.slice(indexOfFirstItem, indexOfLastItem);
+  const totalItems = serverTotalItems;
+  const totalPages = serverTotalPages;
+  const indexOfFirstItem = totalItems === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1;
+  const indexOfLastItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-  const handleOpenExportConfig = () => {
+  const handleOpenExportConfig = async () => {
     if (filteredDatabases.length === 0) {
       toast.error("Tidak ada data database untuk di-export.");
       return;
+    }
+    try {
+      const response = await crmService.getDatabasesList({
+        search: searchQuery || undefined,
+        groupId: filterGroupId || undefined,
+        companyId: filterCompanyId || undefined,
+        positionLevel: filterPositionLevel || undefined,
+        industry: filterIndustry || undefined,
+        city: filterCity || undefined,
+        tab: activeTabFilter,
+        sortBy,
+        sortOrder,
+        page: 1,
+        size: 5000
+      });
+      setExportDatabases(response.items || []);
+    } catch {
+      setExportDatabases(databases);
     }
     setIsExportConfigModalOpen(true);
   };
@@ -624,7 +575,7 @@ export default function DatabasesPage() {
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
-          Semua Data ({databases.filter(c => c.isActive !== false).length})
+          Semua Data ({databaseSummary.all})
         </button>
         <button
           onClick={() => setActiveTabFilter('clean')}
@@ -635,7 +586,7 @@ export default function DatabasesPage() {
           }`}
         >
           <CheckCircle className="w-3.5 h-3.5" />
-          Database Bersih ({databases.filter(c => c.isActive !== false && !checkDatabaseCompleteness(c).isIncomplete).length})
+          Database Bersih ({databaseSummary.clean})
         </button>
         <button
           onClick={() => setActiveTabFilter('dirty')}
@@ -646,7 +597,7 @@ export default function DatabasesPage() {
           }`}
         >
           <AlertCircle className="w-3.5 h-3.5" />
-          Database Kotor ({databases.filter(c => c.isActive !== false && checkDatabaseCompleteness(c).isIncomplete).length})
+          Database Kotor ({databaseSummary.dirty})
         </button>
       </div>
 
@@ -757,10 +708,9 @@ export default function DatabasesPage() {
               </SelectTrigger>
               <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
                 <SelectItem value="ALL">All Levels</SelectItem>
-                <SelectItem value="unknown">unknown</SelectItem>
-                <SelectItem value="C-level//GM/Director">C-level//GM/Director</SelectItem>
-                <SelectItem value="Manajerial/Head">Manajerial/Head</SelectItem>
-                <SelectItem value="Staff">Staff</SelectItem>
+                {filteredPositionOptions.map((level) => (
+                  <SelectItem key={level} value={level}>{level}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -1245,7 +1195,7 @@ export default function DatabasesPage() {
               {/* Left Side: Info */}
               <div className="hidden sm:block">
                 <p className="text-xs font-semibold text-slate-500">
-                  Showing <span className="font-extrabold text-slate-800">{indexOfFirstItem + 1}</span> to{' '}
+                  Showing <span className="font-extrabold text-slate-800">{indexOfFirstItem}</span> to{' '}
                   <span className="font-extrabold text-slate-800">
                     {Math.min(indexOfLastItem, totalItems)}
                   </span>{' '}
@@ -1332,7 +1282,7 @@ export default function DatabasesPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         companies={companies}
-        onCreated={loadData}
+        onCreated={refreshDatabasePage}
       />
 
       {/* Edit Database Modal */}
@@ -1344,7 +1294,7 @@ export default function DatabasesPage() {
         }}
         database={editingDatabase!}
         companies={companies}
-        onUpdated={loadData}
+        onUpdated={refreshDatabasePage}
       />
 
       {/* Manage Emails Modal */}
@@ -1368,7 +1318,7 @@ export default function DatabasesPage() {
           isOpen={isTakeoutModalOpen}
           onClose={() => setIsTakeoutModalOpen(false)}
           database={selectedDatabase}
-          onSubmitSuccess={loadData}
+          onSubmitSuccess={refreshDatabasePage}
         />
       )}
 
@@ -1376,8 +1326,8 @@ export default function DatabasesPage() {
       <ExportConfigModal
         isOpen={isExportConfigModalOpen}
         onClose={() => setIsExportConfigModalOpen(false)}
-        databases={databases}
-        filteredDatabases={filteredDatabases}
+        databases={exportDatabases.length > 0 ? exportDatabases : databases}
+        filteredDatabases={exportDatabases.length > 0 ? exportDatabases : filteredDatabases}
         selectedDatabaseIds={selectedDatabaseIds}
         selectedColumns={selectedColumns}
         setSelectedColumns={setSelectedColumns}
@@ -1395,7 +1345,7 @@ export default function DatabasesPage() {
             setDeletingDatabase(null);
           }}
           database={deletingDatabase}
-          onConfirmSuccess={loadData}
+          onConfirmSuccess={refreshDatabasePage}
         />
       )}
 
@@ -1403,7 +1353,7 @@ export default function DatabasesPage() {
       <ExcelImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-        onImportSuccess={loadData}
+        onImportSuccess={refreshDatabasePage}
       />
     </div>
   );

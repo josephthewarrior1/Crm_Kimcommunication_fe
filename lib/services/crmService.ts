@@ -3,9 +3,15 @@ import {
   Group,
   Company,
   Database,
+  DatabaseFilterOptionsResponse,
+  DatabaseListResponse,
   DatabaseEmail,
   Event,
+  EventAvailableDatabasesResponse,
+  EventActivitySummaryResponse,
+  EventListResponse,
   EventParticipant,
+  EventParticipantPicSummaryResponse,
   EventParticipantFilterOptions,
   EventParticipantActivity,
   EventParticipantStatisticsResponse,
@@ -61,6 +67,56 @@ export class CrmService extends ApiService {
     return this.get<Database[]>('/api/databases');
   }
 
+  async getDatabasesList(params?: {
+    search?: string;
+    groupId?: string;
+    companyId?: string;
+    positionLevel?: string;
+    industry?: string;
+    city?: string;
+    tab?: 'all' | 'clean' | 'dirty';
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    page?: number;
+    size?: number;
+  }): Promise<DatabaseListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.groupId) searchParams.set('groupId', params.groupId);
+    if (params?.companyId) searchParams.set('companyId', params.companyId);
+    if (params?.positionLevel) searchParams.set('positionLevel', params.positionLevel);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.city) searchParams.set('city', params.city);
+    if (params?.tab) searchParams.set('tab', params.tab);
+    if (params?.sortBy) searchParams.set('sortBy', params.sortBy);
+    if (params?.sortOrder) searchParams.set('sortOrder', params.sortOrder);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.size) searchParams.set('size', String(params.size));
+    const query = searchParams.toString();
+    return this.get<DatabaseListResponse>(`/api/databases/list${query ? `?${query}` : ''}`);
+  }
+
+  async getDatabaseFilterOptions(params?: {
+    search?: string;
+    groupId?: string;
+    companyId?: string;
+    positionLevel?: string;
+    industry?: string;
+    city?: string;
+    tab?: 'all' | 'clean' | 'dirty';
+  }): Promise<DatabaseFilterOptionsResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.groupId) searchParams.set('groupId', params.groupId);
+    if (params?.companyId) searchParams.set('companyId', params.companyId);
+    if (params?.positionLevel) searchParams.set('positionLevel', params.positionLevel);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.city) searchParams.set('city', params.city);
+    if (params?.tab) searchParams.set('tab', params.tab);
+    const query = searchParams.toString();
+    return this.get<DatabaseFilterOptionsResponse>(`/api/databases/filter-options${query ? `?${query}` : ''}`);
+  }
+
   async createDatabase(database: Partial<Database>, companyId?: number): Promise<Database> {
     const url = companyId ? `/api/databases?companyId=${companyId}` : '/api/databases';
     return this.post<Database>(url, database);
@@ -98,6 +154,45 @@ export class CrmService extends ApiService {
   // --- EVENTS ---
   async getEvents(): Promise<Event[]> {
     return this.get<Event[]>('/api/events');
+  }
+
+  async getEventsList(params?: {
+    search?: string;
+    page?: number;
+    size?: number;
+  }): Promise<EventListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.size) searchParams.set('size', String(params.size));
+    const query = searchParams.toString();
+    return this.get<EventListResponse>(`/api/events/list${query ? `?${query}` : ''}`);
+  }
+
+  async getEventById(id: number): Promise<Event> {
+    return this.get<Event>(`/api/events/${id}`);
+  }
+
+  async getAvailableDatabasesForEvent(
+    eventId: number,
+    params?: {
+      search?: string;
+      company?: string;
+      position?: string;
+      industry?: string;
+      city?: string;
+      invitedEventId?: string;
+    }
+  ): Promise<EventAvailableDatabasesResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.company) searchParams.set('company', params.company);
+    if (params?.position) searchParams.set('position', params.position);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.city) searchParams.set('city', params.city);
+    if (params?.invitedEventId) searchParams.set('invitedEventId', params.invitedEventId);
+    const query = searchParams.toString();
+    return this.get<EventAvailableDatabasesResponse>(`/api/events/${eventId}/available-databases${query ? `?${query}` : ''}`);
   }
 
   async getEligibleManagersForEvent(eventId: number): Promise<AppUser[]> {
@@ -162,6 +257,32 @@ export class CrmService extends ApiService {
     return this.get<any>(`/api/events/${eventId}/participants/summary${query ? `?${query}` : ''}`);
   }
 
+  async getEventParticipantsSummaryByPic(
+    eventId: number,
+    params?: {
+      tab?: string;
+      pic?: string;
+      company?: string;
+      position?: string;
+      industry?: string;
+      confirmationStatus?: string;
+      reminderHariH?: string;
+      search?: string;
+    }
+  ): Promise<EventParticipantPicSummaryResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.tab) searchParams.set('tab', params.tab);
+    if (params?.pic) searchParams.set('pic', params.pic);
+    if (params?.company) searchParams.set('company', params.company);
+    if (params?.position) searchParams.set('position', params.position);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
+    if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
+    if (params?.search) searchParams.set('search', params.search);
+    const query = searchParams.toString();
+    return this.get<EventParticipantPicSummaryResponse>(`/api/events/${eventId}/participants/summary-by-pic${query ? `?${query}` : ''}`);
+  }
+
   async getEventStatistics(
     eventId: number,
     params?: {
@@ -192,10 +313,24 @@ export class CrmService extends ApiService {
     eventId: number,
     params?: {
       tab?: string;
+      pic?: string;
+      company?: string;
+      position?: string;
+      industry?: string;
+      confirmationStatus?: string;
+      reminderHariH?: string;
+      search?: string;
     }
   ): Promise<EventParticipantFilterOptions> {
     const searchParams = new URLSearchParams();
     if (params?.tab) searchParams.set('tab', params.tab);
+    if (params?.pic) searchParams.set('pic', params.pic);
+    if (params?.company) searchParams.set('company', params.company);
+    if (params?.position) searchParams.set('position', params.position);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
+    if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
+    if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
     return this.get<EventParticipantFilterOptions>(`/api/events/${eventId}/participants/filter-options${query ? `?${query}` : ''}`);
   }
@@ -424,6 +559,22 @@ export class CrmService extends ApiService {
       url += `?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
     }
     return this.get<EventParticipantActivity[]>(url);
+  }
+
+  async getEventActivitySummary(
+    eventId: number,
+    params?: {
+      startDate?: string;
+      endDate?: string;
+      pic?: string;
+    }
+  ): Promise<EventActivitySummaryResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.startDate) searchParams.set('startDate', params.startDate);
+    if (params?.endDate) searchParams.set('endDate', params.endDate);
+    if (params?.pic) searchParams.set('pic', params.pic);
+    const query = searchParams.toString();
+    return this.get<EventActivitySummaryResponse>(`/api/event-participants/event/${eventId}/activity-summary${query ? `?${query}` : ''}`);
   }
 
   async getEventReport(eventId: number): Promise<any> {
