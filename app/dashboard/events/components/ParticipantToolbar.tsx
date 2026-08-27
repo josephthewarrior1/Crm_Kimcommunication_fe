@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, RefreshCw } from 'lucide-react';
-import { EventParticipant, AppUser } from '../../../../lib/types';
+import { EventParticipant, AppUser, EventParticipantFilterOptions } from '../../../../lib/types';
 
 interface ParticipantToolbarProps {
   participants: EventParticipant[];
@@ -19,6 +19,7 @@ interface ParticipantToolbarProps {
   setFilterReminderHariH?: (val: string) => void;
   filterPic: string;
   setFilterPic: (val: string) => void;
+  filterOptions?: EventParticipantFilterOptions | null;
   activeTab: string;
   isAdmin: boolean;
   handleResetFilters: () => void;
@@ -41,6 +42,7 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
   setFilterReminderHariH,
   filterPic,
   setFilterPic,
+  filterOptions,
   activeTab,
   isAdmin,
   handleResetFilters,
@@ -48,9 +50,26 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
   const hasActiveFilters =
     searchQuery ||
     filterCompany ||
+    filterPosition ||
+    filterIndustry ||
     filterConfirmationStatus ||
     filterReminderHariH ||
     filterPic;
+
+  const companyOptions = filterOptions?.companies || Array.from(new Set(participants
+    .map(p => p.database.company?.name)
+    .filter((value): value is string => Boolean(value)))).sort();
+  const positionOptions = filterOptions?.positions || Array.from(new Set(participants
+    .map(p => p.database?.positionLevel)
+    .filter((value): value is string => Boolean(value)))).sort();
+  const industryOptions = filterOptions?.industries || Array.from(new Set(participants
+    .map(p => p.database.company?.industry)
+    .filter((value): value is string => Boolean(value)))).sort();
+  const picOptions = filterOptions?.pics || usersList.filter(user => {
+    const uname = (user.username || '').toLowerCase();
+    const fname = (user.fullName || '').toLowerCase();
+    return uname !== 'kevin' && !fname.includes('kevin');
+  }).map((user) => user.fullName || user.username);
 
   return (
     <div className="bg-white border border-slate-200/80 rounded-xl p-4 space-y-4 mb-5 shrink-0 shadow-sm">
@@ -87,8 +106,36 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
             className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
           >
             <option value="">All Companies</option>
-            {Array.from(new Set(participants.map(p => p.database.company?.name).filter(Boolean))).sort().map((compName) => (
+            {companyOptions.map((compName) => (
               <option key={compName} value={compName}>{compName}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Filter by Position</label>
+          <select
+            value={filterPosition}
+            onChange={(e) => setFilterPosition(e.target.value)}
+            className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
+          >
+            <option value="">All Positions</option>
+            {positionOptions.map((positionName) => (
+              <option key={positionName} value={positionName}>{positionName}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Filter by Industry</label>
+          <select
+            value={filterIndustry}
+            onChange={(e) => setFilterIndustry(e.target.value)}
+            className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
+          >
+            <option value="">All Industries</option>
+            {industryOptions.map((industryName) => (
+              <option key={industryName} value={industryName}>{industryName}</option>
             ))}
           </select>
         </div>
@@ -130,21 +177,16 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Filter by PIC</label>
             <select
-              value={filterPic}
-              onChange={(e) => setFilterPic(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
-            >
-              <option value="">All PICs</option>
-              {usersList.filter(user => {
-                const uname = (user.username || '').toLowerCase();
-                const fname = (user.fullName || '').toLowerCase();
-                return uname !== 'kevin' && !fname.includes('kevin');
-              }).map((user) => {
-                const name = user.fullName || user.username;
-                return <option key={user.id} value={name}>{name}</option>;
-              })}
-            </select>
-          </div>
+            value={filterPic}
+            onChange={(e) => setFilterPic(e.target.value)}
+            className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
+          >
+            <option value="">All PICs</option>
+            {picOptions.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </div>
         )}
       </div>
     </div>

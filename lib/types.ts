@@ -129,6 +129,28 @@ export interface EventParticipant {
   updatedAt?: string;
 }
 
+export interface EventParticipantStatisticsScope {
+  [key: string]: number;
+}
+
+export interface EventParticipantStatisticsResponse {
+  eventId: number;
+  tab: 'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday';
+  scopes: {
+    all: EventParticipantStatisticsScope;
+    mine: EventParticipantStatisticsScope;
+  };
+}
+
+export interface EventParticipantFilterOptions {
+  eventId: number;
+  tab: string;
+  companies: string[];
+  positions: string[];
+  industries: string[];
+  pics: string[];
+}
+
 export interface EventParticipantActivity {
   id: number;
   eventParticipant?: EventParticipant;

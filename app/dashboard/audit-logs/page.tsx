@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../lib/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { AuditLog } from '../../../lib/types';
 import { auditLogService } from '../../../lib/services/auditLogService';
 import {
@@ -34,7 +35,8 @@ import {
 import { toast } from 'sonner';
 
 export default function AuditLogsPage() {
-  const { user, isAdmin, isManager } = useAuth();
+  const { user, isAdmin, isManager, isLoading } = useAuth();
+  const router = useRouter();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,7 +45,7 @@ export default function AuditLogsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedModule, setSelectedModule] = useState('ALL');
   const [selectedAction, setSelectedAction] = useState('ALL');
-  const [selectedUser, setSelectedUser] = useState('ALL');
+  const [selectedUser, setSelectedUser] = useState(user?.username || 'ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -57,7 +59,16 @@ export default function AuditLogsPage() {
   // Detail Modal
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAdmin && !isManager) {
+      toast.error('Access denied. Only ADMIN or MANAGER can view Activity Logs.');
+      router.replace('/dashboard');
+    }
+  }, [isAdmin, isManager, isLoading, router]);
+
   const fetchLogs = async (showToast: boolean = false) => {
+    if (!isAdmin && !isManager) return;
     try {
       if (showToast) setRefreshing(true);
       else setLoading(true);
@@ -66,7 +77,9 @@ export default function AuditLogsPage() {
         search: searchQuery || undefined,
         module: selectedModule !== 'ALL' ? selectedModule : undefined,
         actionType: selectedAction !== 'ALL' ? selectedAction : undefined,
-        username: selectedUser !== 'ALL' ? selectedUser : undefined,
+        username: isAdmin
+          ? (selectedUser !== 'ALL' ? selectedUser : undefined)
+          : (user?.username || undefined),
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       });
@@ -84,8 +97,13 @@ export default function AuditLogsPage() {
   };
 
   useEffect(() => {
+    if (!isAdmin && !isManager) return;
     fetchLogs();
-  }, [selectedModule, selectedAction, selectedUser, startDate, endDate]);
+  }, [isAdmin, isManager, user?.username, selectedModule, selectedAction, selectedUser, startDate, endDate]);
+
+  if (isLoading || (!isAdmin && !isManager)) {
+    return null;
+  }
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +115,7 @@ export default function AuditLogsPage() {
     setSearchQuery('');
     setSelectedModule('ALL');
     setSelectedAction('ALL');
-    setSelectedUser('ALL');
+    setSelectedUser(isAdmin ? 'ALL' : (user?.username || 'ALL'));
     setStartDate('');
     setEndDate('');
     setCurrentPage(1);
@@ -329,7 +347,9 @@ export default function AuditLogsPage() {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Activity & Audit Logs</h1>
           </div>
           <p className="text-xs md:text-sm text-slate-500 mt-1">
-            Lacak riwayat seluruh aktivitas, perubahan data, impor Excel, dan jejak operasional pengguna secara transparan.
+            {isAdmin
+              ? 'Lacak riwayat seluruh aktivitas, perubahan data, impor Excel, dan jejak operasional pengguna secara transparan.'
+              : 'Lihat riwayat aktivitas akun kamu sendiri secara transparan.'}
           </p>
         </div>
 
@@ -441,7 +461,7 @@ export default function AuditLogsPage() {
         </div>
 
         {/* Dropdown Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-3 pt-2 border-t border-slate-100`}>
           {/* Module Filter */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
@@ -488,22 +508,23 @@ export default function AuditLogsPage() {
             </select>
           </div>
 
-          {/* User Filter */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Pelaku (User)
-            </label>
-            <select
-              value={selectedUser}
-              onChange={(e) => { setSelectedUser(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-            >
-              <option value="ALL">Semua Pengguna</option>
-              {uniqueUsers.map(u => (
-                <option key={u} value={u}>{u}</option>
-              ))}
-            </select>
-          </div>
+          {isAdmin && (
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                Pelaku (User)
+              </label>
+              <select
+                value={selectedUser}
+                onChange={(e) => { setSelectedUser(e.target.value); setCurrentPage(1); }}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="ALL">Semua Pengguna</option>
+                {uniqueUsers.map(u => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Start Date */}
           <div>
@@ -524,7 +545,7 @@ export default function AuditLogsPage() {
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 Sampai Tanggal
               </label>
-              {(selectedModule !== 'ALL' || selectedAction !== 'ALL' || selectedUser !== 'ALL' || startDate || endDate || searchQuery) && (
+              {(selectedModule !== 'ALL' || selectedAction !== 'ALL' || (isAdmin && selectedUser !== 'ALL') || startDate || endDate || searchQuery) && (
                 <button
                   onClick={handleResetFilters}
                   className="text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:underline"

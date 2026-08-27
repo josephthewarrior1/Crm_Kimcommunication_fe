@@ -6,7 +6,9 @@ import {
   DatabaseEmail,
   Event,
   EventParticipant,
+  EventParticipantFilterOptions,
   EventParticipantActivity,
+  EventParticipantStatisticsResponse,
   RemovalRequest,
   PersonalEmailDomain,
   FlaggedIdentity,
@@ -158,6 +160,44 @@ export class CrmService extends ApiService {
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
     return this.get<any>(`/api/events/${eventId}/participants/summary${query ? `?${query}` : ''}`);
+  }
+
+  async getEventStatistics(
+    eventId: number,
+    params?: {
+      tab?: string;
+      pic?: string;
+      company?: string;
+      position?: string;
+      industry?: string;
+      confirmationStatus?: string;
+      reminderHariH?: string;
+      search?: string;
+    }
+  ): Promise<EventParticipantStatisticsResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.tab) searchParams.set('tab', params.tab);
+    if (params?.pic) searchParams.set('pic', params.pic);
+    if (params?.company) searchParams.set('company', params.company);
+    if (params?.position) searchParams.set('position', params.position);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
+    if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
+    if (params?.search) searchParams.set('search', params.search);
+    const query = searchParams.toString();
+    return this.get<EventParticipantStatisticsResponse>(`/api/events/${eventId}/statistics${query ? `?${query}` : ''}`);
+  }
+
+  async getEventParticipantFilterOptions(
+    eventId: number,
+    params?: {
+      tab?: string;
+    }
+  ): Promise<EventParticipantFilterOptions> {
+    const searchParams = new URLSearchParams();
+    if (params?.tab) searchParams.set('tab', params.tab);
+    const query = searchParams.toString();
+    return this.get<EventParticipantFilterOptions>(`/api/events/${eventId}/participants/filter-options${query ? `?${query}` : ''}`);
   }
 
   async autoSplitEventAssignments(

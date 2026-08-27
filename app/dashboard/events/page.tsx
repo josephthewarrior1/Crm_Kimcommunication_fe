@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { crmService } from '../../../lib/services/crmService';
-import { Event, EventParticipant, Database, AppUser } from '../../../lib/types';
+import { Event, EventParticipant, Database, AppUser, EventParticipantFilterOptions, EventParticipantStatisticsResponse } from '../../../lib/types';
 import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload, RefreshCw, Columns } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -51,6 +51,8 @@ export default function EventsPage() {
   const [participantsSummary, setParticipantsSummary] = useState<any>(null);
   const [allStatsParticipants, setAllStatsParticipants] = useState<EventParticipant[]>([]);
   const [allParticipantsSummary, setAllParticipantsSummary] = useState<any>(null);
+  const [eventStatistics, setEventStatistics] = useState<EventParticipantStatisticsResponse | null>(null);
+  const [participantFilterOptions, setParticipantFilterOptions] = useState<EventParticipantFilterOptions | null>(null);
   const [participantsTotal, setParticipantsTotal] = useState(0);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
@@ -305,6 +307,8 @@ export default function EventsPage() {
       setAllStatsParticipants([]);
       setParticipantsSummary(null);
       setAllParticipantsSummary(null);
+      setEventStatistics(null);
+      setParticipantFilterOptions(null);
       setParticipantsTotal(0);
       setEligibleManagers([]);
       return;
@@ -344,6 +348,8 @@ export default function EventsPage() {
         setAllStatsParticipants([]);
         setParticipantsSummary(null);
         setAllParticipantsSummary(null);
+        setEventStatistics(null);
+        setParticipantFilterOptions(null);
         setEligibleManagers([]);
         return;
       }
@@ -363,6 +369,8 @@ export default function EventsPage() {
             setAllStatsParticipants([]);
             setParticipantsSummary(null);
             setAllParticipantsSummary(null);
+            setEventStatistics(null);
+            setParticipantFilterOptions(null);
             setEligibleManagers([]);
             router.push('/dashboard/events');
           } else if (!selectedEvent || selectedEvent.id !== matched.id) {
@@ -376,6 +384,8 @@ export default function EventsPage() {
           setAllStatsParticipants([]);
           setParticipantsSummary(null);
           setAllParticipantsSummary(null);
+          setEventStatistics(null);
+          setParticipantFilterOptions(null);
           setEligibleManagers([]);
         }
       } else {
@@ -385,6 +395,8 @@ export default function EventsPage() {
         setAllStatsParticipants([]);
         setParticipantsSummary(null);
         setAllParticipantsSummary(null);
+        setEventStatistics(null);
+        setParticipantFilterOptions(null);
         setEligibleManagers([]);
       }
     };
@@ -655,17 +667,29 @@ export default function EventsPage() {
     try {
       const tableQuery = getParticipantQueryParams({ tab: effectiveTab });
       const statsQuery = getParticipantQueryParams({ tab: effectiveTab, page: 1, size: 5000 });
+      const statisticsQuery = {
+        tab: effectiveTab,
+        pic: isAdmin ? filterPic || undefined : undefined,
+        company: filterCompany || undefined,
+        position: filterPosition || undefined,
+        industry: filterIndustry || undefined,
+        confirmationStatus: filterConfirmationStatus || undefined,
+        reminderHariH: filterReminderHariH || undefined,
+        search: participantSearchQuery || undefined
+      };
       const allStatsQuery = getParticipantQueryParams(
         { tab: effectiveTab, page: 1, size: 5000 },
         { includeImplicitPicFilter: false }
       );
 
-      const [tableResponse, statsResponse, summaryResponse, allStatsResponse, allSummaryResponse] = await Promise.all([
+      const [tableResponse, statsResponse, summaryResponse, allStatsResponse, allSummaryResponse, statisticsResponse, filterOptionsResponse] = await Promise.all([
         crmService.getEventParticipantsByEvent(event.id, tableQuery),
         crmService.getEventParticipantsByEvent(event.id, statsQuery),
         crmService.getEventParticipantsSummary(event.id, statsQuery),
         crmService.getEventParticipantsByEvent(event.id, allStatsQuery),
-        crmService.getEventParticipantsSummary(event.id, allStatsQuery)
+        crmService.getEventParticipantsSummary(event.id, allStatsQuery),
+        crmService.getEventStatistics(event.id, statisticsQuery),
+        crmService.getEventParticipantFilterOptions(event.id, { tab: effectiveTab })
       ]);
 
       const tableParticipants = tableResponse?.items || [];
@@ -677,6 +701,8 @@ export default function EventsPage() {
       setParticipantsSummary(summaryResponse || null);
       setAllStatsParticipantsSorted(allFilteredParticipants);
       setAllParticipantsSummary(allSummaryResponse || null);
+      setEventStatistics(statisticsResponse || null);
+      setParticipantFilterOptions(filterOptionsResponse || null);
       setParticipantsTotal(tableResponse?.total || 0);
     } catch (err) {
       toast.error('Failed to fetch participants for this event');
@@ -1485,16 +1511,26 @@ export default function EventsPage() {
                   >
                     <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${accentColor}`} />
                     <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 pr-1">
-                          <h4 className="font-extrabold text-slate-900 text-base group-hover:text-blue-600 transition-colors line-clamp-2">{evt.name}</h4>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0 pr-1">
+                          <h4
+                            className="font-extrabold text-slate-900 text-base leading-snug group-hover:text-blue-600 transition-colors line-clamp-2"
+                            title={evt.name}
+                          >
+                            {evt.name}
+                          </h4>
+                          {packageBadge && (
+                            <div className="mt-2 max-w-full">
+                              <span
+                                title={packageBadge}
+                                className="inline-flex max-w-full px-2.5 py-1 bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-700 text-[10px] font-black rounded-lg uppercase tracking-[0.12em] shadow-2xs"
+                              >
+                                <span className="truncate">{packageBadge}</span>
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {packageBadge && (
-                            <span className="px-2.5 py-0.5 bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-black rounded-lg uppercase tracking-wider shadow-2xs">
-                              {packageBadge}
-                            </span>
-                          )}
                           {!isViewer && (
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                               <button
@@ -1785,6 +1821,7 @@ export default function EventsPage() {
             activeTab={activeTab}
             participants={displayStatsParticipants}
             allParticipants={displayAllStatsParticipants}
+            statistics={eventStatistics}
             usersList={eligiblePicUsers}
             isAdmin={isAdmin}
             adminName={adminName}
@@ -1875,6 +1912,7 @@ export default function EventsPage() {
               setFilterReminderHariH={setFilterReminderHariH}
               filterPic={filterPic}
               setFilterPic={setFilterPic}
+              filterOptions={participantFilterOptions}
               activeTab={activeTab}
               isAdmin={isAdmin}
               handleResetFilters={handleResetFilters}
