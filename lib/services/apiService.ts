@@ -47,6 +47,7 @@ export class ApiService {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: 'GET',
         headers: getAuthHeaders(),
+        cache: 'no-store',
         ...options
       });
 
@@ -78,6 +79,7 @@ export class ApiService {
         method: 'POST',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: data ? JSON.stringify(data) : undefined,
+        cache: 'no-store',
         ...options
       });
 
@@ -110,6 +112,7 @@ export class ApiService {
         method: 'PUT',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: data ? JSON.stringify(data) : undefined,
+        cache: 'no-store',
         ...options
       });
 
@@ -127,6 +130,30 @@ export class ApiService {
     }
   }
 
+  protected async patch<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: data ? JSON.stringify(data) : undefined,
+        cache: 'no-store',
+        ...options
+      });
+
+      if (!response.ok) {
+        await this.handleErrorResponse(response);
+      }
+
+      if (response.status === 204) return undefined as T;
+      const text = await response.text();
+      if (!text || !text.trim()) return undefined as T;
+      try { return JSON.parse(text) as T; } catch { return text as unknown as T; }
+    } catch (error) {
+      console.error(`PATCH ${endpoint} failed:`, error);
+      throw error;
+    }
+  }
+
   /**
    * Make a DELETE request to the API
    * 
@@ -139,6 +166,7 @@ export class ApiService {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
+        cache: 'no-store',
         ...options
       });
 

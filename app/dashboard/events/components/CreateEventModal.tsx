@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Loader2 } from 'lucide-react';
+import { EmsEventSelector } from './EmsEventSelector';
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -79,18 +80,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Link ke Event EMS (ID / Dropdown)</label>
               {emsEvents.length > 0 ? (
-                <select
+                <EmsEventSelector
+                  events={emsEvents}
                   value={emsEventId}
-                  onChange={(e) => setEmsEventId(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                >
-                  <option value={0}>-- Pilih Event EMS (Opsional) --</option>
-                  {emsEvents.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      [ID: {ev.id}] {ev.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setEmsEventId}
+                />
               ) : (
                 <input
                   type="number"

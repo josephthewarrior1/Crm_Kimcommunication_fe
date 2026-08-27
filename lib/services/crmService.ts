@@ -1,4 +1,4 @@
-import { ApiService, getAuthHeaders } from './apiService';
+import { ApiService } from './apiService';
 import {
   Group,
   Company,
@@ -96,6 +96,78 @@ export class CrmService extends ApiService {
   // --- EVENTS ---
   async getEvents(): Promise<Event[]> {
     return this.get<Event[]>('/api/events');
+  }
+
+  async getEligibleManagersForEvent(eventId: number): Promise<AppUser[]> {
+    return this.get<AppUser[]>(`/api/events/${eventId}/eligible-managers`);
+  }
+
+  async getEventParticipantsByEvent(
+    eventId: number,
+    params?: {
+      tab?: string;
+      pic?: string;
+      company?: string;
+      position?: string;
+      industry?: string;
+      confirmationStatus?: string;
+      reminderHariH?: string;
+      search?: string;
+      page?: number;
+      size?: number;
+    }
+  ): Promise<{ eventId: number; page: number; size: number; total: number; totalPages: number; items: EventParticipant[] }> {
+    const searchParams = new URLSearchParams();
+    if (params?.tab) searchParams.set('tab', params.tab);
+    if (params?.pic) searchParams.set('pic', params.pic);
+    if (params?.company) searchParams.set('company', params.company);
+    if (params?.position) searchParams.set('position', params.position);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
+    if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.size) searchParams.set('size', String(params.size));
+    const query = searchParams.toString();
+    return this.get<{ eventId: number; page: number; size: number; total: number; totalPages: number; items: EventParticipant[] }>(
+      `/api/events/${eventId}/participants${query ? `?${query}` : ''}`
+    );
+  }
+
+  async getEventParticipantsSummary(
+    eventId: number,
+    params?: {
+      tab?: string;
+      pic?: string;
+      company?: string;
+      position?: string;
+      industry?: string;
+      confirmationStatus?: string;
+      reminderHariH?: string;
+      search?: string;
+    }
+  ): Promise<any> {
+    const searchParams = new URLSearchParams();
+    if (params?.tab) searchParams.set('tab', params.tab);
+    if (params?.pic) searchParams.set('pic', params.pic);
+    if (params?.company) searchParams.set('company', params.company);
+    if (params?.position) searchParams.set('position', params.position);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
+    if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
+    if (params?.search) searchParams.set('search', params.search);
+    const query = searchParams.toString();
+    return this.get<any>(`/api/events/${eventId}/participants/summary${query ? `?${query}` : ''}`);
+  }
+
+  async autoSplitEventAssignments(
+    eventId: number,
+    payload: { mode?: 'all' | 'unassigned'; managerIds?: number[] }
+  ): Promise<{ eventId: number; updatedCount: number; managerCount: number; mode: string }> {
+    return this.post<{ eventId: number; updatedCount: number; managerCount: number; mode: string }>(
+      `/api/events/${eventId}/assignments/auto-split`,
+      payload
+    );
   }
 
   async syncPmsEvents(): Promise<{ syncedCount: number; totalCount: number }> {
@@ -438,7 +510,6 @@ export class CrmService extends ApiService {
     return response.json();
   }
 
-
   // --- USER MANAGEMENT ---
   async getUsers(): Promise<AppUser[]> {
     return this.get<AppUser[]>('/api/users');
@@ -458,6 +529,37 @@ export class CrmService extends ApiService {
 
   async updateUserProfile(id: number, data: { fullName?: string; email?: string }): Promise<AppUser> {
     return this.put<AppUser>(`/api/users/${id}/profile`, data);
+  }
+
+  async getUserById(id: number): Promise<AppUser> {
+    return this.get<AppUser>(`/api/users/${id}`);
+  }
+
+  async bulkUpdateEventParticipants(payload: {
+    participantIds: number[];
+    participantStatus?: string;
+    attendanceStatus?: string;
+    confirmationStatus?: string;
+    preEventApprovalStatus?: string;
+    reminderH7?: string;
+    reminderH3?: string;
+    reminderH1?: string;
+    reminderHariH?: string;
+    callStatus?: string;
+    emailStatus?: string;
+    whatsappStatus?: string;
+    meetingStatus?: string;
+    participantCategory?: string;
+    businessChallenges?: string;
+    projectInfo?: string;
+    timeline?: string;
+    notes?: string;
+    picName?: string;
+  }): Promise<{ updatedCount: number; skippedCount: number; items: EventParticipant[] }> {
+    return this.patch<{ updatedCount: number; skippedCount: number; items: EventParticipant[] }>(
+      '/api/event-participants/bulk',
+      payload
+    );
   }
 
   async deleteUser(id: number): Promise<void> {

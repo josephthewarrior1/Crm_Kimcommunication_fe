@@ -28,6 +28,10 @@ export class AuthService extends ApiService {
   async logout(token: string): Promise<string> {
     return this.post<string>(`/api/auth/logout?token=${encodeURIComponent(token)}`);
   }
+
+  async getCurrentUser(): Promise<AppUser> {
+    return this.get<AppUser>('/api/auth/me');
+  }
 }
 
 export const authService = new AuthService();

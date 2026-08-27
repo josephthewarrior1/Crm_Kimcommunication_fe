@@ -19,11 +19,13 @@ import {
 interface EventStatisticsProps {
   activeTab: string;
   participants: EventParticipant[];
+  allParticipants?: EventParticipant[];
   usersList: AppUser[];
   isAdmin: boolean;
   adminName: string;
   eventId?: number;
   onAssignPic?: (participantIds: number[], picName: string) => Promise<void>;
+  onAutoSplit?: (payload: { mode: 'all' | 'unassigned'; managerNames: string[] }) => Promise<void>;
   onOpenEngagementModal?: (participant: EventParticipant) => void;
   currentUser?: AppUser | null;
   isViewer?: boolean;
@@ -31,12 +33,14 @@ interface EventStatisticsProps {
 
 export const EventStatistics: React.FC<EventStatisticsProps> = ({
   activeTab,
-  participants,
+  participants: scopedParticipants,
+  allParticipants = [],
   usersList,
   isAdmin,
   adminName,
   eventId,
   onAssignPic,
+  onAutoSplit,
   onOpenEngagementModal,
   currentUser,
   isViewer = false,
@@ -48,6 +52,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     description: string;
     onConfirm: () => void;
   } | null>(null);
+  const [statsViewMode, setStatsViewMode] = React.useState<'mine' | 'all'>('mine');
 
   // Date Range Report States
   const [picViewTab, setPicViewTab] = React.useState<'report' | 'participants'>('report');
@@ -61,6 +66,8 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   const [isSplitModalOpen, setIsSplitModalOpen] = React.useState(false);
   const [selectedSplitPics, setSelectedSplitPics] = React.useState<string[]>([]);
   const [splitMode, setSplitMode] = React.useState<'all' | 'unassigned'>('all');
+  const canCompareScopes = !isAdmin && !isViewer && allParticipants.length > 0;
+  const participants = canCompareScopes && statsViewMode === 'all' ? allParticipants : scopedParticipants;
 
   const toggleSplitPic = (picName: string) => {
     setSelectedSplitPics(prev => 
@@ -80,6 +87,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       } catch (err) {
         console.warn('Auto EMS Sync during split warning:', err);
       }
+    }
+
+    if (onAutoSplit) {
+      await onAutoSplit({ mode: splitMode, managerNames: selectedSplitPics });
+      setIsSplitModalOpen(false);
+      return;
     }
 
     let targetList = participants;
@@ -105,25 +118,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       toast.info('Tidak ada peserta yang memenuhi kriteria pembagian');
       return;
     }
-
-    const groupings: { [picName: string]: number[] } = {};
-    selectedSplitPics.forEach(pic => groupings[pic] = []);
-
-    targetList.forEach((p, idx) => {
-      const assignedPic = selectedSplitPics[idx % selectedSplitPics.length];
-      groupings[assignedPic].push(p.id);
-    });
-
-    if (onAssignPic) {
-      for (const picName of Object.keys(groupings)) {
-        if (groupings[picName].length > 0) {
-          await onAssignPic(groupings[picName], picName);
-        }
-      }
-    }
-
-    toast.success(`Berhasil membagi rata ${targetList.length} peserta ke ${selectedSplitPics.length} PIC terpilih (${selectedSplitPics.join(', ')})!`);
-    setIsSplitModalOpen(false);
   };
 
   React.useEffect(() => {
@@ -239,6 +233,41 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
   return (
     <>
+      {canCompareScopes && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Statistics Scope</h4>
+            <p className="text-xs text-slate-500 mt-1">
+              Lihat ringkasan semua participant event atau hanya participant yang jadi tanggung jawab kamu.
+            </p>
+          </div>
+          <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setStatsViewMode('mine')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                statsViewMode === 'mine'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              My Assignment
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatsViewMode('all')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                statsViewMode === 'all'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Event
+            </button>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'request' && (
         <div className="space-y-4 mb-6">
           <div>

@@ -246,24 +246,24 @@ export default function UserManagementPage() {
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {currentRole === 'USER' && (
-                            <>
-                              <button
-                                onClick={() => setManagingColumnsUser(u)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 text-xs font-bold rounded-lg transition-colors shadow-2xs bg-white cursor-pointer"
-                                title="Manage custom table columns visibility"
-                              >
-                                <Columns className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Custom Columns</span>
-                              </button>
-                              <button
-                                onClick={() => setManagingViewerEventsUser(u)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition-colors shadow-2xs bg-white"
-                                title="Manage allowed events for Viewer"
-                              >
-                                <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Events Access</span>
-                              </button>
-                            </>
+                            <button
+                              onClick={() => setManagingColumnsUser(u)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 text-xs font-bold rounded-lg transition-colors shadow-2xs bg-white cursor-pointer"
+                              title="Manage custom table columns visibility"
+                            >
+                              <Columns className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Custom Columns</span>
+                            </button>
+                          )}
+                          {(currentRole === 'USER' || currentRole === 'MANAGER') && (
+                            <button
+                              onClick={() => setManagingViewerEventsUser(u)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition-colors shadow-2xs bg-white cursor-pointer"
+                              title={`Manage allowed events for ${currentRole === 'MANAGER' ? 'Manager' : 'Viewer'}`}
+                            >
+                              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Events Access</span>
+                            </button>
                           )}
                           <button
                             onClick={() => setEditingUser(u)}

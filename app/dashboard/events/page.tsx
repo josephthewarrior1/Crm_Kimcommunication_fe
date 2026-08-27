@@ -24,12 +24,11 @@ import { EventStatistics } from './components/EventStatistics';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
 import { ManageUserColumnsModal } from '../users/components/ManageUserColumnsModal';
-import { extractPicFromNotes, getPreEventApprovalStatus, setPreEventApprovalStatus, setPicInNotes } from './utils/notesHelper';
+import { extractPicFromNotes, getPreEventApprovalStatus, setPreEventApprovalStatus } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { exportParticipantsToExcel } from './utils/exportHelper';
 import { importParticipantsFromExcel } from './utils/importHelper';
-import { isEventAllowedForViewer } from '../../../lib/utils/viewerAccessHelper';
 import { getEventColumnConfig } from './utils/columnConfigHelper';
 
 export default function EventsPage() {
@@ -37,7 +36,7 @@ export default function EventsPage() {
   const searchParams = useSearchParams();
   const eventIdParam = searchParams.get('eventId') || searchParams.get('id');
 
-  const { isAdmin, isManager, isUser, user } = useAuth();
+  const { isAdmin, isManager, isUser, user, token, isLoading: authLoading, refreshUser } = useAuth();
   const isViewer = isUser || (!isAdmin && !isManager);
   const [events, setEvents] = useState<Event[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
@@ -48,6 +47,11 @@ export default function EventsPage() {
   // Selected Event & Participants state
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [statsParticipants, setStatsParticipants] = useState<EventParticipant[]>([]);
+  const [participantsSummary, setParticipantsSummary] = useState<any>(null);
+  const [allStatsParticipants, setAllStatsParticipants] = useState<EventParticipant[]>([]);
+  const [allParticipantsSummary, setAllParticipantsSummary] = useState<any>(null);
+  const [participantsTotal, setParticipantsTotal] = useState(0);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
@@ -63,6 +67,16 @@ export default function EventsPage() {
   const setParticipantsSorted = (participantsList: EventParticipant[]) => {
     const sorted = [...participantsList].sort((a, b) => a.id - b.id);
     setParticipants(sorted);
+  };
+
+  const setStatsParticipantsSorted = (participantsList: EventParticipant[]) => {
+    const sorted = [...participantsList].sort((a, b) => a.id - b.id);
+    setStatsParticipants(sorted);
+  };
+
+  const setAllStatsParticipantsSorted = (participantsList: EventParticipant[]) => {
+    const sorted = [...participantsList].sort((a, b) => a.id - b.id);
+    setAllStatsParticipants(sorted);
   };
 
   const getEventStatus = (startDateStr: string | null | undefined, endDateStr: string | null | undefined) => {
@@ -145,7 +159,9 @@ export default function EventsPage() {
   const [activeParticipant, setActiveParticipant] = useState<EventParticipant | null>(null);
   const [activeTab, setActiveTab] = useState<'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday'>('request');
   const [usersList, setUsersList] = useState<AppUser[]>([]);
+  const [eligibleManagers, setEligibleManagers] = useState<AppUser[]>([]);
   const [filterPic, setFilterPic] = useState('');
+  const [currentAllowedEventIds, setCurrentAllowedEventIds] = useState<number[]>([]);
   
   // Excel Import states for Event Participants
   const [isImportParticipantsModalOpen, setIsImportParticipantsModalOpen] = useState(false);
@@ -162,6 +178,63 @@ export default function EventsPage() {
   };
 
   const [allEventParticipants, setAllEventParticipants] = useState<EventParticipant[]>([]);
+
+  useEffect(() => {
+    setCurrentAllowedEventIds(Array.isArray(user?.allowedEventIds) ? user.allowedEventIds : []);
+  }, [user?.id, user?.allowedEventIds]);
+
+  const hasEventAccess = (eventId: number) => {
+    if (isAdmin) return true;
+    return currentAllowedEventIds.includes(eventId);
+  };
+
+  const eligiblePicUsers = eligibleManagers.filter((candidate) => {
+    const uname = (candidate.username || '').toLowerCase();
+    const fname = (candidate.fullName || '').toLowerCase();
+    return uname !== 'kevin' && !fname.includes('kevin');
+  });
+
+  const eligiblePicNames = eligiblePicUsers.map((candidate) => candidate.fullName || candidate.username);
+
+  const isAllowedPicName = (picName?: string | null) => {
+    if (!picName) return false;
+    return eligiblePicNames.some((name) => name.toLowerCase() === picName.trim().toLowerCase());
+  };
+
+  const getParticipantQueryParams = (overrides?: Partial<{
+    page: number;
+    size: number;
+    tab: string;
+  }>, options?: {
+    includeImplicitPicFilter?: boolean;
+  }) => {
+    const shouldApplyImplicitPicFilter = options?.includeImplicitPicFilter !== false;
+    const effectivePicFilter = shouldApplyImplicitPicFilter && !isAdmin && !isViewer && user && activeTab !== 'request'
+      ? (user.fullName || user.username)
+      : filterPic || undefined;
+
+    return {
+      tab: overrides?.tab || activeTab,
+      pic: effectivePicFilter,
+      company: filterCompany || undefined,
+      position: filterPosition || undefined,
+      industry: filterIndustry || undefined,
+      confirmationStatus: filterConfirmationStatus || undefined,
+      reminderHariH: filterReminderHariH || undefined,
+      search: participantSearchQuery || undefined,
+      page: overrides?.page ?? currentPage,
+      size: overrides?.size ?? pageSize
+    };
+  };
+
+  const loadEligibleManagers = async (eventId: number) => {
+    try {
+      const data = await crmService.getEligibleManagersForEvent(eventId);
+      setEligibleManagers(Array.isArray(data) ? data : []);
+    } catch {
+      setEligibleManagers([]);
+    }
+  };
 
   const adminUser = usersList.find(u => u.roles?.includes('ADMIN'));
   const adminName = adminUser ? (adminUser.fullName || adminUser.username) : 'Admin';
@@ -219,33 +292,117 @@ export default function EventsPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (authLoading) return;
+    if (!token || !user) {
+      setLoading(false);
+      setEvents([]);
+      setDatabases([]);
+      setAllEventParticipants([]);
+      setUsersList([]);
+      setSelectedEvent(null);
+      setParticipants([]);
+      setStatsParticipants([]);
+      setAllStatsParticipants([]);
+      setParticipantsSummary(null);
+      setAllParticipantsSummary(null);
+      setParticipantsTotal(0);
+      setEligibleManagers([]);
+      return;
+    }
+
+    void loadData();
+  }, [authLoading, token, user?.id]);
 
   useEffect(() => {
-    if (events.length > 0) {
+    if (authLoading || !token || !user) return;
+
+    const handleWindowFocus = () => {
+      void loadData();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [authLoading, token, user?.id, isAdmin]);
+
+  useEffect(() => {
+    const syncSelectedEvent = async () => {
+      if (authLoading || !token || !user) {
+        setSelectedEvent(null);
+        setParticipants([]);
+        setStatsParticipants([]);
+        setAllStatsParticipants([]);
+        setParticipantsSummary(null);
+        setAllParticipantsSummary(null);
+        setEligibleManagers([]);
+        return;
+      }
+
+      if (events.length === 0) return;
+
       if (eventIdParam) {
         const matched = events.find(
           (ev) => String(ev.id) === eventIdParam || String(ev.pmsEventId) === eventIdParam || String(ev.emsEventId) === eventIdParam || (ev.name && eventIdParam.toLowerCase() === ev.name.trim().toLowerCase())
         );
         if (matched) {
-          if (!selectedEvent || selectedEvent.id !== matched.id) {
-            loadParticipantsForEvent(matched);
+          if (!hasEventAccess(matched.id)) {
+            toast.error("You don't have access to this event.");
+            setSelectedEvent(null);
+            setParticipants([]);
+            setStatsParticipants([]);
+            setAllStatsParticipants([]);
+            setParticipantsSummary(null);
+            setAllParticipantsSummary(null);
+            setEligibleManagers([]);
+            router.push('/dashboard/events');
+          } else if (!selectedEvent || selectedEvent.id !== matched.id) {
+            await loadEligibleManagers(matched.id);
+            await loadParticipantsForEvent(matched);
           }
         } else {
           setSelectedEvent(null);
           setParticipants([]);
+          setStatsParticipants([]);
+          setAllStatsParticipants([]);
+          setParticipantsSummary(null);
+          setAllParticipantsSummary(null);
+          setEligibleManagers([]);
         }
       } else {
         setSelectedEvent(null);
         setParticipants([]);
+        setStatsParticipants([]);
+        setAllStatsParticipants([]);
+        setParticipantsSummary(null);
+        setAllParticipantsSummary(null);
+        setEligibleManagers([]);
       }
-    }
-  }, [eventIdParam, events]);
+    };
+
+    void syncSelectedEvent();
+  }, [authLoading, token, user?.id, eventIdParam, events, currentAllowedEventIds, router]);
 
   async function loadData() {
+    const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('session') : token;
+    if (authLoading) return;
+    if (!sessionToken || !user) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
+      const freshUser = user && !isAdmin ? await refreshUser() : user;
       const [eList, cList, lList, uList, emsList] = await Promise.all([
         crmService.getEvents(),
         crmService.getDatabases(),
@@ -259,6 +416,41 @@ export default function EventsPage() {
       setUsersList(uList);
       setEmsEventsList(emsList);
 
+      if (!isAdmin && user) {
+        let currentAllowed: number[] | undefined;
+
+        if (Array.isArray(freshUser?.allowedEventIds)) {
+          currentAllowed = freshUser.allowedEventIds;
+        }
+
+        if (!Array.isArray(currentAllowed)) {
+          const listedUser = uList.find((u: any) => u.id === user.id);
+          if (Array.isArray(listedUser?.allowedEventIds)) {
+            currentAllowed = listedUser.allowedEventIds;
+          }
+        }
+
+        if (!Array.isArray(currentAllowed)) {
+          try {
+            const directUser = await crmService.getUserById(user.id);
+            if (Array.isArray(directUser?.allowedEventIds)) {
+              currentAllowed = directUser.allowedEventIds;
+            }
+          } catch {}
+        }
+
+        const resolvedAllowed = Array.isArray(currentAllowed) ? currentAllowed : [];
+        setCurrentAllowedEventIds(resolvedAllowed);
+
+        try {
+          const saved = JSON.parse(localStorage.getItem('user') || '{}');
+          saved.allowedEventIds = resolvedAllowed;
+          localStorage.setItem('user', JSON.stringify(saved));
+          localStorage.setItem(`user_allowed_events_${user.id}`, JSON.stringify(resolvedAllowed));
+          localStorage.setItem(`viewer_allowed_events_${user.id}`, JSON.stringify(resolvedAllowed));
+        } catch {}
+      }
+
       // Check URL query parameters for eventId or id
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
@@ -269,6 +461,7 @@ export default function EventsPage() {
           );
           if (matchedEvent) {
             setSelectedEvent(matchedEvent);
+            await loadEligibleManagers(matchedEvent.id);
             const filtered = lList.filter((l) =>
               l.event && (
                 l.event.id === matchedEvent.id ||
@@ -287,6 +480,7 @@ export default function EventsPage() {
         );
         if (updatedSel) {
           setSelectedEvent(updatedSel);
+          await loadEligibleManagers(updatedSel.id);
           const filtered = lList.filter((l) =>
             l.event && (
               l.event.id === updatedSel.id ||
@@ -297,7 +491,10 @@ export default function EventsPage() {
         }
       }
     } catch (err) {
-      toast.error('Failed to load events or databases');
+      const latestSessionToken = typeof window !== 'undefined' ? localStorage.getItem('session') : token;
+      if (latestSessionToken) {
+        toast.error('Failed to load events or databases');
+      }
     } finally {
       setLoading(false);
     }
@@ -451,19 +648,36 @@ export default function EventsPage() {
     setSelectedEvent(event);
     setLoadingParticipants(true);
     setSelectedParticipantIds([]); // reset selection
+    const effectiveTab = targetTab || activeTab;
     if (targetTab) {
       setActiveTab(targetTab);
     }
     try {
-      const allParticipants = await crmService.getEventParticipants();
-      setAllEventParticipants(allParticipants);
-      const filteredParticipants = allParticipants.filter((l) => 
-        l.event && (
-          l.event.id === event.id ||
-          (l.event.name && event.name && l.event.name.trim().toLowerCase() === event.name.trim().toLowerCase())
-        )
+      const tableQuery = getParticipantQueryParams({ tab: effectiveTab });
+      const statsQuery = getParticipantQueryParams({ tab: effectiveTab, page: 1, size: 5000 });
+      const allStatsQuery = getParticipantQueryParams(
+        { tab: effectiveTab, page: 1, size: 5000 },
+        { includeImplicitPicFilter: false }
       );
-      setParticipantsSorted(filteredParticipants);
+
+      const [tableResponse, statsResponse, summaryResponse, allStatsResponse, allSummaryResponse] = await Promise.all([
+        crmService.getEventParticipantsByEvent(event.id, tableQuery),
+        crmService.getEventParticipantsByEvent(event.id, statsQuery),
+        crmService.getEventParticipantsSummary(event.id, statsQuery),
+        crmService.getEventParticipantsByEvent(event.id, allStatsQuery),
+        crmService.getEventParticipantsSummary(event.id, allStatsQuery)
+      ]);
+
+      const tableParticipants = tableResponse?.items || [];
+      const filteredStatsParticipants = statsResponse?.items || [];
+      const allFilteredParticipants = allStatsResponse?.items || [];
+
+      setParticipantsSorted(tableParticipants);
+      setStatsParticipantsSorted(filteredStatsParticipants);
+      setParticipantsSummary(summaryResponse || null);
+      setAllStatsParticipantsSorted(allFilteredParticipants);
+      setAllParticipantsSummary(allSummaryResponse || null);
+      setParticipantsTotal(tableResponse?.total || 0);
     } catch (err) {
       toast.error('Failed to fetch participants for this event');
     } finally {
@@ -471,18 +685,19 @@ export default function EventsPage() {
     }
   };
 
-  const handleSelectEvent = (event: Event) => {
+  const handleSelectEvent = async (event: Event) => {
     router.push(`/dashboard/events?eventId=${event.id}`);
-    loadParticipantsForEvent(event);
+    await loadEligibleManagers(event.id);
+    await loadParticipantsForEvent(event);
   };
 
   const handleExportParticipants = () => {
-    if (!selectedEvent || filteredParticipants.length === 0) {
+    if (!selectedEvent || statsParticipants.length === 0) {
       toast.error("Tidak ada data lead untuk di-export.");
       return;
     }
     try {
-      exportParticipantsToExcel(selectedEvent, filteredParticipants, activeTab, adminName);
+      exportParticipantsToExcel(selectedEvent, statsParticipants, activeTab, adminName);
       toast.success('Daftar participants berhasil di-export ke Excel!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to export participants');
@@ -492,244 +707,125 @@ export default function EventsPage() {
   const handleBatchUpdateAttendance = async (status: string) => {
     if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    // Lakukan update untuk status attendance secara massal
-    await Promise.all(selectedParticipantIds.map(async (participantId) => {
-      try {
-        const lead = participants.find(l => l.id === participantId);
-        if (lead) {
-          await crmService.updateParticipantStatus(
-            participantId,
-            lead.participantStatus,
-            status,
-            lead.notes || undefined,
-            undefined, // participantCategory (removed)
-            lead.callStatus || undefined,
-            lead.emailStatus || undefined,
-            lead.whatsappStatus || undefined,
-            lead.meetingStatus || undefined,
-            lead.businessChallenges || undefined,
-            lead.projectInfo || undefined,
-            lead.timeline || undefined,
-            lead.reminderH7 || undefined,
-            lead.reminderH3 || undefined,
-            lead.reminderH1 || undefined,
-            lead.reminderHariH || undefined,
-            lead.confirmationStatus
-          );
-          successCount++;
-        }
-      } catch (err) {
-        failCount++;
+    try {
+      const result = await crmService.bulkUpdateEventParticipants({
+        participantIds: selectedParticipantIds,
+        attendanceStatus: status
+      });
+
+      setSelectedParticipantIds([]);
+      if ((result?.skippedCount || 0) > 0) {
+        toast.warning(`Berhasil mengupdate ${result.updatedCount} participants, gagal ${result.skippedCount} participants.`);
+      } else {
+        toast.success(`Berhasil mengupdate status attendance ${result.updatedCount} participants!`);
       }
-    }));
-
-    setIsBatchUpdating(false);
-    setSelectedParticipantIds([]);
-    
-    if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
-    } else {
-      toast.success(`Berhasil mengupdate status attendance ${successCount} participants!`);
-    }
-
-    if (selectedEvent) {
-      handleSelectEvent(selectedEvent); // Reload list participants
+      if (selectedEvent) {
+        await loadParticipantsForEvent(selectedEvent);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update attendance in bulk');
+    } finally {
+      setIsBatchUpdating(false);
     }
   };
 
   const handleBatchUpdateParticipantStatus = async (status: string) => {
     if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    // Lakukan update untuk lead status secara massal
-    await Promise.all(selectedParticipantIds.map(async (participantId) => {
-      try {
-        const lead = participants.find(l => l.id === participantId);
-        if (lead) {
-          await crmService.updateParticipantStatus(
-            participantId,
-            status,
-            lead.attendanceStatus,
-            lead.notes || undefined,
-            undefined, // participantCategory (removed)
-            lead.callStatus || undefined,
-            lead.emailStatus || undefined,
-            lead.whatsappStatus || undefined,
-            lead.meetingStatus || undefined,
-            lead.businessChallenges || undefined,
-            lead.projectInfo || undefined,
-            lead.timeline || undefined,
-            lead.reminderH7 || undefined,
-            lead.reminderH3 || undefined,
-            lead.reminderH1 || undefined,
-            lead.reminderHariH || undefined,
-            lead.confirmationStatus
-          );
-          successCount++;
-        }
-      } catch (err) {
-        failCount++;
+    try {
+      const result = await crmService.bulkUpdateEventParticipants({
+        participantIds: selectedParticipantIds,
+        participantStatus: status
+      });
+
+      setSelectedParticipantIds([]);
+      if ((result?.skippedCount || 0) > 0) {
+        toast.warning(`Berhasil mengupdate ${result.updatedCount} participants, gagal ${result.skippedCount} participants.`);
+      } else {
+        toast.success(`Berhasil mengupdate lead status ${result.updatedCount} participants!`);
       }
-    }));
-
-    setIsBatchUpdating(false);
-    setSelectedParticipantIds([]);
-    
-    if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
-    } else {
-      toast.success(`Berhasil mengupdate lead status ${successCount} participants!`);
-    }
-
-    if (selectedEvent) {
-      await loadParticipantsForEvent(selectedEvent);
+      if (selectedEvent) {
+        await loadParticipantsForEvent(selectedEvent);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update participant status in bulk');
+    } finally {
+      setIsBatchUpdating(false);
     }
   };
 
   const handleBatchUpdateConfirmationStatus = async (status: string) => {
     if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    // Lakukan update untuk status confirmation secara massal
-    await Promise.all(selectedParticipantIds.map(async (participantId) => {
-      try {
-        const lead = participants.find(l => l.id === participantId);
-        if (lead) {
-          await crmService.updateParticipantStatus(
-            participantId,
-            lead.participantStatus,
-            lead.attendanceStatus,
-            lead.notes || undefined,
-            undefined, // participantCategory (removed)
-            lead.callStatus || undefined,
-            lead.emailStatus || undefined,
-            lead.whatsappStatus || undefined,
-            lead.meetingStatus || undefined,
-            lead.businessChallenges || undefined,
-            lead.projectInfo || undefined,
-            lead.timeline || undefined,
-            lead.reminderH7 || undefined,
-            lead.reminderH3 || undefined,
-            lead.reminderH1 || undefined,
-            lead.reminderHariH || undefined,
-            status
-          );
-          successCount++;
-        }
-      } catch (err) {
-        failCount++;
+    try {
+      const result = await crmService.bulkUpdateEventParticipants({
+        participantIds: selectedParticipantIds,
+        confirmationStatus: status
+      });
+
+      setSelectedParticipantIds([]);
+      if ((result?.skippedCount || 0) > 0) {
+        toast.warning(`Berhasil mengupdate ${result.updatedCount} participants, gagal ${result.skippedCount} participants.`);
+      } else {
+        toast.success(`Berhasil mengupdate status konfirmasi ${result.updatedCount} participants!`);
       }
-    }));
-
-    setIsBatchUpdating(false);
-    setSelectedParticipantIds([]);
-    
-    if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
-    } else {
-      toast.success(`Berhasil mengupdate status konfirmasi ${successCount} participants!`);
-    }
-
-    if (selectedEvent) {
-      await loadParticipantsForEvent(selectedEvent);
+      if (selectedEvent) {
+        await loadParticipantsForEvent(selectedEvent);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update confirmation status in bulk');
+    } finally {
+      setIsBatchUpdating(false);
     }
   };
 
   const handleBatchUpdatePreEventApprovalStatus = async (status: string) => {
     if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
+    try {
+      const result = await crmService.bulkUpdateEventParticipants({
+        participantIds: selectedParticipantIds,
+        preEventApprovalStatus: status
+      });
 
-    let successCount = 0;
-    let failCount = 0;
-
-    await Promise.all(selectedParticipantIds.map(async (participantId) => {
-      try {
-        const lead = participants.find(l => l.id === participantId);
-        if (lead) {
-          await crmService.updatePreEventApprovalStatus(
-            participantId,
-            setPreEventApprovalStatus(lead.notes, status),
-            status
-          );
-          successCount++;
-        }
-      } catch (err) {
-        failCount++;
+      setSelectedParticipantIds([]);
+      if ((result?.skippedCount || 0) > 0) {
+        toast.warning(`Berhasil mengupdate ${result.updatedCount} participants, gagal ${result.skippedCount} participants.`);
+      } else {
+        toast.success(`Berhasil mengupdate Pre Event approval ${result.updatedCount} participants!`);
       }
-    }));
-
-    setIsBatchUpdating(false);
-    setSelectedParticipantIds([]);
-
-    if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
-    } else {
-      toast.success(`Berhasil mengupdate Pre Event approval ${successCount} participants!`);
-    }
-
-    if (selectedEvent) {
-      await loadParticipantsForEvent(selectedEvent, activeTab);
+      if (selectedEvent) {
+        await loadParticipantsForEvent(selectedEvent, activeTab);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update pre-event approval in bulk');
+    } finally {
+      setIsBatchUpdating(false);
     }
   };
 
   const handleBatchUpdateReminderHariH = async (status: string) => {
     if (selectedParticipantIds.length === 0) return;
     setIsBatchUpdating(true);
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    await Promise.all(selectedParticipantIds.map(async (participantId) => {
-      try {
-        const lead = participants.find(l => l.id === participantId);
-        if (lead) {
-          await crmService.updateParticipantStatus(
-            participantId,
-            lead.participantStatus,
-            lead.attendanceStatus,
-            lead.notes || undefined,
-            undefined,
-            lead.callStatus || undefined,
-            lead.emailStatus || undefined,
-            lead.whatsappStatus || undefined,
-            lead.meetingStatus || undefined,
-            lead.businessChallenges || undefined,
-            lead.projectInfo || undefined,
-            lead.timeline || undefined,
-            lead.reminderH7 || undefined,
-            lead.reminderH3 || undefined,
-            lead.reminderH1 || undefined,
-            status,
-            lead.confirmationStatus
-          );
-          successCount++;
-        }
-      } catch (err) {
-        failCount++;
+    try {
+      const result = await crmService.bulkUpdateEventParticipants({
+        participantIds: selectedParticipantIds,
+        reminderHariH: status
+      });
+
+      setSelectedParticipantIds([]);
+      if ((result?.skippedCount || 0) > 0) {
+        toast.warning(`Berhasil mengupdate ${result.updatedCount} participants, gagal ${result.skippedCount} participants.`);
+      } else {
+        toast.success(`Berhasil mengupdate status Hari H ${result.updatedCount} participants!`);
       }
-    }));
-
-    setIsBatchUpdating(false);
-    setSelectedParticipantIds([]);
-    
-    if (failCount > 0) {
-      toast.warning(`Berhasil mengupdate ${successCount} participants, gagal ${failCount} participants.`);
-    } else {
-      toast.success(`Berhasil mengupdate status Hari H ${successCount} participants!`);
-    }
-
-    if (selectedEvent) {
-      await loadParticipantsForEvent(selectedEvent);
+      if (selectedEvent) {
+        await loadParticipantsForEvent(selectedEvent);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update Hari H in bulk');
+    } finally {
+      setIsBatchUpdating(false);
     }
   };
 
@@ -876,54 +972,30 @@ export default function EventsPage() {
 
   const handleBatchAssignPic = async (picName: string) => {
     if (selectedParticipantIds.length === 0) return;
-    setIsBatchUpdating(true);
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    await Promise.all(selectedParticipantIds.map(async (participantId) => {
-      try {
-        const lead = participants.find(l => l.id === participantId);
-        if (lead) {
-          const newNotes = setPicInNotes(lead.notes, picName);
-          
-          await crmService.updateParticipantStatus(
-            participantId,
-            lead.participantStatus,
-            lead.attendanceStatus,
-            newNotes,
-            undefined,
-            lead.callStatus || undefined,
-            lead.emailStatus || undefined,
-            lead.whatsappStatus || undefined,
-            lead.meetingStatus || undefined,
-            lead.businessChallenges || undefined,
-            lead.projectInfo || undefined,
-            lead.timeline || undefined,
-            lead.reminderH7 || undefined,
-            lead.reminderH3 || undefined,
-            lead.reminderH1 || undefined,
-            lead.reminderHariH || undefined,
-            lead.confirmationStatus
-          );
-          successCount++;
-        }
-      } catch (err) {
-        failCount++;
-      }
-    }));
-
-    setIsBatchUpdating(false);
-    setSelectedParticipantIds([]);
-    
-    if (failCount > 0) {
-      toast.warning(`Berhasil menugaskan ${successCount} participants ke ${picName}, gagal ${failCount} participants.`);
-    } else {
-      toast.success(`Berhasil menugaskan ${successCount} participants ke ${picName}!`);
+    if (!isAllowedPicName(picName)) {
+      toast.error('PIC yang dipilih harus manager yang punya akses ke event ini.');
+      return;
     }
+    setIsBatchUpdating(true);
+    try {
+      const result = await crmService.bulkUpdateEventParticipants({
+        participantIds: selectedParticipantIds,
+        picName
+      });
 
-    if (selectedEvent) {
-      handleSelectEvent(selectedEvent);
+      setSelectedParticipantIds([]);
+      if ((result?.skippedCount || 0) > 0) {
+        toast.warning(`Berhasil menugaskan ${result.updatedCount} participants ke ${picName}, gagal ${result.skippedCount} participants.`);
+      } else {
+        toast.success(`Berhasil menugaskan ${result.updatedCount} participants ke ${picName}!`);
+      }
+      if (selectedEvent) {
+        await loadParticipantsForEvent(selectedEvent, activeTab);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to assign PIC in bulk');
+    } finally {
+      setIsBatchUpdating(false);
     }
   };
 
@@ -949,6 +1021,12 @@ export default function EventsPage() {
     preEventApprovalStatus: string;
   }) => {
     if (!selectedEvent || !activeParticipant) return;
+
+    const nextPicName = extractPicFromNotes(data.notes).pic;
+    if (!isAllowedPicName(nextPicName)) {
+      toast.error('PIC yang dipilih harus manager yang punya akses ke event ini.');
+      return;
+    }
 
     setSubmittingParticipantUpdate(true);
     try {
@@ -1045,10 +1123,7 @@ export default function EventsPage() {
 
       // Reload participants list
       if (selectedEvent) {
-        const allParticipants = await crmService.getEventParticipants();
-        setAllEventParticipants(allParticipants);
-        const filteredParticipants = allParticipants.filter((l) => l.event.id === selectedEvent.id);
-        setParticipantsSorted(filteredParticipants);
+        await loadParticipantsForEvent(selectedEvent, activeTab);
       }
     } catch (err: any) {
       toast.error(err.message || `Failed to toggle ${type} status`);
@@ -1116,10 +1191,7 @@ export default function EventsPage() {
         );
         toast.success('Registration status updated successfully!');
         if (selectedEvent) {
-          const allParticipants = await crmService.getEventParticipants();
-          setAllEventParticipants(allParticipants);
-          const filteredParticipants = allParticipants.filter((l) => l.event.id === selectedEvent.id);
-          setParticipantsSorted(filteredParticipants);
+          await loadParticipantsForEvent(selectedEvent, activeTab);
         }
         return;
       }
@@ -1184,10 +1256,7 @@ export default function EventsPage() {
 
       // Reload participants list
       if (selectedEvent) {
-        const allParticipants = await crmService.getEventParticipants();
-        setAllEventParticipants(allParticipants);
-        const filteredParticipants = allParticipants.filter((l) => l.event.id === selectedEvent.id);
-        setParticipantsSorted(filteredParticipants);
+        await loadParticipantsForEvent(selectedEvent, activeTab);
       }
     } catch (err: any) {
       toast.error(err.message || `Failed to update ${field}`);
@@ -1259,7 +1328,7 @@ export default function EventsPage() {
     setIsTakeoutModalOpen(true);
   };
   const filteredEvents = events.filter((e) => {
-    if (isViewer && !isEventAllowedForViewer(e.id, user)) {
+    if (!hasEventAccess(e.id)) {
       return false;
     }
     return (
@@ -1268,142 +1337,23 @@ export default function EventsPage() {
     );
   });
 
-  // ponytail: base tab participants for statistics and PIC modal (unaffected by table filters)
-  const tabParticipants = participants.filter((l) => {
-    const confStatus = getEffectiveConfirmationStatus(l);
-    const isEms = isEmsParticipant(l);
-
-    if (activeTab === 'request') {
-      if (isPublicEmsOnlyParticipant(l)) return false;
-    } else if (activeTab === 'pre_event') {
-      if (confStatus === 'decline' || confStatus === 'declined' || getPreEventApprovalStatus(l) === 'decline') return false;
-      if (!isEms && confStatus !== 'approve' && confStatus !== 'confirmed') return false;
-    } else if (activeTab === 'declined') {
-      const isClientDeclined = confStatus === 'decline' || confStatus === 'declined';
-      const isPreEventDeclined = getPreEventApprovalStatus(l) === 'decline';
-      if (!isClientDeclined && !isPreEventDeclined) return false;
-    } else if (activeTab === 'reminder' || activeTab === 'reminder_dday') {
-      if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
-      if (!isRegisteredParticipant(l)) return false;
-    }
-    return true;
-  });
-
-  const displayTabParticipants = tabParticipants.map((p) => {
+  const displayStatsParticipants = statsParticipants.map((p) => {
     const effectiveStatus = getEffectiveConfirmationStatus(p);
     if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
     return { ...p, confirmationStatus: effectiveStatus };
   });
 
-  const filteredParticipants = displayTabParticipants.filter((l) => {
-    const confStatus = l.confirmationStatus?.toLowerCase();
-
-    // 1. General search query (if typed, search takes priority)
-    if (participantSearchQuery) {
-      const term = participantSearchQuery.toLowerCase().trim();
-      const fn = l.database?.firstName || '';
-      const ln = l.database?.lastName || '';
-      const fullName = `${fn} ${ln}`.trim().toLowerCase();
-      const companyName = l.database?.company?.name?.toLowerCase() || '';
-      const jobTitle = l.database?.jobTitle?.toLowerCase() || '';
-      const email = l.database?.emails?.map(e => e.email.toLowerCase()).join(' ') || '';
-      const mobilePhone = l.database?.mobilePhone || '';
-      const officePhone = l.database?.company?.officePhone || '';
-
-      const combinedText = `${fullName} ${fn} ${ln} ${companyName} ${jobTitle} ${email} ${mobilePhone} ${officePhone}`.toLowerCase();
-      const words = term.split(/\s+/).filter(Boolean);
-      const matchesSearch = words.every(w => combinedText.includes(w));
-      if (!matchesSearch) return false;
-
-      // If non-admin manager, still enforce PIC ownership
-      if (!isAdmin && !isViewer && user) {
-        const { pic } = extractPicFromNotes(l.notes);
-        const myName = user.fullName || user.username;
-        const isMyPic = pic.toLowerCase() === myName.toLowerCase() || 
-                        (pic.toLowerCase() === 'admin' && myName.toLowerCase() === adminName.toLowerCase());
-        if (!isMyPic) return false;
-      }
-
-      return true; // Bypass specific dropdown filters so user can find searched lead!
-    }
-
-    // Status filter. In Pre-Event this filters its own approval stored in notes, not Data List client approval.
-    if (filterConfirmationStatus) {
-      const targetConf = filterConfirmationStatus.toLowerCase();
-      if (activeTab === 'pre_event') {
-        if (getPreEventApprovalStatus(l) !== targetConf) return false;
-      } else if (confStatus !== targetConf) {
-        if (targetConf === 'approve') {
-          if (confStatus !== 'approve' && confStatus !== 'confirmed') return false;
-        } else if (targetConf === 'decline') {
-          if (confStatus !== 'decline' && confStatus !== 'declined') return false;
-        } else if (targetConf === 'pending') {
-          if (confStatus !== 'pending') return false;
-        } else {
-          return false;
-        }
-      }
-    }
-
-    const cleanStatusValue = (v?: string | null) => (!v || v === 'null' || v === 'undefined') ? '' : v.toLowerCase();
-
-    // Hari H Status filter (only apply for reminder_dday tab)
-    if (activeTab === 'reminder_dday' && filterReminderHariH) {
-      const effectiveHariH = cleanStatusValue(l.reminderHariH) || (l.attendanceStatus?.toLowerCase() === 'attended' ? 'on_location' : '');
-      const filterVal = filterReminderHariH.toLowerCase();
-
-      if (filterVal === 'on_location') {
-        if (effectiveHariH !== 'on_location') return false;
-      } else if (filterVal === 'on_the_way') {
-        if (effectiveHariH !== 'on_the_way') return false;
-      } else if (filterVal === 'not_respond_yet') {
-        if (effectiveHariH && effectiveHariH !== 'not_respon_yet' && !effectiveHariH.startsWith('not_respond_')) return false;
-        if (effectiveHariH === 'on_location' || effectiveHariH === 'on_the_way' || effectiveHariH === 'unable_to_attend') return false;
-      } else if (filterVal === 'unable_to_attend') {
-        if (effectiveHariH !== 'unable_to_attend') return false;
-      } else if (effectiveHariH !== filterVal) {
-        return false;
-      }
-    }
-
-    // PIC filter (only apply for non-request tabs)
-    if (activeTab !== 'request') {
-      const { pic } = extractPicFromNotes(l.notes);
-      if (!isAdmin && !isViewer && user) {
-        const myName = user.fullName || user.username;
-        const isMyPic = pic.toLowerCase() === myName.toLowerCase() || 
-                        (pic.toLowerCase() === 'admin' && myName.toLowerCase() === adminName.toLowerCase());
-        if (!isMyPic) {
-          return false;
-        }
-      } else {
-        if (filterPic) {
-          const isMatch = pic.toLowerCase() === filterPic.toLowerCase() || 
-                          (pic.toLowerCase() === 'admin' && filterPic.toLowerCase() === adminName.toLowerCase());
-          if (!isMatch) return false;
-        }
-      }
-    }
-
-    // 2. Company filter
-    if (filterCompany && l.database.company?.name !== filterCompany) {
-      return false;
-    }
-
-    // 3. Position level filter
-    if (filterPosition && l.database.positionLevel !== filterPosition) {
-      return false;
-    }
-
-    // 4. Industry filter
-    if (filterIndustry && l.database.company?.industry !== filterIndustry) {
-      return false;
-    }
-
-    return true;
+  const displayAllStatsParticipants = allStatsParticipants.map((p) => {
+    const effectiveStatus = getEffectiveConfirmationStatus(p);
+    if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
+    return { ...p, confirmationStatus: effectiveStatus };
   });
 
-  const displayParticipants = filteredParticipants;
+  const displayParticipants = participants.map((p) => {
+    const effectiveStatus = getEffectiveConfirmationStatus(p);
+    if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
+    return { ...p, confirmationStatus: effectiveStatus };
+  });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1419,10 +1369,28 @@ export default function EventsPage() {
     filterPic
   ]);
 
-  const totalPages = Math.ceil(displayParticipants.length / pageSize) || 1;
-  const indexOfLastItem = currentPage * pageSize;
-  const indexOfFirstItem = indexOfLastItem - pageSize;
-  const paginatedParticipants = displayParticipants.slice(indexOfFirstItem, indexOfLastItem);
+  useEffect(() => {
+    if (selectedEvent) {
+      loadParticipantsForEvent(selectedEvent, activeTab);
+    }
+  }, [
+    selectedEvent?.id,
+    activeTab,
+    participantSearchQuery,
+    filterCompany,
+    filterPosition,
+    filterIndustry,
+    filterConfirmationStatus,
+    filterReminderHariH,
+    filterPic,
+    currentPage,
+    pageSize
+  ]);
+
+  const totalPages = Math.ceil(participantsTotal / pageSize) || 1;
+  const indexOfLastItem = Math.min(currentPage * pageSize, participantsTotal);
+  const indexOfFirstItem = participantsTotal === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+  const paginatedParticipants = displayParticipants;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -1471,9 +1439,16 @@ export default function EventsPage() {
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
           ) : filteredEvents.length === 0 ? (
-            <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl p-8">
+            <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl p-8 space-y-2">
               <CalendarDays className="w-12 h-12 text-slate-350 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-slate-500">No events found.</p>
+              <p className="text-base font-bold text-slate-700">
+                {!isAdmin && events.length > 0 ? "You don't have access to any events" : "No events found."}
+              </p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {!isAdmin && events.length > 0 
+                  ? "Please contact an administrator to assign event permissions to your account."
+                  : "There are no events available matching your search criteria."}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1637,11 +1612,11 @@ export default function EventsPage() {
                   <>
                     <span> | Target: <strong className="text-slate-700">{selectedEvent.targetParticipants} pax</strong></span>
                     <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ml-1 ${
-                      participants.filter(p => p.reminderHariH === 'on_location' || p.attendanceStatus?.toLowerCase() === 'attended').length >= selectedEvent.targetParticipants
+                      (allParticipantsSummary?.registeredCount || 0) >= selectedEvent.targetParticipants
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-slate-100 text-slate-550 border border-slate-200'
                     }`}>
-                      {participants.filter(p => p.reminderHariH === 'on_location' || p.attendanceStatus?.toLowerCase() === 'attended').length >= selectedEvent.targetParticipants
+                      {(allParticipantsSummary?.registeredCount || 0) >= selectedEvent.targetParticipants
                         ? 'Target Achieved'
                         : 'Not Achieved'}
                     </span>
@@ -1732,12 +1707,12 @@ export default function EventsPage() {
                 }`}
               >
                 <span>Declined</span>
-                {participants.filter(p => {
+                {statsParticipants.filter(p => {
                   const status = getEffectiveConfirmationStatus(p);
                   return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                 }).length > 0 && (
                   <span className="px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700 rounded-full">
-                    {participants.filter(p => {
+                    {statsParticipants.filter(p => {
                       const status = getEffectiveConfirmationStatus(p);
                       return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                     }).length}
@@ -1773,7 +1748,7 @@ export default function EventsPage() {
                   Sync EMS
                 </button>
               )}
-              {participants.length > 0 && (
+              {statsParticipants.length > 0 && (
                 <button
                   onClick={handleExportParticipants}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
@@ -1808,49 +1783,57 @@ export default function EventsPage() {
 
           <EventStatistics
             activeTab={activeTab}
-            participants={displayTabParticipants}
-            usersList={usersList}
+            participants={displayStatsParticipants}
+            allParticipants={displayAllStatsParticipants}
+            usersList={eligiblePicUsers}
             isAdmin={isAdmin}
             adminName={adminName}
             eventId={selectedEvent?.id}
             currentUser={user}
             isViewer={isViewer}
-            onAssignPic={!isViewer ? async (ids, picName) => {
+            onAutoSplit={!isViewer ? async ({ mode, managerNames }) => {
+              if (!selectedEvent) return;
+              const managerIds = eligiblePicUsers
+                .filter((manager) => managerNames.some((name) => name.toLowerCase() === (manager.fullName || manager.username).toLowerCase()))
+                .map((manager) => manager.id);
+
+              if (managerIds.length === 0) {
+                toast.error('Pilih minimal 1 manager yang valid untuk event ini.');
+                return;
+              }
+
               setIsBatchUpdating(true);
-              let successCount = 0;
-              await Promise.all(ids.map(async (id) => {
-                try {
-                  const lead = participants.find(l => l.id === id);
-                  if (lead) {
-                    const newNotes = setPicInNotes(lead.notes, picName);
-                    await crmService.updateParticipantStatus(
-                      id,
-                      lead.participantStatus,
-                      lead.attendanceStatus,
-                      newNotes,
-                      undefined,
-                      lead.callStatus || undefined,
-                      lead.emailStatus || undefined,
-                      lead.whatsappStatus || undefined,
-                      lead.meetingStatus || undefined,
-                      lead.businessChallenges || undefined,
-                      lead.projectInfo || undefined,
-                      lead.timeline || undefined,
-                      lead.reminderH7 || undefined,
-                      lead.reminderH3 || undefined,
-                      lead.reminderH1 || undefined,
-                      lead.reminderHariH || undefined,
-                      lead.confirmationStatus || undefined
-                    );
-                    successCount++;
-                  }
-                } catch (err) {
-                  console.error(err);
-                }
-              }));
-              setIsBatchUpdating(false);
-              if (selectedEvent) {
+              try {
+                const result = await crmService.autoSplitEventAssignments(selectedEvent.id, {
+                  mode,
+                  managerIds
+                });
+                toast.success(`Berhasil membagi ${result.updatedCount} peserta ke ${result.managerCount} manager.`);
                 await loadParticipantsForEvent(selectedEvent, activeTab);
+              } catch (err: any) {
+                toast.error(err.message || 'Failed to auto split assignments');
+              } finally {
+                setIsBatchUpdating(false);
+              }
+            } : undefined}
+            onAssignPic={!isViewer ? async (ids, picName) => {
+              if (!isAllowedPicName(picName)) {
+                toast.error('PIC yang dipilih harus manager yang punya akses ke event ini.');
+                return;
+              }
+              setIsBatchUpdating(true);
+              try {
+                await crmService.bulkUpdateEventParticipants({
+                  participantIds: ids,
+                  picName
+                });
+                if (selectedEvent) {
+                  await loadParticipantsForEvent(selectedEvent, activeTab);
+                }
+              } catch (err: any) {
+                toast.error(err.message || 'Failed to assign PIC');
+              } finally {
+                setIsBatchUpdating(false);
               }
             } : undefined}
             onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
@@ -1862,7 +1845,7 @@ export default function EventsPage() {
               selectedParticipantIds={selectedParticipantIds}
               setSelectedParticipantIds={setSelectedParticipantIds}
               activeTab={activeTab}
-              usersList={usersList}
+              usersList={eligiblePicUsers}
               handleBatchUpdateConfirmationStatus={handleBatchUpdateConfirmationStatus}
               handleBatchUpdatePreEventApprovalStatus={handleBatchUpdatePreEventApprovalStatus}
               handleBatchUpdateParticipantStatus={handleBatchUpdateParticipantStatus}
@@ -1874,10 +1857,10 @@ export default function EventsPage() {
           )}
 
           {/* Toolbar with Search & Advanced Filters */}
-          {participants.length > 0 && (
+          {selectedEvent && (
             <ParticipantToolbar
-              participants={participants}
-              usersList={usersList}
+              participants={statsParticipants}
+              usersList={eligiblePicUsers}
               searchQuery={participantSearchQuery}
               setSearchQuery={setParticipantSearchQuery}
               filterCompany={filterCompany}
@@ -1903,17 +1886,19 @@ export default function EventsPage() {
             <div className="py-24 flex items-center justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
-          ) : participants.length === 0 ? (
+          ) : participantsTotal === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
               <Eye className="w-8 h-8 text-slate-400 mb-2" />
-              <p className="text-sm font-semibold text-slate-500">No participants registered for this event</p>
-              <p className="text-xs text-slate-400 mt-1">Start by clicking "Add Lead" to register a database.</p>
-            </div>
-          ) : filteredParticipants.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-              <Search className="w-8 h-8 text-slate-400 mb-2" />
-              <p className="text-sm font-semibold text-slate-500">No matching participants found</p>
-              <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms.</p>
+              <p className="text-sm font-semibold text-slate-500">
+                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterReminderHariH || filterPic
+                  ? 'No matching participants found'
+                  : 'No participants registered for this event'}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterReminderHariH || filterPic
+                  ? 'Try adjusting your search terms.'
+                  : 'Start by clicking "Add Lead" to register a database.'}
+              </p>
             </div>
           ) : activeTab === 'request' || activeTab === 'pre_event' || activeTab === 'declined' ? (
             <RequestPreEventTable
@@ -1966,7 +1951,7 @@ export default function EventsPage() {
           )}
 
           {/* Pagination Bar */}
-          {filteredParticipants.length > 0 && (
+          {participantsTotal > 0 && (
             <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-4 py-3 border border-slate-200 rounded-xl shadow-2xs text-xs text-slate-600">
               <div className="flex flex-wrap items-center gap-2">
                 <span>Tampilkan</span>
@@ -1986,11 +1971,11 @@ export default function EventsPage() {
                 <span>entri per halaman</span>
                 <span className="text-slate-300 mx-1">|</span>
                 <span>
-                  Menampilkan <strong className="text-slate-900">{indexOfFirstItem + 1}</strong> -{' '}
+                  Menampilkan <strong className="text-slate-900">{indexOfFirstItem}</strong> -{' '}
                   <strong className="text-slate-900">
-                    {Math.min(indexOfLastItem, filteredParticipants.length)}
+                    {indexOfLastItem}
                   </strong>{' '}
-                  dari <strong className="text-slate-900">{filteredParticipants.length}</strong> peserta
+                  dari <strong className="text-slate-900">{participantsTotal}</strong> peserta
                 </span>
               </div>
 
@@ -2093,7 +2078,7 @@ export default function EventsPage() {
           onClose={() => setIsAddParticipantModalOpen(false)}
           selectedEvent={selectedEvent}
           databases={databases}
-          participants={participants}
+          participants={statsParticipants}
           allEventParticipants={allEventParticipants}
           events={events}
           onAddParticipant={handleAddParticipant}
@@ -2110,7 +2095,7 @@ export default function EventsPage() {
           }}
           activeParticipant={activeParticipant}
           activeTab={activeTab}
-          usersList={usersList}
+          usersList={eligiblePicUsers}
           onSubmit={handleUpdateParticipantStatus}
           submittingParticipantUpdate={submittingParticipantUpdate}
           onFlagAsTikus={handleFlagAsTikus}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authService } from '../services/authService';
 import { auditLogService } from '../services/auditLogService';
@@ -14,6 +14,7 @@ interface AuthContextType {
   login: (data: any) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<AppUser | null>;
   isAdmin: boolean;
   isManager: boolean;
   isUser: boolean;
@@ -25,6 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AppUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isLoggingOutRef = useRef(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -98,6 +100,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token, pathname, isLoading, router]);
 
+  const refreshUser = async (): Promise<AppUser | null> => {
+    if (!token || !user?.id) return user;
+
+    try {
+      const freshUser = await authService.getCurrentUser();
+      const mergedUser: AppUser = {
+        ...user,
+        ...freshUser,
+        roles: freshUser.roles || user.roles || [],
+        allowedEventIds: freshUser.allowedEventIds || []
+      };
+
+      localStorage.setItem('user', JSON.stringify(mergedUser));
+      setUser(mergedUser);
+      return mergedUser;
+    } catch (err) {
+      console.warn('Failed to refresh current user session:', err);
+      return user;
+    }
+  };
+
   const login = async (data: any) => {
     try {
       const response = await authService.login(data);
@@ -152,36 +175,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    if (isLoggingOutRef.current) return;
+    isLoggingOutRef.current = true;
+
+    const currentUser = user;
+    const currentToken = token;
+
     try {
-      if (user) {
+      if (currentUser) {
         auditLogService.recordLog({
-          userId: user.id,
-          username: user.username,
-          userFullName: user.fullName,
-          userRole: user.roles?.[0] || 'USER',
+          userId: currentUser.id,
+          username: currentUser.username,
+          userFullName: currentUser.fullName,
+          userRole: currentUser.roles?.[0] || 'USER',
           module: 'AUTH',
           actionType: 'LOGOUT',
           targetName: 'Session Logout',
-          description: `Pengguna '${user.username}' logout dari sistem CRM.`
+          description: `Pengguna '${currentUser.username}' logout dari sistem CRM.`
         });
       }
-      if (token) {
-        await authService.logout(token);
-      }
-    } catch (err) {
-      console.warn('Backend logout failed or session already cleared', err);
-    } finally {
+
       localStorage.removeItem('session');
       localStorage.removeItem('user');
       setToken(null);
       setUser(null);
+      router.replace('/login');
       toast.info('Logged out successfully.');
-      router.push('/login');
+
+      if (currentToken) {
+        authService.logout(currentToken).catch((err) => {
+          console.warn('Backend logout failed or session already cleared', err);
+        });
+      }
+    } finally {
+      setTimeout(() => {
+        isLoggingOutRef.current = false;
+      }, 300);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, isAdmin, isManager, isUser }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, refreshUser, isAdmin, isManager, isUser }}>
       {children}
     </AuthContext.Provider>
   );

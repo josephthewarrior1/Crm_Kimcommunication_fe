@@ -71,7 +71,19 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
       saveViewerAllowedEventIds(targetUser.id, selectedIds);
       targetUser.allowedEventIds = selectedIds;
 
-      toast.success(`Event access permissions saved to Database for viewer "${targetUser.username}"! (${selectedIds.length} event(s) allowed)`);
+      // If updating current logged-in user, also update session storage
+      try {
+        const savedUserJson = localStorage.getItem('user');
+        if (savedUserJson) {
+          const parsed = JSON.parse(savedUserJson);
+          if (parsed.id === targetUser.id) {
+            parsed.allowedEventIds = selectedIds;
+            localStorage.setItem('user', JSON.stringify(parsed));
+          }
+        }
+      } catch {}
+
+      toast.success(`Event access permissions saved for "${targetUser.username}"! (${selectedIds.length} event(s) allowed)`);
       onClose();
     } catch (err: any) {
       toast.error(err.message || 'Failed to save event permissions');
@@ -91,10 +103,10 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
           <div>
             <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-600" />
-              Viewer Event Access Control
+              Event Access Permissions
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Select which events <strong className="text-slate-800">{targetUser.fullName || targetUser.username}</strong> is allowed to view.
+              Select which events <strong className="text-slate-800">{targetUser.fullName || targetUser.username}</strong> ({targetUser.roles?.[0] || 'USER'}) is allowed to view.
             </p>
           </div>
           <button
