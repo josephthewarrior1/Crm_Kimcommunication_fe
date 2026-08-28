@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
-import { AlertCircle, Phone, Mail, Edit2, Trash2, History } from 'lucide-react';
+import { AlertCircle, Phone, Mail, Edit2, Trash2, History, MoreVertical } from 'lucide-react';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
 import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 
@@ -72,6 +72,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const canEditConfirmation = !isUser || activeTab === 'request';
   const showApprovalColumn = true;
 
@@ -79,6 +80,10 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
     if (tableRef.current) {
       setTableScrollWidth(tableRef.current.scrollWidth);
     }
+  }, [filteredParticipants, activeTab]);
+
+  useEffect(() => {
+    setOpenMenuId(null);
   }, [filteredParticipants, activeTab]);
 
   return (
@@ -108,6 +113,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
         <table ref={tableRef} className="w-full min-w-[1850px] text-left border-collapse text-[11px]">
         <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
           <tr className="border-b border-slate-200 text-slate-450 uppercase tracking-widest font-bold text-[9px] whitespace-nowrap">
+            {!isUser && <th className="py-2 px-3 text-left sticky left-0 bg-slate-50 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]">Actions</th>}
             <th className="py-2 px-2 w-8 text-center"></th>
             <th className="py-2 px-2 w-8 text-center">
               <input
@@ -145,7 +151,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             )}
             {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
             {columnConfig.notes !== false && <th className="py-2 px-3">Notes</th>}
-            {!isUser && <th className="py-2 px-3 text-right">Actions</th>}
+            {!isUser && <th className="hidden">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -156,7 +162,53 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             const isTikus = Boolean(!isTakeout && (!p.database?.isActive || (p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus')));
 
             return (
-              <tr key={p.id} className={`border-b border-slate-100 transition-colors ${isTikus ? 'bg-red-50/60 hover:bg-red-100/60' : isTakeout ? 'bg-amber-50/60 hover:bg-amber-100/60' : 'hover:bg-slate-50/50'}`}>
+              <tr key={p.id} className={`relative border-b border-slate-100 transition-colors ${isTikus ? 'bg-red-50/60 hover:bg-red-100/60' : isTakeout ? 'bg-amber-50/60 hover:bg-amber-100/60' : 'hover:bg-slate-50/50'}`}>
+                {!isUser && (
+                  <td
+                    onClick={(e) => e.stopPropagation()}
+                    className={`py-1.5 px-3 text-left sticky left-0 bg-white group-hover:bg-slate-50/50 ${openMenuId === p.id ? 'z-40' : 'z-[1]'} shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]`}
+                  >
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId((current) => (current === p.id ? null : p.id))}
+                        className="inline-flex items-center justify-center p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                      {openMenuId === p.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setOpenMenuId(null)}
+                          />
+                          <div className="absolute left-0 top-9 z-50 w-40 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                handleOpenUpdateParticipantModal(p);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                              Edit Participant
+                            </button>
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                openDeleteParticipantConfirm(p);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-semibold text-red-650 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              Remove Participant
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                )}
                 <td className="py-1.5 px-2 text-center">
                   {checkDatabaseCompleteness(p.database).isIncomplete && (
                     <span
@@ -358,7 +410,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     {cleanNotes || '-'}
                   </td>
                 )}
-                <td className="py-1.5 px-3 text-right whitespace-nowrap space-x-1">
+                <td className="hidden">
                   {!isUser && (
                     <>
                       <button

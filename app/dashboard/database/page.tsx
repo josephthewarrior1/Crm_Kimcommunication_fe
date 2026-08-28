@@ -759,6 +759,7 @@ export default function DatabasesPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap text-left">
                   <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-left sticky left-0 bg-slate-50 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)]">Actions</th>
                   <th
                     onClick={() => handleSort('groupName')}
                     className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
@@ -889,7 +890,7 @@ export default function DatabasesPage() {
                   </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Postal Code</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Website</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right sticky right-0 bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">Actions</th>
+                  <th className="hidden">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -983,6 +984,108 @@ export default function DatabasesPage() {
                           : 'hover:bg-slate-50/80'
                       }`}
                     >
+                      <td
+                        onClick={(e) => e.stopPropagation()}
+                        className={`py-4 px-4 text-sm text-left sticky left-0 ${
+                          !c.isActive
+                            ? 'bg-slate-50/90'
+                            : isFlaggedTikus && !hasConfirmedFlag
+                            ? 'bg-amber-50/90'
+                            : 'bg-white'
+                        } group-hover:bg-slate-50/90 ${activeDropdownId === c.id ? 'z-30' : 'z-10'} shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors`}
+                      >
+                        <div className="inline-flex items-center justify-start gap-2">
+                          {isFlaggedTikus && !hasConfirmedFlag && (
+                            <span
+                              className="inline-flex items-center gap-1 cursor-help px-2 py-0.5 text-[10px] font-bold bg-amber-100/90 border border-amber-300 text-amber-800 rounded-md shrink-0 transition-colors shadow-2xs"
+                              title={`Mencurigakan / Dicurigai Tikus:\n• ${allFlags.map(f => `${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n• ')}`}
+                            >
+                              <ShieldAlert className="w-3 h-3 text-amber-600 shrink-0" />
+                              Suspected
+                            </span>
+                          )}
+                          {!c.isActive && (
+                            <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-red-100/90 border border-red-300 text-red-800 rounded-md shrink-0 shadow-2xs">
+                              INACTIVE
+                            </span>
+                          )}
+                          <div className="relative text-left">
+                            <button
+                              onClick={(e) => handleToggleDropdown(e, c.id)}
+                              className="inline-flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
+                              title="Actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {activeDropdownId === c.id && dropdownPos && (
+                              <>
+                                {/* Overlay to close when clicking outside */}
+                                <div
+                                  className="fixed inset-0 z-40 bg-transparent"
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    setDropdownPos(null);
+                                  }}
+                                />
+                                <div
+                                  style={{
+                                    position: 'fixed',
+                                    top: `${dropdownPos.top}px`,
+                                    right: `${dropdownPos.right}px`,
+                                  }}
+                                  className="w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 duration-100 text-left animate-in fade-in zoom-in-95"
+                                >
+                                  {!isUser && (
+                                    <button
+                                      onClick={() => {
+                                        setActiveDropdownId(null);
+                                        setDropdownPos(null);
+                                        openEditModal(c);
+                                      }}
+                                      className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                                      Edit Database
+                                    </button>
+                                  )}
+
+                                  {c.isActive && !isUser && (
+                                    <button
+                                      onClick={() => {
+                                        setActiveDropdownId(null);
+                                        setDropdownPos(null);
+                                        handleOpenTakeoutModal(c);
+                                      }}
+                                      className="w-full px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 hover:text-amber-900 transition-colors flex items-center gap-2"
+                                    >
+                                      <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                                      Request Takeout
+                                    </button>
+                                  )}
+
+                                  {isAdmin && (
+                                    <>
+                                      <div className="border-t border-slate-100 my-1" />
+                                      <button
+                                        onClick={() => {
+                                          setActiveDropdownId(null);
+                                          setDropdownPos(null);
+                                          openDeleteConfirm(c);
+                                        }}
+                                        className="w-full px-4 py-2 text-xs font-semibold text-red-650 hover:bg-red-50 hover:text-red-900 transition-colors flex items-center gap-2"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                        Delete
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </td>
                       <td className="py-4 px-3 text-center">
                         {checkDatabaseCompleteness(c).isIncomplete && (
                           <span
@@ -1079,16 +1182,7 @@ export default function DatabasesPage() {
                           </a>
                         ) : '-'}
                       </td>
-                      <td
-                        onClick={(e) => e.stopPropagation()}
-                        className={`py-4 px-4 text-sm text-right sticky right-0 ${
-                          !c.isActive
-                            ? 'bg-slate-50/90'
-                            : isFlaggedTikus && !hasConfirmedFlag
-                            ? 'bg-amber-50/90'
-                            : 'bg-white'
-                        } group-hover:bg-slate-50/90 ${activeDropdownId === c.id ? 'z-30' : 'z-10'} shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors`}
-                      >
+                      <td className="hidden">
                         <div className="inline-flex items-center justify-end gap-2">
                           {isFlaggedTikus && !hasConfirmedFlag && (
                             <span
