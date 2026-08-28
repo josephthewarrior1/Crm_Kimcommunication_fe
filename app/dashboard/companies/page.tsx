@@ -5,14 +5,12 @@ import { crmService } from '../../../lib/services/crmService';
 import { Company, Group, Database } from '../../../lib/types';
 import { Building2, Search, Plus, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Users, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { INDUSTRIES } from '../../../lib/constants';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { AddCompanyModal } from './components/AddCompanyModal';
 import { EditCompanyModal } from './components/EditCompanyModal';
 import { DeleteCompanyConfirmModal } from './components/DeleteCompanyConfirmModal';
 import { CompanyDetailModal } from './components/CompanyDetailModal';
-import { matchesIndustryFilter } from '../database/utils/industryHelper';
 import { formatCompanyName } from '../../../lib/utils/companyName';
 import { normalizePhone } from '../database/utils/phoneHelper';
 
@@ -22,7 +20,8 @@ export default function CompaniesPage() {
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [databases, setDatabases] = useState<Database[]>([]);
+  const [detailDatabases, setDetailDatabases] = useState<Database[]>([]);
+  const [industryOptions, setIndustryOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
@@ -30,6 +29,8 @@ export default function CompaniesPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
   // Sorting state
@@ -58,7 +59,7 @@ export default function CompaniesPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [searchQuery, filterIndustry, filterGroup, currentPage, sortBy, sortOrder]);
 
   useEffect(() => {
     const searchVal = searchParams.get('search');
@@ -75,18 +76,44 @@ export default function CompaniesPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [cData, gData, databasesData] = await Promise.all([
-        crmService.getCompanies(),
-        crmService.getGroups(),
-        crmService.getDatabases()
+      const [cData, filterData] = await Promise.all([
+        crmService.getCompaniesList({
+          search: searchQuery || undefined,
+          industry: filterIndustry || undefined,
+          groupId: filterGroup || undefined,
+          sortBy,
+          sortOrder,
+          page: currentPage,
+          size: itemsPerPage
+        }),
+        crmService.getCompanyFilterOptions()
       ]);
-      setCompanies(cData);
-      setGroups(gData);
-      setDatabases(databasesData);
+      setCompanies(cData.items);
+      setTotalItems(cData.total);
+      setTotalPages(cData.totalPages);
+      setGroups(filterData.groups.map(group => ({ id: group.id, name: group.name })));
+      setIndustryOptions(filterData.industries);
     } catch (err) {
-      toast.error('Failed to load companies, groups or databases data');
+      toast.error('Failed to load companies data');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function openCompanyDetail(company: Company) {
+    setDetailCompany(company);
+    setDetailDatabases([]);
+    setIsDetailModalOpen(true);
+    try {
+      const databasesData = await crmService.getDatabasesList({
+        companyId: String(company.id),
+        tab: 'all',
+        page: 1,
+        size: 100
+      });
+      setDetailDatabases(databasesData.items);
+    } catch {
+      setDetailDatabases([]);
     }
   }
 
@@ -135,74 +162,13 @@ export default function CompaniesPage() {
       setSubmitting(false);
     }
   };
-  const filteredGroupOptions = groups.filter((g) => {
-    if (!filterIndustry) return true;
-    return companies.some((c) => c.group?.id === g.id && matchesIndustryFilter(c.industry, filterIndustry));
-  });
-
   const handleIndustryChange = (industry: string) => {
     setFilterIndustry(industry);
-    if (industry && filterGroup) {
-      const isGroupValid = companies.some(
-        (c) => c.group?.id?.toString() === filterGroup && matchesIndustryFilter(c.industry, industry)
-      );
-      if (!isGroupValid) {
-        setFilterGroup('');
-      }
-    }
+    setFilterGroup('');
   };
-
-  const filteredCompanies = companies.filter((c) => {
-    const query = searchQuery.toLowerCase();
-    const displayName = formatCompanyName(c.name).toLowerCase();
-    const matchesSearch =
-      c.name.toLowerCase().includes(query) ||
-      displayName.includes(query) ||
-      (c.brandName && c.brandName.toLowerCase().includes(query)) ||
-      (c.city && c.city.toLowerCase().includes(query)) ||
-      (c.group?.name && c.group.name.toLowerCase().includes(query));
-
-
-    const matchesIndustry = !filterIndustry || matchesIndustryFilter(c.industry, filterIndustry);
-    const matchesGroup = !filterGroup || (c.group && c.group.id === Number(filterGroup));
-
-    return matchesSearch && matchesIndustry && matchesGroup;
-  });
-
-  const sortedCompanies = [...filteredCompanies].sort((a, b) => {
-    let aVal: any = a.id;
-    let bVal: any = b.id;
-
-    if (sortBy === 'name') {
-      aVal = a.name.toLowerCase();
-      bVal = b.name.toLowerCase();
-    } else if (sortBy === 'brand') {
-      aVal = (a.brandName || '').toLowerCase();
-      bVal = (b.brandName || '').toLowerCase();
-    } else if (sortBy === 'group') {
-      aVal = (a.group?.name || '').toLowerCase();
-      bVal = (b.group?.name || '').toLowerCase();
-    } else if (sortBy === 'industry') {
-      aVal = (a.industry || '').toLowerCase();
-      bVal = (b.industry || '').toLowerCase();
-    } else if (sortBy === 'city') {
-      aVal = (a.city || '').toLowerCase();
-      bVal = (b.city || '').toLowerCase();
-    } else if (sortBy === 'contacts') {
-      aVal = databases.filter(d => d.company?.id === a.id && d.isActive).length;
-      bVal = databases.filter(d => d.company?.id === b.id && d.isActive).length;
-    }
-
-    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const totalItems = sortedCompanies.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentCompanies = sortedCompanies.slice(indexOfFirstItem, indexOfLastItem);
+  const currentCompanies = companies;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -267,7 +233,7 @@ export default function CompaniesPage() {
             className="w-full px-3 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer"
           >
             <option value="">All Industries</option>
-            {INDUSTRIES.map((ind) => (
+            {industryOptions.map((ind) => (
               <option key={ind} value={ind}>
                 {ind}
               </option>
@@ -283,7 +249,7 @@ export default function CompaniesPage() {
             className="w-full px-3 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer"
           >
             <option value="">All Groups</option>
-            {filteredGroupOptions.map((g) => (
+            {groups.map((g) => (
               <option key={g.id} value={g.id.toString()}>
                 {g.name}
               </option>
@@ -312,7 +278,7 @@ export default function CompaniesPage() {
         <div className="h-[40vh] flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-605" />
         </div>
-      ) : sortedCompanies.length === 0 ? (
+      ) : companies.length === 0 ? (
         <div className="p-12 text-center border border-slate-200 rounded-2xl bg-white shadow-sm">
           <Building2 className="w-10 h-10 text-slate-400 mx-auto mb-3" />
           <h3 className="font-bold text-slate-700">No companies found</h3>
@@ -368,15 +334,12 @@ export default function CompaniesPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {currentCompanies.map((c) => {
-                  const activeContactCount = databases.filter(database => database.company?.id === c.id && database.isActive).length;
+                  const activeContactCount = c.contactCount || 0;
 
                   return (
                   <tr
                     key={c.id}
-                    onClick={() => {
-                      setDetailCompany(c);
-                      setIsDetailModalOpen(true);
-                    }}
+                    onClick={() => openCompanyDetail(c)}
                     className="hover:bg-slate-50/80 transition-all cursor-pointer group/row"
                   >
                     <td className="py-4 px-6 text-sm align-middle">
@@ -594,7 +557,7 @@ export default function CompaniesPage() {
             setDetailCompany(null);
           }}
           company={detailCompany}
-          databases={databases}
+          databases={detailDatabases}
           onGoToEmployeeDetails={(fullName) => {
             router.push(`/dashboard/database?search=${encodeURIComponent(fullName)}`);
           }}

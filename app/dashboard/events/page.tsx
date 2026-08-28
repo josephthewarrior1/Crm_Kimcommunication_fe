@@ -28,7 +28,6 @@ import { extractPicFromNotes, getPreEventApprovalStatus, setPreEventApprovalStat
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { exportParticipantsToExcel } from './utils/exportHelper';
-import { importParticipantsFromExcel } from './utils/importHelper';
 import { getEventColumnConfig } from './utils/columnConfigHelper';
 
 export default function EventsPage() {
@@ -972,15 +971,14 @@ export default function EventsPage() {
     setIsImportingParticipants(true);
 
     try {
-      const { successCount, errorCount } = await importParticipantsFromExcel(
-        importParticipantsFile,
+      setImportParticipantsProgress(10);
+      const result = await crmService.importEventParticipants(
         selectedEvent.id,
-        activeTab,
-        participants,
-        setImportParticipantsProgress,
-        crmService
+        importParticipantsFile,
+        activeTab
       );
-      toast.success(`Impor selesai! Berhasil: ${successCount} baris. Gagal/Skip: ${errorCount} baris.`);
+      setImportParticipantsProgress(100);
+      toast.success(`Impor selesai! Ditambahkan: ${result.addedParticipants}. Sudah ada/skip: ${result.skippedParticipants}. Total dibaca: ${result.totalRows}.`);
       setIsImportParticipantsModalOpen(false);
       setImportParticipantsFile(null);
       await loadData();
@@ -2198,6 +2196,7 @@ export default function EventsPage() {
           setIsImportParticipantsModalOpen(false);
           setImportParticipantsFile(null);
         }}
+        eventId={selectedEvent?.id}
         importParticipantsFile={importParticipantsFile}
         setImportParticipantsFile={setImportParticipantsFile}
         isImportingParticipants={isImportingParticipants}
@@ -2205,7 +2204,6 @@ export default function EventsPage() {
         activeTab={activeTab}
         onImport={handleImportParticipantsExcel}
         onDownloadTemplate={handleDownloadTemplate}
-        participants={participants}
       />
 
       {/* Engagement History Modal */}

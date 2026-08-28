@@ -1,7 +1,12 @@
 import { ApiService } from './apiService';
 import {
   Group,
+  GroupListResponse,
+  GroupSummaryResponse,
   Company,
+  CompanyFilterOptionsResponse,
+  CompanyListResponse,
+  DashboardSummaryResponse,
   Database,
   DatabaseFilterOptionsResponse,
   DatabaseListResponse,
@@ -9,11 +14,14 @@ import {
   Event,
   EventAvailableDatabasesResponse,
   EventActivitySummaryResponse,
+  EventFilterOptionsResponse,
   EventListResponse,
   EventParticipant,
   EventParticipantPicSummaryResponse,
   EventParticipantFilterOptions,
   EventParticipantActivity,
+  EventParticipantsExportResponse,
+  EventParticipantsImportValidationResponse,
   EventParticipantStatisticsResponse,
   RemovalRequest,
   PersonalEmailDomain,
@@ -26,9 +34,34 @@ export class CrmService extends ApiService {
     super();
   }
 
+  async getDashboardSummary(): Promise<DashboardSummaryResponse> {
+    return this.get<DashboardSummaryResponse>('/api/dashboard/summary');
+  }
+
   // --- GROUPS ---
   async getGroups(): Promise<Group[]> {
     return this.get<Group[]>('/api/groups');
+  }
+
+  async getGroupsList(params?: {
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    page?: number;
+    size?: number;
+  }): Promise<GroupListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.sortBy) searchParams.set('sortBy', params.sortBy);
+    if (params?.sortOrder) searchParams.set('sortOrder', params.sortOrder);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.size) searchParams.set('size', String(params.size));
+    const query = searchParams.toString();
+    return this.get<GroupListResponse>(`/api/groups/list${query ? `?${query}` : ''}`);
+  }
+
+  async getGroupsSummary(): Promise<GroupSummaryResponse> {
+    return this.get<GroupSummaryResponse>('/api/groups/summary');
   }
 
   async createGroup(group: Partial<Group>): Promise<Group> {
@@ -46,6 +79,31 @@ export class CrmService extends ApiService {
   // --- COMPANIES ---
   async getCompanies(): Promise<Company[]> {
     return this.get<Company[]>('/api/companies');
+  }
+
+  async getCompaniesList(params?: {
+    search?: string;
+    groupId?: string;
+    industry?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    page?: number;
+    size?: number;
+  }): Promise<CompanyListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.groupId) searchParams.set('groupId', params.groupId);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.sortBy) searchParams.set('sortBy', params.sortBy);
+    if (params?.sortOrder) searchParams.set('sortOrder', params.sortOrder);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.size) searchParams.set('size', String(params.size));
+    const query = searchParams.toString();
+    return this.get<CompanyListResponse>(`/api/companies/list${query ? `?${query}` : ''}`);
+  }
+
+  async getCompanyFilterOptions(): Promise<CompanyFilterOptionsResponse> {
+    return this.get<CompanyFilterOptionsResponse>('/api/companies/filter-options');
   }
 
   async createCompany(company: Partial<Company>, groupId?: number): Promise<Company> {
@@ -169,6 +227,10 @@ export class CrmService extends ApiService {
     return this.get<EventListResponse>(`/api/events/list${query ? `?${query}` : ''}`);
   }
 
+  async getEventFilterOptions(): Promise<EventFilterOptionsResponse> {
+    return this.get<EventFilterOptionsResponse>('/api/events/filter-options');
+  }
+
   async getEventById(id: number): Promise<Event> {
     return this.get<Event>(`/api/events/${id}`);
   }
@@ -255,6 +317,72 @@ export class CrmService extends ApiService {
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
     return this.get<any>(`/api/events/${eventId}/participants/summary${query ? `?${query}` : ''}`);
+  }
+
+  async exportEventParticipants(
+    eventId: number,
+    params?: {
+      tab?: string;
+      pic?: string;
+      company?: string;
+      position?: string;
+      industry?: string;
+      confirmationStatus?: string;
+      reminderHariH?: string;
+      search?: string;
+    }
+  ): Promise<EventParticipantsExportResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.tab) searchParams.set('tab', params.tab);
+    if (params?.pic) searchParams.set('pic', params.pic);
+    if (params?.company) searchParams.set('company', params.company);
+    if (params?.position) searchParams.set('position', params.position);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
+    if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
+    if (params?.search) searchParams.set('search', params.search);
+    const query = searchParams.toString();
+    return this.get<EventParticipantsExportResponse>(`/api/events/${eventId}/participants/export${query ? `?${query}` : ''}`);
+  }
+
+  async validateEventParticipantsImport(
+    eventId: number,
+    file: File,
+    tab?: string
+  ): Promise<EventParticipantsImportValidationResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (tab) formData.append('tab', tab);
+    return this.postFormData<EventParticipantsImportValidationResponse>(`/api/events/${eventId}/participants/import/validate`, formData);
+  }
+
+  async importEventParticipants(
+    eventId: number,
+    file: File,
+    tab?: string
+  ): Promise<{
+    message: string;
+    eventId: number;
+    eventName: string;
+    addedParticipants: number;
+    skippedParticipants: number;
+    createdContacts: number;
+    updatedContacts: number;
+    totalRows: number;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (tab) formData.append('tab', tab);
+    return this.postFormData<{
+      message: string;
+      eventId: number;
+      eventName: string;
+      addedParticipants: number;
+      skippedParticipants: number;
+      createdContacts: number;
+      updatedContacts: number;
+      totalRows: number;
+    }>(`/api/events/${eventId}/participants/import`, formData);
   }
 
   async getEventParticipantsSummaryByPic(

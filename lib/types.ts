@@ -21,6 +21,7 @@ export interface Group {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  companyCount?: number;
 }
 
 export interface Company {
@@ -39,6 +40,48 @@ export interface Company {
   postalCode?: string;
   createdAt?: string;
   updatedAt?: string;
+  contactCount?: number;
+}
+
+export interface CompanyListResponse {
+  items: Company[];
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface CompanyFilterOptionsResponse {
+  groups: Array<{ id: number; name: string }>;
+  industries: string[];
+}
+
+export interface GroupListResponse {
+  items: Group[];
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface GroupSummaryResponse {
+  totalGroups: number;
+  totalCompanies: number;
+  groupedCompanies: number;
+  ungroupedCompanies: number;
+}
+
+export interface DashboardSummaryResponse {
+  metrics: {
+    totalGroups: number;
+    totalCompanies: number;
+    totalDatabase: number;
+    totalEvents: number;
+    suspectedTikus: number;
+  };
+  industryDistribution: Array<{ name: string; value: number }>;
+  eventAttendancePerformance: Array<{ name: string; Invited: number; Attended: number }>;
+  flaggedAlerts: FlaggedIdentity[];
 }
 
 export interface Database {
@@ -140,6 +183,13 @@ export interface EventListResponse {
   };
 }
 
+export interface EventFilterOptionsResponse {
+  clients: string[];
+  eventTypes: string[];
+  cities: string[];
+  years: number[];
+}
+
 export interface EventAvailableDatabaseOption {
   id: number;
   name: string;
@@ -235,6 +285,49 @@ export interface EventParticipantPicSummaryResponse {
   items: EventParticipantPicSummaryItem[];
 }
 
+export interface EventParticipantsExportResponse {
+  eventId: number;
+  eventName: string;
+  tab: string;
+  sheetName: string;
+  fileName: string;
+  total: number;
+  rows: Array<Record<string, string | number | boolean | null>>;
+}
+
+export interface EventParticipantsImportValidationRow {
+  rowNumber: number;
+  status: 'valid' | 'duplicate' | 'error' | 'conflict';
+  firstName: string;
+  lastName: string;
+  companyName: string;
+  mobilePhone: string;
+  companyEmail: string;
+  personalEmail: string;
+  salutation: string;
+  position: string;
+  jobTitle: string;
+  existingDatabaseId?: number | null;
+  existingParticipantId?: number | null;
+  issues: string[];
+}
+
+export interface EventParticipantsImportValidationResponse {
+  eventId: number;
+  eventName: string;
+  tab?: string;
+  fileName?: string;
+  summary: {
+    validCount: number;
+    duplicateCount: number;
+    errorCount: number;
+    blankCount: number;
+    conflictCount?: number;
+    totalRows: number;
+  };
+  rows: EventParticipantsImportValidationRow[];
+}
+
 export interface EventParticipantActivity {
   id: number;
   eventParticipant?: EventParticipant;
@@ -298,11 +391,33 @@ export interface AuditLog {
   username: string;
   userFullName?: string;
   userRole?: string;
-  module: 'DATABASE' | 'COMPANIES' | 'GROUPS' | 'EVENTS' | 'PARTICIPANTS' | 'FLAGGED' | 'TAKEOUT' | 'USER_MANAGEMENT' | 'AUTH';
+  module: 'DATABASE' | 'COMPANIES' | 'GROUPS' | 'EVENTS' | 'PARTICIPANTS' | 'EVENT_PARTICIPANT' | 'FLAGGED' | 'TAKEOUT' | 'USER_MANAGEMENT' | 'AUTH';
   actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'IMPORT_EXCEL' | 'STATUS_CHANGE' | 'APPROVE_TAKEOUT' | 'REJECT_TAKEOUT' | 'FLAG_TIKUS' | 'LOGIN' | 'LOGOUT';
   targetId?: string | number | null;
   targetName?: string | null;
   description: string;
   ipAddress?: string | null;
   createdAt: string;
+}
+
+export interface AuditLogSummary {
+  total: number;
+  today: number;
+  topUser: string;
+  topUserCount: number;
+  critical: number;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLog[];
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface AuditLogFilterOptions {
+  users: string[];
+  modules: string[];
+  actionTypes: string[];
 }

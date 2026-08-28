@@ -16,7 +16,7 @@ export default function GroupsPage() {
   const router = useRouter();
   const { isAdmin, isManager, isUser } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [detailCompanies, setDetailCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -46,6 +46,8 @@ export default function GroupsPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
   // Reset current page when query changes
@@ -55,21 +57,41 @@ export default function GroupsPage() {
 
   useEffect(() => {
     loadGroups();
-  }, []);
+  }, [searchQuery, currentPage, sortBy, sortOrder]);
 
   async function loadGroups() {
     setLoading(true);
     try {
-      const [groupsData, companiesData] = await Promise.all([
-        crmService.getGroups(),
-        crmService.getCompanies()
-      ]);
-      setGroups(groupsData);
-      setCompanies(companiesData);
+      const groupsData = await crmService.getGroupsList({
+        search: searchQuery || undefined,
+        sortBy,
+        sortOrder,
+        page: currentPage,
+        size: itemsPerPage
+      });
+      setGroups(groupsData.items);
+      setTotalItems(groupsData.total);
+      setTotalPages(groupsData.totalPages);
     } catch (err) {
-      toast.error('Failed to load groups or companies data');
+      toast.error('Failed to load groups data');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function openGroupDetail(group: Group) {
+    setDetailGroup(group);
+    setDetailCompanies([]);
+    setIsDetailModalOpen(true);
+    try {
+      const companiesData = await crmService.getCompaniesList({
+        groupId: String(group.id),
+        page: 1,
+        size: 100
+      });
+      setDetailCompanies(companiesData.items);
+    } catch {
+      setDetailCompanies([]);
     }
   }
 
@@ -124,36 +146,9 @@ export default function GroupsPage() {
     }
   };
 
-  // Filter groups based on search
-  const filteredGroups = groups.filter((g) =>
-    g.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const sortedGroups = [...filteredGroups].sort((a, b) => {
-    let aVal: any = a.id;
-    let bVal: any = b.id;
-
-    if (sortBy === 'name') {
-      aVal = a.name.toLowerCase();
-      bVal = b.name.toLowerCase();
-    } else if (sortBy === 'companies') {
-      aVal = companies.filter(c => c.group?.id === a.id).length;
-      bVal = companies.filter(c => c.group?.id === b.id).length;
-    } else if (sortBy === 'created_at') {
-      aVal = new Date(a.createdAt || 0).getTime();
-      bVal = new Date(b.createdAt || 0).getTime();
-    }
-
-    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const totalItems = sortedGroups.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentGroups = sortedGroups.slice(indexOfFirstItem, indexOfLastItem);
+  const currentGroups = groups;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -227,7 +222,7 @@ export default function GroupsPage() {
         <div className="h-[40vh] flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
-      ) : sortedGroups.length === 0 ? (
+      ) : groups.length === 0 ? (
         <div className="p-12 text-center border border-slate-200 rounded-2xl bg-white shadow-sm">
           <FolderTree className="w-10 h-10 text-slate-400 mx-auto mb-3" />
           <h3 className="font-bold text-slate-700">No groups found</h3>
@@ -267,17 +262,14 @@ export default function GroupsPage() {
                 {currentGroups.map((g) => (
                   <tr
                     key={g.id}
-                    onClick={() => {
-                      setDetailGroup(g);
-                      setIsDetailModalOpen(true);
-                    }}
+                    onClick={() => openGroupDetail(g)}
                     className="hover:bg-slate-50/80 transition-all cursor-pointer group/row"
                   >
                     <td className="py-4 px-6 text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">{g.name}</td>
                     <td className="py-4 px-6 text-sm text-slate-600">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-blue-50 border border-blue-100 text-blue-600 rounded-lg">
                         <Building2 className="w-3.5 h-3.5" />
-                        {companies.filter(c => c.group?.id === g.id).length} Companies
+                        {g.companyCount || 0} Companies
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm text-slate-600 max-w-sm truncate">
@@ -438,7 +430,7 @@ export default function GroupsPage() {
             setDetailGroup(null);
           }}
           group={detailGroup}
-          companies={companies}
+          companies={detailCompanies}
           onGoToCompanyDetails={(companyName) => {
             router.push(`/dashboard/companies?search=${encodeURIComponent(companyName)}`);
           }}

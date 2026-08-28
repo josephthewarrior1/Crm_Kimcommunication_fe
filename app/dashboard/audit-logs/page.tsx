@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { AuditLog } from '../../../lib/types';
+import { AuditLog, AuditLogFilterOptions, AuditLogSummary } from '../../../lib/types';
 import { auditLogService } from '../../../lib/services/auditLogService';
 import {
   History,
@@ -38,6 +38,15 @@ export default function AuditLogsPage() {
   const { user, isAdmin, isManager, isLoading } = useAuth();
   const router = useRouter();
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [summary, setSummary] = useState<AuditLogSummary>({
+    total: 0,
+    today: 0,
+    topUser: '-',
+    topUserCount: 0,
+    critical: 0
+  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -58,6 +67,11 @@ export default function AuditLogsPage() {
 
   // Detail Modal
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [filterOptions, setFilterOptions] = useState<AuditLogFilterOptions>({
+    users: [],
+    modules: [],
+    actionTypes: []
+  });
 
   useEffect(() => {
     if (isLoading) return;
@@ -73,7 +87,7 @@ export default function AuditLogsPage() {
       if (showToast) setRefreshing(true);
       else setLoading(true);
 
-      const data = await auditLogService.getAuditLogs({
+      const filters = {
         search: searchQuery || undefined,
         module: selectedModule !== 'ALL' ? selectedModule : undefined,
         actionType: selectedAction !== 'ALL' ? selectedAction : undefined,
@@ -82,9 +96,21 @@ export default function AuditLogsPage() {
           : (user?.username || undefined),
         startDate: startDate || undefined,
         endDate: endDate || undefined,
-      });
+        page: currentPage,
+        size: pageSize,
+      };
 
-      setLogs(data);
+      const [data, stats, options] = await Promise.all([
+        auditLogService.getAuditLogs(filters),
+        auditLogService.getAuditLogsSummary(filters),
+        auditLogService.getAuditLogFilterOptions()
+      ]);
+
+      setLogs(data.items);
+      setTotalLogs(data.total);
+      setTotalPages(data.totalPages);
+      setSummary(stats);
+      setFilterOptions(options);
       if (showToast) {
         toast.success('Audit logs berhasil diperbarui!');
       }
@@ -99,7 +125,7 @@ export default function AuditLogsPage() {
   useEffect(() => {
     if (!isAdmin && !isManager) return;
     fetchLogs();
-  }, [isAdmin, isManager, user?.username, selectedModule, selectedAction, selectedUser, startDate, endDate]);
+  }, [isAdmin, isManager, user?.username, selectedModule, selectedAction, selectedUser, startDate, endDate, currentPage, pageSize]);
 
   if (isLoading || (!isAdmin && !isManager)) {
     return null;
@@ -107,8 +133,12 @@ export default function AuditLogsPage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchLogs();
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
     setCurrentPage(1);
+    fetchLogs();
   };
 
   const handleResetFilters = () => {
@@ -122,78 +152,43 @@ export default function AuditLogsPage() {
   };
 
   const handleExport = () => {
-    if (filteredLogs.length === 0) {
-      toast.error('Tidak ada data log untuk diekspor.');
-      return;
-    }
-    auditLogService.exportToExcel(filteredLogs, `CRM_Activity_Audit_Logs_${new Date().toISOString().slice(0,10)}.xlsx`);
-    toast.success(`Berhasil mengekspor ${filteredLogs.length} data log ke Excel!`);
+    const exportLogs = async () => {
+      const data = await auditLogService.getAuditLogs({
+        search: searchQuery || undefined,
+        module: selectedModule !== 'ALL' ? selectedModule : undefined,
+        actionType: selectedAction !== 'ALL' ? selectedAction : undefined,
+        username: isAdmin
+          ? (selectedUser !== 'ALL' ? selectedUser : undefined)
+          : (user?.username || undefined),
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        page: 1,
+        size: 1000,
+      });
+
+      if (data.items.length === 0) {
+        toast.error('Tidak ada data log untuk diekspor.');
+        return;
+      }
+
+      auditLogService.exportToExcel(data.items, `CRM_Activity_Audit_Logs_${new Date().toISOString().slice(0,10)}.xlsx`);
+      toast.success(`Berhasil mengekspor ${data.items.length} data log ke Excel!`);
+    };
+
+    exportLogs().catch((err: any) => {
+      toast.error('Gagal mengekspor audit logs: ' + (err.message || 'Unknown error'));
+    });
   };
 
-  // Extract unique usernames for filter dropdown
-  const uniqueUsers = useMemo(() => {
-    const users = new Set<string>();
-    logs.forEach(l => { if (l.username) users.add(l.username); });
-    return Array.from(users);
-  }, [logs]);
+  const filteredLogs = logs;
+  const paginatedLogs = logs;
 
-  // Client-side quick search filtering if user typed in search input
-  const filteredLogs = useMemo(() => {
-    if (!searchQuery.trim()) return logs;
-    const q = searchQuery.toLowerCase().trim();
-    return logs.filter(l =>
-      l.username.toLowerCase().includes(q) ||
-      (l.userFullName && l.userFullName.toLowerCase().includes(q)) ||
-      l.description.toLowerCase().includes(q) ||
-      (l.targetName && l.targetName.toLowerCase().includes(q)) ||
-      l.module.toLowerCase().includes(q) ||
-      l.actionType.toLowerCase().includes(q)
-    );
-  }, [logs, searchQuery]);
-
-  // Pagination slice
-  const totalPages = Math.ceil(filteredLogs.length / pageSize) || 1;
-  const paginatedLogs = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredLogs.slice(start, start + pageSize);
-  }, [filteredLogs, currentPage, pageSize]);
-
-  // Analytics / Stat summary
-  const stats = useMemo(() => {
-    const now = new Date();
-    const isToday = (dateStr: string) => {
-      const d = new Date(dateStr);
-      return d.toDateString() === now.toDateString();
-    };
-
-    const todayCount = logs.filter(l => isToday(l.createdAt)).length;
-    
-    // User activity counts
-    const userCounts: Record<string, number> = {};
-    logs.forEach(l => {
-      userCounts[l.username] = (userCounts[l.username] || 0) + 1;
-    });
-
-    let topUser = '-';
-    let topUserMax = 0;
-    Object.entries(userCounts).forEach(([u, count]) => {
-      if (count > topUserMax) {
-        topUserMax = count;
-        topUser = u;
-      }
-    });
-
-    const criticalCount = logs.filter(l => 
-      ['DELETE', 'APPROVE_TAKEOUT', 'REJECT_TAKEOUT', 'FLAG_TIKUS'].includes(l.actionType)
-    ).length;
-
-    return {
-      total: logs.length,
-      today: todayCount,
-      topUser: topUser !== '-' ? `${topUser} (${topUserMax})` : '-',
-      critical: criticalCount
-    };
-  }, [logs]);
+  const stats = {
+    total: summary.total,
+    today: summary.today,
+    topUser: summary.topUser !== '-' ? `${summary.topUser} (${summary.topUserCount})` : '-',
+    critical: summary.critical
+  };
 
   const getActionBadge = (action: string) => {
     switch (action) {
@@ -271,6 +266,7 @@ export default function AuditLogsPage() {
       case 'EVENTS':
         return <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md border border-violet-100">Event</span>;
       case 'PARTICIPANTS':
+      case 'EVENT_PARTICIPANT':
         return <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Peserta Event</span>;
       case 'TAKEOUT':
         return <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">Takeout Request</span>;
@@ -293,6 +289,38 @@ export default function AuditLogsPage() {
         return <span className="text-[10px] uppercase font-black tracking-wider text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">Manager</span>;
       default:
         return <span className="text-[10px] uppercase font-bold tracking-wider text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">User</span>;
+    }
+  };
+
+  const getModuleLabel = (mod: string) => {
+    switch (mod) {
+      case 'DATABASE': return 'Database Kontak';
+      case 'COMPANIES': return 'Companies';
+      case 'GROUPS': return 'Groups';
+      case 'EVENTS': return 'Event';
+      case 'PARTICIPANTS':
+      case 'EVENT_PARTICIPANT': return 'Peserta Event';
+      case 'TAKEOUT': return 'Takeout Request';
+      case 'FLAGGED': return 'Flagged Fraud';
+      case 'USER_MANAGEMENT': return 'User Management';
+      case 'AUTH': return 'Autentikasi';
+      default: return mod;
+    }
+  };
+
+  const getActionLabel = (action: string) => {
+    switch (action) {
+      case 'CREATE': return 'CREATE (Tambah Data)';
+      case 'UPDATE': return 'UPDATE (Edit Data)';
+      case 'DELETE': return 'DELETE (Hapus Data)';
+      case 'IMPORT_EXCEL': return 'IMPORT EXCEL';
+      case 'STATUS_CHANGE': return 'STATUS CHANGE';
+      case 'APPROVE_TAKEOUT': return 'APPROVE TAKEOUT';
+      case 'REJECT_TAKEOUT': return 'REJECT TAKEOUT';
+      case 'FLAG_TIKUS': return 'FLAG TIKUS';
+      case 'LOGIN': return 'LOGIN';
+      case 'LOGOUT': return 'LOGOUT';
+      default: return action;
     }
   };
 
@@ -473,15 +501,9 @@ export default function AuditLogsPage() {
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
               <option value="ALL">Semua Modul</option>
-              <option value="DATABASE">Database Kontak</option>
-              <option value="EVENTS">Event</option>
-              <option value="PARTICIPANTS">Peserta Event</option>
-              <option value="COMPANIES">Companies</option>
-              <option value="GROUPS">Groups</option>
-              <option value="TAKEOUT">Takeout Request</option>
-              <option value="FLAGGED">Flagged Fraud</option>
-              <option value="USER_MANAGEMENT">User Management</option>
-              <option value="AUTH">Autentikasi</option>
+              {filterOptions.modules.map(module => (
+                <option key={module} value={module}>{getModuleLabel(module)}</option>
+              ))}
             </select>
           </div>
 
@@ -496,15 +518,9 @@ export default function AuditLogsPage() {
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
               <option value="ALL">Semua Aksi</option>
-              <option value="CREATE">CREATE (Tambah Data)</option>
-              <option value="UPDATE">UPDATE (Edit Data)</option>
-              <option value="DELETE">DELETE (Hapus Data)</option>
-              <option value="IMPORT_EXCEL">IMPORT EXCEL</option>
-              <option value="STATUS_CHANGE">STATUS CHANGE</option>
-              <option value="APPROVE_TAKEOUT">APPROVE TAKEOUT</option>
-              <option value="REJECT_TAKEOUT">REJECT TAKEOUT</option>
-              <option value="FLAG_TIKUS">FLAG TIKUS</option>
-              <option value="LOGIN">LOGIN</option>
+              {filterOptions.actionTypes.map(action => (
+                <option key={action} value={action}>{getActionLabel(action)}</option>
+              ))}
             </select>
           </div>
 
@@ -519,7 +535,7 @@ export default function AuditLogsPage() {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               >
                 <option value="ALL">Semua Pengguna</option>
-                {uniqueUsers.map(u => (
+                {filterOptions.users.map(u => (
                   <option key={u} value={u}>{u}</option>
                 ))}
               </select>
@@ -684,7 +700,7 @@ export default function AuditLogsPage() {
                 <option value={25}>25</option>
                 <option value={50}>50</option>
               </select>
-              <span>dari <strong>{filteredLogs.length}</strong> total data</span>
+              <span>dari <strong>{totalLogs}</strong> total data</span>
             </div>
 
             <div className="flex items-center gap-2">

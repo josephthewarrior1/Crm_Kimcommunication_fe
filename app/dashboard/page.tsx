@@ -2,38 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../lib/services/crmService';
-import { Group, Company, Database, Event, FlaggedIdentity, EventParticipant } from '../../lib/types';
+import { DashboardSummaryResponse } from '../../lib/types';
 import { FolderTree, Building2, Database as DatabaseIcon, CalendarDays, ShieldAlert, Loader2, ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ChartTooltip, Legend as ChartLegend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 export default function DashboardPage() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [databases, setDatabases] = useState<Database[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [flagged, setFlagged] = useState<FlaggedIdentity[]>([]);
-  const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [gList, cList, dbList, eList, fList, participantList] = await Promise.all([
-          crmService.getGroups(),
-          crmService.getCompanies(),
-          crmService.getDatabases(),
-          crmService.getEvents(),
-          crmService.getFlaggedIdentities(),
-          crmService.getEventParticipants().catch(() => []) // fallback
-        ]);
-
-        setGroups(gList);
-        setCompanies(cList);
-        setDatabases(dbList);
-        setEvents(eList);
-        setFlagged(fList);
-        setParticipants(participantList);
+        setDashboard(await crmService.getDashboardSummary());
       } catch (err) {
         toast.error('Failed to load dashboard data. Ensure backend is running.');
       } finally {
@@ -54,45 +35,16 @@ export default function DashboardPage() {
 
   // Calculate metrics
   const stats = [
-    { name: 'Total Groups', value: groups.length, icon: FolderTree, color: 'from-blue-600/20 to-blue-800/10', text: 'text-blue-400' },
-    { name: 'Total Companies', value: companies.length, icon: Building2, color: 'from-cyan-600/20 to-cyan-800/10', text: 'text-cyan-400' },
-    { name: 'Total Database', value: databases.filter(c => c.isActive !== false).length, icon: DatabaseIcon, color: 'from-emerald-600/20 to-emerald-800/10', text: 'text-emerald-400' },
-    { name: 'Total Events', value: events.length, icon: CalendarDays, color: 'from-blue-600/20 to-blue-800/10', text: 'text-blue-400' },
+    { name: 'Total Groups', value: dashboard?.metrics.totalGroups || 0, icon: FolderTree, color: 'from-blue-600/20 to-blue-800/10', text: 'text-blue-400' },
+    { name: 'Total Companies', value: dashboard?.metrics.totalCompanies || 0, icon: Building2, color: 'from-cyan-600/20 to-cyan-800/10', text: 'text-cyan-400' },
+    { name: 'Total Database', value: dashboard?.metrics.totalDatabase || 0, icon: DatabaseIcon, color: 'from-emerald-600/20 to-emerald-800/10', text: 'text-emerald-400' },
+    { name: 'Total Events', value: dashboard?.metrics.totalEvents || 0, icon: CalendarDays, color: 'from-blue-600/20 to-blue-800/10', text: 'text-blue-400' },
   ];
 
-  // Active flagged tikus count
-  const suspectedTikus = flagged.filter(f => f.status === 'suspected' || f.status === 'confirmed');
-
-  // Compute Industry Distribution Chart Data
-  const industryCounts = companies.reduce((acc, c) => {
-    const ind = c.industry?.trim() || 'Unspecified';
-    acc[ind] = (acc[ind] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const sortedIndustries = Object.entries(industryCounts)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
-
-  const topIndustries = sortedIndustries.slice(0, 5);
-  const otherCount = sortedIndustries.slice(5).reduce((sum, item) => sum + item.value, 0);
-  if (otherCount > 0) {
-    topIndustries.push({ name: 'Others', value: otherCount });
-  }
-
+  const suspectedTikus = dashboard?.flaggedAlerts || [];
+  const topIndustries = dashboard?.industryDistribution || [];
+  const eventAttendanceData = dashboard?.eventAttendancePerformance || [];
   const COLORS = ['#2563eb', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#94a3b8'];
-
-  // Compute Event Attendance Performance Data
-  const eventAttendanceData = events.slice(0, 5).map(evt => {
-    const evtParticipants = participants.filter(p => p.event?.id === evt.id);
-    const total = evtParticipants.length;
-    const attended = evtParticipants.filter(p => p.attendanceStatus === 'attended').length;
-    return {
-      name: evt.name.length > 20 ? evt.name.substring(0, 20) + '...' : evt.name,
-      'Invited': total,
-      'Attended': attended
-    };
-  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -137,7 +89,7 @@ export default function DashboardPage() {
             Company Industries
           </h3>
           <div className="flex-1 min-h-0 relative">
-            {companies.length === 0 ? (
+            {topIndustries.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">
                 No industry data available
               </div>
@@ -179,7 +131,7 @@ export default function DashboardPage() {
             Event Attendance Performance
           </h3>
           <div className="flex-1 min-h-0">
-            {events.length === 0 ? (
+            {eventAttendanceData.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">
                 No event data available
               </div>

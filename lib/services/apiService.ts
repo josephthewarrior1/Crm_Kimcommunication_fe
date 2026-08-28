@@ -98,6 +98,38 @@ export class ApiService {
   }
 
   /**
+   * Make a POST multipart/form-data request to the API
+   *
+   * @param endpoint - API endpoint
+   * @param formData - Form data payload
+   * @param options - Request options
+   * @returns Promise with response data
+   */
+  protected async postFormData<T>(endpoint: string, formData: FormData, options?: RequestInit): Promise<T> {
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData,
+        cache: 'no-store',
+        ...options
+      });
+
+      if (!response.ok) {
+        await this.handleErrorResponse(response);
+      }
+
+      if (response.status === 204) return undefined as T;
+      const text = await response.text();
+      if (!text || !text.trim()) return undefined as T;
+      try { return JSON.parse(text) as T; } catch { return text as unknown as T; }
+    } catch (error) {
+      console.error(`POST ${endpoint} failed:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Make a PUT request to the API
    * 
    * @param endpoint - API endpoint

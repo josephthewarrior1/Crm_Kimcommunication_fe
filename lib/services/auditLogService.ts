@@ -1,5 +1,5 @@
 import { ApiService, getAuthHeaders } from './apiService';
-import { AuditLog } from '../types';
+import { AuditLog, AuditLogFilterOptions, AuditLogListResponse, AuditLogSummary } from '../types';
 import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = 'kim_crm_audit_logs';
@@ -57,7 +57,9 @@ export class AuditLogService extends ApiService {
     search?: string;
     startDate?: string;
     endDate?: string;
-  }): Promise<AuditLog[]> {
+    page?: number;
+    size?: number;
+  }): Promise<AuditLogListResponse> {
     try {
       // Try backend endpoint first
       const query = new URLSearchParams();
@@ -67,12 +69,21 @@ export class AuditLogService extends ApiService {
       if (filters?.search) query.append('search', filters.search);
       if (filters?.startDate) query.append('startDate', filters.startDate);
       if (filters?.endDate) query.append('endDate', filters.endDate);
+      if (filters?.page) query.append('page', String(filters.page));
+      if (filters?.size) query.append('size', String(filters.size));
 
       const qs = query.toString();
-      const logs = await this.get<AuditLog[]>(`/api/audit-logs${qs ? `?${qs}` : ''}`);
-      if (Array.isArray(logs) && logs.length > 0) {
-        return logs;
+      const response = await this.get<AuditLogListResponse | AuditLog[]>(`/api/audit-logs${qs ? `?${qs}` : ''}`);
+      if (Array.isArray(response)) {
+        return {
+          items: response,
+          page: filters?.page || 1,
+          size: filters?.size || response.length,
+          total: response.length,
+          totalPages: 1
+        };
       }
+      return response;
     } catch {
       // Fallback to local storage
     }
@@ -114,7 +125,68 @@ export class AuditLogService extends ApiService {
       logs = logs.filter(l => new Date(l.createdAt).getTime() <= end);
     }
 
-    return logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    logs = logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const page = filters?.page || 1;
+    const size = filters?.size || 15;
+    const start = (page - 1) * size;
+    return {
+      items: logs.slice(start, start + size),
+      page,
+      size,
+      total: logs.length,
+      totalPages: Math.max(1, Math.ceil(logs.length / size))
+    };
+  }
+
+  async getAuditLogsSummary(filters?: {
+    username?: string;
+    module?: string;
+    actionType?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<AuditLogSummary> {
+    const query = new URLSearchParams();
+    if (filters?.username) query.append('username', filters.username);
+    if (filters?.module) query.append('module', filters.module);
+    if (filters?.actionType) query.append('actionType', filters.actionType);
+    if (filters?.search) query.append('search', filters.search);
+    if (filters?.startDate) query.append('startDate', filters.startDate);
+    if (filters?.endDate) query.append('endDate', filters.endDate);
+
+    const qs = query.toString();
+    try {
+      return await this.get<AuditLogSummary>(`/api/audit-logs/summary${qs ? `?${qs}` : ''}`);
+    } catch {
+      const { items: logs, total } = await this.getAuditLogs({ ...filters, page: 1, size: 1000 });
+      const today = new Date().toDateString();
+      const counts = logs.reduce<Record<string, number>>((acc, log) => {
+        acc[log.username] = (acc[log.username] || 0) + 1;
+        return acc;
+      }, {});
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+
+      return {
+        total,
+        today: logs.filter(log => new Date(log.createdAt).toDateString() === today).length,
+        topUser: top?.[0] || '-',
+        topUserCount: top?.[1] || 0,
+        critical: logs.filter(log => ['DELETE', 'APPROVE_TAKEOUT', 'REJECT_TAKEOUT', 'FLAG_TIKUS'].includes(log.actionType)).length
+      };
+    }
+  }
+
+  async getAuditLogFilterOptions(): Promise<AuditLogFilterOptions> {
+    try {
+      return await this.get<AuditLogFilterOptions>('/api/audit-logs/filter-options');
+    } catch {
+      const logs = this.getLocalLogs();
+      return {
+        users: Array.from(new Set(logs.map(log => log.username).filter(Boolean))).sort(),
+        modules: Array.from(new Set(logs.map(log => log.module).filter(Boolean))).sort(),
+        actionTypes: Array.from(new Set(logs.map(log => log.actionType).filter(Boolean))).sort()
+      };
+    }
   }
 
   async recordLog(entry: {
