@@ -22,25 +22,40 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const pageSize = 12;
 
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen && targetUser) {
-      loadEventsAndPermissions();
+      setSearch('');
+      setCurrentPage(1);
+
+      const allowed = getViewerAllowedEventIds(targetUser);
+      setSelectedIds(allowed);
     }
   }, [isOpen, targetUser]);
 
-  const loadEventsAndPermissions = async () => {
+  useEffect(() => {
+    if (isOpen && targetUser) {
+      loadEvents();
+    }
+  }, [isOpen, targetUser, search, currentPage]);
+
+  const loadEvents = async () => {
     setLoading(true);
     try {
-      const allEvents = await crmService.getEvents();
-      setEvents(allEvents);
-
-      if (targetUser) {
-        const allowed = getViewerAllowedEventIds(targetUser);
-        setSelectedIds(allowed);
-      }
+      const response = await crmService.getEventsList({
+        search: search || undefined,
+        page: currentPage,
+        size: pageSize
+      });
+      setEvents(response.items || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalItems(response.total || 0);
     } catch (err) {
       toast.error('Failed to load events list for permission assignment.');
     } finally {
@@ -55,10 +70,13 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === events.length) {
-      setSelectedIds([]);
+    const visibleEventIds = events.map((event) => event.id);
+    const allVisibleSelected = visibleEventIds.length > 0 && visibleEventIds.every((id) => selectedIds.includes(id));
+
+    if (allVisibleSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !visibleEventIds.includes(id)));
     } else {
-      setSelectedIds(events.map(e => e.id));
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleEventIds])));
     }
   };
 
@@ -93,8 +111,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
   };
 
   if (!isOpen || !targetUser) return null;
-
-  const filtered = events.filter(e => e.name.toLowerCase().includes(search.toLowerCase()) || (e.clientName && e.clientName.toLowerCase().includes(search.toLowerCase())));
+  const allVisibleSelected = events.length > 0 && events.every((event) => selectedIds.includes(event.id));
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -125,7 +142,10 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
               type="text"
               placeholder="Search event name..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -134,7 +154,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
             onClick={handleSelectAll}
             className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all whitespace-nowrap"
           >
-            {selectedIds.length === events.length ? 'Deselect All' : 'Select All'}
+            {allVisibleSelected ? 'Deselect Page' : 'Select Page'}
           </button>
         </div>
 
@@ -143,13 +163,13 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
           <div className="py-12 flex justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : events.length === 0 ? (
           <div className="py-8 text-center text-xs text-slate-400">
             No events found.
           </div>
         ) : (
           <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/50">
-            {filtered.map((evt) => {
+            {events.map((evt) => {
               const isChecked = selectedIds.includes(evt.id);
               return (
                 <div
@@ -180,9 +200,36 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
           </div>
         )}
 
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>
+            Showing {events.length === 0 ? 0 : ((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalItems)} of {totalItems} events
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || loading}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+            >
+              Prev
+            </button>
+            <span className="font-semibold text-slate-700">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages || loading}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between pt-2 border-t border-slate-100">
           <span className="text-xs font-semibold text-slate-500">
-            Allowed: <strong className="text-blue-600">{selectedIds.length}</strong> of {events.length} events
+            Allowed: <strong className="text-blue-600">{selectedIds.length}</strong> of {totalItems} events
           </span>
           <div className="flex items-center gap-2">
             <button

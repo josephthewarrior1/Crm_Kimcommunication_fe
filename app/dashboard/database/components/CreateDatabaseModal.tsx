@@ -38,6 +38,8 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
   const [newCompanyName, setNewCompanyName] = useState('');
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
+  const [companyOptions, setCompanyOptions] = useState<Company[]>([]);
+  const [companyOptionsLoading, setCompanyOptionsLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -70,6 +72,11 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen || isCreatingNewCompany) return;
+    void loadCompanyOptions(companySearchQuery);
+  }, [isOpen, isCreatingNewCompany, companySearchQuery]);
+
   const handleClose = () => {
     resetForm();
     onClose();
@@ -77,9 +84,25 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
 
   if (!isOpen) return null;
 
-  const filteredCompanies = companies.filter((c) =>
-    (c.name || '').toLowerCase().includes((companySearchQuery || '').toLowerCase().trim())
-  );
+  const selectedCompany = companies.find((c) => c.id.toString() === selectedCompanyId)
+    || companyOptions.find((c) => c.id.toString() === selectedCompanyId);
+
+  const loadCompanyOptions = async (search: string) => {
+    setCompanyOptionsLoading(true);
+    try {
+      const response = await crmService.getCompaniesList({
+        search: search || undefined,
+        page: 1,
+        size: 20
+      });
+      setCompanyOptions(response.items || []);
+    } catch (err) {
+      console.error('Failed to load companies:', err);
+      setCompanyOptions([]);
+    } finally {
+      setCompanyOptionsLoading(false);
+    }
+  };
 
   const handleCreateDatabase = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,7 +307,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                     <input
                       type="text"
                       placeholder="Type to search company..."
-                      value={isCompanyDropdownOpen ? companySearchQuery : (companySearchQuery || (companies.find(c => c.id.toString() === selectedCompanyId)?.name || ''))}
+                      value={isCompanyDropdownOpen ? companySearchQuery : (companySearchQuery || selectedCompany?.name || '')}
                       onFocus={() => {
                         setCompanySearchQuery('');
                         setIsCompanyDropdownOpen(true);
@@ -336,10 +359,14 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                           <span>+ Add New Company {companySearchQuery ? `"${companySearchQuery}"` : ''}</span>
                         </button>
 
-                        {filteredCompanies.length === 0 ? (
+                        {companyOptionsLoading ? (
+                          <div className="px-3.5 py-3 flex items-center justify-center">
+                            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                          </div>
+                        ) : companyOptions.length === 0 ? (
                           <div className="px-3.5 py-3 text-xs text-slate-400 italic">No matching companies found</div>
                         ) : (
-                          filteredCompanies.map((comp) => (
+                          companyOptions.map((comp) => (
                             <button
                               key={comp.id}
                               type="button"

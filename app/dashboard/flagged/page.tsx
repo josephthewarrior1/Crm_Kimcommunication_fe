@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { FlaggedIdentity, Database, Event } from '../../../lib/types';
+import { FlaggedIdentity, Database } from '../../../lib/types';
 import { Plus, Search, Loader2, Edit2, Trash2, AlertTriangle, CheckCircle, RefreshCw, UserX, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -15,11 +15,15 @@ export default function FlaggedPage() {
   const { isAdmin, isManager, isUser } = useAuth();
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [flagReasonOptions, setFlagReasonOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterFlagReason, setFilterFlagReason] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10;
 
   // Modals state
@@ -69,23 +73,32 @@ export default function FlaggedPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [searchQuery, filterStatus, filterFlagReason, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus]);
+  }, [searchQuery, filterStatus, filterFlagReason]);
 
   async function loadData() {
     setLoading(true);
     try {
-      const [flagList, databaseList, eventList] = await Promise.all([
-        crmService.getFlaggedIdentities(),
+      const [flagList, databaseList, filterOptions] = await Promise.all([
+        crmService.getFlaggedIdentitiesList({
+          search: searchQuery || undefined,
+          status: filterStatus || undefined,
+          flagReason: filterFlagReason || undefined,
+          page: currentPage,
+          size: pageSize
+        }),
         crmService.getDatabases(),
-        crmService.getEvents()
+        crmService.getFlaggedIdentitiesFilterOptions()
       ]);
-      setFlags(flagList);
+      setFlags(flagList.items);
+      setTotalItems(flagList.total);
+      setTotalPages(flagList.totalPages);
       setDatabases(databaseList);
-      setEvents(eventList);
+      setStatusOptions(filterOptions.statuses || []);
+      setFlagReasonOptions(filterOptions.flagReasons || []);
     } catch (err) {
       toast.error('Failed to load flagged data');
     } finally {
@@ -157,25 +170,13 @@ export default function FlaggedPage() {
     }
   };
 
-  // Filtering logic
-  const filteredFlags = flags.filter((f) => {
-    const query = searchQuery.toLowerCase();
-    const matchesSearch =
-      !query ||
-      (f.nameUsed && f.nameUsed.toLowerCase().includes(query)) ||
-      (f.emailUsed && f.emailUsed.toLowerCase().includes(query)) ||
-      (f.phoneUsed && f.phoneUsed.includes(query)) ||
-      (f.flagReason && f.flagReason.toLowerCase().includes(query)) ||
-      (f.evidenceNotes && f.evidenceNotes.toLowerCase().includes(query));
-
-    const matchesStatus = !filterStatus || f.status === filterStatus;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  const totalPages = Math.ceil(filteredFlags.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedFlags = filteredFlags.slice(startIndex, startIndex + pageSize);
+  const modalEvents = [
+    ...flags
+      .map((flag) => flag.event)
+      .filter((event): event is NonNullable<FlaggedIdentity['event']> => Boolean(event?.id)),
+    ...(editingFlag?.event ? [editingFlag.event] : [])
+  ].filter((event, index, array) => array.findIndex((item) => item.id === event.id) === index);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200 text-slate-900">
@@ -218,16 +219,32 @@ export default function FlaggedPage() {
           className="px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
         >
           <option value="">All Statuses</option>
-          <option value="suspected">Suspected</option>
-          <option value="confirmed">Confirmed (Tikus)</option>
-          <option value="cleared">Cleared (Legitimate)</option>
+          {statusOptions.map((status) => (
+            <option key={status} value={status}>
+              {status === 'confirmed' ? 'Confirmed (Tikus)' : status === 'cleared' ? 'Cleared (Legitimate)' : status.charAt(0).toUpperCase() + status.slice(1)}
+            </option>
+          ))}
         </select>
 
-        {(searchQuery || filterStatus) && (
+        <select
+          value={filterFlagReason}
+          onChange={(e) => setFilterFlagReason(e.target.value)}
+          className="px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+        >
+          <option value="">All Reasons</option>
+          {flagReasonOptions.map((reason) => (
+            <option key={reason} value={reason}>
+              {reason.replace(/_/g, ' ')}
+            </option>
+          ))}
+        </select>
+
+        {(searchQuery || filterStatus || filterFlagReason) && (
           <button
             onClick={() => {
               setSearchQuery('');
               setFilterStatus('');
+              setFilterFlagReason('');
             }}
             className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-all"
           >
@@ -242,7 +259,7 @@ export default function FlaggedPage() {
         <div className="h-[40vh] flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-red-600" />
         </div>
-      ) : filteredFlags.length === 0 ? (
+      ) : flags.length === 0 ? (
         <div className="p-12 text-center border border-slate-200 rounded-2xl bg-white shadow-sm">
           <CheckCircle className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
           <h3 className="font-bold text-slate-700">No flagged identities found</h3>
@@ -250,8 +267,8 @@ export default function FlaggedPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {paginatedFlags.map((flg) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {flags.map((flg) => {
             const linkedDb = flg.database || databases.find(db => {
               if (flg.phoneUsed && db.mobilePhone) {
                 const fDigits = flg.phoneUsed.replace(/[^0-9]/g, '').replace(/^62|^0/, '');
@@ -368,12 +385,12 @@ export default function FlaggedPage() {
         </div>
 
         {/* Pagination Bar */}
-        {filteredFlags.length > 0 && (
+        {flags.length > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 p-3.5 rounded-2xl shadow-sm text-xs text-slate-600 font-medium">
             <div>
               Showing <span className="font-bold text-slate-900">{startIndex + 1}</span> to{' '}
-              <span className="font-bold text-slate-900">{Math.min(startIndex + pageSize, filteredFlags.length)}</span> of{' '}
-              <span className="font-bold text-slate-900">{filteredFlags.length}</span> entries
+              <span className="font-bold text-slate-900">{Math.min(startIndex + pageSize, totalItems)}</span> of{' '}
+              <span className="font-bold text-slate-900">{totalItems}</span> entries
             </div>
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5">
@@ -408,7 +425,7 @@ export default function FlaggedPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         databases={databases}
-        events={events}
+        events={modalEvents}
         onSubmit={handleCreateFlag}
         submitting={submitting}
       />
@@ -422,7 +439,7 @@ export default function FlaggedPage() {
             setEditingFlag(null);
           }}
           databases={databases}
-          events={events}
+          events={modalEvents}
           flag={editingFlag}
           onSubmit={handleUpdateFlag}
           submitting={submitting}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Columns, Check, RotateCcw, Calendar } from 'lucide-react';
+import { X, Columns, Check, RotateCcw, Calendar, Search, Loader2 } from 'lucide-react';
 import { AppUser, Event } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { 
@@ -26,19 +26,37 @@ export const ManageUserColumnsModal: React.FC<ManageUserColumnsModalProps> = ({
   const [selectedEventId, setSelectedEventId] = useState<number | undefined>(undefined);
   const [config, setConfig] = useState<EventColumnConfig>(DEFAULT_COLUMN_CONFIG);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const pageSize = 12;
 
   useEffect(() => {
     if (isOpen && user) {
-      loadEvents();
+      setSearch('');
+      setCurrentPage(1);
       loadConfig(selectedEventId);
     }
   }, [isOpen, user]);
 
+  useEffect(() => {
+    if (isOpen && user) {
+      loadEvents();
+    }
+  }, [isOpen, user, search, currentPage]);
+
   const loadEvents = async () => {
     setLoading(true);
     try {
-      const data = await crmService.getEvents();
-      setEvents(data || []);
+      const response = await crmService.getEventsList({
+        search: search || undefined,
+        page: currentPage,
+        size: pageSize
+      });
+      setEvents(response.items || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalItems(response.total || 0);
     } catch (err) {
       console.error('Failed to load events:', err);
     } finally {
@@ -124,18 +142,67 @@ export const ManageUserColumnsModal: React.FC<ManageUserColumnsModalProps> = ({
               <Calendar className="w-3.5 h-3.5 text-blue-600" />
               Pilih Scope Event
             </label>
-            <select
-              value={selectedEventId || ''}
-              onChange={(e) => handleEventChange(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl focus:outline-none focus:border-blue-500 cursor-pointer"
-            >
-              <option value="">Semua Event (Default General User)</option>
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  Khusus Event: {ev.name}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-3">
+              <select
+                value={selectedEventId || ''}
+                onChange={(e) => handleEventChange(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value="">Semua Event (Default General User)</option>
+                {events.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    Khusus Event: {ev.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Cari event..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {loading ? (
+                <div className="py-4 flex justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>
+                    Showing {events.length === 0 ? 0 : ((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalItems)} of {totalItems} events
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 rounded-lg border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                    >
+                      Prev
+                    </button>
+                    <span className="font-semibold text-slate-700">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-2 py-1 rounded-lg border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <p className="text-[10px] text-slate-500">
               *Jika memilih event tertentu, pengaturan ini hanya berlaku khusus untuk event tersebut.
             </p>

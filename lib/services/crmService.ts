@@ -26,7 +26,10 @@ import {
   RemovalRequest,
   PersonalEmailDomain,
   FlaggedIdentity,
-  AppUser
+  FlaggedIdentityListResponse,
+  FlaggedIdentityFilterOptionsResponse,
+  AppUser,
+  UserListResponse
 } from '../types';
 
 export class CrmService extends ApiService {
@@ -747,6 +750,27 @@ export class CrmService extends ApiService {
     return this.get<FlaggedIdentity[]>('/api/flagged-identities');
   }
 
+  async getFlaggedIdentitiesList(params?: {
+    search?: string;
+    status?: string;
+    flagReason?: string;
+    page?: number;
+    size?: number;
+  }): Promise<FlaggedIdentityListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.flagReason) searchParams.set('flagReason', params.flagReason);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.size) searchParams.set('size', String(params.size));
+    const query = searchParams.toString();
+    return this.get<FlaggedIdentityListResponse>(`/api/flagged-identities/list${query ? `?${query}` : ''}`);
+  }
+
+  async getFlaggedIdentitiesFilterOptions(): Promise<FlaggedIdentityFilterOptionsResponse> {
+    return this.get<FlaggedIdentityFilterOptionsResponse>('/api/flagged-identities/filter-options');
+  }
+
   async createFlaggedIdentity(identity: Partial<FlaggedIdentity>): Promise<FlaggedIdentity> {
     return this.post<FlaggedIdentity>('/api/flagged-identities', identity);
   }
@@ -834,6 +858,21 @@ export class CrmService extends ApiService {
     return this.get<AppUser[]>('/api/users');
   }
 
+  async getUsersList(params?: {
+    search?: string;
+    role?: string;
+    page?: number;
+    size?: number;
+  }): Promise<UserListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.role) searchParams.set('role', params.role);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.size) searchParams.set('size', String(params.size));
+    const query = searchParams.toString();
+    return this.get<UserListResponse>(`/api/users/list${query ? `?${query}` : ''}`);
+  }
+
   async updateUserRole(id: number, role: string): Promise<AppUser> {
     return this.put<AppUser>(`/api/users/${id}/role?role=${encodeURIComponent(role)}`);
   }
@@ -846,7 +885,7 @@ export class CrmService extends ApiService {
     return this.put<AppUser>(`/api/users/${id}/allowed-events`, eventIds);
   }
 
-  async updateUserProfile(id: number, data: { fullName?: string; email?: string }): Promise<AppUser> {
+  async updateUserProfile(id: number, data: { username?: string; fullName?: string; email?: string }): Promise<AppUser> {
     return this.put<AppUser>(`/api/users/${id}/profile`, data);
   }
 

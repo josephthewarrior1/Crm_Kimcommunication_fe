@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Search } from 'lucide-react';
 import { Group } from '../../../../lib/types';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../../lib/constants';
 
@@ -33,6 +33,7 @@ export const AddCompanyModal: React.FC<AddCompanyModalProps> = ({
   const [name, setName] = useState('');
   const [brandName, setBrandName] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
   const [address, setAddress] = useState('');
   const [officePhone, setOfficePhone] = useState('');
   const [website, setWebsite] = useState('');
@@ -48,6 +49,7 @@ export const AddCompanyModal: React.FC<AddCompanyModalProps> = ({
       setName('');
       setBrandName('');
       setSelectedGroupId('');
+      setGroupSearchQuery('');
       setAddress('');
       setOfficePhone('');
       setWebsite('');
@@ -61,6 +63,10 @@ export const AddCompanyModal: React.FC<AddCompanyModalProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const filteredGroups = groups.filter((group) =>
+    (group.name || '').toLowerCase().includes(groupSearchQuery.toLowerCase().trim())
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,18 +128,30 @@ export const AddCompanyModal: React.FC<AddCompanyModalProps> = ({
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Parent Group Holding</label>
-              <select
-                value={selectedGroupId}
-                onChange={(e) => setSelectedGroupId(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
-              >
-                <option value="">No Group (Independent)</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search group..."
+                    value={groupSearchQuery}
+                    onChange={(e) => setGroupSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+                  />
+                </div>
+                <select
+                  value={selectedGroupId}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
+                >
+                  <option value="">No Group (Independent)</option>
+                  {filteredGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>

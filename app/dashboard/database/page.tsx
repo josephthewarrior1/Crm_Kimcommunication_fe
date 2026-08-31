@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { crmService } from '../../../lib/services/crmService';
-import { Database, Company, DatabaseEmail, Group, EventParticipant, FlaggedIdentity } from '../../../lib/types';
+import { Database, Company, DatabaseEmail, EventParticipant, FlaggedIdentity } from '../../../lib/types';
 import { Users, Search, Plus, ExternalLink, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
-import { matchesIndustryFilter } from './utils/industryHelper';
 import { normalizePhone } from './utils/phoneHelper';
 import { checkDatabaseCompleteness } from './utils/validationHelper';
 import { getOfficeEmail, getPersonalEmail } from '../events/utils/notesHelper';
@@ -75,8 +74,6 @@ export default function DatabasesPage() {
   const { isAdmin, isManager, isUser } = useAuth();
   const searchParams = useSearchParams();
   const [databases, setDatabases] = useState<Database[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
   const [databaseSummary, setDatabaseSummary] = useState({ all: 0, clean: 0, dirty: 0 });
   const [databaseFilterOptions, setDatabaseFilterOptions] = useState<{
     cities: Array<{ value: string; label: string }>;
@@ -213,16 +210,10 @@ export default function DatabasesPage() {
 
   async function loadAuxiliaryData() {
     try {
-      const [compList, groupList, flagList] = await Promise.all([
-        crmService.getCompanies(),
-        crmService.getGroups(),
-        crmService.getFlaggedIdentities()
-      ]);
-      setCompanies(compList);
-      setGroups(groupList);
+      const flagList = await crmService.getFlaggedIdentities();
       setFlags(flagList || []);
     } catch (err) {
-      toast.error('Failed to load companies, groups or flags');
+      toast.error('Failed to load flagged data');
     }
   }
 
@@ -349,94 +340,32 @@ export default function DatabasesPage() {
   const filteredGroupOptions = databaseFilterOptions.groups;
   const filteredCityOptions = databaseFilterOptions.cities;
   const filteredPositionOptions = databaseFilterOptions.positionLevels;
+  const modalCompanies: Company[] = [
+    ...databases
+      .map((database) => database.company)
+      .filter((company): company is Company => Boolean(company?.id)),
+    ...(editingDatabase?.company ? [editingDatabase.company] : []),
+    ...(detailDatabase?.company ? [detailDatabase.company] : []),
+    ...(selectedDatabase?.company ? [selectedDatabase.company] : [])
+  ].filter((company, index, array) => array.findIndex((item) => item.id === company.id) === index);
 
   const handleGroupChange = (groupId: string) => {
     setFilterGroupId(groupId);
-    if (groupId && filterCompanyId) {
-      const isCompanyInGroup = companies.some(
-        (c) => c.id.toString() === filterCompanyId && c.group?.id?.toString() === groupId
-      );
-      if (!isCompanyInGroup) {
-        setFilterCompanyId('');
-      }
-    }
-    if (groupId && filterIndustry) {
-      const groupCompanies = companies.filter((c) => c.group?.id?.toString() === groupId);
-      const isIndustryInGroup = groupCompanies.some((c) => matchesIndustryFilter(c.industry, filterIndustry));
-      if (!isIndustryInGroup) {
-        setFilterIndustry('');
-      }
-    }
-    if (groupId && filterCity) {
-      const isCityInGroup = companies.some(
-        (c) => c.group?.id?.toString() === groupId && normalizeCityName(c.city) === filterCity
-      );
-      if (!isCityInGroup) setFilterCity('');
+    if (groupId && filterCompanyId && !filteredCompanyOptions.some((company) => company.id.toString() === filterCompanyId)) {
+      setFilterCompanyId('');
     }
   };
 
   const handleCompanyChange = (companyId: string) => {
     setFilterCompanyId(companyId);
-    if (companyId) {
-      const selectedComp = companies.find((c) => c.id.toString() === companyId);
-      if (selectedComp?.group?.id) {
-        setFilterGroupId(selectedComp.group.id.toString());
-      }
-      if (selectedComp?.industry) {
-        setFilterIndustry(selectedComp.industry);
-      }
-      if (selectedComp?.city) {
-        setFilterCity(normalizeCityName(selectedComp.city));
-      }
-    }
   };
 
   const handleIndustryChange = (industry: string) => {
     setFilterIndustry(industry);
-    if (industry && filterCompanyId) {
-      const selectedComp = companies.find((c) => c.id.toString() === filterCompanyId);
-      if (selectedComp?.industry && !matchesIndustryFilter(selectedComp.industry, industry)) {
-        setFilterCompanyId('');
-      }
-    }
-    if (industry && filterGroupId) {
-      const isGroupValid = companies.some(
-        (c) => c.group?.id?.toString() === filterGroupId && matchesIndustryFilter(c.industry, industry)
-      );
-      if (!isGroupValid) {
-        setFilterGroupId('');
-      }
-    }
-    if (industry && filterCity) {
-      const isCityValid = companies.some(
-        (c) => matchesIndustryFilter(c.industry, industry) && normalizeCityName(c.city) === filterCity
-      );
-      if (!isCityValid) setFilterCity('');
-    }
   };
 
   const handleCityChange = (city: string) => {
     setFilterCity(city);
-    if (!city) return;
-
-    if (filterCompanyId) {
-      const selectedComp = companies.find((c) => c.id.toString() === filterCompanyId);
-      if (selectedComp && normalizeCityName(selectedComp.city) !== city) {
-        setFilterCompanyId('');
-      }
-    }
-    if (filterGroupId) {
-      const isGroupValid = companies.some(
-        (c) => c.group?.id?.toString() === filterGroupId && normalizeCityName(c.city) === city
-      );
-      if (!isGroupValid) setFilterGroupId('');
-    }
-    if (filterIndustry) {
-      const isIndustryValid = companies.some(
-        (c) => normalizeCityName(c.city) === city && matchesIndustryFilter(c.industry, filterIndustry)
-      );
-      if (!isIndustryValid) setFilterIndustry('');
-    }
   };
 
   const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterIndustry || filterCity || sortBy !== 'id' || sortOrder !== 'asc' || activeTabFilter !== 'all';
@@ -1368,14 +1297,14 @@ export default function DatabasesPage() {
         loadingEmails={loadingDetailDatabaseEmails}
         events={detailEvents}
         loadingEvents={loadingDetailEvents}
-        companies={companies}
+        companies={modalCompanies}
       />
 
       {/* Add Database Modal */}
       <CreateDatabaseModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        companies={companies}
+        companies={modalCompanies}
         onCreated={refreshDatabasePage}
       />
 
@@ -1387,7 +1316,7 @@ export default function DatabasesPage() {
           setEditingDatabase(null);
         }}
         database={editingDatabase!}
-        companies={companies}
+        companies={modalCompanies}
         onUpdated={refreshDatabasePage}
       />
 

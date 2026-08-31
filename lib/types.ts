@@ -8,6 +8,14 @@ export interface AppUser {
   createdAt?: string;
 }
 
+export interface UserListResponse {
+  items: AppUser[];
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface SessionToken {
   id: number;
   user: AppUser;
@@ -350,6 +358,14 @@ export interface EventActivitySummaryResponse {
     email: number;
     meeting: number;
   };
+  participantsSummary?: {
+    totalParticipants: number;
+    totalAssignedParticipants: number;
+    registered: number;
+    tentative: number;
+    notRespond: number;
+    notInterest: number;
+  };
 }
 
 export interface RemovalRequest {
@@ -420,4 +436,17 @@ export interface AuditLogFilterOptions {
   users: string[];
   modules: string[];
   actionTypes: string[];
+}
+
+export interface FlaggedIdentityListResponse {
+  items: FlaggedIdentity[];
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface FlaggedIdentityFilterOptionsResponse {
+  statuses: string[];
+  flagReasons: string[];
 }

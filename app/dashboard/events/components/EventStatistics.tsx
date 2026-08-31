@@ -95,10 +95,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     return null;
   }, [statistics, canCompareScopes, statsViewMode]);
 
-  const getStat = React.useCallback((key: string, fallback: number) => {
+  const getStat = React.useCallback((key: string) => {
     const value = currentStatistics?.[key];
-    return typeof value === 'number' ? value : fallback;
+    return typeof value === 'number' ? value : 0;
   }, [currentStatistics]);
+  const activePicSummaryItems = picSummary?.items || [];
+  const selectedPicSummaryItem = selectedPic
+    ? activePicSummaryItems.find((item) => item.name.toLowerCase() === selectedPic.toLowerCase())
+    : null;
 
   const toggleSplitPic = (picName: string) => {
     setSelectedSplitPics(prev => 
@@ -362,7 +366,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Total Request</span>
                   <span className="text-xl font-extrabold text-blue-900">
-                    {getStat('totalRequest', participants.filter(p => !p.confirmationStatus || p.confirmationStatus === 'pending' || p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length)}
+                    {getStat('totalRequest')}
                   </span>
                 </div>
               </div>
@@ -374,7 +378,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider">Pending Approval</span>
                   <span className="text-xl font-extrabold text-amber-900">
-                    {getStat('pendingApproval', participants.filter(p => !p.confirmationStatus || p.confirmationStatus === 'pending').length)}
+                    {getStat('pendingApproval')}
                   </span>
                 </div>
               </div>
@@ -386,7 +390,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Taken Out (Decline)</span>
                   <span className="text-xl font-extrabold text-rose-900">
-                    {getStat('takenOut', participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined').length)}
+                    {getStat('takenOut')}
                   </span>
                 </div>
               </div>
@@ -407,11 +411,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Register</span>
                   <span className="text-xl font-extrabold text-emerald-900">
-                    {getStat('totalRegister', participants.filter(p => {
-                      const ps = (p.participantStatus || '').toLowerCase();
-                      const att = (p.attendanceStatus || '').toLowerCase();
-                      return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
-                    }).length)}
+                    {getStat('totalRegister')}
                   </span>
                 </div>
               </div>
@@ -423,7 +423,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Tentative</span>
                   <span className="text-xl font-extrabold text-amber-900">
-                    {getStat('tentative', participants.filter(p => p.participantStatus === 'tentative' || p.participantStatus === 'yellow').length)}
+                    {getStat('tentative')}
                   </span>
                 </div>
               </div>
@@ -435,10 +435,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Not Respond Yet</span>
                   <span className="text-xl font-extrabold text-slate-900">
-                    {getStat('notRespondYet', participants.filter(p => {
-                      const ps = (p.participantStatus || '').toLowerCase();
-                      return !ps || ps === 'not_respond_yet' || ps === 'not_respon_yet' || ps.startsWith('not_respond_');
-                    }).length)}
+                    {getStat('notRespondYet')}
                   </span>
                 </div>
               </div>
@@ -450,7 +447,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Not Interest</span>
                   <span className="text-xl font-extrabold text-rose-900">
-                    {getStat('notInterest', participants.filter(p => p.participantStatus === 'not_interest' || p.participantStatus === 'red').length)}
+                    {getStat('notInterest')}
                   </span>
                 </div>
               </div>
@@ -467,7 +464,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approve</span>
                   <span className="text-xl font-extrabold text-emerald-900">
-                    {getStat('approve', participants.filter(p => getPreEventApprovalStatus(p) === 'approve').length)}
+                    {getStat('approve')}
                   </span>
                 </div>
               </div>
@@ -479,7 +476,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Pending</span>
                   <span className="text-xl font-extrabold text-blue-900">
-                    {getStat('pending', participants.filter(p => getPreEventApprovalStatus(p) === 'pending').length)}
+                    {getStat('pending')}
                   </span>
                 </div>
               </div>
@@ -500,7 +497,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider">Total Declined</span>
                   <span className="text-xl font-extrabold text-rose-950">
-                    {getStat('totalDeclined', participants.filter(p => p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined' || getPreEventApprovalStatus(p) === 'decline').length)}
+                    {getStat('totalDeclined')}
                   </span>
                 </div>
               </div>
@@ -512,7 +509,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider">Declined from DB Vetting</span>
                   <span className="text-xl font-extrabold text-amber-950">
-                    {getStat('declinedFromDbVetting', participants.filter(p => (p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined')).length)}
+                    {getStat('declinedFromDbVetting')}
                   </span>
                 </div>
               </div>
@@ -524,7 +521,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Declined from Pre-Event</span>
                   <span className="text-xl font-extrabold text-slate-900">
-                    {getStat('declinedFromPreEvent', participants.filter(p => getPreEventApprovalStatus(p) === 'decline').length)}
+                    {getStat('declinedFromPreEvent')}
                   </span>
                 </div>
               </div>
@@ -545,14 +542,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Approved Register Total</span>
                   <span className="text-xl font-extrabold text-blue-900">
-                    {getStat('approvedRegisterTotal', participants.filter(p => {
-                      const ps = (p.participantStatus || '').toLowerCase();
-                      const att = (p.attendanceStatus || '').toLowerCase();
-                      const conf = (p.confirmationStatus || '').toLowerCase();
-                      const isConfApprove = conf === 'approve' || conf === 'confirmed';
-                      const isReg = ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
-                      return isConfApprove && isReg;
-                    }).length)}
+                    {getStat('approvedRegisterTotal')}
                   </span>
                 </div>
               </div>
@@ -564,7 +554,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Confirm to Attend</span>
                   <span className="text-xl font-extrabold text-emerald-900">
-                    {getStat('confirmToAttend', participants.filter(p => getLatestReminderStatus(p) === 'confirm').length)}
+                    {getStat('confirmToAttend')}
                   </span>
                 </div>
               </div>
@@ -576,7 +566,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Tentative</span>
                   <span className="text-xl font-extrabold text-amber-900">
-                    {getStat('tentative', participants.filter(p => getLatestReminderStatus(p) === 'tentative').length)}
+                    {getStat('tentative')}
                   </span>
                 </div>
               </div>
@@ -588,7 +578,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Not Respond Yet</span>
                   <span className="text-xl font-extrabold text-slate-900">
-                    {getStat('notRespondYet', participants.filter(p => getLatestReminderStatus(p) === 'not_respond_yet').length)}
+                    {getStat('notRespondYet')}
                   </span>
                 </div>
               </div>
@@ -600,7 +590,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable to Attend</span>
                   <span className="text-xl font-extrabold text-rose-900">
-                    {getStat('unableToAttend', participants.filter(p => getLatestReminderStatus(p) === 'unable_to_attend').length)}
+                    {getStat('unableToAttend')}
                   </span>
                 </div>
               </div>
@@ -621,7 +611,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">On Location</span>
                   <span className="text-xl font-extrabold text-emerald-900">
-                    {getStat('onLocation', participants.filter(p => getHariHStatus(p) === 'on_location').length)}
+                    {getStat('onLocation')}
                   </span>
                 </div>
               </div>
@@ -633,7 +623,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">On The Way</span>
                   <span className="text-xl font-extrabold text-blue-900">
-                    {getStat('onTheWay', participants.filter(p => getHariHStatus(p) === 'on_the_way').length)}
+                    {getStat('onTheWay')}
                   </span>
                 </div>
               </div>
@@ -645,10 +635,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Not Respond Yet</span>
                   <span className="text-xl font-extrabold text-amber-900">
-                    {getStat('notRespondYet', participants.filter(p => {
-                      const status = getHariHStatus(p);
-                      return !status || status === 'not_respon_yet' || status.startsWith('not_respond_');
-                    }).length)}
+                    {getStat('notRespondYet')}
                   </span>
                 </div>
               </div>
@@ -660,7 +647,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 <div>
                   <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable to Attend</span>
                   <span className="text-xl font-extrabold text-rose-900">
-                    {getStat('unableToAttend', participants.filter(p => getHariHStatus(p) === 'unable_to_attend').length)}
+                    {getStat('unableToAttend')}
                   </span>
                 </div>
               </div>
@@ -685,17 +672,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 </h4>
                 <p className="text-[11px] text-slate-500 font-medium">
                   {isAdmin
-                    ? `${picSummary?.activePicsCount ?? usersList.filter((usr) => {
-                        const uname = (usr.username || '').toLowerCase();
-                        const fname = (usr.fullName || '').toLowerCase();
-                        if (uname === 'kevin' || fname.includes('kevin')) return false;
-                        const name = usr.fullName || usr.username;
-                        return participants.some((participant) => {
-                          const pic = extractPicFromNotes(participant.notes).pic;
-                          return pic.toLowerCase() === name.toLowerCase() ||
-                            (pic.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                        });
-                      }).length} PIC aktif bertugas`
+                    ? `${picSummary?.activePicsCount ?? 0} PIC aktif bertugas`
                     : `Ringkasan aktivitas telepon, WA, dan email yang dikerjakan oleh ${myPicName}`}
                 </p>
               </div>
@@ -787,11 +764,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             }`}
                           >
                             <Users className="w-4 h-4 text-emerald-100" />
-                            <span>Kelola Peserta ({participants.filter(p => {
-                              const pic = extractPicFromNotes(p.notes).pic;
-                              return pic.toLowerCase() === selectedPic.toLowerCase() || 
-                                     (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
-                            }).length})</span>
+                            <span>Kelola Peserta ({selectedPicSummaryItem?.totalAssigned ?? 0})</span>
                           </button>
                         </div>
                       )}
@@ -854,10 +827,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                         {/* Activity Metrics Cards */}
                         {(() => {
-                          const callsCount = activitySummary?.byType?.call ?? filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'CALL').length;
-                          const waCount = activitySummary?.byType?.whatsapp ?? filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'WHATSAPP').length;
-                          const emailCount = activitySummary?.byType?.email ?? filteredPicActivities.filter(a => (a.activityType || '').toUpperCase() === 'EMAIL').length;
-                          const totalActivities = activitySummary?.totalActivities ?? filteredPicActivities.length;
+                          const callsCount = activitySummary?.byType?.call ?? 0;
+                          const waCount = activitySummary?.byType?.whatsapp ?? 0;
+                          const emailCount = activitySummary?.byType?.email ?? 0;
+                          const totalActivities = activitySummary?.totalActivities ?? 0;
 
                           return (
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -895,60 +868,23 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                         {/* Summary Remarks Row (Filtered by Date Range) */}
                         {(() => {
-                          const isDateInRange = (dateStr?: string) => {
-                            if (!dateStr) return false;
-                            let s = dateStr.trim();
-                            if (!s.includes('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) s = s.replace(' ', 'T');
-                            const dt = new Date(s);
-                            if (isNaN(dt.getTime())) return false;
-                            const year = dt.getFullYear();
-                            const month = String(dt.getMonth() + 1).padStart(2, '0');
-                            const day = String(dt.getDate()).padStart(2, '0');
-                            const ymd = `${year}-${month}-${day}`;
-
-                            if (startDate && ymd < startDate) return false;
-                            if (endDate && ymd > endDate) return false;
-                            return true;
-                          };
-
-                          const allPicParticipants = participants.filter(p => {
-                            const pic = extractPicFromNotes(p.notes).pic;
-                            return pic.toLowerCase() === selectedPic.toLowerCase() || 
-                                   (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
-                          });
-
-                          const picParticipants = (!startDate && !endDate) ? allPicParticipants : allPicParticipants.filter(p => {
-                            if (isDateInRange(p.createdAt) || isDateInRange(p.updatedAt) || isDateInRange(p.requestedAt) || isDateInRange(p.respondedAt)) {
-                              return true;
-                            }
-                            const hasAct = filteredPicActivities.some(a => 
-                              a.eventParticipant?.id === p.id || 
-                              (a.participantName && a.participantName.toLowerCase() === `${p.database?.firstName || ''} ${p.database?.lastName || ''}`.trim().toLowerCase())
-                            );
-                            return hasAct;
-                          });
-
-                          const regCount = picParticipants.filter(p => {
-                            const ps = (p.participantStatus || '').toLowerCase();
-                            const att = (p.attendanceStatus || '').toLowerCase();
-                            return ps === 'registered' || ps === 'green' || ps === 'confirm' || ps === 'confirmed' || att === 'registered';
-                          }).length;
-                          const tentCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'tentative' || p.participantStatus?.toLowerCase() === 'yellow').length;
-                          const notRespCount = picParticipants.filter(p => {
-                            const ps = (p.participantStatus || '').toLowerCase();
-                            return !ps || ps === 'not_respond_yet' || ps === 'not_respon_yet' || ps.startsWith('not_respond_');
-                          }).length;
-                          const notIntCount = picParticipants.filter(p => p.participantStatus?.toLowerCase() === 'not_interest' || p.participantStatus?.toLowerCase() === 'red').length;
+                          const participantsSummary = activitySummary?.participantsSummary;
+                          const totalParticipants = participantsSummary?.totalParticipants ?? 0;
+                          const totalAssignedParticipants = participantsSummary?.totalAssignedParticipants ?? 0;
+                          const regCount = participantsSummary?.registered ?? 0;
+                          const tentCount = participantsSummary?.tentative ?? 0;
+                          const notRespCount = participantsSummary?.notRespond ?? 0;
+                          const notIntCount = participantsSummary?.notInterest ?? 0;
 
                           return (
                             <div className="pt-2 border-t border-slate-200/80 space-y-1.5">
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                                  Summary Remarks Periode Ini ({picParticipants.length} Peserta)
+                                  Summary Remarks Periode Ini ({totalParticipants} Peserta)
                                 </span>
                                 {(startDate || endDate) && (
                                   <span className="text-[9px] font-bold text-slate-400">
-                                    Total Assigned PIC: {allPicParticipants.length}
+                                    Total Assigned PIC: {totalAssignedParticipants}
                                   </span>
                                 )}
                               </div>
@@ -1366,10 +1302,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                     {/* Allocation Balance Stacked Bar */}
                     {(() => {
-                      const activePics = picSummary?.items || [];
-                      const totalAssigned = picSummary?.totalAssigned || 0;
-                      const totalParticipants = picSummary?.totalParticipants || participants.length;
-                      const unassignedCount = picSummary?.unassignedCount || 0;
+                      const activePics = activePicSummaryItems;
+                      const totalAssigned = picSummary?.totalAssigned ?? 0;
+                      const totalParticipants = picSummary?.totalParticipants ?? 0;
+                      const unassignedCount = picSummary?.unassignedCount ?? 0;
                       
                       const colors = [
                         'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 
@@ -1438,7 +1374,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             return !isMatched;
                           }).map(p => p.id);
 
-                          const activePics = picSummary?.items || [];
+                          const activePics = activePicSummaryItems;
 
                           if (loadingPicSummary) {
                             return (
@@ -1495,7 +1431,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                       <div 
                                         className="bg-blue-600 h-full rounded-full transition-all duration-300" 
-                                        style={{ width: `${Math.min(100, (count / Math.max(1, picSummary?.totalParticipants || participants.length)) * 100)}%` }} 
+                                        style={{ width: `${Math.min(100, (count / Math.max(1, picSummary?.totalParticipants ?? 0)) * 100)}%` }} 
                                       />
                                     </div>
                                   </div>
