@@ -322,19 +322,19 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       {canCompareScopes && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Statistics Scope</h4>
+            <h4 className="text-xs font-semibold text-slate-600">Statistics Scope</h4>
             <p className="text-xs text-slate-500 mt-1">
               Lihat ringkasan semua participant event atau hanya participant yang jadi tanggung jawab kamu.
             </p>
           </div>
-          <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200 rounded-2xl">
+          <div className="inline-flex items-center p-1 bg-slate-100 rounded-lg">
             <button
               type="button"
               onClick={() => setStatsViewMode('mine')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
                 statsViewMode === 'mine'
-                  ? 'bg-white text-blue-700 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               My Assignment
@@ -342,10 +342,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
             <button
               type="button"
               onClick={() => setStatsViewMode('all')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
                 statsViewMode === 'all'
-                  ? 'bg-white text-blue-700 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               All Event
@@ -357,41 +357,92 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       {activeTab === 'request' && (
         <div className="space-y-4 mb-6">
           <div>
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Request Vetting Overview</h4>
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Request Vetting Overview</h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-blue-500 text-white rounded-xl">
-                  <Clock className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Total Request</span>
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Total Request</span>
-                  <span className="text-xl font-extrabold text-blue-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('totalRequest')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-blue-200">
+                    <polyline
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8"
+                    />
+                    <polyline
+                      fill="currentColor"
+                      opacity="0.1"
+                      points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30"
+                    />
+                  </svg>
+                </div>
               </div>
               
-              <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-amber-500 text-white rounded-xl">
-                  <Clock className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Pending Approval</span>
+                  <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider">Pending Approval</span>
-                  <span className="text-xl font-extrabold text-amber-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('pendingApproval')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
+                    <polyline
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      points="0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18"
+                    />
+                    <polyline
+                      fill="currentColor"
+                      opacity="0.1"
+                      points="0,30 0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18 100,30"
+                    />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-rose-500 text-white rounded-xl">
-                  <X className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Taken Out (Decline)</span>
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Taken Out (Decline)</span>
-                  <span className="text-xl font-extrabold text-rose-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('takenOut')}
                   </span>
+                </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
+                    <polyline
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28"
+                    />
+                    <polyline
+                      fill="currentColor"
+                      opacity="0.1"
+                      points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30"
+                    />
+                  </svg>
                 </div>
               </div>
             </div>
@@ -402,82 +453,130 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       {activeTab === 'pre_event' && (
         <div className="space-y-4 mb-6">
           <div>
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Registration Status</h4>
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Registration Status</h4>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                  <CheckCircle className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Total Register</span>
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Register</span>
-                  <span className="text-xl font-extrabold text-emerald-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('totalRegister')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-emerald-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30" />
+                  </svg>
+                </div>
               </div>
               
-              <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-amber-500 text-white rounded-xl">
-                  <Calendar className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Tentative</span>
+                  <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                    <Calendar className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Tentative</span>
-                  <span className="text-xl font-extrabold text-amber-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('tentative')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-slate-600 text-white rounded-xl">
-                  <Clock className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Not Respond Yet</span>
+                  <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Not Respond Yet</span>
-                  <span className="text-xl font-extrabold text-slate-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('notRespondYet')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-slate-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-rose-500 text-white rounded-xl">
-                  <X className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Not Interest</span>
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Not Interest</span>
-                  <span className="text-xl font-extrabold text-rose-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('notInterest')}
                   </span>
+                </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28 100,30" />
+                  </svg>
                 </div>
               </div>
             </div>
           </div>
 
           <div>
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pre Event Approval</h4>
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Pre Event Approval</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                  <CheckCircle className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Approve</span>
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approve</span>
-                  <span className="text-xl font-extrabold text-emerald-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('approve')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-emerald-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-blue-500 text-white rounded-xl">
-                  <Clock className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Pending</span>
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Pending</span>
-                  <span className="text-xl font-extrabold text-blue-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('pending')}
                   </span>
+                </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-blue-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18 100,30" />
+                  </svg>
                 </div>
               </div>
             </div>
@@ -488,41 +587,65 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       {activeTab === 'declined' && (
         <div className="space-y-4 mb-6">
           <div>
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Declined Participants Overview</h4>
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Declined Participants Overview</h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-rose-600 text-white rounded-xl">
-                  <X className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Total Declined</span>
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider">Total Declined</span>
-                  <span className="text-xl font-extrabold text-rose-950">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('totalDeclined')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28 100,30" />
+                  </svg>
+                </div>
               </div>
               
-              <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-amber-500 text-white rounded-xl">
-                  <UserMinus className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Declined from DB Vetting</span>
+                  <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                    <UserMinus className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider">Declined from DB Vetting</span>
-                  <span className="text-xl font-extrabold text-amber-950">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('declinedFromDbVetting')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-slate-100/60 border border-slate-200 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-slate-700 text-white rounded-xl">
-                  <X className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Declined from Pre-Event</span>
+                  <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Declined from Pre-Event</span>
-                  <span className="text-xl font-extrabold text-slate-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('declinedFromPreEvent')}
                   </span>
+                </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-slate-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,12 15,15 30,18 45,20 60,22 75,25 90,27 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,12 15,15 30,18 45,20 60,22 75,25 90,27 100,28 100,30" />
+                  </svg>
                 </div>
               </div>
             </div>
@@ -533,65 +656,105 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       {activeTab === 'reminder' && (
         <div className="space-y-4 mb-6">
           <div>
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Reminder Status</h4>
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Reminder Status</h4>
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-              <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-blue-500 text-white rounded-xl">
-                  <CheckCircle className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Approved Register Total</span>
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Approved Register Total</span>
-                  <span className="text-xl font-extrabold text-blue-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('approvedRegisterTotal')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-blue-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30" />
+                  </svg>
+                </div>
               </div>
               
-              <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                  <CheckCircle className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Confirm to Attend</span>
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Confirm to Attend</span>
-                  <span className="text-xl font-extrabold text-emerald-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('confirmToAttend')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-emerald-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,18 30,15 45,12 60,10 75,8 90,6 100,5" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,18 30,15 45,12 60,10 75,8 90,6 100,5 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-amber-500 text-white rounded-xl">
-                  <Calendar className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Tentative</span>
+                  <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                    <Calendar className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Tentative</span>
-                  <span className="text-xl font-extrabold text-amber-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('tentative')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-slate-600 text-white rounded-xl">
-                  <Clock className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Not Respond Yet</span>
+                  <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider font-semibold">Not Respond Yet</span>
-                  <span className="text-xl font-extrabold text-slate-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('notRespondYet')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-slate-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-rose-500 text-white rounded-xl">
-                  <X className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Unable to Attend</span>
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable to Attend</span>
-                  <span className="text-xl font-extrabold text-rose-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('unableToAttend')}
                   </span>
+                </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28 100,30" />
+                  </svg>
                 </div>
               </div>
             </div>
@@ -602,53 +765,85 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       {activeTab === 'reminder_dday' && (
         <div className="space-y-4 mb-6">
           <div>
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Reminder D-Day Status</h4>
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Reminder D-Day Status</h4>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="bg-emerald-50/40 border border-emerald-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-emerald-600 text-white rounded-xl">
-                  <CheckCircle className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">On Location</span>
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">On Location</span>
-                  <span className="text-xl font-extrabold text-emerald-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('onLocation')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-emerald-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,18 30,15 45,12 60,10 75,8 90,6 100,5" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,18 30,15 45,12 60,10 75,8 90,6 100,5 100,30" />
+                  </svg>
+                </div>
               </div>
               
-              <div className="bg-blue-50/40 border border-blue-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-blue-500 text-white rounded-xl">
-                  <TrendingUp className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">On The Way</span>
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">On The Way</span>
-                  <span className="text-xl font-extrabold text-blue-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('onTheWay')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-blue-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-amber-50/40 border border-amber-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-amber-500 text-white rounded-xl">
-                  <Clock className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Not Respond Yet</span>
+                  <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-amber-500 uppercase tracking-wider font-semibold">Not Respond Yet</span>
-                  <span className="text-xl font-extrabold text-amber-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('notRespondYet')}
                   </span>
                 </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30" />
+                  </svg>
+                </div>
               </div>
 
-              <div className="bg-rose-50/40 border border-rose-100/70 rounded-2xl p-4 flex items-center gap-4">
-                <div className="p-3 bg-rose-500 text-white rounded-xl">
-                  <X className="w-5 h-5" />
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-slate-500">Unable to Attend</span>
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-wider">Unable to Attend</span>
-                  <span className="text-xl font-extrabold text-rose-900">
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-slate-900">
                     {getStat('unableToAttend')}
                   </span>
+                </div>
+                <div className="mt-3 h-8">
+                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
+                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28" />
+                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28 100,30" />
+                  </svg>
                 </div>
               </div>
             </div>
@@ -661,16 +856,16 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
         const myPicName = currentUser?.fullName || currentUser?.username || adminName;
 
         return (
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 mb-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+              <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
                 {isAdmin ? <Users className="w-5 h-5" /> : <History className="w-5 h-5" />}
               </div>
               <div>
-                <h4 className="text-xs font-bold text-slate-800">
+                <h4 className="text-sm font-semibold text-slate-900">
                   {isAdmin ? 'PIC Assignment & Distribution' : 'Log Aktivitas Saya Hari Ini'}
                 </h4>
-                <p className="text-[11px] text-slate-500 font-medium">
+                <p className="text-xs text-slate-500">
                   {isAdmin
                     ? `${picSummary?.activePicsCount ?? 0} PIC aktif bertugas`
                     : `Ringkasan aktivitas telepon, WA, dan email yang dikerjakan oleh ${myPicName}`}
@@ -697,7 +892,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               }
             }}>
               <DialogTrigger asChild>
-                <button className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-sm flex items-center gap-2 cursor-pointer">
+                <button className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 cursor-pointer">
                   <History className="w-4 h-4 text-blue-300" />
                   <span>{isAdmin ? 'View PIC Workload & Balance' : 'Lihat Log Aktivitas Saya'}</span>
                 </button>

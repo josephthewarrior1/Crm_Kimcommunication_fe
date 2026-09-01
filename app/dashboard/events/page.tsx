@@ -1411,32 +1411,34 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Event & Participant Management</h2>
-          <p className="text-sm text-slate-500 mt-1">Track event attendance, confirmation color statuses, and client targets.</p>
-        </div>
-        {!isViewer && !selectedEvent && (
-          <div className="flex items-center gap-2.5 self-start sm:self-auto">
-            <button
-              onClick={handleSyncPmsEvents}
-              disabled={isSyncingPms}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-emerald-400 text-white text-sm font-bold rounded-xl shadow-md shadow-emerald-600/10 transition-all cursor-pointer disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`w-4 h-4 ${isSyncingPms ? 'animate-spin' : ''}`} />
-              {isSyncingPms ? 'Syncing PMS...' : 'Sync PMS Events'}
-            </button>
-            <button
-              onClick={() => setIsCreateEventModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Create Event
-            </button>
+      {/* Page Header - Only show when NOT in event detail */}
+      {!selectedEvent && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Event & Participant Management</h2>
+            <p className="text-sm text-slate-500 mt-1">Track event attendance, confirmation color statuses, and client targets.</p>
           </div>
-        )}
-      </div>
+          {!isViewer && (
+            <div className="flex items-center gap-2.5 self-start sm:self-auto">
+              <button
+                onClick={handleSyncPmsEvents}
+                disabled={isSyncingPms}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-emerald-400 text-white text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncingPms ? 'animate-spin' : ''}`} />
+                {isSyncingPms ? 'Syncing PMS...' : 'Sync PMS Events'}
+              </button>
+              <button
+                onClick={() => setIsCreateEventModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Create Event
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {!selectedEvent ? (
         <div className="space-y-6">
@@ -1612,69 +1614,65 @@ export default function EventsPage() {
           )}
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col w-full text-slate-900 transition-all duration-300">
+        <div className="flex flex-col w-full text-slate-900">
           <button
             onClick={() => {
               router.push('/dashboard/events');
             }}
-            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-950 hover:-translate-x-0.5 font-bold text-xs mb-5 transition-all self-start duration-200"
+            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-950 hover:-translate-x-0.5 font-medium text-sm mb-6 transition-all self-start duration-200"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Events List
           </button>
 
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-8 gap-4">
             <div>
-              <h3 className="font-extrabold text-2xl text-slate-900 mt-1.5 flex flex-wrap items-center gap-2">
-                <span>{selectedEvent.name}</span>
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h2 className="font-bold text-2xl text-slate-900">
+                  {selectedEvent.name}
+                </h2>
                 {(() => {
                   const eventStatusInfo = getEventStatus(selectedEvent.dateStart, selectedEvent.dateEnd);
                   if (eventStatusInfo === null) return null;
                   
-                  let badgeColor = "bg-blue-50 text-blue-700 border-blue-100";
+                  let badgeColor = "bg-blue-50 text-blue-600";
                   let label = "";
                   
                   if (eventStatusInfo.status === 'future') {
-                    badgeColor = "bg-amber-50 text-amber-700 border-amber-200/50";
+                    badgeColor = "bg-amber-50 text-amber-600";
                     label = `Sisa ${eventStatusInfo.days} hari lagi`;
                   } else if (eventStatusInfo.status === 'ongoing') {
-                    badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-250/60 animate-pulse";
+                    badgeColor = "bg-emerald-50 text-emerald-600 animate-pulse";
                     label = "Ongoing";
                   } else {
-                    badgeColor = "bg-slate-100 text-slate-500 border-slate-200";
+                    badgeColor = "bg-slate-100 text-slate-500";
                     label = "Sudah berlalu";
                   }
                   
                   return (
-                    <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${badgeColor}`}>
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${badgeColor}`}>
                       {label}
                     </span>
                   );
                 })()}
-              </h3>
-              <div className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              </div>
+              <div className="text-sm text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>Client: <strong className="text-slate-700">{selectedEvent.clientName || '-'}</strong></span>
-                {selectedEvent.dateStart && <span> | Duration: <strong className="text-slate-700">{formatDateDMY(selectedEvent.dateStart)} - {selectedEvent.dateEnd ? formatDateDMY(selectedEvent.dateEnd) : 'End'}</strong></span>}
+                {selectedEvent.dateStart && <span>Duration: <strong className="text-slate-700">{formatDateDMY(selectedEvent.dateStart)} - {selectedEvent.dateEnd ? formatDateDMY(selectedEvent.dateEnd) : 'End'}</strong></span>}
                 {selectedEvent.targetParticipants !== undefined && selectedEvent.targetParticipants > 0 ? (
-                  <>
-                    <span> | Target: <strong className="text-slate-700">{selectedEvent.targetParticipants} pax</strong></span>
-                    <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ml-1 ${
-                      (allParticipantsSummary?.registeredCount || 0) >= selectedEvent.targetParticipants
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-slate-100 text-slate-550 border border-slate-200'
-                    }`}>
-                      {(allParticipantsSummary?.registeredCount || 0) >= selectedEvent.targetParticipants
-                        ? 'Target Achieved'
-                        : 'Not Achieved'}
-                    </span>
-                  </>
+                  <span>Target: <strong className="text-slate-700">{selectedEvent.targetParticipants} pax</strong></span>
                 ) : (
-                  <span> | Target: <strong className="text-slate-400">Not Set</strong></span>
+                  <span>Target: <strong className="text-slate-400">Not Set</strong></span>
+                )}
+                {(allParticipantsSummary?.registeredCount || 0) >= (selectedEvent.targetParticipants || 0) && selectedEvent.targetParticipants && selectedEvent.targetParticipants > 0 && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-600">
+                    Target Achieved
+                  </span>
                 )}
               </div>
               
               {selectedEvent.notes && (
-                <p className="text-xs text-slate-500 mt-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic max-w-2xl">
+                <p className="text-sm text-slate-500 mt-3 italic max-w-2xl">
                   "{selectedEvent.notes}"
                 </p>
               )}
@@ -1684,18 +1682,18 @@ export default function EventsPage() {
               <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
                 <button
                   onClick={() => openEditEventModal(selectedEvent)}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-all"
                   title="Edit Event details"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
+                  <Edit2 className="w-4 h-4" />
                   Edit Event
                 </button>
                 <button
                   onClick={() => openDeleteEventConfirm(selectedEvent)}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 border border-red-100 hover:bg-red-100/70 text-red-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-sm font-medium rounded-lg transition-all"
                   title="Delete Event permanently"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-4 h-4" />
                   Delete Event
                 </button>
               </div>
@@ -1703,54 +1701,54 @@ export default function EventsPage() {
           </div>
 
           {/* Tab Switcher & Participant Action Buttons */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200 mb-4 gap-3 shrink-0">
-            <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 shrink-0">
+            <div className="flex gap-1 overflow-x-auto pb-1 md:pb-0 bg-slate-100 p-1 rounded-lg">
               <button
                 onClick={() => handleSwitchTab('request')}
-                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
                   activeTab === 'request'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 Data List
               </button>
               <button
                 onClick={() => handleSwitchTab('pre_event')}
-                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
                   activeTab === 'pre_event'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 Pre-Event
               </button>
               <button
                 onClick={() => handleSwitchTab('reminder')}
-                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
                   activeTab === 'reminder'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 Reminder
               </button>
               <button
                 onClick={() => handleSwitchTab('reminder_dday')}
-                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
                   activeTab === 'reminder_dday'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 Reminder Dday
               </button>
               <button
                 onClick={() => handleSwitchTab('declined')}
-                className={`px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${
                   activeTab === 'declined'
-                    ? 'border-rose-600 text-rose-600 font-black'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <span>Declined</span>
@@ -1758,7 +1756,7 @@ export default function EventsPage() {
                   const status = getEffectiveConfirmationStatus(p);
                   return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                 }).length > 0 && (
-                  <span className="px-2 py-0.5 text-[10px] font-black bg-rose-100 text-rose-700 rounded-full">
+                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-200 text-slate-600 rounded-full">
                     {statsParticipants.filter(p => {
                       const status = getEffectiveConfirmationStatus(p);
                       return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
@@ -1788,40 +1786,40 @@ export default function EventsPage() {
                       }
                     }
                   }}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-all"
                   title="Sinkronisasi data peserta dari EMS"
                 >
-                  <Loader2 className={`w-3.5 h-3.5 ${loadingParticipants ? 'animate-spin' : ''}`} />
+                  <Loader2 className={`w-4 h-4 ${loadingParticipants ? 'animate-spin' : ''}`} />
                   Sync EMS
                 </button>
               )}
               {statsParticipants.length > 0 && (
                 <button
                   onClick={handleExportParticipants}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-all"
                   title="Export current participant list to Excel"
                 >
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="w-4 h-4" />
                   Export Excel
                 </button>
               )}
               {!isViewer && (activeTab === 'request' || activeTab === 'pre_event') && (
                 <button
                   onClick={() => setIsImportParticipantsModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-all"
                   title="Impor Peserta Baru via Excel"
                 >
-                  <Upload className="w-3.5 h-3.5 text-slate-500" />
+                  <Upload className="w-4 h-4" />
                   Import Excel
                 </button>
               )}
               {!isViewer && (activeTab === 'request' || activeTab === 'pre_event') && (
                 <button
                   onClick={() => void handleOpenAddParticipantModal()}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-all"
                   title="Add Participant directly to this Event"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   Add Participant
                 </button>
               )}
@@ -2011,7 +2009,7 @@ export default function EventsPage() {
 
           {/* Pagination Bar */}
           {participantsTotal > 0 && (
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-4 py-3 border border-slate-200 rounded-xl shadow-2xs text-xs text-slate-600">
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-600">
               <div className="flex flex-wrap items-center gap-2">
                 <span>Tampilkan</span>
                 <select
@@ -2020,7 +2018,7 @@ export default function EventsPage() {
                     setPageSize(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="bg-slate-50 border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer"
+                  className="bg-white border border-slate-200 text-slate-700 font-medium px-2 py-1 rounded-md focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value={10}>10</option>
                   <option value={25}>25</option>
@@ -2038,23 +2036,23 @@ export default function EventsPage() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  className="px-3 py-1.5 hover:bg-slate-100 rounded-md font-medium text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
                 >
                   Prev
                 </button>
 
-                <span className="px-3 py-1 font-extrabold text-slate-800 bg-slate-100 rounded-lg">
+                <span className="px-3 py-1.5 font-semibold text-slate-900 bg-slate-100 rounded-md">
                   {currentPage} / {totalPages}
                 </span>
 
                 <button
                   onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  className="px-3 py-1.5 hover:bg-slate-100 rounded-md font-medium text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
                 >
                   Next
                 </button>

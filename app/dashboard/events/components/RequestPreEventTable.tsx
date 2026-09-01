@@ -87,7 +87,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   }, [filteredParticipants, activeTab]);
 
   return (
-    <div className="flex-1 border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden flex flex-col">
+    <div className="flex-1 border border-slate-200 rounded-xl bg-white overflow-hidden flex flex-col">
       {/* Top Horizontal Scrollbar */}
       <div
         ref={topScrollRef}
@@ -96,7 +96,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
           }
         }}
-        className="overflow-x-auto border-b border-slate-100 bg-slate-50/50"
+        className="overflow-x-auto border-b border-slate-100"
       >
         <div style={{ width: tableScrollWidth ? `${tableScrollWidth}px` : '1850px', height: '10px' }} />
       </div>
@@ -110,12 +110,12 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
         }}
         className="flex-1 max-h-[620px] overflow-auto"
       >
-        <table ref={tableRef} className="w-full min-w-[1850px] text-left border-collapse text-[11px]">
-        <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
-          <tr className="border-b border-slate-200 text-slate-450 uppercase tracking-widest font-bold text-[9px] whitespace-nowrap">
-            {!isUser && <th className="py-2 px-3 text-left sticky left-0 bg-slate-50 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]">Actions</th>}
-            <th className="py-2 px-2 w-8 text-center"></th>
-            <th className="py-2 px-2 w-8 text-center">
+        <table ref={tableRef} className="w-full min-w-[1850px] text-left border-collapse text-sm">
+        <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+          <tr className="text-slate-500 uppercase tracking-wider text-xs font-semibold whitespace-nowrap">
+            {!isUser && <th className="py-3 px-3 text-left sticky left-0 bg-slate-50 z-10">Actions</th>}
+            <th className="py-3 px-2 w-8 text-center"></th>
+            <th className="py-3 px-2 w-8 text-center">
               <input
                 type="checkbox"
                 disabled={isUser}
@@ -127,25 +127,25 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     setSelectedParticipantIds([]);
                   }
                 }}
-                className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
             </th>
-            {columnConfig.companyName !== false && <th className="py-2 px-3">Company Name</th>}
-            {columnConfig.salutation !== false && <th className="py-2 px-3">Salutation</th>}
-            {columnConfig.firstName !== false && <th className="py-2 px-3">First Name</th>}
-            {columnConfig.lastName !== false && <th className="py-2 px-3">Last Name</th>}
-            {columnConfig.positionLevel !== false && <th className="py-2 px-3">Position</th>}
-            {columnConfig.jobTitle !== false && <th className="py-2 px-3">Job Title</th>}
-            {columnConfig.officePhone !== false && <th className="py-2 px-3">Office Phone</th>}
-            {columnConfig.mobilePhone !== false && <th className="py-2 px-3">Mobile Phone</th>}
-            {columnConfig.officeEmail !== false && <th className="py-2 px-3">Office Email</th>}
-            {columnConfig.personalEmail !== false && <th className="py-2 px-3">Personal Email</th>}
-            {columnConfig.industry !== false && <th className="py-2 px-3">Industry</th>}
-            <th className="py-2 px-3 text-slate-600 font-extrabold">Reg Date</th>
-            {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && <th className="py-2 px-3">Telemarketing Logs</th>}
-            {columnConfig.remarks !== false && activeTab !== 'request' && <th className="py-2 px-3">Remarks</th>}
+            {columnConfig.companyName !== false && <th className="py-3 px-3">Company Name</th>}
+            {columnConfig.salutation !== false && <th className="py-3 px-3">Salutation</th>}
+            {columnConfig.firstName !== false && <th className="py-3 px-3">First Name</th>}
+            {columnConfig.lastName !== false && <th className="py-3 px-3">Last Name</th>}
+            {columnConfig.positionLevel !== false && <th className="py-3 px-3">Position</th>}
+            {columnConfig.jobTitle !== false && <th className="py-3 px-3">Job Title</th>}
+            {columnConfig.officePhone !== false && <th className="py-3 px-3">Office Phone</th>}
+            {columnConfig.mobilePhone !== false && <th className="py-3 px-3">Mobile Phone</th>}
+            {columnConfig.officeEmail !== false && <th className="py-3 px-3">Office Email</th>}
+            {columnConfig.personalEmail !== false && <th className="py-3 px-3">Personal Email</th>}
+            {columnConfig.industry !== false && <th className="py-3 px-3">Industry</th>}
+            <th className="py-3 px-3">Reg Date</th>
+            {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && <th className="py-3 px-3">Telemarketing Logs</th>}
+            {columnConfig.remarks !== false && activeTab !== 'request' && <th className="py-3 px-3">Remarks</th>}
             {columnConfig.approvalStatus !== false && showApprovalColumn && (
-              <th className="py-2 px-3 text-center">
+              <th className="py-3 px-3 text-center">
                 {activeTab === 'pre_event' ? 'Pre Event Approval' : activeTab === 'request' ? 'Client Approval' : 'Client Status'}
               </th>
             )}
@@ -166,15 +166,15 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 {!isUser && (
                   <td
                     onClick={(e) => e.stopPropagation()}
-                    className={`py-1.5 px-3 text-left sticky left-0 bg-white group-hover:bg-slate-50/50 ${openMenuId === p.id ? 'z-40' : 'z-[1]'} shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]`}
+                    className={`py-2.5 px-3 text-left sticky left-0 bg-white group-hover:bg-slate-50/50 ${openMenuId === p.id ? 'z-40' : 'z-[1]'}`}
                   >
                     <div className="relative">
                       <button
                         type="button"
                         onClick={() => setOpenMenuId((current) => (current === p.id ? null : p.id))}
-                        className="inline-flex items-center justify-center p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
+                        className="inline-flex items-center justify-center p-1.5 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
                       >
-                        <MoreVertical className="w-3.5 h-3.5" />
+                        <MoreVertical className="w-4 h-4" />
                       </button>
                       {openMenuId === p.id && (
                         <>
@@ -182,15 +182,15 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                             className="fixed inset-0 z-10"
                             onClick={() => setOpenMenuId(null)}
                           />
-                          <div className="absolute left-0 top-9 z-50 w-40 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                          <div className="absolute left-0 top-9 z-50 w-44 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
                             <button
                               onClick={() => {
                                 setOpenMenuId(null);
                                 handleOpenUpdateParticipantModal(p);
                               }}
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
                             >
-                              <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                              <Edit2 className="w-4 h-4 text-slate-400" />
                               Edit Participant
                             </button>
                             <button
@@ -198,9 +198,9 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                                 setOpenMenuId(null);
                                 openDeleteParticipantConfirm(p);
                               }}
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-semibold text-red-650 hover:bg-red-50"
+                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50"
                             >
-                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              <Trash2 className="w-4 h-4 text-red-500" />
                               Remove Participant
                             </button>
                           </div>
@@ -209,7 +209,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </div>
                   </td>
                 )}
-                <td className="py-1.5 px-2 text-center">
+                <td className="py-2.5 px-2 text-center">
                   {checkDatabaseCompleteness(p.database).isIncomplete && (
                     <span
                       className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
@@ -219,7 +219,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </span>
                   )}
                 </td>
-                <td className="py-1.5 px-2 text-center">
+                <td className="py-2.5 px-2 text-center">
                   <input
                     type="checkbox"
                     disabled={isUser}
@@ -231,131 +231,131 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                         setSelectedParticipantIds(selectedParticipantIds.filter((id) => id !== p.id));
                       }
                     }}
-                    className="w-3.5 h-3.5 text-blue-600 border-slate-350 rounded focus:ring-blue-500 cursor-pointer"
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
                   />
                 </td>
                 {columnConfig.companyName !== false && (
-                  <td className="py-1.5 px-3 font-semibold text-slate-700">
+                  <td className="py-2.5 px-3 font-medium text-slate-700">
                     {p.database.company?.name || <span className="text-slate-400">-</span>}
                   </td>
                 )}
                 {columnConfig.salutation !== false && (
-                  <td className="py-1.5 px-3 text-slate-500">
+                  <td className="py-2.5 px-3 text-slate-500">
                     {p.database.salutation || '-'}
                   </td>
                 )}
                 {columnConfig.firstName !== false && (
-                  <td className="py-1.5 px-3 font-bold text-slate-900">
+                  <td className="py-2.5 px-3 font-semibold text-slate-900">
                     <div className="flex items-center gap-1.5">
                       <span>{p.database.firstName}</span>
                       {isTikus ? (
                         <span
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black bg-rose-100 text-rose-700 rounded-md border border-rose-200 shrink-0"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-rose-50 text-rose-600 rounded-md shrink-0"
                           title="Profil terdeteksi di Daftar Tikus / Suspicious Identity Alerts"
                         >
-                          ⚠️ Tikus
+                          Tikus
                         </span>
                       ) : isTakeout ? (
                         <span
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black bg-amber-100 text-amber-800 rounded-md border border-amber-300 shrink-0"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-600 rounded-md shrink-0"
                           title="Status kontak: Request Data Takeout"
                         >
-                          🚫 Takeout
+                          Takeout
                         </span>
                       ) : null}
                     </div>
                   </td>
                 )}
                 {columnConfig.lastName !== false && (
-                  <td className="py-1.5 px-3 font-bold text-slate-900">
+                  <td className="py-2.5 px-3 font-semibold text-slate-900">
                     {p.database.lastName || '-'}
                   </td>
                 )}
                 {columnConfig.positionLevel !== false && (
-                  <td className="py-1.5 px-3 text-slate-655 font-medium">
+                  <td className="py-2.5 px-3 text-slate-600">
                     {p.database.positionLevel || '-'}
                   </td>
                 )}
                 {columnConfig.jobTitle !== false && (
-                  <td className="py-1.5 px-3 text-slate-950 font-medium">
+                  <td className="py-2.5 px-3 text-slate-700">
                     {p.database.jobTitle || '-'}
                   </td>
                 )}
                 {columnConfig.officePhone !== false && (
-                  <td className="py-1.5 px-3 font-mono text-slate-600">
+                  <td className="py-2.5 px-3 text-slate-600">
                     {p.database.company?.officePhone ? normalizePhone(p.database.company.officePhone) : '-'}
                   </td>
                 )}
                 {columnConfig.mobilePhone !== false && (
-                  <td className="py-1.5 px-3 font-mono text-slate-700">
+                  <td className="py-2.5 px-3 text-slate-700">
                     {p.database.mobilePhone ? normalizePhone(p.database.mobilePhone) : '-'}
                   </td>
                 )}
                 {columnConfig.officeEmail !== false && (
-                  <td className="py-1.5 px-3 font-mono text-slate-600">
+                  <td className="py-2.5 px-3 text-slate-600">
                     {getOfficeEmail(p.database.emails)}
                   </td>
                 )}
                 {columnConfig.personalEmail !== false && (
-                  <td className="py-1.5 px-3 font-mono text-slate-600">
+                  <td className="py-2.5 px-3 text-slate-600">
                     {getPersonalEmail(p.database.emails)}
                   </td>
                 )}
                 {columnConfig.industry !== false && (
-                  <td className="py-1.5 px-3 text-slate-700 whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
                     {p.database.company?.industry || '-'}
                   </td>
                 )}
-                <td className="py-1.5 px-3 whitespace-nowrap">
+                <td className="py-2.5 px-3 whitespace-nowrap">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-slate-800">{formatRegDate(p.requestedAt || p.createdAt).date}</span>
+                    <span className="font-medium text-slate-700">{formatRegDate(p.requestedAt || p.createdAt).date}</span>
                     {formatRegDate(p.requestedAt || p.createdAt).time && (
-                      <span className="text-[10px] text-slate-400 font-medium">{formatRegDate(p.requestedAt || p.createdAt).time}</span>
+                      <span className="text-xs text-slate-400">{formatRegDate(p.requestedAt || p.createdAt).time}</span>
                     )}
                   </div>
                 </td>
                 {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && (
-                  <td className="py-1.5 px-3">
+                  <td className="py-2.5 px-3">
                     <button
                       onClick={() => onOpenEngagementModal(p)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-700 text-xs font-bold rounded-xl border border-slate-200/80 transition-all shadow-2xs focus:outline-none cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-md border border-slate-200 transition-all focus:outline-none cursor-pointer"
                       title="Buka Telemarketing Logs (Call, Email, WA)"
                     >
-                      <History className="w-3.5 h-3.5 text-blue-600" />
+                      <History className="w-4 h-4 text-slate-500" />
                       <span>View Logs</span>
                     </button>
                   </td>
                 )}
                 {columnConfig.remarks !== false && activeTab !== 'request' && (
-                  <td className="py-1.5 px-3">
+                  <td className="py-2.5 px-3">
                     <select
                       disabled={isUser}
                       value={p.participantStatus === 'confirm' ? 'registered' : (p.participantStatus || 'not_respon_yet')}
                       onChange={(e) => handleDirectUpdateParticipant(p, 'remarks', e.target.value)}
-                      className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.participantStatus)}`}
+                      className={`text-sm font-medium border rounded-md px-2.5 py-1.5 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.participantStatus)}`}
                     >
-                      <option value="not_respon_yet" className="text-slate-705 bg-white font-normal">Not respond yet</option>
-                      <option value="not_respond_2x" className="text-slate-700 bg-white font-semibold">Not respond 2x</option>
-                      <option value="registered" className="text-indigo-950 bg-white font-extrabold">Registered</option>
-                      <option value="tentative" className="text-slate-700 bg-white font-extrabold">Tentative</option>
-                      <option value="not_interest" className="text-slate-400 bg-white font-extrabold">Not Interest</option>
-                      <option value="unable_to_attend" className="text-slate-400 bg-white font-extrabold">Unable Attend</option>
+                      <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
+                      <option value="not_respond_2x" className="text-slate-700 bg-white font-medium">Not respond 2x</option>
+                      <option value="registered" className="text-indigo-700 bg-white font-semibold">Registered</option>
+                      <option value="tentative" className="text-amber-700 bg-white font-semibold">Tentative</option>
+                      <option value="not_interest" className="text-slate-500 bg-white font-semibold">Not Interest</option>
+                      <option value="unable_to_attend" className="text-rose-600 bg-white font-semibold">Unable Attend</option>
                     </select>
                   </td>
                 )}
                 {columnConfig.approvalStatus !== false && showApprovalColumn && (
-                  <td className="py-1.5 px-3">
+                  <td className="py-2.5 px-3">
                     <div className="flex justify-center">
                       {activeTab === 'pre_event' ? (
                         <select
                           disabled={isUser}
                           value={getPreEventApprovalStatus(p)}
                           onChange={(e) => handleDirectUpdateParticipant(p, 'preEventApprovalStatus', e.target.value)}
-                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(getPreEventApprovalStatus(p))}`}
+                          className={`text-sm font-medium border rounded-md px-2.5 py-1.5 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(getPreEventApprovalStatus(p))}`}
                         >
-                          <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
-                          <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>
-                          <option value="decline" className="text-rose-800 bg-white font-extrabold">Decline</option>
+                          <option value="pending" className="text-amber-700 bg-white font-medium">Pending</option>
+                          <option value="approve" className="text-emerald-700 bg-white font-medium">Approve</option>
+                          <option value="decline" className="text-rose-700 bg-white font-medium">Decline</option>
                         </select>
                       ) : (
                         <select
@@ -376,7 +376,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                               handleDirectUpdateParticipant(p, 'preEventApprovalStatus', newVal);
                             }
                           }}
-                          className={`text-[10px] font-extrabold border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs transition-all ${getConfirmationStatusBadgeStyle(
+                          className={`text-sm font-medium border rounded-md px-2.5 py-1.5 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(
                             getPreEventApprovalStatus(p) === 'decline'
                               ? 'decline'
                               : p.confirmationStatus === 'confirmed' || p.confirmationStatus === 'approve'
@@ -386,16 +386,16 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                               : p.confirmationStatus || 'pending'
                           )}`}
                         >
-                          <option value="pending" className="text-amber-800 bg-white font-extrabold">Pending</option>
-                          <option value="approve" className="text-emerald-800 bg-white font-extrabold">Approve</option>
-                          <option value="decline" className="text-rose-800 bg-white font-extrabold">Decline</option>
+                          <option value="pending" className="text-amber-700 bg-white font-medium">Pending</option>
+                          <option value="approve" className="text-emerald-700 bg-white font-medium">Approve</option>
+                          <option value="decline" className="text-rose-700 bg-white font-medium">Decline</option>
                         </select>
                       )}
                     </div>
                   </td>
                 )}
                 {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && (
-                  <td className="py-1.5 px-3 font-bold text-slate-700">
+                  <td className="py-2.5 px-3 font-medium text-slate-700">
                     {displayPic}
                   </td>
                 )}
@@ -404,7 +404,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     onClick={() => {
                       if (!isUser) handleOpenUpdateParticipantModal(p);
                     }}
-                    className={`py-1.5 px-3 text-slate-600 max-w-[140px] truncate transition-all ${isUser ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
+                    className={`py-2.5 px-3 text-slate-600 max-w-[140px] truncate transition-all ${isUser ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
                     title={isUser ? cleanNotes || '-' : 'Click to edit notes & details'}
                   >
                     {cleanNotes || '-'}
@@ -415,17 +415,17 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     <>
                       <button
                         onClick={() => handleOpenUpdateParticipantModal(p)}
-                        className="inline-flex p-1.5 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-slate-400 transition-all"
+                        className="inline-flex p-1.5 hover:bg-blue-50 hover:text-blue-600 rounded-md text-slate-400 transition-all"
                         title="Edit Participant & Notes"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openDeleteParticipantConfirm(p)}
-                        className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-650 rounded-lg text-slate-400 hover:text-red-650 transition-all"
+                        className="inline-flex p-1.5 hover:bg-red-50 hover:text-red-600 rounded-md text-slate-400 hover:text-red-600 transition-all"
                         title="Remove Participant"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </>
                   )}
