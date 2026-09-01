@@ -211,136 +211,77 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
             e.nativeEvent.stopImmediatePropagation();
           }
         }}
-        className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] relative z-10 pointer-events-auto"
+        className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh] relative z-10 pointer-events-auto"
       >
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-blue-400" />
-              <h3 className="font-extrabold text-lg tracking-tight">{fullName}</h3>
-            </div>
-            <p className="text-xs text-slate-300 mt-0.5">{companyName} • {participant.database.jobTitle || 'No Title'}</p>
+        <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between">
+          <div className="min-w-0">
+            <h3 className="font-medium text-sm truncate">{fullName}</h3>
+            <p className="text-xs text-slate-400 truncate">{companyName} • {participant.database.jobTitle || 'No Title'}</p>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/60 rounded-xl transition-all cursor-pointer relative z-20"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-all cursor-pointer relative z-20 shrink-0 ml-3"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-5 overflow-y-auto flex-1 text-slate-900">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* CALL Card */}
-            <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-3.5 flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5" /> Call Count
-                </span>
-                {isInitialLoading ? (
-                  <span className="h-7 w-12 rounded-xl bg-blue-200/70 animate-pulse" />
-                ) : (
-                  <span className="text-lg font-black text-blue-950">{callLogs.length}x</span>
-                )}
-              </div>
-              {isInitialLoading ? (
-                <div className="mt-2 h-3.5 w-32 rounded-full bg-blue-100 animate-pulse" />
-              ) : (
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Terakhir: <strong className="text-slate-700">{formatTimestamp(callLogs[0]?.createdAt)}</strong>
-                </p>
-              )}
-              {!isViewer && (
-                <button
-                  disabled={submitting}
-                  onClick={() => handleLogActivity('CALL')}
-                  className="mt-3 w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <Plus className="w-3.5 h-3.5" /> + Log Call
-                </button>
-              )}
-            </div>
-
-            {/* EMAIL Card */}
-            <div className="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-3.5 flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5" /> Email Count
-                </span>
-                {isInitialLoading ? (
-                  <span className="h-7 w-12 rounded-xl bg-emerald-200/70 animate-pulse" />
-                ) : (
-                  <span className="text-lg font-black text-emerald-950">{emailLogs.length}x</span>
-                )}
-              </div>
-              {isInitialLoading ? (
-                <div className="mt-2 h-3.5 w-32 rounded-full bg-emerald-100 animate-pulse" />
-              ) : (
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Terakhir: <strong className="text-slate-700">{formatTimestamp(emailLogs[0]?.createdAt)}</strong>
-                </p>
-              )}
-              {!isViewer && (
-                <button
-                  disabled={submitting}
-                  onClick={() => handleLogActivity('EMAIL')}
-                  className="mt-3 w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <Plus className="w-3.5 h-3.5" /> + Log Email
-                </button>
-              )}
-            </div>
-
-            {/* WHATSAPP Card */}
-            <div className="bg-green-50/60 border border-green-100 rounded-2xl p-3.5 flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-green-700 uppercase tracking-wider flex items-center gap-1">
-                  <WhatsAppIcon className="w-3.5 h-3.5 text-green-600" /> WA Count
-                </span>
-                {isInitialLoading ? (
-                  <span className="h-7 w-12 rounded-xl bg-green-200/70 animate-pulse" />
-                ) : (
-                  <span className="text-lg font-black text-green-950">{waLogs.length}x</span>
-                )}
-              </div>
-              {isInitialLoading ? (
-                <div className="mt-2 h-3.5 w-32 rounded-full bg-green-100 animate-pulse" />
-              ) : (
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Terakhir: <strong className="text-slate-700">{formatTimestamp(waLogs[0]?.createdAt)}</strong>
-                </p>
-              )}
-              {!isViewer && (
-                <button
-                  disabled={submitting}
-                  onClick={() => handleLogActivity('WHATSAPP')}
-                  className="mt-3 w-full py-1.5 bg-green-600 hover:bg-green-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <Plus className="w-3.5 h-3.5" /> + Log WA
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Auto-Sync Outcome Status Configuration */}
+        <div className="p-4 space-y-4 overflow-y-auto flex-1 text-slate-900">
+          {/* Quick Log Buttons - Compact Row */}
           {!isViewer && (
-            <div className="bg-blue-50/50 border border-blue-100/80 rounded-2xl p-3.5 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                  <span>Hasil Follow-Up & Auto Update Status</span>
-                </label>
-                <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-                  Auto-Sync ke Tabel
-                </span>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={submitting}
+                onClick={() => handleLogActivity('CALL')}
+                className="flex-1 py-2 bg-white border border-slate-200 hover:border-blue-300 text-slate-700 font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Phone className="w-3.5 h-3.5 text-blue-500" />
+                <span>Call ({callLogs.length})</span>
+              </button>
+              <button
+                disabled={submitting}
+                onClick={() => handleLogActivity('EMAIL')}
+                className="flex-1 py-2 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Mail className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Email ({emailLogs.length})</span>
+              </button>
+              <button
+                disabled={submitting}
+                onClick={() => handleLogActivity('WHATSAPP')}
+                className="flex-1 py-2 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <WhatsAppIcon className="w-3.5 h-3.5 text-emerald-500" />
+                <span>WA ({waLogs.length})</span>
+              </button>
+            </div>
+          )}
+
+          {/* Quick Notes */}
+          {!isViewer && (
+            <div>
+              <input
+                type="text"
+                placeholder="Catatan (opsional)..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 placeholder-slate-400"
+              />
+            </div>
+          )}
+
+          {/* Status Milestone - Compact */}
+          {!isViewer && (
+            <div className="border border-slate-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-xs font-medium text-slate-600">Update Status</span>
+                <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Auto-Sync</span>
               </div>
 
-              {/* Current Milestone Status Chips */}
-              <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-blue-100/80">
-                <span className="text-[10px] font-bold text-slate-500 mr-0.5">Status Tersimpan:</span>
+              {/* Status Chips */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
                 {[
                   { id: 'preEventApproval', label: 'Pre Event', val: getPreEventApprovalStatus(participant) },
                   { id: 'reminderH7', label: 'H-7', val: participant.reminderH7 },
@@ -355,212 +296,174 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                       key={chip.id}
                       type="button"
                       onClick={() => handleStageSelect(chip.id as any)}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer border ${
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer border ${
                         isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          ? 'bg-blue-600 text-white border-blue-600'
                           : hasValue
-                          ? 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
-                          : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200/60'
+                          ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
                       }`}
-                      title={`Klik untuk lihat/edit ${chip.label}`}
                     >
-                      {chip.label}: <span className="uppercase">{chip.val || 'Belum'}</span>
+                      {chip.label}: {chip.val || '-'}
                     </button>
                   );
                 })}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target Status Milestone</span>
-                  <select
-                    value={targetStage}
-                    onChange={(e) => handleStageSelect(e.target.value as any)}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                  >
-                    <option value="preEventApproval">Pre Event Approval</option>
-                    <option value="reminderH7">Reminder H-7</option>
-                    <option value="reminderH3">Reminder H-3</option>
-                    <option value="reminderH1">Reminder H-1</option>
-                    <option value="reminderHariH">D-Day (Hari H)</option>
-                    <option value="none">- Hanya Catat Log (Jangan Update Status)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Hasil Respon Peserta</span>
-                  <select
-                    value={outcomeStatus}
-                    disabled={targetStage === 'none'}
-                    onChange={(e) => setOutcomeStatus(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-extrabold text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs disabled:opacity-50"
-                  >
-                    {targetStage === 'preEventApproval' ? (
-                      <>
-                        <option value="pending">Pending</option>
-                        <option value="approve">Approve</option>
-                        <option value="decline">Decline</option>
-                      </>
-                    ) : targetStage === 'reminderHariH' ? (
-                      <>
-                        <option value="on_location">On Location (Hadir)</option>
-                        <option value="on_the_way">On The Way (OTW)</option>
-                        <option value="not_respon_yet">Not Respond Yet</option>
-                        <option value="not_respond_2x">Not Respond 2x</option>
-                        <option value="unable_to_attend">Unable to Attend (Batal)</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="confirm">Confirm (Hadir)</option>
-                        <option value="tentative">Tentative (Masih Ragu)</option>
-                        <option value="unable_to_attend">Unable to Attend (Batal)</option>
-                        <option value="not_respon_yet">Not Respond Yet</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              {/* Explicit Save Status Button */}
-              <div className="pt-1 flex justify-end">
-                <button
-                  type="button"
-                  disabled={submitting || targetStage === 'none'}
-                  onClick={async () => {
-                    if (!participant || targetStage === 'none') return;
-                    setSubmitting(true);
-                    try {
-                      const isReminderStage = targetStage.startsWith('reminder');
-                      const autoApproveConf = (isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
-                        ? 'approve'
-                        : undefined;
-                      const nextNotes = targetStage === 'preEventApproval'
-                        ? setPreEventApprovalStatus(participant.notes, outcomeStatus)
-                        : undefined;
-
-                      if (targetStage === 'preEventApproval') {
-                        await crmService.updatePreEventApprovalStatus(participant.id, nextNotes, outcomeStatus);
-                      } else {
-                        await crmService.updateParticipantStatus(
-                          participant.id,
-                          undefined,
-                          undefined,
-                          undefined,
-                          undefined,
-                          undefined,
-                          undefined,
-                          undefined,
-                          undefined,
-                          undefined,
-                          undefined,
-                          undefined,
-                          targetStage === 'reminderH7' ? outcomeStatus : undefined,
-                          targetStage === 'reminderH3' ? outcomeStatus : undefined,
-                          targetStage === 'reminderH1' ? outcomeStatus : undefined,
-                          targetStage === 'reminderHariH' ? outcomeStatus : undefined,
-                          autoApproveConf
-                        );
-                      }
-
-                      if (targetStage === 'reminderH7') participant.reminderH7 = outcomeStatus;
-                      if (targetStage === 'reminderH3') participant.reminderH3 = outcomeStatus;
-                      if (targetStage === 'reminderH1') participant.reminderH1 = outcomeStatus;
-                      if (targetStage === 'reminderHariH') participant.reminderHariH = outcomeStatus;
-                      if (nextNotes) participant.notes = nextNotes;
-                      if (targetStage === 'preEventApproval') participant.preEventApprovalStatus = outcomeStatus;
-                      if (autoApproveConf) participant.confirmationStatus = autoApproveConf;
-
-                      const stageLabel = targetStage === 'preEventApproval' ? 'Pre Event' : targetStage === 'reminderH7' ? 'H-7' : targetStage === 'reminderH3' ? 'H-3' : targetStage === 'reminderH1' ? 'H-1' : targetStage === 'reminderHariH' ? 'Hari H' : 'Milestone';
-                      toast.success(`Berhasil menyimpan status ${stageLabel} ke ${outcomeStatus.toUpperCase()}!`);
-
-                      if (onActivityLogged) onActivityLogged();
-                    } catch (err) {
-                      console.error(err);
-                      toast.error('Gagal memperbarui status peserta');
-                    } finally {
-                      setSubmitting(false);
-                    }
-                  }}
-                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              {/* Selects */}
+              <div className="grid grid-cols-2 gap-2 mb-2.5">
+                <select
+                  value={targetStage}
+                  onChange={(e) => handleStageSelect(e.target.value as any)}
+                  className="px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
-                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                  <span>Simpan & Sync Status Ke Tabel</span>
-                </button>
+                  <option value="preEventApproval">Pre Event</option>
+                  <option value="reminderH7">Reminder H-7</option>
+                  <option value="reminderH3">Reminder H-3</option>
+                  <option value="reminderH1">Reminder H-1</option>
+                  <option value="reminderHariH">Hari H</option>
+                  <option value="none">Hanya Log</option>
+                </select>
+                <select
+                  value={outcomeStatus}
+                  disabled={targetStage === 'none'}
+                  onChange={(e) => setOutcomeStatus(e.target.value)}
+                  className="px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer disabled:opacity-50"
+                >
+                  {targetStage === 'preEventApproval' ? (
+                    <>
+                      <option value="pending">Pending</option>
+                      <option value="approve">Approve</option>
+                      <option value="decline">Decline</option>
+                    </>
+                  ) : targetStage === 'reminderHariH' ? (
+                    <>
+                      <option value="on_location">On Location</option>
+                      <option value="on_the_way">On The Way</option>
+                      <option value="not_respon_yet">Not Respond</option>
+                      <option value="not_respond_2x">Not Respond 2x</option>
+                      <option value="unable_to_attend">Unable</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="confirm">Confirm</option>
+                      <option value="tentative">Tentative</option>
+                      <option value="unable_to_attend">Unable</option>
+                      <option value="not_respon_yet">Not Respond</option>
+                    </>
+                  )}
+                </select>
               </div>
+
+              <button
+                type="button"
+                disabled={submitting || targetStage === 'none'}
+                onClick={async () => {
+                  if (!participant || targetStage === 'none') return;
+                  setSubmitting(true);
+                  try {
+                    const isReminderStage = targetStage.startsWith('reminder');
+                    const autoApproveConf = (isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
+                      ? 'approve'
+                      : undefined;
+                    const nextNotes = targetStage === 'preEventApproval'
+                      ? setPreEventApprovalStatus(participant.notes, outcomeStatus)
+                      : undefined;
+
+                    if (targetStage === 'preEventApproval') {
+                      await crmService.updatePreEventApprovalStatus(participant.id, nextNotes, outcomeStatus);
+                    } else {
+                      await crmService.updateParticipantStatus(
+                        participant.id,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        undefined,
+                        targetStage === 'reminderH7' ? outcomeStatus : undefined,
+                        targetStage === 'reminderH3' ? outcomeStatus : undefined,
+                        targetStage === 'reminderH1' ? outcomeStatus : undefined,
+                        targetStage === 'reminderHariH' ? outcomeStatus : undefined,
+                        autoApproveConf
+                      );
+                    }
+
+                    if (targetStage === 'reminderH7') participant.reminderH7 = outcomeStatus;
+                    if (targetStage === 'reminderH3') participant.reminderH3 = outcomeStatus;
+                    if (targetStage === 'reminderH1') participant.reminderH1 = outcomeStatus;
+                    if (targetStage === 'reminderHariH') participant.reminderHariH = outcomeStatus;
+                    if (nextNotes) participant.notes = nextNotes;
+                    if (targetStage === 'preEventApproval') participant.preEventApprovalStatus = outcomeStatus;
+                    if (autoApproveConf) participant.confirmationStatus = autoApproveConf;
+
+                    const stageLabel = targetStage === 'preEventApproval' ? 'Pre Event' : targetStage === 'reminderH7' ? 'H-7' : targetStage === 'reminderH3' ? 'H-3' : targetStage === 'reminderH1' ? 'H-1' : targetStage === 'reminderHariH' ? 'Hari H' : 'Milestone';
+                    toast.success(`Berhasil menyimpan status ${stageLabel} ke ${outcomeStatus.toUpperCase()}!`);
+
+                    if (onActivityLogged) onActivityLogged();
+                  } catch (err) {
+                    console.error(err);
+                    toast.error('Gagal memperbarui status peserta');
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                <span>Simpan & Sync</span>
+              </button>
             </div>
           )}
 
-          {/* Quick Notes Input */}
-          {!isViewer && (
-            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">Catatan Engagement (Opsional)</label>
-              <input
-                type="text"
-                placeholder="Misal: 'Sudah ditelpon, konfirmasi hadir membawa 2 rekan'"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-800 shadow-2xs"
-              />
-            </div>
-          )}
-
-          {/* Activity Timeline List */}
+          {/* Activity History */}
           <div>
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">History Engagement ({activities?.length ?? 0})</h4>
+            <h4 className="text-xs font-medium text-slate-500 mb-2">History ({activities?.length ?? 0})</h4>
 
             {isInitialLoading ? (
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Memuat riwayat engagement...</span>
-                </div>
+              <div className="space-y-2">
                 {[0, 1, 2].map((item) => (
-                  <div key={item} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-start justify-between gap-3 animate-pulse">
-                    <div className="flex items-start gap-2.5 flex-1">
-                      <span className="h-5 w-16 rounded-md bg-slate-200 shrink-0 mt-0.5" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3.5 w-4/5 rounded-full bg-slate-200" />
-                        <div className="h-3 w-1/3 rounded-full bg-slate-150" />
-                      </div>
-                    </div>
-                    <span className="h-3 w-20 rounded-full bg-slate-200 shrink-0 mt-0.5" />
+                  <div key={item} className="p-2 bg-slate-50 border border-slate-200 rounded-md flex items-center gap-2 animate-pulse">
+                    <span className="h-4 w-12 rounded bg-slate-200 shrink-0" />
+                    <div className="h-3 w-3/4 rounded bg-slate-200" />
                   </div>
                 ))}
               </div>
             ) : loading ? (
-              <div className="py-8 flex justify-center items-center">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+              <div className="py-6 flex justify-center items-center">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
               </div>
             ) : (activities?.length ?? 0) === 0 ? (
-              <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-                <Clock className="w-8 h-8 text-slate-350 mx-auto mb-2" />
-                <p className="text-xs font-medium text-slate-400">Belum ada riwayat engagement. Klik tombol di atas untuk mencatat log.</p>
+              <div className="text-center py-6 border border-dashed border-slate-200 rounded-lg">
+                <p className="text-xs text-slate-400">Belum ada riwayat</p>
               </div>
             ) : (
-              <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
                 {activities!.map((act) => {
                   const typeUpper = act.activityType?.toUpperCase();
                   const typeColorMap: Record<string, string> = {
-                    CALL: 'bg-blue-100 text-blue-800 border-blue-200',
-                    EMAIL: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                    WHATSAPP: 'bg-green-100 text-green-800 border-green-200',
-                    MEETING: 'bg-purple-100 text-purple-800 border-purple-200',
-                    SYSTEM: 'bg-slate-100 text-slate-700 border-slate-200'
+                    CALL: 'bg-blue-50 text-blue-600',
+                    EMAIL: 'bg-emerald-50 text-emerald-600',
+                    WHATSAPP: 'bg-emerald-50 text-emerald-600',
+                    MEETING: 'bg-purple-50 text-purple-600',
+                    SYSTEM: 'bg-slate-100 text-slate-500'
                   };
-                  const badgeStyle = typeColorMap[typeUpper] || 'bg-slate-100 text-slate-800';
+                  const badgeStyle = typeColorMap[typeUpper] || 'bg-slate-100 text-slate-500';
 
                   return (
-                    <div key={act.id} className="p-3 bg-white border border-slate-200/80 rounded-xl flex items-start justify-between gap-3 text-xs shadow-2xs">
-                      <div className="flex items-start gap-2.5">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase border ${badgeStyle} shrink-0 mt-0.5`}>
+                    <div key={act.id} className="py-2 px-2.5 bg-white border border-slate-200 rounded-md flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${badgeStyle} shrink-0`}>
                           {act.activityType}
                         </span>
-                        <div>
-                          <p className="font-semibold text-slate-800">{act.notes || '-'}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">Oleh: <strong className="text-slate-600">{act.createdBy || 'System'}</strong></p>
-                        </div>
+                        <span className="text-slate-600 truncate">{act.notes || '-'}</span>
                       </div>
-                      <span className="text-[10px] font-mono text-slate-450 shrink-0">
+                      <span className="text-[10px] text-slate-400 shrink-0">
                         {formatTimestamp(act.createdAt)}
                       </span>
                     </div>
@@ -572,11 +475,11 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+        <div className="px-5 py-3 border-t border-slate-100 flex justify-end">
           <button
             type="button"
             onClick={handleClose}
-            className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer relative z-20"
+            className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-xs rounded-md transition-all cursor-pointer relative z-20"
           >
             Tutup
           </button>

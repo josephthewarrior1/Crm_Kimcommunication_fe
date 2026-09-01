@@ -684,14 +684,14 @@ export default function DatabasesPage() {
             }}
             className="overflow-x-auto"
           >
-            <table ref={tableRef} className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/50 whitespace-nowrap text-left">
-                  <th className="py-4 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-left sticky left-0 bg-slate-50 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)]">Actions</th>
+            <table ref={tableRef} className="w-full text-left border-collapse text-sm">
+              <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+                <tr className="text-slate-500 uppercase tracking-wider text-xs font-semibold whitespace-nowrap text-left">
+                  <th className="py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-left sticky left-0 bg-slate-50 z-10">Actions</th>
                   <th
                     onClick={() => handleSort('groupName')}
-                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                    className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Nama Group/Holding Company</span>
@@ -704,7 +704,7 @@ export default function DatabasesPage() {
                   </th>
                   <th
                     onClick={() => handleSort('brandName')}
-                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                    className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Nama Brand</span>
@@ -717,7 +717,7 @@ export default function DatabasesPage() {
                   </th>
                   <th
                     onClick={() => handleSort('companyName')}
-                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                    className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Company Name</span>
@@ -728,10 +728,10 @@ export default function DatabasesPage() {
                       )}
                     </div>
                   </th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Salutation</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Salutation</th>
                   <th
                     onClick={() => handleSort('firstName')}
-                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                    className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>First Name</span>
@@ -744,7 +744,7 @@ export default function DatabasesPage() {
                   </th>
                   <th
                     onClick={() => handleSort('lastName')}
-                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                    className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Last Name</span>
@@ -757,7 +757,7 @@ export default function DatabasesPage() {
                   </th>
                   <th
                     onClick={() => handleSort('position')}
-                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                    className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Position</span>
@@ -768,10 +768,10 @@ export default function DatabasesPage() {
                       )}
                     </div>
                   </th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Division</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Division</th>
                   <th
                     onClick={() => handleSort('jobTitle')}
-                    className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
+                    className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Jobtitle</span>

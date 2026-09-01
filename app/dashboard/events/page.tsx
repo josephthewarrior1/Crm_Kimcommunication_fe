@@ -993,7 +993,7 @@ export default function EventsPage() {
   const handleBatchAssignPic = async (picName: string) => {
     if (selectedParticipantIds.length === 0) return;
     if (!isAllowedPicName(picName)) {
-      toast.error('PIC yang dipilih harus manager yang punya akses ke event ini.');
+      toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
       return;
     }
     setIsBatchUpdating(true);
@@ -1044,7 +1044,7 @@ export default function EventsPage() {
 
     const nextPicName = extractPicFromNotes(data.notes).pic;
     if (!isAllowedPicName(nextPicName)) {
-      toast.error('PIC yang dipilih harus manager yang punya akses ke event ini.');
+      toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
       return;
     }
 
@@ -1430,7 +1430,7 @@ export default function EventsPage() {
               </button>
               <button
                 onClick={() => setIsCreateEventModalOpen(true)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Create Event
@@ -1816,7 +1816,7 @@ export default function EventsPage() {
               {!isViewer && (activeTab === 'request' || activeTab === 'pre_event') && (
                 <button
                   onClick={() => void handleOpenAddParticipantModal()}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-all"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-all"
                   title="Add Participant directly to this Event"
                 >
                   <Plus className="w-4 h-4" />
@@ -1844,7 +1844,7 @@ export default function EventsPage() {
                 .map((manager) => manager.id);
 
               if (managerIds.length === 0) {
-                toast.error('Pilih minimal 1 manager yang valid untuk event ini.');
+                toast.error('Pilih minimal 1 PIC yang valid untuk event ini.');
                 return;
               }
 
@@ -1854,7 +1854,7 @@ export default function EventsPage() {
                   mode,
                   managerIds
                 });
-                toast.success(`Berhasil membagi ${result.updatedCount} peserta ke ${result.managerCount} manager.`);
+                toast.success(`Berhasil membagi ${result.updatedCount} peserta ke ${result.managerCount} PIC.`);
                 await loadParticipantsForEvent(selectedEvent, activeTab);
               } catch (err: any) {
                 toast.error(err.message || 'Failed to auto split assignments');
@@ -1864,7 +1864,7 @@ export default function EventsPage() {
             } : undefined}
             onAssignPic={!isViewer ? async (ids, picName) => {
               if (!isAllowedPicName(picName)) {
-                toast.error('PIC yang dipilih harus manager yang punya akses ke event ini.');
+                toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
                 return;
               }
               setIsBatchUpdating(true);
@@ -1990,6 +1990,7 @@ export default function EventsPage() {
               getStatusBadgeStyle={getStatusBadgeStyle}
               onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
               columnConfig={columnConfig}
+              adminName={adminName}
             />
           ) : (
             <ReminderDdayTable
@@ -2004,6 +2005,7 @@ export default function EventsPage() {
               getStatusBadgeStyle={getStatusBadgeStyle}
               onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
               columnConfig={columnConfig}
+              adminName={adminName}
             />
           )}
 

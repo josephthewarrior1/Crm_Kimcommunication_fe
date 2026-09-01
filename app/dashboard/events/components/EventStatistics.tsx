@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, X, Calendar, CheckCircle, TrendingUp, Users, ArrowLeft, Plus, Search, UserMinus, History, Phone, Mail, MessageSquare, Loader2, Calendar as CalendarIcon, Sliders } from 'lucide-react';
+import { Clock, X, Calendar, CheckCircle, CheckCircle2, TrendingUp, Users, UserCheck, ArrowLeft, Plus, Search, UserMinus, History, Phone, Mail, MessageSquare, Loader2, Calendar as CalendarIcon, Sliders } from 'lucide-react';
 import { EventParticipant, AppUser, EventParticipantStatisticsResponse, EventActivitySummaryResponse, EventParticipantPicSummaryResponse } from '../../../../lib/types';
 import { extractPicFromNotes, getPreEventApprovalStatus } from '../utils/notesHelper';
 import { crmService } from '../../../../lib/services/crmService';
@@ -103,6 +103,19 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   const selectedPicSummaryItem = selectedPic
     ? activePicSummaryItems.find((item) => item.name.toLowerCase() === selectedPic.toLowerCase())
     : null;
+  const eligibleSplitUsers = usersList.filter(u => {
+    const uname = (u.username || '').toLowerCase();
+    const fname = (u.fullName || '').toLowerCase();
+    return uname !== 'kevin' && !fname.includes('kevin');
+  });
+
+  const showMissingPicAccessWarning = () => {
+    setConfirmConfig({
+      title: "Belum Ada PIC Event",
+      description: "Belum ada user yang ditugaskan sebagai PIC untuk event ini.\n1. Buka Dashboard > Users.\n2. Klik Events Access pada admin/manager yang akan menangani leads.\n3. Checklist event ini, lalu simpan.",
+      onConfirm: () => {}
+    });
+  };
 
   const toggleSplitPic = (picName: string) => {
     setSelectedSplitPics(prev => 
@@ -112,6 +125,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
   const handleExecuteSplitSelected = async () => {
     if (selectedSplitPics.length === 0) {
+      if (eligibleSplitUsers.length === 0) {
+        showMissingPicAccessWarning();
+        return;
+      }
       toast.error('Silakan pilih minimal 1 PIC untuk pembagian peserta');
       return;
     }
@@ -371,21 +388,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('totalRequest')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-blue-200">
-                    <polyline
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8"
-                    />
-                    <polyline
-                      fill="currentColor"
-                      opacity="0.1"
-                      points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30"
-                    />
-                  </svg>
-                </div>
               </div>
               
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -400,21 +402,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('pendingApproval')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
-                    <polyline
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      points="0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18"
-                    />
-                    <polyline
-                      fill="currentColor"
-                      opacity="0.1"
-                      points="0,30 0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18 100,30"
-                    />
-                  </svg>
-                </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -428,21 +415,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('takenOut')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
-                    <polyline
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28"
-                    />
-                    <polyline
-                      fill="currentColor"
-                      opacity="0.1"
-                      points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30"
-                    />
-                  </svg>
                 </div>
               </div>
             </div>
@@ -467,12 +439,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('totalRegister')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-emerald-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30" />
-                  </svg>
-                </div>
               </div>
               
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -486,12 +452,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('tentative')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18 100,30" />
-                  </svg>
                 </div>
               </div>
 
@@ -507,12 +467,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('notRespondYet')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-slate-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30" />
-                  </svg>
-                </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -526,12 +480,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('notInterest')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28 100,30" />
-                  </svg>
                 </div>
               </div>
             </div>
@@ -552,12 +500,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('approve')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-emerald-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30" />
-                  </svg>
-                </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -571,12 +513,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('pending')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-blue-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18 100,30" />
-                  </svg>
                 </div>
               </div>
             </div>
@@ -601,12 +537,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('totalDeclined')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28 100,30" />
-                  </svg>
-                </div>
               </div>
               
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -621,12 +551,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('declinedFromDbVetting')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30" />
-                  </svg>
-                </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -640,12 +564,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('declinedFromPreEvent')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-slate-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,12 15,15 30,18 45,20 60,22 75,25 90,27 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,12 15,15 30,18 45,20 60,22 75,25 90,27 100,28 100,30" />
-                  </svg>
                 </div>
               </div>
             </div>
@@ -670,12 +588,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('approvedRegisterTotal')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-blue-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30" />
-                  </svg>
-                </div>
               </div>
               
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -689,12 +601,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('confirmToAttend')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-emerald-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,18 30,15 45,12 60,10 75,8 90,6 100,5" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,18 30,15 45,12 60,10 75,8 90,6 100,5 100,30" />
-                  </svg>
                 </div>
               </div>
 
@@ -710,12 +616,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('tentative')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,22 30,18 45,25 60,20 75,22 90,15 100,18 100,30" />
-                  </svg>
-                </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -730,12 +630,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('notRespondYet')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-slate-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30" />
-                  </svg>
-                </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -749,12 +643,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('unableToAttend')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28 100,30" />
-                  </svg>
                 </div>
               </div>
             </div>
@@ -779,12 +667,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('onLocation')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-emerald-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,20 15,18 30,15 45,12 60,10 75,8 90,6 100,5" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,20 15,18 30,15 45,12 60,10 75,8 90,6 100,5 100,30" />
-                  </svg>
-                </div>
               </div>
               
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -798,12 +680,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('onTheWay')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-blue-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,25 15,20 30,22 45,15 60,18 75,10 90,12 100,8 100,30" />
-                  </svg>
                 </div>
               </div>
 
@@ -819,12 +695,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {getStat('notRespondYet')}
                   </span>
                 </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-amber-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,15 15,18 30,20 45,22 60,25 75,28 90,26 100,28 100,30" />
-                  </svg>
-                </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -838,12 +708,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <span className="text-3xl font-bold text-slate-900">
                     {getStat('unableToAttend')}
                   </span>
-                </div>
-                <div className="mt-3 h-8">
-                  <svg viewBox="0 0 100 30" className="w-full h-full text-rose-200">
-                    <polyline fill="none" stroke="currentColor" strokeWidth="2" points="0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28" />
-                    <polyline fill="currentColor" opacity="0.1" points="0,30 0,10 15,12 30,15 45,18 60,20 75,22 90,25 100,28 100,30" />
-                  </svg>
                 </div>
               </div>
             </div>
@@ -966,18 +830,18 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                     {picViewTab === 'report' ? (
                       /* Daily Telemarketing & Activity Report Bar */
-                      <div className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-4 space-y-3 shadow-2xs mb-4">
+                      <div className="bg-white border border-slate-200 rounded-xl space-y-4 mb-4">
                         {/* Header & Controls Toolbar */}
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="p-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100/80 shrink-0">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="p-2 bg-slate-100 text-slate-600 rounded-lg shrink-0">
                               <History className="w-4 h-4" />
-                            </span>
+                            </div>
                             <div className="min-w-0">
-                              <h5 className="text-xs font-black uppercase tracking-wider text-slate-900 truncate">
+                              <h5 className="text-sm font-semibold text-slate-900 truncate">
                                 Daily Telemarketing Report — <span className="text-blue-600">{selectedPic}</span>
                               </h5>
-                              <p className="text-[11px] text-slate-500 font-medium truncate">
+                              <p className="text-xs text-slate-500 truncate">
                                 Laporan lengkap aktivitas telepon, WhatsApp, dan email PIC {selectedPic}.
                               </p>
                             </div>
@@ -985,20 +849,20 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                           {/* Filter Controls: Date Range & Preset Dropdown */}
                           <div className="flex items-center gap-2 flex-wrap shrink-0">
-                            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-slate-200/80 shadow-2xs text-xs">
-                              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Filter Date:</span>
+                            <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+                              <span className="text-[11px] font-medium text-slate-500 shrink-0">Filter:</span>
                               <input
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); }}
-                                className="bg-slate-50 border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg text-xs font-mono focus:outline-none focus:border-blue-500 cursor-pointer"
+                                className="bg-transparent border-0 text-slate-700 text-xs focus:outline-none cursor-pointer"
                               />
-                              <span className="text-slate-400 font-bold text-[10px]">s/d</span>
+                              <span className="text-slate-400 text-xs">-</span>
                               <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); }}
-                                className="bg-slate-50 border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg text-xs font-mono focus:outline-none focus:border-blue-500 cursor-pointer"
+                                className="bg-transparent border-0 text-slate-700 text-xs focus:outline-none cursor-pointer"
                               />
                               {loadingReport && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />}
                             </div>
@@ -1009,9 +873,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 const val = e.target.value as 'today' | '7days' | '30days' | 'all';
                                 handleSetPreset(val);
                               }}
-                              className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs hover:bg-slate-50 transition-colors"
+                              className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium focus:outline-none focus:border-blue-500 cursor-pointer hover:bg-slate-50 transition-colors"
                             >
-                              <option value="today">Hari Ini (Today)</option>
+                              <option value="today">Hari Ini</option>
                               <option value="7days">7 Hari Terakhir</option>
                               <option value="30days">30 Hari Terakhir</option>
                               <option value="all">Semua Periode</option>
@@ -1028,34 +892,34 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           const totalActivities = activitySummary?.totalActivities ?? 0;
 
                           return (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              <div className="bg-blue-50/80 border border-blue-200/70 p-2.5 rounded-xl flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-xs text-blue-900 font-bold">
-                                  <Phone className="w-4 h-4 text-blue-600" />
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              <div className="bg-white border border-slate-200 p-3 rounded-lg flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-slate-600">
+                                  <Phone className="w-4 h-4 text-blue-500" />
                                   <span>Telepon</span>
                                 </div>
-                                <strong className="text-base font-black text-blue-700">{callsCount}</strong>
+                                <strong className="text-lg font-semibold text-slate-900">{callsCount}</strong>
                               </div>
 
-                              <div className="bg-emerald-50/80 border border-emerald-200/70 p-2.5 rounded-xl flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-xs text-emerald-900 font-bold">
-                                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                              <div className="bg-white border border-slate-200 p-3 rounded-lg flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-slate-600">
+                                  <MessageSquare className="w-4 h-4 text-emerald-500" />
                                   <span>WhatsApp</span>
                                 </div>
-                                <strong className="text-base font-black text-emerald-700">{waCount}</strong>
+                                <strong className="text-lg font-semibold text-slate-900">{waCount}</strong>
                               </div>
 
-                              <div className="bg-purple-50/80 border border-purple-200/70 p-2.5 rounded-xl flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-xs text-purple-900 font-bold">
-                                  <Mail className="w-4 h-4 text-purple-600" />
+                              <div className="bg-white border border-slate-200 p-3 rounded-lg flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm text-slate-600">
+                                  <Mail className="w-4 h-4 text-purple-500" />
                                   <span>Email</span>
                                 </div>
-                                <strong className="text-base font-black text-purple-700">{emailCount}</strong>
+                                <strong className="text-lg font-semibold text-slate-900">{emailCount}</strong>
                               </div>
 
-                              <div className="bg-blue-600 text-white p-2.5 rounded-xl flex items-center justify-between shadow-2xs">
-                                <span className="text-xs font-bold text-white/90">Total Activity</span>
-                                <strong className="text-base font-black text-white">{totalActivities}</strong>
+                              <div className="bg-slate-900 text-white p-3 rounded-lg flex items-center justify-between">
+                                <span className="text-sm font-medium text-white/80">Total Activity</span>
+                                <strong className="text-lg font-semibold text-white">{totalActivities}</strong>
                               </div>
                             </div>
                           );
@@ -1072,33 +936,33 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           const notIntCount = participantsSummary?.notInterest ?? 0;
 
                           return (
-                            <div className="pt-2 border-t border-slate-200/80 space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                            <div className="pt-4 border-t border-slate-100">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-slate-500">
                                   Summary Remarks Periode Ini ({totalParticipants} Peserta)
                                 </span>
                                 {(startDate || endDate) && (
-                                  <span className="text-[9px] font-bold text-slate-400">
+                                  <span className="text-xs text-slate-400">
                                     Total Assigned PIC: {totalAssignedParticipants}
                                   </span>
                                 )}
                               </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-bold">
-                                <div className="px-3 py-1.5 bg-indigo-50/80 text-indigo-950 border border-indigo-200/80 rounded-xl flex items-center justify-between">
-                                  <span>Registered</span>
-                                  <span className="text-sm font-black text-indigo-700">{regCount}</span>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
+                                  <span className="text-slate-600">Registered</span>
+                                  <span className="font-semibold text-slate-900">{regCount}</span>
                                 </div>
-                                <div className="px-3 py-1.5 bg-amber-50/80 text-amber-950 border border-amber-200/80 rounded-xl flex items-center justify-between">
-                                  <span>Tentative</span>
-                                  <span className="text-sm font-black text-amber-700">{tentCount}</span>
+                                <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
+                                  <span className="text-slate-600">Tentative</span>
+                                  <span className="font-semibold text-slate-900">{tentCount}</span>
                                 </div>
-                                <div className="px-3 py-1.5 bg-slate-100 text-slate-900 border border-slate-200/80 rounded-xl flex items-center justify-between">
-                                  <span>Not Respond</span>
-                                  <span className="text-sm font-black text-slate-900">{notRespCount}</span>
+                                <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
+                                  <span className="text-slate-600">Not Respond</span>
+                                  <span className="font-semibold text-slate-900">{notRespCount}</span>
                                 </div>
-                                <div className="px-3 py-1.5 bg-rose-50/80 text-rose-950 border border-rose-200/80 rounded-xl flex items-center justify-between">
-                                  <span>Not Interest</span>
-                                  <span className="text-sm font-black text-rose-700">{notIntCount}</span>
+                                <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
+                                  <span className="text-slate-600">Not Interest</span>
+                                  <span className="font-semibold text-slate-900">{notIntCount}</span>
                                 </div>
                               </div>
                             </div>
@@ -1106,16 +970,16 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         })()}
 
                         {/* Activity History Stream Details */}
-                        <div className="pt-2">
-                          <div className="flex justify-between items-center mb-2">
-                            <h6 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                              <span>Riwayat Log Telemarketing Dalam Periode Ini ({filteredPicActivities.length})</span>
+                        <div className="pt-4 border-t border-slate-100">
+                          <div className="flex justify-between items-center mb-3">
+                            <h6 className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
+                              <span>Riwayat Log Telemarketing ({filteredPicActivities.length})</span>
                             </h6>
                           </div>
 
                           {filteredPicActivities.length === 0 ? (
-                            <div className="bg-white border border-slate-200/80 rounded-xl p-4 text-center">
-                              <p className="text-xs text-slate-400 italic">Belum ada aktivitas telepon, WA, atau email yang tercatat pada periode ini.</p>
+                            <div className="bg-white border border-slate-200 rounded-xl p-6 text-center">
+                              <p className="text-sm text-slate-400">Belum ada aktivitas telepon, WA, atau email yang tercatat pada periode ini.</p>
                             </div>
                           ) : (
                             <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1.5 custom-scrollbar">
@@ -1141,9 +1005,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 }
 
                                 return (
-                                  <div key={act.id} className="bg-white border border-slate-200/80 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-300 shadow-2xs transition-colors">
+                                  <div key={act.id} className="bg-white border border-slate-200 p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm hover:border-slate-300 transition-colors">
                                     <div className="flex items-start gap-3 min-w-0">
-                                      <div className={`p-2 rounded-xl shrink-0 ${
+                                      <div className={`p-1.5 rounded-lg shrink-0 ${
                                         type === 'CALL' ? 'bg-blue-50 text-blue-600' :
                                         type === 'WHATSAPP' ? 'bg-emerald-50 text-emerald-600' :
                                         type === 'EMAIL' ? 'bg-purple-50 text-purple-600' :
@@ -1157,39 +1021,39 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-md tracking-wider ${
-                                            type === 'CALL' ? 'bg-blue-100 text-blue-700' :
-                                            type === 'WHATSAPP' ? 'bg-emerald-100 text-emerald-700' :
-                                            type === 'EMAIL' ? 'bg-purple-100 text-purple-700' :
-                                            'bg-slate-200 text-slate-700 border border-slate-300'
+                                          <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                                            type === 'CALL' ? 'bg-blue-50 text-blue-700' :
+                                            type === 'WHATSAPP' ? 'bg-emerald-50 text-emerald-700' :
+                                            type === 'EMAIL' ? 'bg-purple-50 text-purple-700' :
+                                            'bg-slate-100 text-slate-700'
                                           }`}>
                                             {type}
                                           </span>
-                                          <h6 className="text-xs font-bold text-slate-900 truncate">
+                                          <h6 className="text-sm font-medium text-slate-900 truncate">
                                             {targetName || 'Peserta Event'}
                                           </h6>
                                           {targetCompany && (
-                                            <span className="text-[10px] text-slate-500 font-medium truncate">
+                                            <span className="text-xs text-slate-500 truncate">
                                               • {targetCompany}
                                             </span>
                                           )}
                                           {targetPhone && (
-                                            <span className="text-[10px] text-slate-500 font-mono">
+                                            <span className="text-xs text-slate-400">
                                               ({targetPhone})
                                             </span>
                                           )}
                                         </div>
-                                        <p className="text-[11px] text-slate-600 mt-1 italic bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
+                                        <p className="text-xs text-slate-500 mt-1 italic">
                                           "{act.notes || 'Activity logged'}"
                                         </p>
                                       </div>
                                     </div>
 
                                     <div className="text-right shrink-0 self-end sm:self-center">
-                                      <span className="text-[10px] text-slate-500 font-mono block">
+                                      <span className="text-xs text-slate-400 block">
                                         {timeStr}
                                       </span>
-                                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-0.5 border border-emerald-200/80">
+                                      <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md inline-block mt-0.5">
                                         {act.status || 'COMPLETED'}
                                       </span>
                                     </div>
@@ -1395,6 +1259,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <button
                             onClick={async () => {
+                              if (eligibleSplitUsers.length === 0) {
+                                showMissingPicAccessWarning();
+                                return;
+                              }
                               let unassigned = participants.filter(p => {
                                 const notes = p.notes || '';
                                 if (!notes.includes('[PIC:')) return true;
@@ -1420,12 +1288,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   if (eventId) {
                                     try { await crmService.syncEmsParticipants(eventId); } catch (e) {}
                                   }
-                                  const eligibleUsers = usersList.filter(u => {
-                                    const uname = (u.username || '').toLowerCase();
-                                    const fname = (u.fullName || '').toLowerCase();
-                                    return uname !== 'kevin' && !fname.includes('kevin');
-                                  });
-                                  const targetPics = eligibleUsers.length > 0 ? eligibleUsers : [{ username: adminName, fullName: adminName }];
+                                  const targetPics = eligibleSplitUsers;
+                                  if (targetPics.length === 0) {
+                                    showMissingPicAccessWarning();
+                                    return;
+                                  }
                                   const groupings: { [picName: string]: number[] } = {};
                                   targetPics.forEach(u => groupings[u.fullName || u.username] = []);
                                   unassigned.forEach((lead, idx) => {
@@ -1446,6 +1313,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           <button
                             onClick={async () => {
                               if (participants.length === 0) return;
+                              if (eligibleSplitUsers.length === 0) {
+                                showMissingPicAccessWarning();
+                                return;
+                              }
 
                               setConfirmConfig({
                                 title: "Peringatan Bagi Ulang Semua",
@@ -1462,12 +1333,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                       return !(isEms && !p.confirmationStatus);
                                     });
                                   }
-                                  const eligibleUsers = usersList.filter(u => {
-                                    const uname = (u.username || '').toLowerCase();
-                                    const fname = (u.fullName || '').toLowerCase();
-                                    return uname !== 'kevin' && !fname.includes('kevin');
-                                  });
-                                  const targetPics = eligibleUsers.length > 0 ? eligibleUsers : [{ username: adminName, fullName: adminName }];
+                                  const targetPics = eligibleSplitUsers;
+                                  if (targetPics.length === 0) {
+                                    showMissingPicAccessWarning();
+                                    return;
+                                  }
                                   const groupings: { [picName: string]: number[] } = {};
                                   targetPics.forEach(u => groupings[u.fullName || u.username] = []);
                                   targetAll.forEach((lead, idx) => {
@@ -1596,81 +1466,88 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                               <div
                                 key={picSummaryItem.userId || name}
                                 onClick={() => setSelectedPic(name)}
-                                className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-200 flex flex-col justify-between group cursor-pointer animate-in fade-in zoom-in-95 duration-150"
+                                className="bg-white border border-slate-200 rounded-lg p-3 hover:border-blue-300 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
                               >
                                 <div>
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 min-w-0">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-sm shrink-0">
+                                  {/* Header - Avatar + Name */}
+                                  <div className="flex items-center justify-between gap-2 mb-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-medium text-xs shrink-0">
                                         {initials}
                                       </div>
                                       <div className="min-w-0">
-                                        <h4 className="text-xs font-black text-slate-900 truncate" title={name}>{name}</h4>
-                                        <span className="text-[10px] text-slate-400 capitalize font-semibold block truncate">
+                                        <h4 className="text-sm font-medium text-slate-900 truncate" title={name}>{name}</h4>
+                                        <span className="text-xs text-slate-500 capitalize block truncate">
                                           {picSummaryItem.roleLabel || 'PIC'}
                                         </span>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/30 self-start sm:self-center shrink-0">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                      <span className="text-[8px] font-black text-emerald-700 uppercase">Active</span>
+                                    <div className="flex items-center gap-1 text-xs text-slate-500 shrink-0">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                      <span>Active</span>
                                     </div>
                                   </div>
 
-                                  {/* Assigned Progress */}
-                                  <div className="mb-3">
-                                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-1">
-                                      <span>Total Assigned</span>
-                                      <span className="text-slate-900 font-black">{count} Peserta</span>
-                                    </div>
-                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                      <div 
-                                        className="bg-blue-600 h-full rounded-full transition-all duration-300" 
-                                        style={{ width: `${Math.min(100, (count / Math.max(1, picSummary?.totalParticipants ?? 0)) * 100)}%` }} 
-                                      />
-                                    </div>
+                                  <div className="border-t border-slate-100 my-2" />
+
+                                  {/* Total Assigned */}
+                                  <div className="flex justify-between items-center text-sm mb-2">
+                                    <span className="text-slate-500">Total Assigned</span>
+                                    <span className="font-medium text-slate-900">{count} Peserta</span>
                                   </div>
 
-                                  {/* Pre Event Approval Breakdown Grid */}
-                                  <div className="space-y-1 mb-2">
-                                    <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Approval Status</span>
-                                    <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                                      <div className="text-center p-1 bg-emerald-50/60 border border-emerald-100/50 rounded-lg">
-                                        <span className="block text-[8px] font-extrabold text-emerald-700 uppercase">Approve</span>
-                                        <span className="text-xs font-black text-emerald-800">{picSummaryItem.approveCount}</span>
-                                      </div>
-                                      <div className="text-center p-1 bg-amber-50/60 border border-amber-100/50 rounded-lg">
-                                        <span className="block text-[8px] font-extrabold text-amber-700 uppercase">Pending</span>
-                                        <span className="text-xs font-black text-amber-800">{picSummaryItem.pendingCount}</span>
-                                      </div>
-                                    </div>
-                                  </div>
+                                  <div className="border-t border-slate-100 my-2" />
 
-                                  {/* Pre Event Summary Remarks Grid */}
-                                  <div className="space-y-1 mb-1">
-                                    <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Summary Remarks</span>
-                                    <div className="grid grid-cols-2 gap-1 text-[9px] font-bold">
-                                      <div className="flex items-center justify-between px-2 py-1 bg-indigo-50/80 border border-indigo-100/70 rounded-lg">
-                                        <span className="text-indigo-800">Registered</span>
-                                        <span className="font-black text-indigo-950">{picSummaryItem.registeredCount}</span>
+                                  {/* Approval Status */}
+                                  <div className="mb-2">
+                                    <span className="block text-xs text-slate-400 mb-1.5">Approval Status</span>
+                                    <div className="flex items-center gap-4">
+                                      <div className="flex items-center gap-1.5">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                        <span className="text-xs text-slate-500">Approve</span>
+                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.approveCount}</span>
                                       </div>
-                                      <div className="flex items-center justify-between px-2 py-1 bg-amber-50/80 border border-amber-100/70 rounded-lg">
-                                        <span className="text-amber-800">Tentative</span>
-                                        <span className="font-black text-amber-950">{picSummaryItem.tentativeCount}</span>
-                                      </div>
-                                      <div className="flex items-center justify-between px-2 py-1 bg-slate-100/80 border border-slate-200/80 rounded-lg">
-                                        <span className="text-slate-600">Not Respond</span>
-                                        <span className="font-black text-slate-900">{picSummaryItem.notRespondCount}</span>
-                                      </div>
-                                      <div className="flex items-center justify-between px-2 py-1 bg-rose-50/80 border border-rose-100/70 rounded-lg">
-                                        <span className="text-rose-800">Not Interest</span>
-                                        <span className="font-black text-rose-950">{picSummaryItem.notInterestCount}</span>
+                                      <div className="flex items-center gap-1.5">
+                                        <Clock className="w-4 h-4 text-amber-500" />
+                                        <span className="text-xs text-slate-500">Pending</span>
+                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.pendingCount}</span>
                                       </div>
                                     </div>
                                   </div>
 
-                                  {/* Dedicated Action Buttons on PIC Card */}
-                                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100">
+                                  <div className="border-t border-slate-100 my-2" />
+
+                                  {/* Summary Remarks */}
+                                  <div className="mb-2">
+                                    <span className="block text-xs text-slate-400 mb-1.5">Summary Remarks</span>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <UserCheck className="w-3.5 h-3.5 text-blue-500" />
+                                        <span className="text-xs text-slate-500">Registered</span>
+                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.registeredCount}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                        <span className="text-xs text-slate-500">Tentative</span>
+                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.tentativeCount}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                        <span className="text-xs text-slate-500">Not Respond</span>
+                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.notRespondCount}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <X className="w-3.5 h-3.5 text-slate-400" />
+                                        <span className="text-xs text-slate-500">Not Interest</span>
+                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.notInterestCount}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="border-t border-slate-100 my-2" />
+
+                                  {/* Action Buttons */}
+                                  <div className="grid grid-cols-2 gap-2">
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -1678,10 +1555,10 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                         setSelectedPic(name);
                                         setPicViewTab('report');
                                       }}
-                                      className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-[10px] font-extrabold transition-all flex items-center justify-center gap-1 border border-blue-100/60 cursor-pointer shadow-2xs"
+                                      className="px-2 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer"
                                     >
-                                      <History className="w-3.5 h-3.5 text-blue-600" />
-                                      <span>Lihat Daily Log</span>
+                                      <History className="w-3.5 h-3.5 text-slate-500" />
+                                      <span>Daily Log</span>
                                     </button>
                                     <button
                                       type="button"
@@ -1690,9 +1567,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                         setSelectedPic(name);
                                         setPicViewTab('participants');
                                       }}
-                                      className="px-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                                      className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
-                                      <Users className="w-3.5 h-3.5 text-slate-300" />
+                                      <Users className="w-3.5 h-3.5" />
                                       <span>Kelola Peserta</span>
                                     </button>
                                   </div>
@@ -1710,7 +1587,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                         }
                                       });
                                     }}
-                                    className="w-full mt-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-bold transition-all duration-150 shadow-xs cursor-pointer"
+                                    className="w-full mt-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-medium transition-all duration-150 cursor-pointer"
                                   >
                                     Tugaskan {unassignedIds.length} Sisa Ke {name.split(' ')[0]}
                                   </button>
@@ -1737,7 +1614,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               <AlertDialogTitle className="text-sm font-black text-slate-900 uppercase tracking-wider">
                 {confirmConfig.title}
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-xs text-slate-500 font-medium mt-1">
+              <AlertDialogDescription className="text-xs text-slate-500 font-medium mt-1 whitespace-pre-line">
                 {confirmConfig.description}
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -1780,11 +1657,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const allEligible = usersList.filter(u => {
-                        const uname = (u.username || '').toLowerCase();
-                        const fname = (u.fullName || '').toLowerCase();
-                        return uname !== 'kevin' && !fname.includes('kevin');
-                      }).map(u => u.fullName || u.username);
+                      if (eligibleSplitUsers.length === 0) {
+                        showMissingPicAccessWarning();
+                        return;
+                      }
+                      const allEligible = eligibleSplitUsers.map(u => u.fullName || u.username);
                       setSelectedSplitPics(allEligible);
                     }}
                     className="text-blue-600 font-bold hover:underline cursor-pointer"
@@ -1803,11 +1680,15 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               </div>
 
               <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-2.5 space-y-1.5 bg-slate-50/50">
-                {usersList.filter(u => {
-                  const uname = (u.username || '').toLowerCase();
-                  const fname = (u.fullName || '').toLowerCase();
-                  return uname !== 'kevin' && !fname.includes('kevin');
-                }).map(u => {
+                {eligibleSplitUsers.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={showMissingPicAccessWarning}
+                    className="w-full rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-xs font-bold text-amber-800"
+                  >
+                    Belum ada PIC untuk event ini. Atur lewat Users &gt; Events Access.
+                  </button>
+                ) : eligibleSplitUsers.map(u => {
                   const name = u.fullName || u.username;
                   const isChecked = selectedSplitPics.includes(name);
                   return (

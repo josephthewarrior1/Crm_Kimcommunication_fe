@@ -288,11 +288,11 @@ export default function UserManagementPage() {
                               <span>Custom Columns</span>
                             </button>
                           )}
-                          {(currentRole === 'USER' || currentRole === 'MANAGER') && (
+                          {(currentRole === 'USER' || currentRole === 'MANAGER' || currentRole === 'ADMIN') && (
                             <button
                               onClick={() => setManagingViewerEventsUser(u)}
                               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition-colors shadow-2xs bg-white cursor-pointer"
-                              title={`Manage allowed events for ${currentRole === 'MANAGER' ? 'Manager' : 'Viewer'}`}
+                              title={`Manage event access for ${currentRole}`}
                             >
                               <Calendar className="w-3.5 h-3.5 text-blue-600" />
                               <span>Events Access</span>

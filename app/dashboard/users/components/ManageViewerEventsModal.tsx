@@ -123,7 +123,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
               Event Access Permissions
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Select which events <strong className="text-slate-800">{targetUser.fullName || targetUser.username}</strong> ({targetUser.roles?.[0] || 'USER'}) is allowed to view.
+              Select which events <strong className="text-slate-800">{targetUser.fullName || targetUser.username}</strong> ({targetUser.roles?.[0] || 'USER'}) can access or be assigned to.
             </p>
           </div>
           <button
