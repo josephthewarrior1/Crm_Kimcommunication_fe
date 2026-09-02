@@ -36,7 +36,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl relative animate-in scale-in duration-200 text-slate-900">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Lock className="w-5 h-5 text-blue-650" />
             Change Password
           </h3>
@@ -51,7 +51,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="text-xs text-slate-500 bg-slate-55 border border-slate-100 rounded-xl p-3 mb-2 font-medium">
-            You are updating the password for user <span className="font-extrabold text-slate-800">@{targetUser.username}</span> ({targetUser.fullName || targetUser.email}).
+            You are updating the password for user <span className="font-bold text-slate-800">@{targetUser.username}</span> ({targetUser.fullName || targetUser.email}).
           </div>
 
           <div>
@@ -97,7 +97,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           </div>
 
           {password && confirmPassword && password !== confirmPassword && (
-            <p className="text-[10px] text-red-600 font-extrabold">Passwords do not match.</p>
+            <p className="text-[10px] text-red-600 font-bold">Passwords do not match.</p>
           )}
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

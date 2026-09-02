@@ -61,7 +61,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-extrabold text-slate-900 mb-6">Create New Event</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-6">Create New Event</h3>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>

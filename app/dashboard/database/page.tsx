@@ -460,7 +460,7 @@ export default function DatabasesPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900">Databases</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Databases</h2>
           <p className="text-sm text-slate-500 mt-1">Manage database persons, corporate roles, and corporate vs personal emails.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
@@ -556,7 +556,7 @@ export default function DatabasesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">City</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">City</label>
             <Select
               value={filterCity || 'ALL'}
               onValueChange={(val) => handleCityChange(val === 'ALL' ? '' : val)}
@@ -573,7 +573,7 @@ export default function DatabasesPage() {
             </Select>
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Group</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Group</label>
             <Select
               value={filterGroupId || 'ALL'}
               onValueChange={(val) => handleGroupChange(val === 'ALL' ? '' : val)}
@@ -591,7 +591,7 @@ export default function DatabasesPage() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Company</label>
             <Select
               value={filterCompanyId || 'ALL'}
               onValueChange={(val) => handleCompanyChange(val === 'ALL' ? '' : val)}
@@ -609,7 +609,7 @@ export default function DatabasesPage() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
             <Select
               value={filterIndustry || 'ALL'}
               onValueChange={(val) => handleIndustryChange(val === 'ALL' ? '' : val)}
@@ -627,7 +627,7 @@ export default function DatabasesPage() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Position Level</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Position Level</label>
             <Select
               value={filterPositionLevel || 'ALL'}
               onValueChange={(val) => setFilterPositionLevel(val === 'ALL' ? '' : val)}
@@ -926,7 +926,7 @@ export default function DatabasesPage() {
                         <div className="inline-flex items-center justify-start gap-2">
                           {isFlaggedTikus && !hasConfirmedFlag && (
                             <span
-                              className="inline-flex items-center gap-1 cursor-help px-2 py-0.5 text-[10px] font-bold bg-amber-100/90 border border-amber-300 text-amber-800 rounded-md shrink-0 transition-colors shadow-2xs"
+                              className="inline-flex items-center gap-1 cursor-help px-2 py-0.5 text-xs font-semibold bg-amber-100/90 border border-amber-300 text-amber-800 rounded-md shrink-0 transition-colors shadow-2xs"
                               title={`Mencurigakan / Dicurigai Tikus:\n• ${allFlags.map(f => `${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n• ')}`}
                             >
                               <ShieldAlert className="w-3 h-3 text-amber-600 shrink-0" />
@@ -934,7 +934,7 @@ export default function DatabasesPage() {
                             </span>
                           )}
                           {!c.isActive && (
-                            <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-red-100/90 border border-red-300 text-red-800 rounded-md shrink-0 shadow-2xs">
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-red-100/90 border border-red-300 text-red-800 rounded-md shrink-0 shadow-2xs">
                               INACTIVE
                             </span>
                           )}
@@ -1115,7 +1115,7 @@ export default function DatabasesPage() {
                         <div className="inline-flex items-center justify-end gap-2">
                           {isFlaggedTikus && !hasConfirmedFlag && (
                             <span
-                              className="inline-flex items-center gap-1 cursor-help px-2 py-0.5 text-[10px] font-bold bg-amber-100/90 border border-amber-300 text-amber-800 rounded-md shrink-0 transition-colors shadow-2xs"
+                              className="inline-flex items-center gap-1 cursor-help px-2 py-0.5 text-xs font-semibold bg-amber-100/90 border border-amber-300 text-amber-800 rounded-md shrink-0 transition-colors shadow-2xs"
                               title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
                             >
                               <ShieldAlert className="w-3 h-3 text-amber-600 shrink-0" />
@@ -1123,7 +1123,7 @@ export default function DatabasesPage() {
                             </span>
                           )}
                           {!c.isActive && (
-                            <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-red-100/90 border border-red-300 text-red-800 rounded-md shrink-0 shadow-2xs">
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-red-100/90 border border-red-300 text-red-800 rounded-md shrink-0 shadow-2xs">
                               INACTIVE
                             </span>
                           )}
@@ -1218,11 +1218,11 @@ export default function DatabasesPage() {
               {/* Left Side: Info */}
               <div className="hidden sm:block">
                 <p className="text-xs font-semibold text-slate-500">
-                  Showing <span className="font-extrabold text-slate-800">{indexOfFirstItem}</span> to{' '}
-                  <span className="font-extrabold text-slate-800">
+                  Showing <span className="font-bold text-slate-800">{indexOfFirstItem}</span> to{' '}
+                  <span className="font-bold text-slate-800">
                     {Math.min(indexOfLastItem, totalItems)}
                   </span>{' '}
-                  of <span className="font-extrabold text-slate-800">{totalItems}</span> databases
+                  of <span className="font-bold text-slate-800">{totalItems}</span> databases
                 </p>
               </div>
 
@@ -1246,7 +1246,7 @@ export default function DatabasesPage() {
                     const pageNumber = i + 1;
                     if (totalPages > 6 && Math.abs(currentPage - pageNumber) > 2 && pageNumber !== 1 && pageNumber !== totalPages) {
                       if (pageNumber === 2 || pageNumber === totalPages - 1) {
-                        return <span key={pageNumber} className="text-xs font-bold text-slate-400 px-1">...</span>;
+                        return <span key={pageNumber} className="text-xs font-semibold text-slate-400 px-1">...</span>;
                       }
                       return null;
                     }

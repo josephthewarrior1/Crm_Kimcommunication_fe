@@ -115,7 +115,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
         </button>
 
         <div className="border-b border-slate-100 pb-2 mb-3">
-          <h3 className="text-base font-extrabold text-slate-900">Participant Detail & Qualification</h3>
+          <h3 className="text-base font-bold text-slate-900">Participant Detail & Qualification</h3>
           <p className="text-[10px] text-slate-500 mt-0.5">
             Manage database: <strong className="text-slate-700">{activeParticipant.database.firstName} {activeParticipant.database.lastName}</strong> ({activeParticipant.database.company?.name || 'No Company'})
           </p>
@@ -143,7 +143,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1">Participant Qualification</h4>
+            <h4 className="font-bold text-slate-900 text-xs border-b border-slate-100 pb-1">Participant Qualification</h4>
             
             <div className={`grid ${showClientApproval || showPreEventApproval ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
               <div>
@@ -236,7 +236,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               </div>
             </div>
 
-            <h4 className="font-extrabold text-slate-900 text-xs border-b border-slate-100 pb-1 pt-1">Reminders</h4>
+            <h4 className="font-bold text-slate-900 text-xs border-b border-slate-100 pb-1 pt-1">Reminders</h4>
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">

@@ -120,7 +120,7 @@ export const ManageUserColumnsModal: React.FC<ManageUserColumnsModalProps> = ({
               <Columns className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900">Custom Event Columns</h3>
+              <h3 className="text-base font-bold text-slate-900">Custom Event Columns</h3>
               <p className="text-xs text-slate-500 font-medium">
                 Atur kolom tabel event yang dapat dilihat oleh <strong className="text-slate-800">{user.fullName || user.username}</strong>
               </p>

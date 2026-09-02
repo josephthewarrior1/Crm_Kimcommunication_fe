@@ -324,7 +324,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
                 <Upload className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-extrabold text-slate-900">Import Databases from Excel</h3>
+              <h3 className="text-xl font-bold text-slate-900">Import Databases from Excel</h3>
               <p className="text-xs text-slate-500 mt-1">
                 Upload template spreadsheet untuk import massal grup holding, perusahaan, dan kontak database.
               </p>
@@ -371,7 +371,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         e.preventDefault();
                         resetState();
                       }}
-                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] font-bold rounded-lg transition-colors inline-flex items-center gap-1"
+                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1"
                     >
                       <RefreshCw className="w-3 h-3" /> Ganti File
                     </button>
@@ -389,7 +389,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-semibold text-slate-600">{importPhase}</span>
-                    <span className="text-xs font-black text-blue-600 tabular-nums">{importProgress}%</span>
+                    <span className="text-xs font-bold text-blue-600 tabular-nums">{importProgress}%</span>
                   </div>
                   <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                     <div
@@ -423,7 +423,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         ) : (
           <div className="flex flex-col flex-1 overflow-hidden space-y-4">
             <div>
-              <h3 className="text-lg font-extrabold text-slate-900">Hasil Analisis & Preview Excel</h3>
+              <h3 className="text-lg font-bold text-slate-900">Hasil Analisis & Preview Excel</h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Periksa status kelengkapan data dan konflik sebelum melakukan import massal.
               </p>
@@ -435,8 +435,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 onClick={() => setActiveTab('ALL')}
                 className={`p-2.5 rounded-xl text-center cursor-pointer transition-all border ${activeTab === 'ALL' ? 'bg-slate-100 border-slate-400 ring-2 ring-slate-400/20' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'}`}
               >
-                <span className="block text-lg font-black text-slate-900">{importPreview.totalRows}</span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mt-0.5">Total Baris</span>
+                <span className="block text-lg font-bold text-slate-900">{importPreview.totalRows}</span>
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mt-0.5">Total Baris</span>
               </div>
 
               <div 
@@ -449,10 +449,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     : 'bg-slate-50 border-slate-200 opacity-60'
                 }`}
               >
-                <span className={`block text-lg font-black ${importPreview.issuesCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                <span className={`block text-lg font-bold ${importPreview.issuesCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
                   {importPreview.issuesCount}
                 </span>
-                <span className={`text-[9px] font-bold uppercase tracking-wider block mt-0.5 ${importPreview.issuesCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider block mt-0.5 ${importPreview.issuesCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
                   🚨 Bermasalah / Error
                 </span>
               </div>
@@ -467,10 +467,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     : 'bg-slate-50 border-slate-200 opacity-60'
                 }`}
               >
-                <span className={`block text-lg font-black ${importPreview.incompleteCount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                <span className={`block text-lg font-bold ${importPreview.incompleteCount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
                   {importPreview.incompleteCount}
                 </span>
-                <span className={`text-[9px] font-bold uppercase tracking-wider block mt-0.5 ${importPreview.incompleteCount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider block mt-0.5 ${importPreview.incompleteCount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
                   Belum Lengkap
                 </span>
               </div>
@@ -479,16 +479,16 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 onClick={() => setActiveTab('DUPLICATE')}
                 className={`p-2.5 rounded-xl text-center cursor-pointer transition-all border ${activeTab === 'DUPLICATE' ? 'bg-amber-100 border-amber-500 ring-2 ring-amber-500/20' : 'bg-amber-50 border-amber-200 hover:bg-amber-100/70'}`}
               >
-                <span className="block text-lg font-black text-amber-600">{importPreview.duplicateCount}</span>
-                <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block mt-0.5">Update Database</span>
+                <span className="block text-lg font-bold text-amber-600">{importPreview.duplicateCount}</span>
+                <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider block mt-0.5">Update Database</span>
               </div>
 
               <div 
                 onClick={() => setActiveTab('NEW')}
                 className={`p-2.5 rounded-xl text-center cursor-pointer transition-all border ${activeTab === 'NEW' ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-500/20' : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100/70'}`}
               >
-                <span className="block text-lg font-black text-emerald-600">{importPreview.newCount}</span>
-                <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider block mt-0.5">Kontak Baru</span>
+                <span className="block text-lg font-bold text-emerald-600">{importPreview.newCount}</span>
+                <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider block mt-0.5">Kontak Baru</span>
               </div>
             </div>
 
@@ -497,7 +497,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-900 shrink-0">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-extrabold text-red-700">Import Ditolak: </span>
+                  <span className="font-bold text-red-700">Import Ditolak: </span>
                   Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris data bermasalah</span> (data belum lengkap atau email kembar antar kontak berbeda). Silakan tinjau tabel di bawah dan perbaiki di file Excel Anda.
                 </div>
               </div>
@@ -626,7 +626,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
             {/* Table Area (Full Visibility, No 10-row slice!) */}
             <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex justify-between items-center mb-1.5 text-[11px] text-slate-500">
+              <div className="flex justify-between items-center mb-1.5 text-xs text-slate-500">
                 <span className="font-semibold">
                   Menampilkan <span className="font-bold text-slate-900">{filteredRows.length}</span> baris data
                   {activeTab === 'ISSUES' ? ' (Hanya Yang Bermasalah)' : ''}
@@ -680,33 +680,33 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                             </td>
                             <td className="py-2 px-3">
                               <span className="block text-slate-800 font-medium truncate max-w-[160px]">{r.companyName || '-'}</span>
-                              {r.groupName && <span className="text-[9px] text-slate-400 block truncate max-w-[160px]">Holding: {r.groupName}</span>}
+                              {r.groupName && <span className="text-[10px] text-slate-400 block truncate max-w-[160px]">Holding: {r.groupName}</span>}
                             </td>
                             <td className="py-2 px-3 font-mono text-[10px] break-all">
                               {r.email || <span className="text-red-500 italic">[Email Kosong]</span>}
                             </td>
                             <td className="py-2 px-3 whitespace-nowrap">
                               {r.status === 'INCOMPLETE' ? (
-                                <span className="px-1.5 py-0.5 bg-red-100 border border-red-300 text-red-700 text-[9px] font-extrabold rounded inline-flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 bg-red-100 border border-red-300 text-red-700 text-[10px] font-bold rounded inline-flex items-center gap-1">
                                   <AlertCircle className="w-3 h-3 text-red-600" />
                                   BELUM LENGKAP
                                 </span>
                               ) : r.status === 'CONFLICT' ? (
-                                <span className="px-1.5 py-0.5 bg-orange-100 border border-orange-300 text-orange-800 text-[9px] font-extrabold rounded inline-flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 bg-orange-100 border border-orange-300 text-orange-800 text-[10px] font-bold rounded inline-flex items-center gap-1">
                                   <AlertTriangle className="w-3 h-3 text-orange-600" />
                                   KONFLIK
                                 </span>
                               ) : r.status === 'NEW' ? (
-                                <span className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-bold rounded">
+                                <span className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold rounded">
                                   BARU
                                 </span>
                               ) : (
-                                <span className="px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-bold rounded">
+                                <span className="px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-semibold rounded">
                                   UPDATE DB
                                 </span>
                               )}
                             </td>
-                            <td className={`py-2 px-3 leading-relaxed text-[10.5px] ${
+                            <td className={`py-2 px-3 leading-relaxed text-xs ${
                               isProblem ? 'text-red-700 font-semibold' : 'text-slate-600'
                             }`}>
                               {r.message}
@@ -725,7 +725,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <div className="space-y-2 p-4 bg-blue-50 border border-blue-100 rounded-xl shrink-0">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-blue-700">{importPhase}</span>
-                  <span className="text-xs font-black text-blue-600 tabular-nums">{importProgress}%</span>
+                  <span className="text-xs font-bold text-blue-600 tabular-nums">{importProgress}%</span>
                 </div>
                 <div className="w-full h-3 bg-blue-100 rounded-full overflow-hidden">
                   <div
@@ -738,7 +738,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     }}
                   />
                 </div>
-                <p className="text-[10px] text-blue-500 font-medium">
+                <p className="text-xs text-blue-500 font-medium">
                   {importProgress < 100
                     ? 'Jangan tutup jendela ini sampai import selesai.'
                     : '✓ Data berhasil diimport!'}

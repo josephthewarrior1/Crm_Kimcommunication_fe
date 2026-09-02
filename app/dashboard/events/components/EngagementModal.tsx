@@ -274,16 +274,11 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
 
           {/* Status Milestone - Compact */}
           {!isViewer && (
-            <div className="border border-slate-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-xs font-medium text-slate-600">Update Status</span>
-                <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Auto-Sync</span>
-              </div>
-
+            <div>
               {/* Status Chips */}
-              <div className="flex flex-wrap gap-1.5 mb-3">
+              <div className="flex flex-wrap items-center gap-1 mb-2.5">
                 {[
-                  { id: 'preEventApproval', label: 'Pre Event', val: getPreEventApprovalStatus(participant) },
+                  { id: 'preEventApproval', label: 'Pre', val: getPreEventApprovalStatus(participant) },
                   { id: 'reminderH7', label: 'H-7', val: participant.reminderH7 },
                   { id: 'reminderH3', label: 'H-3', val: participant.reminderH3 },
                   { id: 'reminderH1', label: 'H-1', val: participant.reminderH1 },
@@ -296,26 +291,26 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                       key={chip.id}
                       type="button"
                       onClick={() => handleStageSelect(chip.id as any)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer border ${
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-blue-600 text-white border-blue-600'
+                          ? 'bg-blue-600 text-white'
                           : hasValue
-                          ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
                       }`}
                     >
-                      {chip.label}: {chip.val || '-'}
+                      {chip.label}{chip.val ? `: ${chip.val}` : ''}
                     </button>
                   );
                 })}
               </div>
 
-              {/* Selects */}
-              <div className="grid grid-cols-2 gap-2 mb-2.5">
+              {/* Selects + Button */}
+              <div className="flex items-center gap-2">
                 <select
                   value={targetStage}
                   onChange={(e) => handleStageSelect(e.target.value as any)}
-                  className="px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  className="flex-1 px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value="preEventApproval">Pre Event</option>
                   <option value="reminderH7">Reminder H-7</option>
@@ -328,7 +323,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                   value={outcomeStatus}
                   disabled={targetStage === 'none'}
                   onChange={(e) => setOutcomeStatus(e.target.value)}
-                  className="px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer disabled:opacity-50"
+                  className="flex-1 px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer disabled:opacity-50"
                 >
                   {targetStage === 'preEventApproval' ? (
                     <>
@@ -353,71 +348,70 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                     </>
                   )}
                 </select>
-              </div>
+                <button
+                  type="button"
+                  disabled={submitting || targetStage === 'none'}
+                  onClick={async () => {
+                    if (!participant || targetStage === 'none') return;
+                    setSubmitting(true);
+                    try {
+                      const isReminderStage = targetStage.startsWith('reminder');
+                      const autoApproveConf = (isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
+                        ? 'approve'
+                        : undefined;
+                      const nextNotes = targetStage === 'preEventApproval'
+                        ? setPreEventApprovalStatus(participant.notes, outcomeStatus)
+                        : undefined;
 
-              <button
-                type="button"
-                disabled={submitting || targetStage === 'none'}
-                onClick={async () => {
-                  if (!participant || targetStage === 'none') return;
-                  setSubmitting(true);
-                  try {
-                    const isReminderStage = targetStage.startsWith('reminder');
-                    const autoApproveConf = (isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
-                      ? 'approve'
-                      : undefined;
-                    const nextNotes = targetStage === 'preEventApproval'
-                      ? setPreEventApprovalStatus(participant.notes, outcomeStatus)
-                      : undefined;
+                      if (targetStage === 'preEventApproval') {
+                        await crmService.updatePreEventApprovalStatus(participant.id, nextNotes, outcomeStatus);
+                      } else {
+                        await crmService.updateParticipantStatus(
+                          participant.id,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          undefined,
+                          targetStage === 'reminderH7' ? outcomeStatus : undefined,
+                          targetStage === 'reminderH3' ? outcomeStatus : undefined,
+                          targetStage === 'reminderH1' ? outcomeStatus : undefined,
+                          targetStage === 'reminderHariH' ? outcomeStatus : undefined,
+                          autoApproveConf
+                        );
+                      }
 
-                    if (targetStage === 'preEventApproval') {
-                      await crmService.updatePreEventApprovalStatus(participant.id, nextNotes, outcomeStatus);
-                    } else {
-                      await crmService.updateParticipantStatus(
-                        participant.id,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        undefined,
-                        targetStage === 'reminderH7' ? outcomeStatus : undefined,
-                        targetStage === 'reminderH3' ? outcomeStatus : undefined,
-                        targetStage === 'reminderH1' ? outcomeStatus : undefined,
-                        targetStage === 'reminderHariH' ? outcomeStatus : undefined,
-                        autoApproveConf
-                      );
+                      if (targetStage === 'reminderH7') participant.reminderH7 = outcomeStatus;
+                      if (targetStage === 'reminderH3') participant.reminderH3 = outcomeStatus;
+                      if (targetStage === 'reminderH1') participant.reminderH1 = outcomeStatus;
+                      if (targetStage === 'reminderHariH') participant.reminderHariH = outcomeStatus;
+                      if (nextNotes) participant.notes = nextNotes;
+                      if (targetStage === 'preEventApproval') participant.preEventApprovalStatus = outcomeStatus;
+                      if (autoApproveConf) participant.confirmationStatus = autoApproveConf;
+
+                      const stageLabel = targetStage === 'preEventApproval' ? 'Pre Event' : targetStage === 'reminderH7' ? 'H-7' : targetStage === 'reminderH3' ? 'H-3' : targetStage === 'reminderH1' ? 'H-1' : targetStage === 'reminderHariH' ? 'Hari H' : 'Milestone';
+                      toast.success(`Berhasil menyimpan status ${stageLabel} ke ${outcomeStatus.toUpperCase()}!`);
+
+                      if (onActivityLogged) onActivityLogged();
+                    } catch (err) {
+                      console.error(err);
+                      toast.error('Gagal memperbarui status peserta');
+                    } finally {
+                      setSubmitting(false);
                     }
-
-                    if (targetStage === 'reminderH7') participant.reminderH7 = outcomeStatus;
-                    if (targetStage === 'reminderH3') participant.reminderH3 = outcomeStatus;
-                    if (targetStage === 'reminderH1') participant.reminderH1 = outcomeStatus;
-                    if (targetStage === 'reminderHariH') participant.reminderHariH = outcomeStatus;
-                    if (nextNotes) participant.notes = nextNotes;
-                    if (targetStage === 'preEventApproval') participant.preEventApprovalStatus = outcomeStatus;
-                    if (autoApproveConf) participant.confirmationStatus = autoApproveConf;
-
-                    const stageLabel = targetStage === 'preEventApproval' ? 'Pre Event' : targetStage === 'reminderH7' ? 'H-7' : targetStage === 'reminderH3' ? 'H-3' : targetStage === 'reminderH1' ? 'H-1' : targetStage === 'reminderHariH' ? 'Hari H' : 'Milestone';
-                    toast.success(`Berhasil menyimpan status ${stageLabel} ke ${outcomeStatus.toUpperCase()}!`);
-
-                    if (onActivityLogged) onActivityLogged();
-                  } catch (err) {
-                    console.error(err);
-                    toast.error('Gagal memperbarui status peserta');
-                  } finally {
-                    setSubmitting(false);
-                  }
-                }}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                <span>Simpan & Sync</span>
-              </button>
+                  }}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-md transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                  <span>Sync</span>
+                </button>
+              </div>
             </div>
           )}
 

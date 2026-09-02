@@ -34,7 +34,7 @@ export const GroupDetailModal: React.FC<GroupDetailModalProps> = ({
 
         <div className="flex items-center gap-2 mb-4 text-blue-600">
           <FolderTree className="w-6 h-6" />
-          <h3 className="text-xl font-extrabold text-slate-900">Holding Group Details</h3>
+          <h3 className="text-xl font-bold text-slate-900">Holding Group Details</h3>
         </div>
 
         <div className="space-y-6">
@@ -42,7 +42,7 @@ export const GroupDetailModal: React.FC<GroupDetailModalProps> = ({
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
             <div>
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-[10px]">Group Name</h4>
-              <p className="text-base font-extrabold text-slate-800 mt-0.5">{group.name}</p>
+              <p className="text-base font-bold text-slate-800 mt-0.5">{group.name}</p>
             </div>
             <div>
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-[10px]">Notes / Descriptions</h4>

@@ -194,61 +194,61 @@ export default function AuditLogsPage() {
     switch (action) {
       case 'CREATE':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg">
-            <PlusCircle className="w-3.5 h-3.5" /> CREATE
+          <span className="inline-flex items-center px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded">
+            CREATE
           </span>
         );
       case 'UPDATE':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg">
-            <Edit className="w-3.5 h-3.5" /> UPDATE
+          <span className="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
+            UPDATE
           </span>
         );
       case 'DELETE':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-bold rounded-lg">
-            <Trash2 className="w-3.5 h-3.5" /> DELETE
+          <span className="inline-flex items-center px-2 py-0.5 bg-red-50 text-red-700 text-xs font-medium rounded">
+            DELETE
           </span>
         );
       case 'IMPORT_EXCEL':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold rounded-lg">
-            <Upload className="w-3.5 h-3.5" /> IMPORT EXCEL
+          <span className="inline-flex items-center px-2 py-0.5 bg-purple-50 text-purple-700 text-xs font-medium rounded">
+            IMPORT EXCEL
           </span>
         );
       case 'APPROVE_TAKEOUT':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg">
-            <CheckCircle2 className="w-3.5 h-3.5" /> APPROVED
+          <span className="inline-flex items-center px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded">
+            APPROVED
           </span>
         );
       case 'REJECT_TAKEOUT':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg">
-            <XCircle className="w-3.5 h-3.5" /> REJECTED
+          <span className="inline-flex items-center px-2 py-0.5 bg-rose-50 text-rose-700 text-xs font-medium rounded">
+            REJECTED
           </span>
         );
       case 'FLAG_TIKUS':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-300 text-xs font-bold rounded-lg">
-            <ShieldAlert className="w-3.5 h-3.5" /> FLAGGED
+          <span className="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded">
+            FLAGGED
           </span>
         );
       case 'LOGIN':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg">
-            <LogIn className="w-3.5 h-3.5" /> LOGIN
+          <span className="inline-flex items-center px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-medium rounded">
+            LOGIN
           </span>
         );
       case 'STATUS_CHANGE':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-cyan-50 text-cyan-800 border border-cyan-200 text-xs font-bold rounded-lg">
-            <Activity className="w-3.5 h-3.5" /> STATUS CHANGE
+          <span className="inline-flex items-center px-2 py-0.5 bg-cyan-50 text-cyan-700 text-xs font-medium rounded">
+            STATUS CHANGE
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-lg">
+          <span className="inline-flex items-center px-2 py-0.5 bg-slate-50 text-slate-600 text-xs font-medium rounded">
             {action}
           </span>
         );
@@ -258,37 +258,37 @@ export default function AuditLogsPage() {
   const getModuleBadge = (mod: string) => {
     switch (mod) {
       case 'DATABASE':
-        return <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">Database Kontak</span>;
+        return <span className="text-xs font-medium text-slate-600">Database Kontak</span>;
       case 'COMPANIES':
-        return <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">Company</span>;
+        return <span className="text-xs font-medium text-slate-600">Company</span>;
       case 'GROUPS':
-        return <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">Group Holding</span>;
+        return <span className="text-xs font-medium text-slate-600">Group Holding</span>;
       case 'EVENTS':
-        return <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md border border-violet-100">Event</span>;
+        return <span className="text-xs font-medium text-slate-600">Event</span>;
       case 'PARTICIPANTS':
       case 'EVENT_PARTICIPANT':
-        return <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Peserta Event</span>;
+        return <span className="text-xs font-medium text-slate-600">Peserta Event</span>;
       case 'TAKEOUT':
-        return <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">Takeout Request</span>;
+        return <span className="text-xs font-medium text-slate-600">Takeout Request</span>;
       case 'FLAGGED':
-        return <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">Flagged Fraud</span>;
+        return <span className="text-xs font-medium text-slate-600">Flagged Fraud</span>;
       case 'USER_MANAGEMENT':
-        return <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">User Management</span>;
+        return <span className="text-xs font-medium text-slate-600">User Management</span>;
       case 'AUTH':
-        return <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">Autentikasi</span>;
+        return <span className="text-xs font-medium text-slate-600">Autentikasi</span>;
       default:
-        return <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">{mod}</span>;
+        return <span className="text-xs font-medium text-slate-600">{mod}</span>;
     }
   };
 
   const getRoleBadge = (role?: string) => {
     switch (role?.toUpperCase()) {
       case 'ADMIN':
-        return <span className="text-[10px] uppercase font-black tracking-wider text-violet-700 bg-violet-100/80 px-1.5 py-0.5 rounded">Admin</span>;
+        return <span className="px-1.5 py-0.5 rounded bg-blue-50 text-[9px] font-bold text-blue-600 leading-none">Admin</span>;
       case 'MANAGER':
-        return <span className="text-[10px] uppercase font-black tracking-wider text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">Manager</span>;
+        return <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-[9px] font-bold text-emerald-600 leading-none">Manager</span>;
       default:
-        return <span className="text-[10px] uppercase font-bold tracking-wider text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">User</span>;
+        return <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 leading-none">User</span>;
     }
   };
 
@@ -369,12 +369,10 @@ export default function AuditLogsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-600/20">
-              <History className="w-6 h-6" />
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Activity & Audit Logs</h1>
+            <History className="w-5 h-5 text-slate-500" />
+            <h1 className="text-xl font-semibold text-slate-900">Activity & Audit Logs</h1>
           </div>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             {isAdmin
               ? 'Lacak riwayat seluruh aktivitas, perubahan data, impor Excel, dan jejak operasional pengguna secara transparan.'
               : 'Lihat riwayat aktivitas akun kamu sendiri secara transparan.'}
@@ -385,7 +383,7 @@ export default function AuditLogsPage() {
           <button
             onClick={() => fetchLogs(true)}
             disabled={refreshing}
-            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 disabled:opacity-60"
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-sm font-medium transition-all flex items-center gap-2 disabled:opacity-60"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
             Refresh
@@ -393,7 +391,7 @@ export default function AuditLogsPage() {
 
           <button
             onClick={handleExport}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2"
           >
             <Download className="w-3.5 h-3.5" />
             Export Logs (.xlsx)
@@ -403,55 +401,42 @@ export default function AuditLogsPage() {
 
       {/* 2. Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Riwayat Log</span>
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-              <Layers className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-slate-500">Total Riwayat Log</span>
+            <Layers className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-2xl font-black text-slate-900 mt-2">{stats.total}</p>
-          <p className="text-xs text-slate-400 mt-1">Entri jejak audit tersimpan</p>
+          <p className="text-2xl font-semibold text-slate-900 mt-2">{stats.total}</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Aktivitas Hari Ini</span>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-              <Clock className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-slate-500">Aktivitas Hari Ini</span>
+            <Clock className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-2xl font-black text-emerald-700 mt-2">{stats.today}</p>
-          <p className="text-xs text-slate-400 mt-1">Tindakan dieksekusi hari ini</p>
+          <p className="text-2xl font-semibold text-slate-900 mt-2">{stats.today}</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">User Paling Aktif</span>
-            <div className="p-2 bg-violet-50 text-violet-600 rounded-xl">
-              <User className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-slate-500">User Paling Aktif</span>
+            <User className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-lg font-black text-violet-700 mt-2 truncate">{stats.topUser}</p>
-          <p className="text-xs text-slate-400 mt-1">Berdasarkan total aksi</p>
+          <p className="text-lg font-semibold text-slate-900 mt-2 truncate">{stats.topUser}</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi Kritis / Berisiko</span>
-            <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
-              <ShieldAlert className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-slate-500">Aksi Kritis / Berisiko</span>
+            <ShieldAlert className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-2xl font-black text-rose-700 mt-2">{stats.critical}</p>
-          <p className="text-xs text-slate-400 mt-1">Penghapusan & approval takeout</p>
+          <p className="text-2xl font-semibold text-slate-900 mt-2">{stats.critical}</p>
         </div>
       </div>
 
       {/* 3. Filter & Controls Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-4">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          {/* Search Form */}
           <form onSubmit={handleSearchSubmit} className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -459,15 +444,14 @@ export default function AuditLogsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari berdasarkan nama user, target, deskripsi, atau modul..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           </form>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl shrink-0 self-end lg:self-auto">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg shrink-0 self-end lg:self-auto">
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 viewMode === 'table'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
@@ -477,7 +461,7 @@ export default function AuditLogsPage() {
             </button>
             <button
               onClick={() => setViewMode('timeline')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 viewMode === 'timeline'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
@@ -488,17 +472,15 @@ export default function AuditLogsPage() {
           </div>
         </div>
 
-        {/* Dropdown Filters */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-3 pt-2 border-t border-slate-100`}>
-          {/* Module Filter */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-3 pt-3 border-t border-slate-200`}>
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-medium text-slate-500 mb-1">
               Modul
             </label>
             <select
               value={selectedModule}
               onChange={(e) => { setSelectedModule(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
               <option value="ALL">Semua Modul</option>
               {filterOptions.modules.map(module => (
@@ -507,15 +489,14 @@ export default function AuditLogsPage() {
             </select>
           </div>
 
-          {/* Action Filter */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-medium text-slate-500 mb-1">
               Tipe Aksi
             </label>
             <select
               value={selectedAction}
               onChange={(e) => { setSelectedAction(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
               <option value="ALL">Semua Aksi</option>
               {filterOptions.actionTypes.map(action => (
@@ -526,13 +507,13 @@ export default function AuditLogsPage() {
 
           {isAdmin && (
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">
                 Pelaku (User)
               </label>
               <select
                 value={selectedUser}
                 onChange={(e) => { setSelectedUser(e.target.value); setCurrentPage(1); }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               >
                 <option value="ALL">Semua Pengguna</option>
                 {filterOptions.users.map(u => (
@@ -542,29 +523,27 @@ export default function AuditLogsPage() {
             </div>
           )}
 
-          {/* Start Date */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-medium text-slate-500 mb-1">
               Dari Tanggal
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
 
-          {/* End Date & Reset */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <label className="block text-xs font-medium text-slate-500">
                 Sampai Tanggal
               </label>
               {(selectedModule !== 'ALL' || selectedAction !== 'ALL' || (isAdmin && selectedUser !== 'ALL') || startDate || endDate || searchQuery) && (
                 <button
                   onClick={handleResetFilters}
-                  className="text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                  className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   Reset
                 </button>
@@ -574,7 +553,7 @@ export default function AuditLogsPage() {
               type="date"
               value={endDate}
               onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
         </div>
@@ -582,41 +561,38 @@ export default function AuditLogsPage() {
 
       {/* 4. Main Content: Table or Timeline */}
       {loading ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
-          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
-          <p className="text-sm font-bold text-slate-700">Memuat riwayat audit log...</p>
+        <div className="bg-white border border-slate-200 rounded-lg p-12 text-center">
+          <RefreshCw className="w-8 h-8 text-slate-400 animate-spin mx-auto mb-3" />
+          <p className="text-sm font-medium text-slate-700">Memuat riwayat audit log...</p>
           <p className="text-xs text-slate-400 mt-1">Mengambil data jejak aktivitas terbaru</p>
         </div>
       ) : filteredLogs.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
-          <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <History className="w-6 h-6" />
-          </div>
-          <h3 className="text-base font-extrabold text-slate-800">Tidak ada riwayat log yang sesuai</h3>
+        <div className="bg-white border border-slate-200 rounded-lg p-12 text-center">
+          <History className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-sm font-semibold text-slate-800">Tidak ada riwayat log yang sesuai</h3>
           <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
             Tidak ditemukan catatan aktivitas dengan kriteria pencarian atau filter yang Anda pilih.
           </p>
           <button
             onClick={handleResetFilters}
-            className="mt-4 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 text-xs font-bold rounded-xl transition-all"
+            className="mt-4 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 text-xs font-medium rounded-lg transition-all"
           >
             Reset Semua Filter
           </button>
         </div>
       ) : viewMode === 'table' ? (
-        /* TABLE VIEW */
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase tracking-wider font-extrabold">
-                  <th className="py-3.5 px-4">Waktu</th>
-                  <th className="py-3.5 px-4">Pelaku (User)</th>
-                  <th className="py-3.5 px-4">Modul</th>
-                  <th className="py-3.5 px-4">Aksi</th>
-                  <th className="py-3.5 px-4">Target Entitas</th>
-                  <th className="py-3.5 px-4">Deskripsi Aktivitas</th>
-                  <th className="py-3.5 px-4 text-right">Detail</th>
+                <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4 text-xs font-semibold">Waktu</th>
+                  <th className="py-3 px-4 text-xs font-semibold w-[220px]">Pelaku (User)</th>
+                  <th className="py-3 px-4 text-xs font-semibold">Modul</th>
+                  <th className="py-3 px-4 text-xs font-semibold">Aksi</th>
+                  <th className="py-3 px-4 text-xs font-semibold">Target Entitas</th>
+                  <th className="py-3 px-4 text-xs font-semibold">Deskripsi Aktivitas</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-right">Detail</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -625,52 +601,46 @@ export default function AuditLogsPage() {
                   return (
                     <tr
                       key={log.id}
-                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      className="hover:bg-slate-50 transition-colors group cursor-pointer"
                       onClick={() => setSelectedLog(log)}
                     >
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-bold text-slate-800 font-mono text-[11px]">{formatted}</div>
-                        <div className="text-[10px] text-slate-400 font-medium">{timeAgo}</div>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="font-medium text-slate-800 font-mono text-xs">{formatted}</div>
+                        <div className="text-[10px] text-slate-400">{timeAgo}</div>
                       </td>
 
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-[10px] shadow-sm">
-                            {log.username.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                              {log.userFullName || log.username}
-                              {getRoleBadge(log.userRole)}
-                            </div>
-                            <div className="text-[10px] text-slate-400">@{log.username}</div>
-                          </div>
+                      <td className="py-3 px-4 w-[220px]">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-semibold text-slate-900 truncate max-w-[130px] leading-tight">
+                            {log.username}
+                          </span>
+                          {getRoleBadge(log.userRole)}
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         {getModuleBadge(log.module)}
                       </td>
 
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         {getActionBadge(log.actionType)}
                       </td>
 
-                      <td className="py-3.5 px-4 font-semibold text-slate-800 max-w-[200px] truncate">
+                      <td className="py-3 px-4 font-medium text-slate-800 max-w-[200px] truncate">
                         {log.targetName || <span className="text-slate-300">-</span>}
                       </td>
 
-                      <td className="py-3.5 px-4 text-slate-600 max-w-[320px]">
+                      <td className="py-3 px-4 text-slate-600 max-w-[320px]">
                         <p className="line-clamp-2 leading-relaxed">{log.description}</p>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedLog(log);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center gap-1 text-[11px] font-bold"
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center gap-1 text-xs font-medium"
                         >
                           <Eye className="w-4 h-4" />
                           <span className="hidden sm:inline">Lihat</span>
@@ -683,9 +653,8 @@ export default function AuditLogsPage() {
             </table>
           </div>
 
-          {/* Pagination Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-            <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-slate-200">
+            <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
               <span>Menampilkan</span>
               <select
                 value={pageSize}
@@ -693,7 +662,7 @@ export default function AuditLogsPage() {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none"
+                className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none"
               >
                 <option value={10}>10</option>
                 <option value={15}>15</option>
@@ -707,17 +676,17 @@ export default function AuditLogsPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="p-1.5 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors"
+                className="p-1.5 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-xs font-bold text-slate-700 px-2">
+              <span className="text-sm font-medium text-slate-700 px-2">
                 Halaman {currentPage} dari {totalPages}
               </span>
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="p-1.5 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors"
+                className="p-1.5 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -725,41 +694,39 @@ export default function AuditLogsPage() {
           </div>
         </div>
       ) : (
-        /* TIMELINE FEED VIEW */
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-lg p-6">
             <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
               {paginatedLogs.map((log) => {
                 const { formatted, timeAgo } = formatTimestamp(log.createdAt);
                 return (
                   <div key={log.id} className="relative group">
-                    {/* Circle Indicator */}
-                    <div className="absolute -left-[30px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-blue-600 group-hover:scale-125 transition-transform" />
+                    <div className="absolute -left-[30px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-slate-400 group-hover:scale-125 transition-transform" />
 
-                    <div className="bg-slate-50 hover:bg-blue-50/40 border border-slate-200/80 rounded-xl p-4 transition-all shadow-sm space-y-2.5">
+                    <div className="bg-slate-50 hover:bg-blue-50/30 border border-slate-200 rounded-lg p-4 transition-all space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">
+                          <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-medium flex items-center justify-center text-[10px]">
                             {log.username.slice(0, 2).toUpperCase()}
                           </div>
-                          <span className="text-xs font-extrabold text-slate-900">{log.userFullName || log.username}</span>
+                          <span className="text-xs font-medium text-slate-900">{log.userFullName || log.username}</span>
                           {getRoleBadge(log.userRole)}
-                          <span className="text-slate-300">•</span>
+                          <span className="text-slate-300">·</span>
                           {getModuleBadge(log.module)}
                           {getActionBadge(log.actionType)}
                         </div>
 
-                        <span className="text-[11px] font-mono text-slate-400 font-medium">{formatted} ({timeAgo})</span>
+                        <span className="text-xs font-mono text-slate-400">{formatted} ({timeAgo})</span>
                       </div>
 
-                      <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                      <p className="text-sm text-slate-700 leading-relaxed">
                         {log.description}
                       </p>
 
                       {log.targetName && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600">
                           <span>Target:</span>
-                          <span className="text-blue-700">{log.targetName}</span>
+                          <span className="text-slate-900">{log.targetName}</span>
                         </div>
                       )}
                     </div>
@@ -769,22 +736,21 @@ export default function AuditLogsPage() {
             </div>
           </div>
 
-          {/* Timeline Pagination */}
           <div className="flex items-center justify-center gap-2 pt-2">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl disabled:opacity-40 shadow-sm"
+              className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg disabled:opacity-40"
             >
               Sebelumnya
             </button>
-            <span className="text-xs font-bold text-slate-700 px-3">
+            <span className="text-sm font-medium text-slate-700 px-3">
               Halaman {currentPage} / {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl disabled:opacity-40 shadow-sm"
+              className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg disabled:opacity-40"
             >
               Berikutnya
             </button>
@@ -795,7 +761,7 @@ export default function AuditLogsPage() {
       {/* 5. Detail Modal */}
       {selectedLog && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative animate-in scale-in duration-200 space-y-4">
+          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-xl p-6 relative space-y-4">
             <button
               onClick={() => setSelectedLog(null)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
@@ -804,19 +770,17 @@ export default function AuditLogsPage() {
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-                <History className="w-6 h-6" />
-              </div>
+              <History className="w-5 h-5 text-slate-400" />
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">Detail Riwayat Aktivitas</h3>
+                <h3 className="text-sm font-semibold text-slate-900">Detail Riwayat Aktivitas</h3>
                 <p className="text-xs text-slate-400 font-mono">Log ID #{selectedLog.id}</p>
               </div>
             </div>
 
-            <div className="space-y-3 bg-slate-50 border border-slate-200/80 rounded-xl p-4 text-xs divide-y divide-slate-200/60">
+            <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm divide-y divide-slate-200">
               <div className="flex justify-between items-center pb-2">
                 <span className="text-slate-500 font-medium">Waktu Kejadian</span>
-                <span className="font-bold text-slate-800 font-mono">
+                <span className="font-medium text-slate-800 font-mono text-xs">
                   {formatTimestamp(selectedLog.createdAt).formatted}
                 </span>
               </div>
@@ -824,8 +788,8 @@ export default function AuditLogsPage() {
               <div className="flex justify-between items-center py-2">
                 <span className="text-slate-500 font-medium">Pelaku (Actor)</span>
                 <div className="text-right">
-                  <span className="font-extrabold text-slate-900 block">{selectedLog.userFullName || selectedLog.username}</span>
-                  <span className="text-[11px] text-slate-400">@{selectedLog.username} ({selectedLog.userRole || 'USER'})</span>
+                  <span className="font-medium text-slate-900 block">{selectedLog.userFullName || selectedLog.username}</span>
+                  <span className="text-xs text-slate-400">@{selectedLog.username} ({selectedLog.userRole || 'USER'})</span>
                 </div>
               </div>
 
@@ -842,18 +806,18 @@ export default function AuditLogsPage() {
               {selectedLog.targetName && (
                 <div className="flex justify-between items-center py-2">
                   <span className="text-slate-500 font-medium">Target Entitas</span>
-                  <span className="font-bold text-blue-700">{selectedLog.targetName}</span>
+                  <span className="font-medium text-slate-900">{selectedLog.targetName}</span>
                 </div>
               )}
 
               <div className="flex justify-between items-center py-2">
                 <span className="text-slate-500 font-medium">IP Address</span>
-                <span className="font-mono text-slate-600">{selectedLog.ipAddress || '127.0.0.1'}</span>
+                <span className="font-mono text-slate-600 text-xs">{selectedLog.ipAddress || '127.0.0.1'}</span>
               </div>
 
               <div className="pt-2">
                 <span className="text-slate-500 font-medium block mb-1">Deskripsi Lengkap:</span>
-                <p className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 leading-relaxed font-medium">
+                <p className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 leading-relaxed text-sm">
                   {selectedLog.description}
                 </p>
               </div>
@@ -862,7 +826,7 @@ export default function AuditLogsPage() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setSelectedLog(null)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 Tutup
               </button>

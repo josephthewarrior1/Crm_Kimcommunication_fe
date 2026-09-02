@@ -155,7 +155,7 @@ export default function GroupsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900">Groups (Holding Companies)</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Groups (Holding Companies)</h2>
           <p className="text-sm text-slate-500 mt-1">Manage holding organizations and conglomerate groups.</p>
         </div>
         {!isUser && (
@@ -319,11 +319,11 @@ export default function GroupsPage() {
               {/* Left Side: Info */}
               <div className="hidden sm:block">
                 <p className="text-xs font-semibold text-slate-500">
-                  Showing <span className="font-extrabold text-slate-800">{indexOfFirstItem + 1}</span> to{' '}
-                  <span className="font-extrabold text-slate-800">
+                  Showing <span className="font-bold text-slate-800">{indexOfFirstItem + 1}</span> to{' '}
+                  <span className="font-bold text-slate-800">
                     {Math.min(indexOfLastItem, totalItems)}
                   </span>{' '}
-                  of <span className="font-extrabold text-slate-800">{totalItems}</span> groups
+                  of <span className="font-bold text-slate-800">{totalItems}</span> groups
                 </p>
               </div>
 

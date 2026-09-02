@@ -29,7 +29,7 @@ export const DeleteParticipantConfirmModal: React.FC<DeleteParticipantConfirmMod
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-extrabold text-slate-900 mb-1">Remove Participant from Event</h3>
+        <h3 className="text-lg font-bold text-slate-900 mb-1">Remove Participant from Event</h3>
         <p className="text-xs text-slate-500 mb-6">
           Are you sure you want to remove this person from the event?
         </p>

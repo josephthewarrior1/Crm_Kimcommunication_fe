@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { FlaggedIdentity, Database } from '../../../lib/types';
-import { Plus, Search, Loader2, Edit2, Trash2, AlertTriangle, CheckCircle, RefreshCw, UserX, Eye } from 'lucide-react';
+import { Plus, Search, Loader2, Edit2, Trash2, AlertTriangle, CheckCircle, RefreshCw, UserX, Eye, ShieldCheck, ShieldX, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { AddFlaggedModal } from './components/AddFlaggedModal';
@@ -14,6 +14,7 @@ import { FlaggedDetailModal } from './components/FlaggedDetailModal';
 export default function FlaggedPage() {
   const { isAdmin, isManager, isUser } = useAuth();
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
+  const [allFlags, setAllFlags] = useState<FlaggedIdentity[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [flagReasonOptions, setFlagReasonOptions] = useState<string[]>([]);
@@ -93,7 +94,9 @@ export default function FlaggedPage() {
         crmService.getDatabases(),
         crmService.getFlaggedIdentitiesFilterOptions()
       ]);
+      const allFlagItems = await crmService.getFlaggedIdentities().catch(() => flagList.items);
       setFlags(flagList.items);
+      setAllFlags(allFlagItems);
       setTotalItems(flagList.total);
       setTotalPages(flagList.totalPages);
       setDatabases(databaseList);
@@ -170,7 +173,39 @@ export default function FlaggedPage() {
     }
   };
 
+  const getPrimaryFlagInfo = (flag: FlaggedIdentity) => {
+    const reason = flag.flagReason || '';
+    if (reason === 'duplicate_phone') {
+      return { label: 'Duplicate Phone', value: flag.phoneUsed || '-' };
+    }
+    if (reason === 'duplicate_email') {
+      return { label: 'Duplicate Email', value: flag.emailUsed || '-' };
+    }
+    if (flag.emailUsed) {
+      return { label: 'Email', value: flag.emailUsed };
+    }
+    if (flag.phoneUsed) {
+      return { label: 'Phone', value: flag.phoneUsed };
+    }
+    return { label: 'Identity', value: flag.nameUsed || '-' };
+  };
+
+  const extractMatchedName = (notes?: string) => {
+    const match = notes?.match(/matches database record\s+(.+?)\s+\(ID:/i);
+    return match?.[1]?.trim() || '';
+  };
+
   const startIndex = (currentPage - 1) * pageSize;
+  const summaryFlags = allFlags.length > 0 ? allFlags : flags;
+  const suspectedCount = summaryFlags.filter((flag) => flag.status === 'suspected').length;
+  const confirmedCount = summaryFlags.filter((flag) => flag.status === 'confirmed').length;
+  const clearedCount = summaryFlags.filter((flag) => flag.status === 'cleared').length;
+  const summaryCards = [
+    { label: 'Total Flagged', value: summaryFlags.length, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+    { label: 'Suspected', value: suspectedCount, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+    { label: 'Confirmed', value: confirmedCount, icon: ShieldX, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100' },
+    { label: 'Cleared', value: clearedCount, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' }
+  ];
   const modalEvents = [
     ...flags
       .map((flag) => flag.event)
@@ -179,34 +214,57 @@ export default function FlaggedPage() {
   ].filter((event, index, array) => array.findIndex((item) => item.id === event.id) === index);
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200 text-slate-900">
+    <div className="space-y-5 animate-in fade-in duration-200 text-slate-900">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-            <UserX className="w-5 h-5 text-red-600" />
-            Flagged Identities ("Tikus" Directory)
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">Audit and manage flagged fraudulent attendees, fake company representations, and phone/email duplications.</p>
+      <div className="rounded-2xl bg-white border border-blue-100 p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
+              <span className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                <UserX className="w-5 h-5" />
+              </span>
+              Flagged Identities
+            </h2>
+            <p className="text-xs text-slate-500 mt-1.5">Monitor suspected and confirmed duplicate identities across events, phones, emails, and CRM records.</p>
+          </div>
+          {(isAdmin || isManager) && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/15 transition-all self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              Flag New Profile
+            </button>
+          )}
         </div>
-        {(isAdmin || isManager) && (
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-red-600 hover:bg-red-550 active:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md shadow-red-600/10 transition-all self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            Flag New Profile
-          </button>
-        )}
+      </div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {summaryCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div key={card.label} className={`bg-white border ${card.border} rounded-2xl p-4 shadow-sm`}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{card.label}</p>
+                  <p className="text-2xl font-black text-slate-950 mt-1">{card.value.toLocaleString()}</p>
+                </div>
+                <div className={`w-10 h-10 rounded-xl ${card.bg} ${card.color} flex items-center justify-center`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Control / Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white border border-slate-200 p-3 rounded-2xl shadow-sm">
-        <div className="flex items-center flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
-          <Search className="w-4 h-4 text-slate-400 mr-2" />
+      <div className="flex flex-col sm:flex-row gap-3 bg-white border border-blue-100 p-3 rounded-2xl shadow-sm">
+        <div className="flex items-center flex-1 bg-blue-50/60 border border-blue-100 rounded-xl px-3 py-2">
+          <Search className="w-4 h-4 text-blue-400 mr-2" />
           <input
             type="text"
-            placeholder="Search by name, email, phone, evidence notes..."
+            placeholder="Search name, email, phone, evidence..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-transparent text-xs text-slate-900 placeholder-slate-400 focus:outline-none"
@@ -216,12 +274,12 @@ export default function FlaggedPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+          className="px-3 py-2 bg-blue-50/60 border border-blue-100 focus:border-blue-500 rounded-xl text-slate-900 text-xs font-semibold focus:outline-none transition-all focus:bg-white"
         >
           <option value="">All Statuses</option>
           {statusOptions.map((status) => (
             <option key={status} value={status}>
-              {status === 'confirmed' ? 'Confirmed (Tikus)' : status === 'cleared' ? 'Cleared (Legitimate)' : status.charAt(0).toUpperCase() + status.slice(1)}
+              {status === 'confirmed' ? 'Confirmed' : status === 'cleared' ? 'Cleared' : status.charAt(0).toUpperCase() + status.slice(1)}
             </option>
           ))}
         </select>
@@ -229,7 +287,7 @@ export default function FlaggedPage() {
         <select
           value={filterFlagReason}
           onChange={(e) => setFilterFlagReason(e.target.value)}
-          className="px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white"
+          className="px-3 py-2 bg-blue-50/60 border border-blue-100 focus:border-blue-500 rounded-xl text-slate-900 text-xs font-semibold focus:outline-none transition-all focus:bg-white"
         >
           <option value="">All Reasons</option>
           {flagReasonOptions.map((reason) => (
@@ -246,7 +304,7 @@ export default function FlaggedPage() {
               setFilterStatus('');
               setFilterFlagReason('');
             }}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-all"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-all"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Reset
@@ -257,17 +315,17 @@ export default function FlaggedPage() {
       {/* List content */}
       {loading ? (
         <div className="h-[40vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
       ) : flags.length === 0 ? (
-        <div className="p-12 text-center border border-slate-200 rounded-2xl bg-white shadow-sm">
+        <div className="p-12 text-center border border-blue-100 rounded-2xl bg-white shadow-sm">
           <CheckCircle className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
           <h3 className="font-bold text-slate-700">No flagged identities found</h3>
           <p className="text-xs text-slate-500 mt-1">Database health is currently clear. No suspicious duplications are active.</p>
         </div>
       ) : (
         <>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {flags.map((flg) => {
             const linkedDb = flg.database || databases.find(db => {
               if (flg.phoneUsed && db.mobilePhone) {
@@ -283,18 +341,18 @@ export default function FlaggedPage() {
             });
 
             return (
-              <div key={flg.id} className="p-3.5 bg-white border border-slate-200 rounded-2xl flex flex-col gap-3 relative overflow-hidden shadow-sm hover:border-slate-300 transition-all">
+              <div key={flg.id} className="p-4 bg-white border border-blue-100 rounded-2xl flex flex-col gap-3 relative overflow-hidden shadow-sm hover:border-blue-200 hover:shadow-md transition-all">
                 
                 {/* Badge & Top Row */}
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <h4
                       onClick={() => handleOpenDetail(flg, linkedDb)}
-                      className="font-bold text-slate-900 text-sm hover:text-blue-600 cursor-pointer transition-colors"
+                      className="font-black text-slate-950 text-base hover:text-blue-600 cursor-pointer transition-colors truncate"
                     >
                       {flg.nameUsed || <span className="text-slate-400 italic">No Name Specified</span>}
                     </h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium">
                       Linked Profile:{' '}
                       {linkedDb ? (
                         <button
@@ -309,31 +367,42 @@ export default function FlaggedPage() {
                       )}
                     </p>
                   </div>
-                  <span className={`px-2 py-0.5 text-[8px] font-extrabold rounded-full uppercase tracking-wider ${getRiskColor(flg.status)}`}>
+                  <span className={`px-2.5 py-1 text-[9px] font-black rounded-full uppercase tracking-wider shrink-0 ${getRiskColor(flg.status)}`}>
                     {flg.status}
                   </span>
                 </div>
 
-                {/* Duplicate Details */}
-                <div className="space-y-1 text-xs border-y border-slate-100 py-2 font-mono bg-slate-50/50 -mx-3.5 px-3.5">
-                  <p className="text-slate-700 truncate">
-                    <span className="text-slate-400 font-semibold inline-block w-10">Email:</span> {flg.emailUsed || '-'}
-                  </p>
-                  <p className="text-slate-700">
-                    <span className="text-slate-400 font-semibold inline-block w-10">Phone:</span> {flg.phoneUsed || '-'}
-                  </p>
-                  {flg.event && (
-                    <p className="text-slate-700 truncate">
-                      <span className="text-slate-400 font-semibold inline-block w-10">Event:</span> {flg.event.name}
-                    </p>
-                  )}
-                </div>
+                {/* Contextual Details */}
+                {(() => {
+                  const primaryInfo = getPrimaryFlagInfo(flg);
+                  const matchedName = extractMatchedName(flg.evidenceNotes);
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-xl bg-blue-50/60 border border-blue-100 p-3 min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-blue-400">{primaryInfo.label}</p>
+                        <p className="text-slate-900 font-black truncate mt-1">{primaryInfo.value}</p>
+                      </div>
+                      {matchedName && (
+                        <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Matched With</p>
+                          <p className="text-slate-900 font-black truncate mt-1">{matchedName}</p>
+                        </div>
+                      )}
+                      {flg.event && (
+                        <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 min-w-0 sm:col-span-2">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Event</p>
+                          <p className="text-slate-800 font-semibold truncate mt-1">{flg.event.name}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Evidence & Action Buttons */}
                 <div className="space-y-2 flex-1 flex flex-col justify-between">
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-red-600 font-bold text-[11px]">
-                      <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                    <div className="flex items-center gap-1.5 text-blue-700 font-bold text-[11px]">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                       <span>Alert: {flg.flagReason?.replace(/_/g, ' ') || 'suspicious profile'}</span>
                     </div>
                     {flg.evidenceNotes && (
@@ -343,7 +412,7 @@ export default function FlaggedPage() {
                     )}
                   </div>
 
-                  <div className="flex justify-between items-center border-t border-slate-100 pt-2 mt-1">
+                  <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-1">
                     <button
                       onClick={() => handleOpenDetail(flg, linkedDb)}
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg transition-all"
@@ -386,7 +455,7 @@ export default function FlaggedPage() {
 
         {/* Pagination Bar */}
         {flags.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 p-3.5 rounded-2xl shadow-sm text-xs text-slate-600 font-medium">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-blue-100 p-3.5 rounded-2xl shadow-sm text-xs text-slate-600 font-medium">
             <div>
               Showing <span className="font-bold text-slate-900">{startIndex + 1}</span> to{' '}
               <span className="font-bold text-slate-900">{Math.min(startIndex + pageSize, totalItems)}</span> of{' '}
@@ -398,7 +467,7 @@ export default function FlaggedPage() {
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 font-bold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  className="px-3 py-1.5 rounded-xl border border-blue-100 font-bold hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                 >
                   Previous
                 </button>
@@ -409,7 +478,7 @@ export default function FlaggedPage() {
                   type="button"
                   disabled={currentPage >= totalPages}
                   onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 font-bold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  className="px-3 py-1.5 rounded-xl border border-blue-100 font-bold hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                 >
                   Next
                 </button>

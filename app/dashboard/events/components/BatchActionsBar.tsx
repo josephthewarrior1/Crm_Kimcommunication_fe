@@ -48,7 +48,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
         <span className="inline-flex items-center justify-center bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-full ring-4 ring-blue-100 shrink-0">
           {selectedParticipantIds.length}
         </span>
-        <span className="text-xs font-extrabold text-slate-800 tracking-tight">Participants selected for batch update</span>
+        <span className="text-xs font-bold text-slate-800 tracking-tight">Participants selected for batch update</span>
       </div>
       
       <div className="flex flex-wrap items-center gap-3.5">
@@ -74,7 +74,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
         {activeTab === 'pre_event' && (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Remarks</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Remarks</span>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -94,7 +94,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Pre Event Approval</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pre Event Approval</span>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -112,7 +112,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Assign PIC</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Assign PIC</span>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -139,7 +139,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
 
         {activeTab === 'reminder_dday' && (
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Hari H</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Hari H</span>
             <select
               onChange={(e) => {
                 if (e.target.value) {
@@ -169,7 +169,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
         <button
           onClick={() => setSelectedParticipantIds([])}
           disabled={isBatchUpdating}
-          className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 active:bg-slate-300 text-slate-600 text-xs font-black rounded-xl border border-slate-200 transition-all duration-200"
+          className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 active:bg-slate-300 text-slate-600 text-xs font-bold rounded-xl border border-slate-200 transition-all duration-200"
         >
           Clear Selection
         </button>
@@ -178,7 +178,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
           <AlertDialogTrigger asChild>
             <button
               disabled={isBatchUpdating}
-              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs font-black rounded-xl border border-red-500 transition-all duration-200 inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs font-bold rounded-xl border border-red-500 transition-all duration-200 inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Remove Selected
@@ -186,7 +186,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
           </AlertDialogTrigger>
           <AlertDialogContent className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl text-slate-900 max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-black text-slate-900 uppercase tracking-wider">
+              <AlertDialogTitle className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 Remove selected participants?
               </AlertDialogTitle>
               <AlertDialogDescription className="text-xs text-slate-500 font-medium mt-1">

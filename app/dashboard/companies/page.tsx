@@ -175,7 +175,7 @@ export default function CompaniesPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900">Companies</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Companies</h2>
           <p className="text-sm text-slate-500 mt-1">Manage partner companies and target corporate leads.</p>
         </div>
         {!isUser && (
@@ -445,11 +445,11 @@ export default function CompaniesPage() {
               {/* Left Side: Info */}
               <div className="hidden sm:block">
                 <p className="text-xs font-semibold text-slate-500">
-                  Showing <span className="font-extrabold text-slate-800">{indexOfFirstItem + 1}</span> to{' '}
-                  <span className="font-extrabold text-slate-800">
+                  Showing <span className="font-bold text-slate-800">{indexOfFirstItem + 1}</span> to{' '}
+                  <span className="font-bold text-slate-800">
                     {Math.min(indexOfLastItem, totalItems)}
                   </span>{' '}
-                  of <span className="font-extrabold text-slate-800">{totalItems}</span> companies
+                  of <span className="font-bold text-slate-800">{totalItems}</span> companies
                 </p>
               </div>
 

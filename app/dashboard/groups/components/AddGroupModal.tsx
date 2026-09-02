@@ -42,7 +42,7 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-extrabold text-slate-900 mb-6">Create New Group</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-6">Create New Group</h3>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>

@@ -62,7 +62,7 @@ export const TakeoutModal: React.FC<TakeoutModalProps> = ({
           <div className="inline-flex p-3 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl mb-3">
             <UserX className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-extrabold text-slate-900">Request Data Takeout</h3>
+          <h3 className="text-xl font-bold text-slate-900">Request Data Takeout</h3>
           <p className="text-xs text-slate-500 mt-1">
             Proceeding will mark <strong>{database.firstName} {database.lastName}</strong> as inactive.
           </p>

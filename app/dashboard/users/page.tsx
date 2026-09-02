@@ -156,10 +156,10 @@ export default function UserManagementPage() {
   if (!isAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-650 font-extrabold text-2xl mb-4 animate-bounce">
+        <div className="w-16 h-16 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-650 font-bold text-2xl mb-4 animate-bounce">
           🛇
         </div>
-        <h3 className="text-xl font-extrabold text-slate-900">Access Denied</h3>
+        <h3 className="text-xl font-bold text-slate-900">Access Denied</h3>
         <p className="text-sm text-slate-500 mt-2 max-w-sm">
           Only system administrators have permission to access the User Management panel.
         </p>
@@ -172,7 +172,7 @@ export default function UserManagementPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Users className="w-7 h-7 text-blue-650" />
             User Management
           </h2>
@@ -327,9 +327,9 @@ export default function UserManagementPage() {
             <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/30 px-6 py-4">
               <div className="hidden sm:block">
                 <p className="text-xs font-semibold text-slate-500">
-                  Showing <span className="font-extrabold text-slate-800">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
-                  <span className="font-extrabold text-slate-800">{Math.min(currentPage * itemsPerPage, totalItems)}</span>{' '}
-                  of <span className="font-extrabold text-slate-800">{totalItems}</span> users
+                  Showing <span className="font-bold text-slate-800">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
+                  <span className="font-bold text-slate-800">{Math.min(currentPage * itemsPerPage, totalItems)}</span>{' '}
+                  of <span className="font-bold text-slate-800">{totalItems}</span> users
                 </p>
               </div>
 

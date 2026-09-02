@@ -56,7 +56,7 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-xl font-extrabold text-slate-900">Database Details</h3>
+            <h3 className="text-xl font-bold text-slate-900">Database Details</h3>
             <p className="text-xs text-slate-500 mt-0.5">Comprehensive end-to-end data mapped from Database Template columns.</p>
           </div>
         </div>
@@ -66,7 +66,7 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
             <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-extrabold text-red-800">Semua kolom wajib diisi kecuali Division, Database Type, dan Data Source</h4>
+                <h4 className="text-sm font-bold text-red-800">Semua kolom wajib diisi kecuali Division, Database Type, dan Data Source</h4>
                 <p className="text-xs text-red-600 mt-1">
                   Kolom kosong:{" "}
                   <span className="font-semibold">{completeness.missingFields.join(", ")}</span>

@@ -121,7 +121,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-extrabold text-slate-900 mb-4 shrink-0">Add Database as Participant</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-4 shrink-0">Add Database as Participant</h3>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 mb-4">
@@ -221,7 +221,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                         setFilterAddParticipantCity('');
                         setFilterAddParticipantEventId('');
                       }}
-                      className="text-[10px] font-extrabold text-red-600 hover:text-red-750 transition-colors uppercase pt-1"
+                      className="text-[10px] font-bold text-red-600 hover:text-red-750 transition-colors uppercase pt-1"
                     >
                       Clear Modal Filters
                     </button>

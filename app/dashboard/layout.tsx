@@ -12,7 +12,6 @@ import {
   Users,
   Database as DatabaseIcon,
   CalendarDays,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -21,9 +20,7 @@ import {
   ShieldAlert,
   UserX,
   UserPlus,
-  History,
-  Shield,
-  AlertTriangle
+  History
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -54,34 +51,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, isViewer, pathname, router]);
 
-  const getRoleBadge = (roleName?: string) => {
-    switch (roleName?.toUpperCase()) {
-      case 'ADMIN':
-        return 'bg-violet-50 text-violet-700 border-violet-200';
-      case 'MANAGER':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      default:
-        return 'bg-slate-50 text-slate-600 border-slate-200';
-    }
-  };
-
-  const getAvatarGradient = (roleName?: string) => {
-    switch (roleName?.toUpperCase()) {
-      case 'ADMIN':
-        return 'bg-gradient-to-tr from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-500/20';
-      case 'MANAGER':
-        return 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-sm shadow-emerald-500/20';
-      default:
-        return 'bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-sm shadow-blue-500/20';
-    }
-  };
-
   const getRoleTextClass = (roleName?: string) => {
     switch (roleName?.toUpperCase()) {
       case 'ADMIN':
-        return 'text-violet-600 font-extrabold';
+        return 'text-violet-600 font-bold';
       case 'MANAGER':
-        return 'text-emerald-600 font-extrabold';
+        return 'text-emerald-600 font-bold';
       default:
         return 'text-slate-500 font-semibold';
     }
@@ -133,17 +108,20 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-900">
+    <div className="min-h-screen flex bg-[#f4f7ff] text-slate-900">
       {/* 1. Large Screen Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0">
-        <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-200 bg-white">
-          <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-blue-100/80 shrink-0">
+        <div className="h-16 flex items-center gap-3 px-6 border-b border-blue-50 bg-white">
+          <div className="w-9 h-9 bg-blue-600 rounded-xl text-white flex items-center justify-center shadow-md shadow-blue-600/15">
             <Building2 className="w-5 h-5" />
           </div>
-          <span className="font-extrabold text-xl tracking-tight text-blue-900">KIM CRM</span>
+          <div>
+            <span className="block font-black text-lg tracking-tight text-blue-950">KIM CRM</span>
+            <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-blue-400">Lead System</span>
+          </div>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
           {filteredMenuItems.map((item) => {
             const isDirtyMenu = item.path.includes('tab=dirty');
             const isActive = isDirtyMenu 
@@ -154,18 +132,23 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               <button
                 key={item.name}
                 onClick={() => handleNav(item.path)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                className={`group relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/15'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    : 'text-slate-500 hover:text-blue-700 hover:bg-blue-50/80'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className="w-5 h-5" />
+                {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full bg-white/80" />}
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                    isActive ? 'bg-white/15' : 'bg-white border border-blue-50 group-hover:border-blue-100'
+                  }`}>
+                    <Icon className="w-4 h-4" />
+                  </span>
                   <span>{item.name}</span>
                 </div>
                 {item.badge !== undefined && item.badge !== null && item.badge > 0 && (
-                  <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
                     isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200/60'
                   }`}>
                     {item.badge}
@@ -272,23 +255,26 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       {/* 3. Mobile Navigation Drawer Overlay */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 md:hidden">
-          <div className="fixed top-0 bottom-0 left-0 w-64 bg-white border-r border-slate-200 flex flex-col p-6 shadow-2xl animate-in slide-in-from-left duration-200">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+          <div className="fixed top-0 bottom-0 left-0 w-64 bg-white border-r border-blue-100 flex flex-col p-5 shadow-2xl animate-in slide-in-from-left duration-200">
+            <div className="flex items-center justify-between mb-7">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-blue-600 rounded-xl text-white flex items-center justify-center shadow-md shadow-blue-600/15">
                   <Building2 className="w-5 h-5" />
                 </div>
-                <span className="font-extrabold text-xl text-blue-900">KIM CRM</span>
+                <div>
+                  <span className="block font-black text-lg text-blue-950">KIM CRM</span>
+                  <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-blue-400">Lead System</span>
+                </div>
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1 text-slate-500 hover:text-slate-900 rounded-lg"
+                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-blue-50 rounded-xl"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <nav className="flex-1 space-y-1">
+            <nav className="flex-1 space-y-1.5 overflow-y-auto">
               {filteredMenuItems.map((item) => {
                 const isDirtyMenu = item.path.includes('tab=dirty');
                 const isActive = isDirtyMenu 
@@ -299,18 +285,23 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   <button
                     key={item.name}
                     onClick={() => handleNav(item.path)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                    className={`group relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/15'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        : 'text-slate-500 hover:text-blue-700 hover:bg-blue-50/80'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5" />
+                    {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full bg-white/80" />}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        isActive ? 'bg-white/15' : 'bg-white border border-blue-50 group-hover:border-blue-100'
+                      }`}>
+                        <Icon className="w-4 h-4" />
+                      </span>
                       <span>{item.name}</span>
                     </div>
                     {item.badge !== undefined && item.badge !== null && item.badge > 0 && (
-                      <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
                         isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200/60'
                       }`}>
                         {item.badge}
@@ -321,19 +312,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
-            <div className="border-t border-slate-100 pt-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                  {user?.fullName?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{user?.fullName || user?.username}</p>
-                  <p className="text-xs text-slate-500">{user?.email}</p>
+            <div className="border-t border-blue-50 pt-5">
+              <div className="rounded-2xl bg-blue-50/80 border border-blue-100 p-4 mb-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-white border border-blue-100 flex items-center justify-center text-blue-600 font-black shrink-0">
+                    {user?.fullName?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-slate-900 truncate">{user?.fullName || user?.username}</p>
+                    <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => logout()}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-100 hover:bg-red-50 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-xl text-slate-700 text-sm font-medium transition-all"
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white hover:bg-red-50 hover:text-red-600 border border-blue-100 hover:border-red-200 rounded-2xl text-slate-700 text-sm font-bold transition-all"
               >
                 <LogOut className="w-4 h-4" />
                 Logout

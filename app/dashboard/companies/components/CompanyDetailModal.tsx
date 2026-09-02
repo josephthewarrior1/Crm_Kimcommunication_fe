@@ -42,7 +42,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
             <Building2 className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-slate-900 tracking-tight">{formatCompanyName(company.name)}</h3>
+            <h3 className="text-xl font-bold text-slate-900 tracking-tight">{formatCompanyName(company.name)}</h3>
             {company.brandName && (
               <p className="text-xs font-semibold text-blue-600 mt-1">Brand: {company.brandName}</p>
             )}
@@ -55,7 +55,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
           <div className="space-y-5">
             {/* Overview Card */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
-              <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Info className="w-4 h-4 text-blue-650 shrink-0" />
                 Company Overview
               </h4>
@@ -97,7 +97,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
 
             {/* Scale Card */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
-              <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <BarChart3 className="w-4 h-4 text-blue-655 shrink-0" />
                 Scale & CRM Metrics
               </h4>
@@ -105,18 +105,18 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Revenue Size</p>
-                  <p className="text-xs font-black text-slate-800 mt-1.5">{company.companySizeRevenue || '-'}</p>
+                  <p className="text-xs font-bold text-slate-800 mt-1.5">{company.companySizeRevenue || '-'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Employee Size</p>
-                  <p className="text-xs font-black text-slate-800 mt-1.5">{company.companySizeEmployee || '-'}</p>
+                  <p className="text-xs font-bold text-slate-800 mt-1.5">{company.companySizeEmployee || '-'}</p>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100/80">
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">CRM Registered Contacts</p>
                 <div className="mt-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-650 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-650 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm">
                     <Users className="w-3.5 h-3.5" />
                     {associatedDatabases.length} Databases
                   </span>
@@ -129,7 +129,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
           <div className="space-y-5">
             {/* Contact Channels */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
-              <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Globe className="w-4 h-4 text-blue-655 shrink-0" />
                 Channels & Contact Info
               </h4>
@@ -169,7 +169,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
 
             {/* Tech Specs */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-3 flex flex-col min-h-[178px] shadow-sm">
-              <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Server className="w-4 h-4 text-blue-655 shrink-0" />
                 Infrastructure & Hardware
               </h4>
@@ -189,7 +189,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
 
         {/* Associated Employees */}
         <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
-          <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <Users className="w-4 h-4 text-blue-500" />
             Associated Contacts List ({associatedDatabases.length} People)
           </h4>

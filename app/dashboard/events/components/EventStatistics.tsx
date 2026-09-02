@@ -767,7 +767,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 className="sm:max-w-4xl max-h-[85vh] overflow-y-auto bg-white p-6 rounded-2xl border border-slate-200 text-slate-900"
               >
                 <DialogHeader>
-                  <DialogTitle className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                  <DialogTitle className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                     {isAdmin ? 'PIC Assignment & Distribution' : `Laporan Aktivitas Follow-Up — ${myPicName}`}
                   </DialogTitle>
                   <DialogDescription className="text-xs text-slate-500 font-medium">
@@ -793,12 +793,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             <span className="p-1.5 bg-blue-50 text-blue-600 rounded-xl">
                               <History className="w-4 h-4" />
                             </span>
-                            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Laporan Work Log Saya</span>
+                            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Laporan Work Log Saya</span>
                           </div>
                         )}
                         <div className="text-right">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PIC Terpilih</span>
-                          <h4 className="text-sm font-black text-slate-900">{selectedPic}</h4>
+                          <h4 className="text-sm font-bold text-slate-900">{selectedPic}</h4>
                         </div>
                       </div>
 
@@ -808,7 +808,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           <button
                             type="button"
                             onClick={() => setPicViewTab('report')}
-                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                               picViewTab === 'report' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                             }`}
                           >
@@ -818,7 +818,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           <button
                             type="button"
                             onClick={() => setPicViewTab('participants')}
-                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                               picViewTab === 'participants' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                             }`}
                           >
@@ -1255,9 +1255,15 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         <div>
                           <h5 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-0.5">Alokasi Cepat (Auto-Distribute)</h5>
                           <p className="text-[10px] text-slate-500">Bagi rata tugas follow-up secara otomatis ke seluruh staff PIC aktif.</p>
+                          {eligibleSplitUsers.length === 0 && (
+                            <p className="text-[10px] font-semibold text-amber-600 mt-1">
+                              Tambahkan PIC Event dulu lewat Edit Event &gt; Manage PIC.
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <button
+                            disabled={eligibleSplitUsers.length === 0}
                             onClick={async () => {
                               if (eligibleSplitUsers.length === 0) {
                                 showMissingPicAccessWarning();
@@ -1306,11 +1312,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 }
                               });
                             }}
-                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all duration-150 shadow-sm cursor-pointer"
+                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
                           >
                             Bagi Rata Sisa Peserta
                           </button>
                           <button
+                            disabled={participants.length === 0 || eligibleSplitUsers.length === 0}
                             onClick={async () => {
                               if (participants.length === 0) return;
                               if (eligibleSplitUsers.length === 0) {
@@ -1351,13 +1358,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 }
                               });
                             }}
-                            className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-bold hover:bg-slate-800 transition-all duration-150 shadow-sm"
+                            className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-bold hover:bg-slate-800 transition-all duration-150 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
                           >
                             Bagi Ulang Semua Peserta
                           </button>
                           <button
+                            disabled={eligibleSplitUsers.length === 0}
                             onClick={() => setIsSplitModalOpen(true)}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black transition-all duration-150 shadow-sm flex items-center gap-1 cursor-pointer"
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-bold transition-all duration-150 shadow-sm flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
                           >
                             <span>⚡ Auto Split PIC Event</span>
                           </button>
@@ -1381,7 +1389,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
                           <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">
                             <span>Allocation Balance</span>
-                            <span className="text-slate-700 font-extrabold">{totalAssigned} / {totalParticipants} Assigned ({Math.round((totalAssigned / Math.max(1, totalParticipants)) * 100)}%)</span>
+                            <span className="text-slate-700 font-bold">{totalAssigned} / {totalParticipants} Assigned ({Math.round((totalAssigned / Math.max(1, totalParticipants)) * 100)}%)</span>
                           </div>
                           <div className="w-full h-3 bg-slate-100 rounded-full flex overflow-hidden shadow-inner">
                             {activePics.map((pic, idx) => {
@@ -1611,7 +1619,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
         <AlertDialog open={!!confirmConfig} onOpenChange={(open) => { if (!open) setConfirmConfig(null); }}>
           <AlertDialogContent className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl text-slate-900 max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-black text-slate-900 uppercase tracking-wider">
+              <AlertDialogTitle className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 {confirmConfig.title}
               </AlertDialogTitle>
               <AlertDialogDescription className="text-xs text-slate-500 font-medium mt-1 whitespace-pre-line">
@@ -1639,7 +1647,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       <Dialog open={isSplitModalOpen} onOpenChange={setIsSplitModalOpen}>
         <DialogContent className="sm:max-w-md bg-white p-6 rounded-2xl border border-slate-200 text-slate-900">
           <DialogHeader>
-            <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
               <span>⚡ Auto Split PIC Event</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 font-medium mt-1">
@@ -1710,7 +1718,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         <span>{name}</span>
                       </span>
                       {isChecked && (
-                        <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-md">
                           PIC Event
                         </span>
                       )}
@@ -1744,7 +1752,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 type="button"
                 onClick={handleExecuteSplitSelected}
                 disabled={selectedSplitPics.length === 0}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
               >
                 Jalankan Auto Split ({selectedSplitPics.length} PIC)
               </button>

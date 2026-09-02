@@ -46,7 +46,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl relative animate-in scale-in duration-200 text-slate-900">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-blue-650" />
             Add User Account
           </h3>

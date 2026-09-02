@@ -21,6 +21,7 @@ import { UpdateParticipantModal } from './components/UpdateParticipantModal';
 import { TakeoutModal } from '../database/components/TakeoutModal';
 import { EngagementModal } from './components/EngagementModal';
 import { EventStatistics } from './components/EventStatistics';
+import { ManageEventPicsModal } from './components/ManageEventPicsModal';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
 import { ManageUserColumnsModal } from '../users/components/ManageUserColumnsModal';
@@ -177,10 +178,22 @@ export default function EventsPage() {
 
   const [isEngagementModalOpen, setIsEngagementModalOpen] = useState(false);
   const [selectedEngagementParticipant, setSelectedEngagementParticipant] = useState<EventParticipant | null>(null);
+  const [isManagePicsModalOpen, setIsManagePicsModalOpen] = useState(false);
 
   const handleOpenEngagementModal = (participant: EventParticipant) => {
     setSelectedEngagementParticipant(participant);
     setIsEngagementModalOpen(true);
+  };
+
+  const handleManagePicsSaved = async () => {
+    const [freshUsers] = await Promise.all([
+      crmService.getUsers().catch(() => usersList),
+      selectedEvent ? loadEligibleManagers(selectedEvent.id) : Promise.resolve()
+    ]);
+    setUsersList(freshUsers);
+    if (selectedEvent) {
+      await loadParticipantsForEvent(selectedEvent, activeTab);
+    }
   };
 
   useEffect(() => {
@@ -1498,7 +1511,7 @@ export default function EventsPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0 pr-1">
                           <h4
-                            className="font-extrabold text-slate-900 text-base leading-snug group-hover:text-blue-600 transition-colors line-clamp-2"
+                            className="font-bold text-slate-900 text-base leading-snug group-hover:text-blue-600 transition-colors line-clamp-2"
                             title={evt.name}
                           >
                             {evt.name}
@@ -1507,14 +1520,17 @@ export default function EventsPage() {
                             <div className="mt-2 max-w-full">
                               <span
                                 title={packageBadge}
-                                className="inline-flex max-w-full px-2.5 py-1 bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-700 text-[10px] font-black rounded-lg uppercase tracking-[0.12em] shadow-2xs"
+                                className="inline-flex max-w-full px-2.5 py-1 bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-700 text-[10px] font-semibold rounded-lg uppercase tracking-[0.12em] shadow-2xs"
                               >
                                 <span className="truncate">{packageBadge}</span>
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          <span className="px-2.5 py-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-100 font-mono font-bold rounded-lg">
+                            {formatDateDMY(evt.dateStart)}
+                          </span>
                           {!isViewer && (
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                               <button
@@ -1546,18 +1562,18 @@ export default function EventsPage() {
                       <div className="mt-4 space-y-1.5 text-xs text-slate-500">
                         <div className="flex justify-between items-center">
                           <span className="font-bold flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-blue-500 shrink-0" /> Registered:</span>
-                          <span className="font-black text-slate-800">{registeredCount} pax</span>
+                          <span className="font-bold text-slate-800">{registeredCount} pax</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="font-bold flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> On Location:</span>
-                          <span className="font-black text-emerald-700">{onLocationCount} pax</span>
+                          <span className="font-bold text-emerald-700">{onLocationCount} pax</span>
                         </div>
                         {target > 0 && (
                           <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 mt-1.5">
                             <span className="font-bold">Target Size:</span>
                             <div className="flex items-center gap-1.5">
-                              <span className="font-black text-slate-700">{target} pax</span>
-                              <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                              <span className="font-bold text-slate-700">{target} pax</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                                 isAchieved
                                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                   : 'bg-slate-150 text-slate-400 border border-slate-200'
@@ -1571,11 +1587,8 @@ export default function EventsPage() {
                     </div>
                     
                     <div className="border-t border-slate-100 pt-3 mt-4 flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-slate-50 border border-slate-200 text-slate-600 rounded-md uppercase tracking-wider">
+                      <span className="px-2.5 py-0.5 text-[10px] font-semibold bg-slate-50 border border-slate-200 text-slate-600 rounded-md uppercase tracking-wider">
                         {evt.eventType}
-                      </span>
-                      <span className="text-[10px] text-slate-550 font-mono">
-                        {formatDateDMY(evt.dateStart)}
                       </span>
                     </div>
                   </div>
@@ -2116,6 +2129,10 @@ export default function EventsPage() {
         setEditEmsEventId={setEditEmsEventId}
         submittingEvent={submittingEvent}
         onSubmit={handleUpdateEvent}
+        onManagePics={isAdmin ? () => {
+          setIsEditEventModalOpen(false);
+          setIsManagePicsModalOpen(true);
+        } : undefined}
       />
 
       {/* Delete Event Confirmation Modal */}
@@ -2139,6 +2156,16 @@ export default function EventsPage() {
           participants={statsParticipants}
           onAddParticipant={handleAddParticipant}
           submittingParticipant={submittingParticipant}
+        />
+      )}
+
+      {selectedEvent && (
+        <ManageEventPicsModal
+          isOpen={isManagePicsModalOpen}
+          onClose={() => setIsManagePicsModalOpen(false)}
+          selectedEvent={selectedEvent}
+          usersList={usersList}
+          onSaved={handleManagePicsSaved}
         />
       )}
 

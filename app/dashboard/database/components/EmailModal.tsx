@@ -63,7 +63,7 @@ export const EmailModal: React.FC<EmailModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-extrabold text-slate-900 mb-1">Emails for {database.firstName}</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-1">Emails for {database.firstName}</h3>
         <p className="text-xs text-slate-500 mb-6">Manage company or personal emails for lead targeting.</p>
 
         {/* List of current emails */}

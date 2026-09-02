@@ -61,8 +61,8 @@ export const FlaggedDetailModal: React.FC<FlaggedDetailModalProps> = ({
           </div>
           <div className="flex-1 pr-6">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h3 className="text-xl font-extrabold text-slate-900">{displayName}</h3>
-              <span className={`px-2.5 py-0.5 text-[10px] font-extrabold rounded-full uppercase tracking-wider ${getRiskBadge(flag.status)}`}>
+              <h3 className="text-xl font-bold text-slate-900">{displayName}</h3>
+              <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${getRiskBadge(flag.status)}`}>
                 {flag.status === 'confirmed' ? 'Confirmed (Tikus)' : flag.status}
               </span>
             </div>
@@ -75,7 +75,7 @@ export const FlaggedDetailModal: React.FC<FlaggedDetailModalProps> = ({
         <div className="space-y-6">
           {/* Alert & Evidence Card */}
           <div className="p-4 bg-red-50/60 border border-red-200 rounded-2xl space-y-2">
-            <div className="flex items-center gap-2 text-red-800 font-extrabold text-sm">
+            <div className="flex items-center gap-2 text-red-800 font-bold text-sm">
               <AlertTriangle className="w-4.5 h-4.5 text-red-600 shrink-0" />
               <span>Reason: {flag.flagReason?.replace(/_/g, ' ') || 'Suspicious Activity'}</span>
             </div>
@@ -92,7 +92,7 @@ export const FlaggedDetailModal: React.FC<FlaggedDetailModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Contact Details */}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-              <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-slate-400" />
                 Contact Information
               </h4>
@@ -131,7 +131,7 @@ export const FlaggedDetailModal: React.FC<FlaggedDetailModalProps> = ({
 
             {/* Linked Company & Database Record */}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-              <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-slate-400" />
                 Linked CRM Profile
               </h4>
@@ -170,7 +170,7 @@ export const FlaggedDetailModal: React.FC<FlaggedDetailModalProps> = ({
           {/* Associated Event (if any) */}
           {flag.event && (
             <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl space-y-2">
-              <h4 className="text-xs font-extrabold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-blue-600" />
                 Associated Event
               </h4>
@@ -183,7 +183,7 @@ export const FlaggedDetailModal: React.FC<FlaggedDetailModalProps> = ({
           {/* Linked Database Emails List */}
           {database && (
             <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Registered Emails ({emails.length})
               </h4>
               {loadingDetails ? (
@@ -210,7 +210,7 @@ export const FlaggedDetailModal: React.FC<FlaggedDetailModalProps> = ({
           {/* Event Participation History */}
           {database && (
             <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Event Participation History ({events.length})
               </h4>
               {loadingDetails ? (
@@ -229,7 +229,7 @@ export const FlaggedDetailModal: React.FC<FlaggedDetailModalProps> = ({
                           Attendance: <span className="font-semibold text-slate-700">{ep.attendanceStatus}</span>
                         </p>
                       </div>
-                      <span className={`px-2 py-0.5 text-[9px] font-extrabold rounded-md uppercase ${getStatusBadgeStyle(ep.participantStatus)}`}>
+                      <span className={`px-2 py-0.5 text-[9px] font-bold rounded-md uppercase ${getStatusBadgeStyle(ep.participantStatus)}`}>
                         {getStatusLabel(ep.participantStatus)}
                       </span>
                     </div>

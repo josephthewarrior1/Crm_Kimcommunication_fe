@@ -173,7 +173,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
           <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
             <Download className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-extrabold text-slate-900">Custom Export Excel</h3>
+          <h3 className="text-xl font-bold text-slate-900">Custom Export Excel</h3>
           <p className="text-xs text-slate-500 mt-1">
             Pilih kolom dan tentukan kontak yang ingin di-export ke dalam file Excel.
           </p>

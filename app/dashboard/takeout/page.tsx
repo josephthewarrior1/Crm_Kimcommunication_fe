@@ -92,10 +92,10 @@ export default function SettingsPage() {
   if (!isAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-600 font-extrabold text-2xl mb-4 animate-bounce">
+        <div className="w-16 h-16 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl mb-4 animate-bounce">
           🛇
         </div>
-        <h3 className="text-xl font-extrabold text-slate-900">Access Denied</h3>
+        <h3 className="text-xl font-bold text-slate-900">Access Denied</h3>
         <p className="text-sm text-slate-500 mt-2 max-w-sm">
           Only users with the <span className="font-bold text-red-600">ADMIN</span> role have permissions to audit takeout requests.
         </p>
@@ -107,7 +107,7 @@ export default function SettingsPage() {
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
       {/* Page Header */}
       <div>
-        <h2 className="text-2xl font-extrabold text-slate-900">Takeout Requests</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Takeout Requests</h2>
         <p className="text-sm text-slate-500 mt-1">Audit, approve or reject takeout requests, and manage active database record deletions.</p>
       </div>
 
@@ -193,7 +193,7 @@ export default function SettingsPage() {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleRestoreContact(rem)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-extrabold rounded-lg shadow-sm transition-all cursor-pointer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
                                   title="Restore / Reactivate Contact back to Database directory"
                                 >
                                   <RotateCcw className="w-3.5 h-3.5" />

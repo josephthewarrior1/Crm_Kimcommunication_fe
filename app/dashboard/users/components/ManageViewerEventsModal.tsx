@@ -118,7 +118,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
-            <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
+            <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-600" />
               Event Access Permissions
             </h3>

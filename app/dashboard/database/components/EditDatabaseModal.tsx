@@ -276,7 +276,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-extrabold text-slate-900 mb-6">Edit Database</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-6">Edit Database</h3>
 
         {isFormIncomplete ? (
           <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
