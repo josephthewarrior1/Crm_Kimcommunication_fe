@@ -435,7 +435,7 @@ export default function DatabasesPage() {
       return;
     }
     try {
-      const response = await crmService.getDatabasesList({
+      const response = await crmService.exportDatabases({
         search: searchQuery || undefined,
         groupId: filterGroupId || undefined,
         companyId: filterCompanyId || undefined,
@@ -444,9 +444,7 @@ export default function DatabasesPage() {
         city: filterCity || undefined,
         tab: activeTabFilter,
         sortBy,
-        sortOrder,
-        page: 1,
-        size: 5000
+        sortOrder
       });
       setExportDatabases(response.items || []);
     } catch {

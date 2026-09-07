@@ -8,6 +8,7 @@ import {
   CompanyListResponse,
   DashboardSummaryResponse,
   Database,
+  DatabaseExportResponse,
   DatabaseFilterOptionsResponse,
   DatabaseListResponse,
   DatabaseEmail,
@@ -35,6 +36,22 @@ import {
 export class CrmService extends ApiService {
   constructor() {
     super();
+  }
+
+  async previewDataCleaner(): Promise<any> {
+    return this.get<any>('/api/data-cleaner/preview');
+  }
+
+  async applyDataCleaner(): Promise<any> {
+    return this.post<any>('/api/data-cleaner/apply', {});
+  }
+
+  async mergeCleanerGroups(targetGroupId: number, sourceGroupIds: number[]): Promise<any> {
+    return this.post<any>('/api/data-cleaner/merge-groups', { targetGroupId, sourceGroupIds });
+  }
+
+  async getDataCleanerGroupAudit(onlyIssues = false): Promise<any> {
+    return this.get<any>(`/api/data-cleaner/group-audit${onlyIssues ? '?onlyIssues=true' : ''}`);
   }
 
   async getDashboardSummary(): Promise<DashboardSummaryResponse> {
@@ -155,6 +172,31 @@ export class CrmService extends ApiService {
     if (params?.size) searchParams.set('size', String(params.size));
     const query = searchParams.toString();
     return this.get<DatabaseListResponse>(`/api/databases/list${query ? `?${query}` : ''}`);
+  }
+
+  async exportDatabases(params?: {
+    search?: string;
+    groupId?: string;
+    companyId?: string;
+    positionLevel?: string;
+    industry?: string;
+    city?: string;
+    tab?: 'all' | 'clean' | 'dirty';
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<DatabaseExportResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.groupId) searchParams.set('groupId', params.groupId);
+    if (params?.companyId) searchParams.set('companyId', params.companyId);
+    if (params?.positionLevel) searchParams.set('positionLevel', params.positionLevel);
+    if (params?.industry) searchParams.set('industry', params.industry);
+    if (params?.city) searchParams.set('city', params.city);
+    if (params?.tab) searchParams.set('tab', params.tab);
+    if (params?.sortBy) searchParams.set('sortBy', params.sortBy);
+    if (params?.sortOrder) searchParams.set('sortOrder', params.sortOrder);
+    const query = searchParams.toString();
+    return this.get<DatabaseExportResponse>(`/api/databases/export${query ? `?${query}` : ''}`);
   }
 
   async getDatabaseFilterOptions(params?: {

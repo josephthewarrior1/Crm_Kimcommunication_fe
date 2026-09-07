@@ -137,6 +137,11 @@ export interface DatabaseListResponse {
   };
 }
 
+export interface DatabaseExportResponse {
+  total: number;
+  items: Database[];
+}
+
 export interface DatabaseFilterOptionsResponse {
   cities: Array<{ value: string; label: string }>;
   groups: Array<{ id: number; name: string }>;

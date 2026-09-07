@@ -52,11 +52,18 @@ next-env.d.ts
 # OS
 Thumbs.db
 
-# BRD files
-/BRD - CRM Kim Communication (Polished) (1) (1).md
-BRD*.md
-*.pdf
-
 # Antigravity agents & skills
 .agents/
 /antigravity_global_skills/
+
+# Markdown & Documentation
+*.md
+!README.md
+docs/
+
+# Database dumps & data exports
+*.sql
+*.dump
+*.csv
+
+
