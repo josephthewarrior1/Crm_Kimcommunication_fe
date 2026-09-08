@@ -1,0 +1,492 @@
+﻿[
+    {
+        "id":  95,
+        "name":  "Adaro Energy Indonesia Tbk PT",
+        "from":  "Mining \u0026 Energy",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  96,
+        "name":  "Amman Mineral Nusa Tenggara PT",
+        "from":  "Mining \u0026 Metals",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  108,
+        "name":  "Bukit Makmur Mandiri Utama PT",
+        "from":  "Mining Services",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  109,
+        "name":  "Bumi Resources Tbk PT",
+        "from":  "Mining \u0026 Energy",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  117,
+        "name":  "Sinarmas Mining",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  365,
+        "name":  "Adaro Jasabara Indonesia PT",
+        "from":  "Mining Services",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  366,
+        "name":  "Adidaya Tangguh PT",
+        "from":  "Mining \u0026 Metals",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  367,
+        "name":  "Adimitra Baratama Nusantara PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  368,
+        "name":  "Agincourt Resources PT",
+        "from":  "Gold Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  372,
+        "name":  "Aneka Tambang Tbk PT",
+        "from":  "Mining \u0026 Metals",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  374,
+        "name":  "Artha Daya Coalindo PT",
+        "from":  "Coal Trading",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  375,
+        "name":  "Arutmin Indonesia PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  376,
+        "name":  "Asmin Bara Bronang PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  377,
+        "name":  "Asosiasi Pertambangan Batubara Indonesia",
+        "from":  "Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  378,
+        "name":  "Atlas Petrochem Indo PT",
+        "from":  "Petrochemical \u0026 Energy",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  379,
+        "name":  "Baramulti Group",
+        "from":  "Mining \u0026 Energy",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  380,
+        "name":  "Baramulti Suksessarana Tbk PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  381,
+        "name":  "Batubara Duaribu Abadi PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  382,
+        "name":  "Berau Coal Energy Tbk PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  383,
+        "name":  "Binadi Reksa Dayatama PT",
+        "from":  "Mining Services",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  385,
+        "name":  "Bormindo Nusantara PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  386,
+        "name":  "Borneo Indobara PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  387,
+        "name":  "Bukit Asam Tbk PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  388,
+        "name":  "Bukit Makmur Istindo Nikeltama PT",
+        "from":  "Mining Services",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  423,
+        "name":  "Bumi Siak Pusako PT",
+        "from":  "Mining Services",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  424,
+        "name":  "Cipta Kridatama PT",
+        "from":  "Mining \u0026 Metals",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  425,
+        "name":  "Cita Mineral Investindo Tbk CMI PT",
+        "from":  "Mining \u0026 Metals",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  426,
+        "name":  "Coal Metal Asia Magazine",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  427,
+        "name":  "Core Mineral Indonesia PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  428,
+        "name":  "Darma Henwa Tbk PT",
+        "from":  "Mining Services",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  429,
+        "name":  "Dian Swastatika Sentosa Tbk PT",
+        "from":  "Mining \u0026 Energy",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  430,
+        "name":  "DNX Indonesia PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  431,
+        "name":  "Elnusa Tbk PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  432,
+        "name":  "Eni Muara Bakau BV",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  433,
+        "name":  "ExxonMobil Lubricants Indonesia PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  434,
+        "name":  "ExxonMobil Oil Indonesia Inc",
+        "from":  "Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  435,
+        "name":  "Freeport Indonesia PT",
+        "from":  "Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  436,
+        "name":  "Freeport-McMoRan",
+        "from":  "Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  437,
+        "name":  "Golden Energy Mines Tbk PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  439,
+        "name":  "Halliburton PT",
+        "from":  "Mining \u0026 Metals",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  440,
+        "name":  "Halmahera Persada Lygend PT",
+        "from":  "Mining \u0026 Metals",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  441,
+        "name":  "Harita Group PT",
+        "from":  "Mining \u0026 Energy",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  442,
+        "name":  "Indika Energy Tbk PT",
+        "from":  "Gold Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  443,
+        "name":  "Indo Tambangraya Megah Tbk PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  444,
+        "name":  "Indonesia Weda Bay Industrial Park PT",
+        "from":  "Mining \u0026 Metals",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  445,
+        "name":  "INPEX Corporation",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  446,
+        "name":  "Ithaca Resources PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  447,
+        "name":  "JGC Indonesia PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  449,
+        "name":  "Kalimantan Prima Persada PT",
+        "from":  "Mining Contractor",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  450,
+        "name":  "Kaltim Prima Coal PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  451,
+        "name":  "Kideco Jaya Agung PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  612,
+        "name":  "Mineral Alam Abadi PT",
+        "from":  "Recruitment / Energy Industry",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  614,
+        "name":  "Mining Industry Indonesia",
+        "from":  "Mining \u0026 Energy",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  616,
+        "name":  "Mitrabara Adiperdana Tbk PT",
+        "from":  "Mining \u0026 Energy",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  618,
+        "name":  "MMS Group Indonesia PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  619,
+        "name":  "Monumen Energi Nusantara PT",
+        "from":  "Gold Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  620,
+        "name":  "Multikarya Asia Pasifik Raya PT",
+        "from":  "Gold Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  622,
+        "name":  "Nusa Halmahera Minerals PT",
+        "from":  "Gold Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  624,
+        "name":  "Nusantara Energi Indonesia PT",
+        "from":  "Mining Services / Explosives",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  625,
+        "name":  "Orica Mining Services PT",
+        "from":  "Mining Services",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  626,
+        "name":  "Ostrada Indonesia PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  627,
+        "name":  "Pada Idi PT",
+        "from":  "Coal Mining",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  628,
+        "name":  "Padangbara Sukses Makmur PT",
+        "from":  "Mining Contractor",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  629,
+        "name":  "Pamapersada Nusantara PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  677,
+        "name":  "Panasonic Gobel Energy Indonesia PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  678,
+        "name":  "Param Mitra Coal Resources",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  679,
+        "name":  "PC Ketapang II Ltd PT",
+        "from":  "Gas Transmission \u0026 Distribution",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  680,
+        "name":  "Pelat Timah Nusantara Tbk PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  681,
+        "name":  "Pembangkitan JawaBali PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    },
+    {
+        "id":  682,
+        "name":  "Pertamina (Persero) PT",
+        "from":  "Oil \u0026 Gas",
+        "to":  "Mining / Oil / Gas",
+        "ok":  true
+    }
+]

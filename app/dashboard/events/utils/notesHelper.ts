@@ -55,10 +55,13 @@ export const isPublicPersonalEmail = (email: string): boolean => {
   return publicDomains.includes(domain);
 };
 
-export const getOfficeEmail = (emails?: { email: string; emailType?: string; isCorporate?: boolean }[] | null): string => {
+export const getOfficeEmail = (emails?: { id?: number; email: string; emailType?: string; isCorporate?: boolean; isPrimary?: boolean }[] | null): string => {
   if (!emails || emails.length === 0) return '-';
-  const companyEmail = emails.find(e => e.emailType === 'company' || e.isCorporate);
-  if (companyEmail?.email) return companyEmail.email;
+  const companyEmails = emails.filter(e => e.emailType === 'company' || e.isCorporate);
+  if (companyEmails.length > 0) {
+    const latest = [...companyEmails].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+    if (latest?.email) return latest.email;
+  }
   const firstEmail = emails[0];
   if (firstEmail?.email && firstEmail.emailType !== 'personal' && !isPublicPersonalEmail(firstEmail.email)) {
     return firstEmail.email;
@@ -66,10 +69,13 @@ export const getOfficeEmail = (emails?: { email: string; emailType?: string; isC
   return '-';
 };
 
-export const getPersonalEmail = (emails?: { email: string; emailType?: string; isCorporate?: boolean }[] | null): string => {
+export const getPersonalEmail = (emails?: { id?: number; email: string; emailType?: string; isCorporate?: boolean; isPrimary?: boolean }[] | null): string => {
   if (!emails || emails.length === 0) return '-';
-  const personalEmail = emails.find(e => e.emailType === 'personal' && !e.isCorporate);
-  if (personalEmail?.email) return personalEmail.email;
+  const personalEmails = emails.filter(e => e.emailType === 'personal' && !e.isCorporate);
+  if (personalEmails.length > 0) {
+    const latest = [...personalEmails].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+    if (latest?.email) return latest.email;
+  }
   const firstEmail = emails[0];
   if (firstEmail?.email && isPublicPersonalEmail(firstEmail.email)) {
     return firstEmail.email;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { X, Loader2, Upload, Download, AlertCircle, RefreshCw, AlertTriangle, CheckCircle2, Search, Filter } from 'lucide-react';
 import { crmService } from '../../../../lib/services/crmService';
 import { auditLogService } from '../../../../lib/services/auditLogService';
@@ -37,6 +38,53 @@ export interface ProcessedImportPreview {
 }
 
 type TabType = 'ISSUES' | 'ALL' | 'INCOMPLETE' | 'CONFLICT' | 'DUPLICATE' | 'NEW';
+
+const EXPECTED_HEADERS = [
+  'No',
+  'Nama Group/Holding Company',
+  'Nama Brand',
+  'Company Name',
+  'Salutation',
+  'First Name',
+  'Last Name',
+  'Position',
+  'Division',
+  'Jobtitle',
+  'Address',
+  'Office Phone',
+  'Mobile Phone',
+  'Company Email Address',
+  'Personal Email Address',
+  'Industry',
+  'Company Size (Revenue)',
+  'Company Size (Employee)',
+  'Company Hardware',
+  'Linkedin Link',
+  'City',
+  'Postal Code',
+  'Company Website',
+];
+
+const normalizeHeader = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
+const validateDatabaseTemplateHeader = async (file: File) => {
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false });
+  const headers = rows[0] || [];
+  const problems = EXPECTED_HEADERS
+    .map((expected, index) => {
+      const actual = headers[index];
+      return normalizeHeader(actual) === normalizeHeader(expected)
+        ? null
+        : `Kolom ${index + 1} harus "${expected}", terbaca "${actual || '[kosong]'}"`;
+    })
+    .filter(Boolean);
+
+  if (problems.length) {
+    throw new Error(`Header Excel tidak sesuai template. ${problems.slice(0, 5).join(' | ')}. Download ulang template dan paste data tanpa mengubah urutan/nama kolom.`);
+  }
+};
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   isOpen,
@@ -101,6 +149,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }, 450);
 
     try {
+      await validateDatabaseTemplateHeader(selectedImportFile);
       const data = await crmService.previewDatabasesExcel(selectedImportFile);
       clearInterval(ticker);
       setImportProgress(100);

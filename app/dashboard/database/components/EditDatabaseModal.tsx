@@ -79,12 +79,14 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
         const emails = await crmService.getDatabaseEmails(database.id);
         if (!active) return;
         if (emails && emails.length > 0) {
-          const compEmail = emails.find(e => e.isCorporate || e.emailType === 'company');
+          const compEmail = emails.find(e => (e.isCorporate || e.emailType === 'company') && e.isPrimary) 
+            || [...emails.filter(e => e.isCorporate || e.emailType === 'company')].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
           if (compEmail) {
             setDatabaseCompanyEmail(compEmail.email);
             setDatabaseCompanyEmailId(compEmail.id.toString());
           }
-          const persEmail = emails.find(e => !e.isCorporate && e.emailType === 'personal');
+          const persEmail = emails.find(e => !e.isCorporate && e.emailType === 'personal' && e.isPrimary)
+            || [...emails.filter(e => !e.isCorporate && e.emailType === 'personal')].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
           if (persEmail) {
             setDatabasePersonalEmail(persEmail.email);
             setDatabasePersonalEmailId(persEmail.id.toString());
