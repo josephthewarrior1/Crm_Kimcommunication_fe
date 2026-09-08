@@ -3,6 +3,7 @@ import { X, Loader2, Building2, Users, Calendar, Mail, ExternalLink, CheckCircle
 import { Database, DatabaseEmail, EventParticipant, Company } from '../../../../lib/types';
 import { checkFormCompleteness } from '../utils/validationHelper';
 import { getStatusLabel, getStatusBadgeStyle } from '../../events/utils/statusHelper';
+import { isPublicPersonalEmail } from '../../events/utils/notesHelper';
 
 interface DatabaseDetailModalProps {
   isOpen: boolean;
@@ -257,6 +258,10 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
                         Type: <span className="capitalize">{em.emailType}</span> |{' '}
                         {em.isCorporate ? (
                           <span className="text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded text-[9px]">Corporate Email</span>
+                        ) : !isPublicPersonalEmail(em.email) ? (
+                          <span className="text-amber-700 font-bold bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded text-[9px]" title="Domain kantor terdaftar sebagai email personal">
+                            ⚠️ Personal (Domain Kantor)
+                          </span>
                         ) : (
                           <span className="text-amber-600 font-bold bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded text-[9px]">Personal Domain Email</span>
                         )}

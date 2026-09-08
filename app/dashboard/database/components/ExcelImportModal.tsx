@@ -756,7 +756,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                               )}
                             </td>
                             <td className={`py-2 px-3 leading-relaxed text-xs ${
-                              isProblem ? 'text-red-700 font-semibold' : 'text-slate-600'
+                              isProblem 
+                                ? 'text-red-700 font-semibold' 
+                                : r.message.includes('Peringatan') || r.message.includes('⚠️')
+                                ? 'text-amber-800 font-medium bg-amber-50/50 rounded px-1.5'
+                                : 'text-slate-600'
                             }`}>
                               {r.message}
                             </td>

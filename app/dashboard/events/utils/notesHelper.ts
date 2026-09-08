@@ -49,8 +49,11 @@ export const isPublicPersonalEmail = (email: string): boolean => {
   if (!email || !email.includes('@')) return false;
   const domain = email.split('@')[1].toLowerCase().trim();
   const publicDomains = [
-    'gmail.com', 'yahoo.com', 'yahoo.co.id', 'hotmail.com', 'outlook.com',
-    'icloud.com', 'ymail.com', 'live.com', 'rocketmail.com', 'aol.com', 'me.com', 'msn.com'
+    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.id', 'yahoo.co.uk',
+    'hotmail.com', 'hotmail.co.id', 'outlook.com', 'outlook.co.id',
+    'icloud.com', 'me.com', 'mac.com', 'ymail.com', 'live.com', 'live.co.id',
+    'rocketmail.com', 'aol.com', 'msn.com', 'windowslive.com', 'mail.com',
+    'zoho.com', 'proton.me', 'protonmail.com'
   ];
   return publicDomains.includes(domain);
 };
@@ -59,11 +62,12 @@ export const getOfficeEmail = (emails?: { id?: number; email: string; emailType?
   if (!emails || emails.length === 0) return '-';
   const companyEmails = emails.filter(e => e.emailType === 'company' || e.isCorporate);
   if (companyEmails.length > 0) {
-    const latest = [...companyEmails].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
-    if (latest?.email) return latest.email;
+    const sorted = [...companyEmails].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    const unique = Array.from(new Set(sorted.map(e => e.email.trim())));
+    return unique.join(', ');
   }
   const firstEmail = emails[0];
-  if (firstEmail?.email && firstEmail.emailType !== 'personal' && !isPublicPersonalEmail(firstEmail.email)) {
+  if (firstEmail?.email && firstEmail.emailType !== 'personal') {
     return firstEmail.email;
   }
   return '-';
@@ -73,8 +77,9 @@ export const getPersonalEmail = (emails?: { id?: number; email: string; emailTyp
   if (!emails || emails.length === 0) return '-';
   const personalEmails = emails.filter(e => e.emailType === 'personal' && !e.isCorporate);
   if (personalEmails.length > 0) {
-    const latest = [...personalEmails].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
-    if (latest?.email) return latest.email;
+    const sorted = [...personalEmails].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    const unique = Array.from(new Set(sorted.map(e => e.email.trim())));
+    return unique.join(', ');
   }
   const firstEmail = emails[0];
   if (firstEmail?.email && isPublicPersonalEmail(firstEmail.email)) {
