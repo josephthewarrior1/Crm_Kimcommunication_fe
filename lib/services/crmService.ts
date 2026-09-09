@@ -11,6 +11,7 @@ import {
   DatabaseUploadTarget,
   DatabaseUploadTargetsResponse,
   Database,
+  DatabaseImportResult,
   DatabaseExportResponse,
   DatabaseFilterOptionsResponse,
   DatabaseListResponse,
@@ -904,7 +905,7 @@ export class CrmService extends ApiService {
     return response.json();
   }
 
-  async importDatabasesExcel(file: File): Promise<{ message: string; count: number }> {
+  async importDatabasesExcel(file: File): Promise<DatabaseImportResult> {
     const formData = new FormData();
     formData.append('file', file);
 

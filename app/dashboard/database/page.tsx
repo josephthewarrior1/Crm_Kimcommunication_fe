@@ -10,7 +10,6 @@ import { useSearchParams } from 'next/navigation';
 import { normalizePhone } from './utils/phoneHelper';
 import { checkDatabaseCompleteness } from './utils/validationHelper';
 import { getOfficeEmail, getPersonalEmail } from '../events/utils/notesHelper';
-import { INDUSTRIES } from '../../../lib/constants';
 import indonesiaCities from './data/indonesia-cities.json';
 
 import { DatabaseDetailModal } from './components/DatabaseDetailModal';
@@ -89,6 +88,9 @@ export default function DatabasesPage() {
     positionLevels: []
   });
   const [loading, setLoading] = useState(true);
+  const databaseRequestId = useRef(0);
+  const filterOptionsRequestId = useRef(0);
+  const [filterOptionsError, setFilterOptionsError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Advanced Filter states
@@ -219,6 +221,7 @@ export default function DatabasesPage() {
   }
 
   async function loadDatabasePage(pageOverride?: number) {
+    const requestId = ++databaseRequestId.current;
     setLoading(true);
     try {
       const response = await crmService.getDatabasesList({
@@ -235,18 +238,26 @@ export default function DatabasesPage() {
         size: itemsPerPage
       });
 
+      if (requestId !== databaseRequestId.current) return;
       setDatabases(response.items || []);
       setServerTotalItems(response.total || 0);
       setServerTotalPages(response.totalPages || 1);
       setDatabaseSummary(response.summary || { all: 0, clean: 0, dirty: 0 });
     } catch (err) {
-      toast.error('Failed to load databases list');
+      if (requestId === databaseRequestId.current) {
+        setDatabases([]);
+        setServerTotalItems(0);
+        setServerTotalPages(1);
+        toast.error('Failed to load databases list');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === databaseRequestId.current) setLoading(false);
     }
   }
 
   async function loadDatabaseFilterOptions() {
+    const requestId = ++filterOptionsRequestId.current;
+    setFilterOptionsError(false);
     try {
       const response = await crmService.getDatabaseFilterOptions({
         search: searchQuery || undefined,
@@ -257,6 +268,7 @@ export default function DatabasesPage() {
         city: filterCity || undefined,
         tab: activeTabFilter
       });
+      if (requestId !== filterOptionsRequestId.current) return;
       setDatabaseFilterOptions({
         cities: response.cities || [],
         groups: response.groups || [],
@@ -265,6 +277,8 @@ export default function DatabasesPage() {
         positionLevels: response.positionLevels || []
       });
     } catch {
+      if (requestId !== filterOptionsRequestId.current) return;
+      setFilterOptionsError(true);
       setDatabaseFilterOptions({
         cities: [],
         groups: [],
@@ -278,6 +292,7 @@ export default function DatabasesPage() {
   const refreshDatabasePage = async () => {
     await Promise.all([
       loadDatabasePage(currentPage),
+      loadDatabaseFilterOptions(),
       crmService.getFlaggedIdentities().then((items) => setFlags(items || [])).catch(() => {})
     ]);
   };
@@ -379,7 +394,11 @@ export default function DatabasesPage() {
 
   // Dynamic dropdown options based on active filters
   const filteredCompanyOptions = databaseFilterOptions.companies;
-  const filteredIndustryOptions = databaseFilterOptions.industries.length > 0 ? databaseFilterOptions.industries : INDUSTRIES;
+  // Keep a selected value visible even when another filter leaves zero matching records.
+  const filteredIndustryOptions = Array.from(new Set([
+    ...databaseFilterOptions.industries,
+    ...(filterIndustry ? [filterIndustry] : [])
+  ]));
   const filteredGroupOptions = databaseFilterOptions.groups;
   const filteredCityOptions = databaseFilterOptions.cities;
   const filteredPositionOptions = databaseFilterOptions.positionLevels;
@@ -650,12 +669,12 @@ export default function DatabasesPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
+            <label htmlFor="database-industry-filter" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
             <Select
               value={filterIndustry || 'ALL'}
               onValueChange={(val) => handleIndustryChange(val === 'ALL' ? '' : val)}
             >
-              <SelectTrigger className="w-full h-9 px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white shadow-none">
+              <SelectTrigger id="database-industry-filter" className="w-full h-9 px-3 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none transition-all focus:bg-white shadow-none">
                 <SelectValue placeholder="All Industries" />
               </SelectTrigger>
               <SelectContent side="bottom" sideOffset={4} className="bg-white border border-slate-200 shadow-xl rounded-xl z-50">
@@ -663,8 +682,16 @@ export default function DatabasesPage() {
                 {filteredIndustryOptions.map((ind) => (
                   <SelectItem key={ind} value={ind}>{ind}</SelectItem>
                 ))}
+                {filteredIndustryOptions.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-slate-500">Tidak ada pilihan industry untuk filter ini.</div>
+                )}
               </SelectContent>
             </Select>
+            {filterOptionsError && (
+              <button type="button" onClick={() => void loadDatabaseFilterOptions()} className="mt-1 text-xs text-red-600 hover:underline">
+                Gagal memuat filter. Coba lagi
+              </button>
+            )}
           </div>
 
           <div>

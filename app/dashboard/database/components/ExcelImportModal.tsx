@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { X, Loader2, Upload, Download, AlertCircle, RefreshCw, AlertTriangle, CheckCircle2, Search, Filter } from 'lucide-react';
 import { crmService } from '../../../../lib/services/crmService';
+import type { DatabaseImportResult } from '../../../../lib/types';
 import { auditLogService } from '../../../../lib/services/auditLogService';
 import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
@@ -102,6 +103,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [importProgress, setImportProgress] = useState(0);
   const [importPhase, setImportPhase] = useState('');
   const [importPreview, setImportPreview] = useState<ProcessedImportPreview | null>(null);
+  const [importResult, setImportResult] = useState<DatabaseImportResult | null>(null);
+  const cleanCount = (importPreview?.newCount || 0) + (importPreview?.duplicateCount || 0);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,6 +112,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const resetState = () => {
     setSelectedImportFile(null);
     setImportPreview(null);
+    setImportResult(null);
     setImportingExcel(false);
     setImportProgress(0);
     setImportPhase('');
@@ -219,7 +223,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       // Default to ISSUES tab if there are errors, otherwise ALL
       if (issuesCount > 0) {
         setActiveTab('ISSUES');
-        toast.warning(`Ditemukan ${issuesCount} baris data bermasalah yang harus diperbaiki.`);
+        toast.warning(`${issuesCount} baris bermasalah akan dilewati. Baris bersih tetap bisa diimport.`);
       } else {
         setActiveTab('ALL');
         toast.success('File Excel valid! Silakan tinjau data sebelum import.');
@@ -242,10 +246,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       return;
     }
 
-    if (!importPreview || importPreview.totalRows === 0 || importingExcel) return;
+    if (!importPreview || importingExcel || importResult) return;
 
-    if (importPreview.issuesCount > 0) {
-      toast.error(`Import ditolak: Harap perbaiki ${importPreview.issuesCount} baris yang bermasalah di file Excel terlebih dahulu.`);
+    if (cleanCount === 0) {
+      toast.error('Tidak ada baris bersih untuk diimport. Perbaiki file Excel terlebih dahulu.');
       return;
     }
 
@@ -288,13 +292,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           module: 'DATABASE',
           actionType: 'IMPORT_EXCEL',
           targetName: selectedImportFile.name,
-          description: `Mengimpor data kontak massal dari file '${selectedImportFile.name}' (${res.count || 0} database diproses).`
+          description: `Import '${selectedImportFile.name}': ${res.count} baris diproses, ${res.skippedCount || 0} dilewati.`
         });
       }
 
+      setImportResult(res);
       onImportSuccess();
-      resetState();
-      onClose();
     } catch (err: any) {
       clearInterval(ticker);
       setImportProgress(0);
@@ -357,7 +360,42 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {!importPreview ? (
+        {importResult ? (
+          <div className="flex flex-col min-h-0 gap-4" role="region" aria-label="Hasil import">
+            <div>
+              <h3 className="text-lg font-bold">Import Selesai</h3>
+              <p className="mt-1 text-sm text-slate-600" role="status">
+                {importResult.count} baris berhasil diproses: {importResult.newCount ?? importResult.count} baru, {importResult.updatedCount ?? 0} update.
+                {' '}{importResult.skippedCount || 0} baris dilewati.
+              </p>
+            </div>
+            {(importResult.skippedCount || 0) > 0 && (
+              <>
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  Baris di bawah tidak disimpan. Perbaiki dan upload ulang hanya baris yang dilewati.
+                </p>
+                <div className="overflow-auto border border-slate-200 rounded-xl max-h-[50vh]">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100"><tr><th className="p-3">Baris Excel</th><th className="p-3">Nama / Company</th><th className="p-3">Alasan dilewati</th></tr></thead>
+                    <tbody>
+                      {importResult.skippedRows.map(row => (
+                        <tr key={row.rowNum} className="border-t border-slate-100">
+                          <td className="p-3 align-top">#{row.rowNum}</td>
+                          <td className="p-3 align-top">{row.firstName} {row.lastName}<span className="block text-slate-500">{row.companyName}</span></td>
+                          <td className="p-3 text-red-700">{row.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between gap-3 border-t pt-3">
+              <button type="button" onClick={resetState} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-semibold">Upload File Lain</button>
+              <button type="button" onClick={handleClose} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold">Selesai</button>
+            </div>
+          </div>
+        ) : !importPreview ? (
           <div>
             <div className="text-center mb-6">
               <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
@@ -465,7 +503,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <div>
               <h3 className="text-lg font-bold text-slate-900">Hasil Analisis & Preview Excel</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Import memproses semua baris valid: {importPreview.newCount} kontak baru dan {importPreview.duplicateCount} update. Tab hanya menyaring tampilan.
+                Hanya {cleanCount} baris bersih yang diproses: {importPreview.newCount} kontak baru dan {importPreview.duplicateCount} update. {importPreview.issuesCount} baris kotor dilewati. Tab hanya menyaring tampilan.
                 Kolom kosong dan email lama tetap dipertahankan. Data company yang sudah terisi tidak ditimpa.
               </p>
             </div>
@@ -538,8 +576,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-900 shrink-0">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold text-red-700">Import Ditolak: </span>
-                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris data bermasalah</span> (data belum lengkap, personal email kembar, atau email kantor berada di kolom Personal Email). Company email dan nomor kantor boleh digunakan bersama. Silakan tinjau tabel di bawah dan perbaiki di file Excel Anda.
+                  <span className="font-bold text-red-700">Baris kotor akan dilewati: </span>
+                  {importPreview.issuesCount} baris belum lengkap atau konflik tidak akan disimpan. {cleanCount > 0 ? `${cleanCount} baris bersih tetap bisa diimport.` : 'Tidak ada baris bersih; perbaiki file lalu upload ulang.'} Company email dan nomor kantor boleh digunakan bersama. Hasil import akan menyertakan daftar baris yang dilewati.
                 </div>
               </div>
             ) : importPreview.duplicateCount > 0 ? (
@@ -818,9 +856,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <button
                   type="button"
                   onClick={handleImportExcel}
-                  disabled={importingExcel || importPreview.totalRows === 0 || importPreview.issuesCount > 0}
+                  disabled={importingExcel || cleanCount === 0}
                   className={`px-5 py-2 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
-                    importPreview.issuesCount > 0
+                    cleanCount === 0
                       ? 'bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300'
                       : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-md shadow-blue-500/20 disabled:opacity-50'
                   }`}
@@ -828,9 +866,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   {importingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {importingExcel
                     ? 'Mengimpor Data...'
-                    : importPreview.issuesCount > 0
-                    ? `Import Ditolak (${importPreview.issuesCount} Baris Error)`
-                    : `Konfirmasi & Import (${importPreview.totalRows} Data)`}
+                    : cleanCount === 0
+                    ? 'Tidak Ada Data Bersih'
+                    : `Import ${cleanCount} Data Bersih`}
                 </button>
               </div>
             </div>

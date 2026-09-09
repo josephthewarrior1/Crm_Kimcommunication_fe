@@ -495,3 +495,19 @@ export interface FlaggedIdentityFilterOptionsResponse {
   statuses: string[];
   flagReasons: string[];
 }
+export interface DatabaseImportResult {
+  message: string;
+  count: number;
+  newCount: number;
+  updatedCount: number;
+  totalRows: number;
+  skippedCount: number;
+  skippedRows: Array<{
+    rowNum: number;
+    firstName: string;
+    lastName: string;
+    companyName: string;
+    status: string;
+    message: string;
+  }>;
+}
