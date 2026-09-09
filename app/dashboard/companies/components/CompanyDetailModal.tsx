@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Building2, Users, Globe, Phone, MapPin, ExternalLink, Server, Landmark, BriefcaseBusiness } from 'lucide-react';
+import { X, Building2, Users, Globe, Phone, MapPin, ExternalLink, Server, Landmark, Briefcase } from 'lucide-react';
 import { Company, Database } from '../../../../lib/types';
 import { formatCompanyName } from '../../../../lib/utils/companyName';
 
@@ -141,7 +141,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
                 </DataPoint>
                 <DataPoint label="Holding group">
                   <span className="inline-flex items-center gap-2">
-                    <BriefcaseBusiness className="h-4 w-4 text-slate-400" />{company.group?.name || 'Independent'}
+                    <Briefcase className="h-4 w-4 text-slate-400" />{company.group?.name || 'Independent'}
                   </span>
                 </DataPoint>
               </div>

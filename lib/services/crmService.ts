@@ -841,6 +841,10 @@ export class CrmService extends ApiService {
       jobTitle: string;
       email: string;
       status: 'NEW' | 'DUPLICATE' | 'INCOMPLETE' | 'CONFLICT' | 'ERROR';
+      companyEmail?: string;
+      personalEmail?: string;
+      mobilePhone?: string;
+      existingDatabaseId?: number;
       message: string;
     }>;
   }> {

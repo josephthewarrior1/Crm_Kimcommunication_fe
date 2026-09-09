@@ -22,6 +22,10 @@ export interface ProcessedRowPreview {
   lastName: string;
   jobTitle: string;
   email: string;
+  companyEmail: string;
+  personalEmail: string;
+  mobilePhone: string;
+  existingDatabaseId?: number;
   status: RowStatus;
   message: string;
   isIssue: boolean;
@@ -156,42 +160,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       setImportPhase('Preview siap!');
       await new Promise(r => setTimeout(r, 300));
 
-      // Client-side conflict detection to catch duplicate emails across different names in the file
+      // The backend validates typed emails and uses the same rules when importing.
       const rawRows = data.rows || [];
-      const emailToRowsMap: Record<string, { rowNum: number; fullName: string }[]> = {};
-      
-      rawRows.forEach((r: any) => {
-        const em = (r.email || '').trim().toLowerCase();
-        const fullName = `${r.firstName || ''} ${r.lastName || ''}`.trim();
-        if (em) {
-          if (!emailToRowsMap[em]) emailToRowsMap[em] = [];
-          emailToRowsMap[em].push({ rowNum: r.rowNum, fullName });
-        }
-      });
 
       let incompleteCount = 0;
       let conflictCount = 0;
       let duplicateCount = 0;
       let newCount = 0;
 
-      const processedRows: ProcessedRowPreview[] = rawRows.map((r: any) => {
-        let status: RowStatus = (r.status as RowStatus) || 'NEW';
-        let message = r.message || '';
-        const em = (r.email || '').trim().toLowerCase();
-        const currentFullName = `${r.firstName || ''} ${r.lastName || ''}`.trim();
-
-        // Check if this email is shared with a different individual in the same file
-        if (em && emailToRowsMap[em] && emailToRowsMap[em].length > 1) {
-          const conflicting = emailToRowsMap[em].filter(
-            entry => entry.rowNum !== r.rowNum && entry.fullName.toLowerCase() !== currentFullName.toLowerCase()
-          );
-
-          if (conflicting.length > 0) {
-            status = 'CONFLICT';
-            const otherInfo = conflicting.map(c => `Baris ${c.rowNum} (${c.fullName})`).join(', ');
-            message = `⚠️ Konflik Email: Email '${em}' kembar dengan ${otherInfo}. Satu email tidak boleh dipakai 2 nama berbeda.`;
-          }
-        }
+      const processedRows: ProcessedRowPreview[] = rawRows.map((r) => {
+        const status: RowStatus = r.status || 'ERROR';
+        const message = r.message || '';
 
         if (status === 'INCOMPLETE') {
           incompleteCount++;
@@ -213,6 +192,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           lastName: r.lastName || '',
           jobTitle: r.jobTitle || '',
           email: r.email || '',
+          companyEmail: r.companyEmail || '',
+          personalEmail: r.personalEmail || '',
+          mobilePhone: r.mobilePhone || '',
+          existingDatabaseId: r.existingDatabaseId,
           status,
           message,
           isIssue
@@ -259,7 +242,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       return;
     }
 
-    if (importPreview && importPreview.issuesCount > 0) {
+    if (!importPreview || importPreview.totalRows === 0 || importingExcel) return;
+
+    if (importPreview.issuesCount > 0) {
       toast.error(`Import ditolak: Harap perbaiki ${importPreview.issuesCount} baris yang bermasalah di file Excel terlebih dahulu.`);
       return;
     }
@@ -308,7 +293,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       }
 
       onImportSuccess();
-      handleClose();
+      resetState();
+      onClose();
     } catch (err: any) {
       clearInterval(ticker);
       setImportProgress(0);
@@ -321,6 +307,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   };
 
   const handleClose = () => {
+    if (importingExcel || loadingPreview) return;
     resetState();
     onClose();
   };
@@ -346,6 +333,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           row.companyName.toLowerCase().includes(query) ||
           row.groupName.toLowerCase().includes(query) ||
           row.email.toLowerCase().includes(query) ||
+          row.companyEmail.toLowerCase().includes(query) ||
+          row.personalEmail.toLowerCase().includes(query) ||
+          row.mobilePhone.includes(query) ||
           row.message.toLowerCase().includes(query);
 
         if (!matchesQuery) return false;
@@ -415,6 +405,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     <p className="text-xs text-slate-500 mb-1.5">{(selectedImportFile.size / 1024).toFixed(1)} KB</p>
                     <button
                       type="button"
+                      disabled={loadingPreview}
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
@@ -474,7 +465,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <div>
               <h3 className="text-lg font-bold text-slate-900">Hasil Analisis & Preview Excel</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Periksa status kelengkapan data dan konflik sebelum melakukan import massal.
+                Import memproses semua baris valid: {importPreview.newCount} kontak baru dan {importPreview.duplicateCount} update. Tab hanya menyaring tampilan.
+                Kolom kosong dan email lama tetap dipertahankan. Data company yang sudah terisi tidak ditimpa.
               </p>
             </div>
 
@@ -698,7 +690,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         <th className="py-2 px-3 w-16 text-center">Baris</th>
                         <th className="py-2 px-3 w-36">Nama</th>
                         <th className="py-2 px-3 w-40">Perusahaan / Holding</th>
-                        <th className="py-2 px-3 w-40">Email</th>
+                        <th className="py-2 px-3 w-40">Email / Mobile</th>
                         <th className="py-2 px-3 w-28">Status</th>
                         <th className="py-2 px-3">Rincian Error / Keterangan</th>
                       </tr>
@@ -732,7 +724,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                               {r.groupName && <span className="text-[10px] text-slate-400 block truncate max-w-[160px]">Holding: {r.groupName}</span>}
                             </td>
                             <td className="py-2 px-3 font-mono text-[10px] break-all">
-                              {r.email || <span className="text-red-500 italic">[Email Kosong]</span>}
+                              <span className="block">Kantor: {r.companyEmail || '-'}</span>
+                              <span className="block">Personal: {r.personalEmail || '-'}</span>
+                              <span className="block">Mobile: {r.mobilePhone || '-'}</span>
                             </td>
                             <td className="py-2 px-3 whitespace-nowrap">
                               {r.status === 'INCOMPLETE' ? (
@@ -740,7 +734,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                                   <AlertCircle className="w-3 h-3 text-red-600" />
                                   BELUM LENGKAP
                                 </span>
-                              ) : r.status === 'CONFLICT' ? (
+                              ) : r.status === 'CONFLICT' || r.status === 'ERROR' ? (
                                 <span className="px-1.5 py-0.5 bg-orange-100 border border-orange-300 text-orange-800 text-[10px] font-bold rounded inline-flex items-center gap-1">
                                   <AlertTriangle className="w-3 h-3 text-orange-600" />
                                   KONFLIK
@@ -751,7 +745,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                                 </span>
                               ) : (
                                 <span className="px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-semibold rounded">
-                                  UPDATE DB
+                                  UPDATE DB {r.existingDatabaseId ? `#${r.existingDatabaseId}` : ''}
                                 </span>
                               )}
                             </td>
@@ -824,7 +818,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <button
                   type="button"
                   onClick={handleImportExcel}
-                  disabled={importingExcel || Boolean(importPreview.issuesCount > 0)}
+                  disabled={importingExcel || importPreview.totalRows === 0 || importPreview.issuesCount > 0}
                   className={`px-5 py-2 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
                     importPreview.issuesCount > 0
                       ? 'bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300'
