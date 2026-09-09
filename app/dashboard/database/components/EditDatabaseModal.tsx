@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, AlertCircle, CheckCircle, Search, UserX } from 'lucide-react';
-import { Company, Database } from '../../../../lib/types';
+import { Company, Database, Group } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
 import { normalizePhone } from '../utils/phoneHelper';
+import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../../lib/constants';
 
 interface EditDatabaseModalProps {
   isOpen: boolean;
@@ -44,6 +45,18 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [companyOptions, setCompanyOptions] = useState<Company[]>([]);
   const [companyOptionsLoading, setCompanyOptionsLoading] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [brandName, setBrandName] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [officePhone, setOfficePhone] = useState('');
+  const [website, setWebsite] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [companySizeRevenue, setCompanySizeRevenue] = useState('');
+  const [companySizeEmployee, setCompanySizeEmployee] = useState('');
+  const [companyHardware, setCompanyHardware] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -67,6 +80,17 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     setCompanySearchQuery('');
     setIsCompanyDropdownOpen(false);
     setSubmitAttempted(false);
+    setSelectedGroupId(database.company?.group?.id?.toString() || '');
+    setBrandName(database.company?.brandName || '');
+    setCompanyAddress(database.company?.address || '');
+    setOfficePhone(database.company?.officePhone || '');
+    setWebsite(database.company?.website || '');
+    setIndustry(database.company?.industry || '');
+    setCompanySizeRevenue(database.company?.companySizeRevenue || '');
+    setCompanySizeEmployee(database.company?.companySizeEmployee || '');
+    setCompanyHardware(database.company?.companyHardware || '');
+    setCity(database.company?.city || '');
+    setPostalCode(database.company?.postalCode || '');
 
     setDatabaseCompanyEmail('');
     setDatabaseCompanyEmailId('');
@@ -107,6 +131,11 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     if (!isOpen || isCreatingNewCompany) return;
     void loadCompanyOptions(companySearchQuery);
   }, [isOpen, isCreatingNewCompany, companySearchQuery]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    crmService.getGroups().then(setGroups).catch(() => setGroups([]));
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -156,15 +185,30 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     setSubmitting(true);
     try {
       let resolvedCompanyId: number | undefined = selectedCompanyId ? Number(selectedCompanyId) : undefined;
+      const companyDetails = {
+        name: isCreatingNewCompany ? newCompanyName.trim() : (selectedCompany?.name || database.company?.name || '').trim(),
+        brandName: brandName.trim() || undefined,
+        address: companyAddress.trim() || undefined,
+        officePhone: officePhone.trim() || undefined,
+        website: website.trim() || undefined,
+        industry: industry.trim() || undefined,
+        companySizeRevenue: companySizeRevenue.trim() || undefined,
+        companySizeEmployee: companySizeEmployee.trim() || undefined,
+        companyHardware: companyHardware.trim() || undefined,
+        city: city.trim() || undefined,
+        postalCode: postalCode.trim() || undefined
+      };
       if (isCreatingNewCompany && newCompanyName.trim()) {
         try {
-          const createdComp = await crmService.createCompany({ name: newCompanyName.trim() });
+          const createdComp = await crmService.createCompany(companyDetails, selectedGroupId ? Number(selectedGroupId) : undefined);
           resolvedCompanyId = createdComp.id;
         } catch (compErr: any) {
           toast.error(`Gagal membuat Perusahaan Baru: ${compErr.message}`);
           setSubmitting(false);
           return;
         }
+      } else if (resolvedCompanyId) {
+        await crmService.updateCompany(resolvedCompanyId, companyDetails, selectedGroupId ? Number(selectedGroupId) : undefined);
       }
 
       await crmService.updateDatabase(
@@ -326,6 +370,17 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                     setIsCreatingNewCompany(!isCreatingNewCompany);
                     setSelectedCompanyId('');
                     setNewCompanyName('');
+                    setSelectedGroupId('');
+                    setBrandName('');
+                    setCompanyAddress('');
+                    setOfficePhone('');
+                    setWebsite('');
+                    setIndustry('');
+                    setCompanySizeRevenue('');
+                    setCompanySizeEmployee('');
+                    setCompanyHardware('');
+                    setCity('');
+                    setPostalCode('');
                     setCompanySearchQuery('');
                     setIsCompanyDropdownOpen(false);
                   }}
@@ -396,6 +451,17 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                           onClick={() => {
                             setIsCreatingNewCompany(true);
                             setNewCompanyName(companySearchQuery || '');
+                            setSelectedGroupId('');
+                            setBrandName('');
+                            setCompanyAddress('');
+                            setOfficePhone('');
+                            setWebsite('');
+                            setIndustry('');
+                            setCompanySizeRevenue('');
+                            setCompanySizeEmployee('');
+                            setCompanyHardware('');
+                            setCity('');
+                            setPostalCode('');
                             setCompanySearchQuery('');
                             setIsCompanyDropdownOpen(false);
                           }}
@@ -417,6 +483,17 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                               type="button"
                               onClick={() => {
                                 setSelectedCompanyId(comp.id.toString());
+                                setSelectedGroupId(comp.group?.id?.toString() || '');
+                                setBrandName(comp.brandName || '');
+                                setCompanyAddress(comp.address || '');
+                                setOfficePhone(comp.officePhone || '');
+                                setWebsite(comp.website || '');
+                                setIndustry(comp.industry || '');
+                                setCompanySizeRevenue(comp.companySizeRevenue || '');
+                                setCompanySizeEmployee(comp.companySizeEmployee || '');
+                                setCompanyHardware(comp.companyHardware || '');
+                                setCity(comp.city || '');
+                                setPostalCode(comp.postalCode || '');
                                 setCompanySearchQuery('');
                                 setIsCompanyDropdownOpen(false);
                               }}
@@ -622,6 +699,72 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
               </label>
             </div>
           </div>
+
+          <section className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 space-y-4">
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">Company Details</h4>
+              <p className="text-xs text-slate-500 mt-1">Perubahan di bagian ini berlaku untuk semua kontak yang memakai perusahaan yang sama.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Group / Holding</label>
+                <select value={selectedGroupId} onChange={(e) => setSelectedGroupId(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none">
+                  <option value="">No Group (Independent)</option>
+                  {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Brand Name</label>
+                <input value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder="e.g. Toyota" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Industry</label>
+                <select value={industry} onChange={(e) => setIndustry(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none">
+                  <option value="">Select Industry</option>
+                  {INDUSTRIES.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Office Phone</label>
+                <input value={officePhone} onChange={(e) => setOfficePhone(e.target.value.replace(/[^0-9+\-()\s]/g, ''))} placeholder="e.g. 021-123456" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Size (Revenue)</label>
+                <select value={companySizeRevenue} onChange={(e) => setCompanySizeRevenue(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none">
+                  <option value="">Select Revenue Size</option>
+                  {REVENUE_SIZES.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Size (Employee)</label>
+                <select value={companySizeEmployee} onChange={(e) => setCompanySizeEmployee(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none">
+                  <option value="">Select Employee Size</option>
+                  {EMPLOYEE_SIZES.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">City</label>
+                <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Jakarta" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Postal Code</label>
+                <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="e.g. 14330" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Website</label>
+                <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. www.company.co.id" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Address</label>
+                <textarea value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} rows={2} placeholder="Full office address..." className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none resize-none" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Hardware</label>
+                <textarea value={companyHardware} onChange={(e) => setCompanyHardware(e.target.value)} rows={2} placeholder="Hardware, servers, laptops, etc." className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none resize-none" />
+              </div>
+            </div>
+          </section>
 
           <div className="flex gap-3 justify-between items-center pt-4 border-t border-slate-100 mt-6">
             {onRequestTakeout ? (
