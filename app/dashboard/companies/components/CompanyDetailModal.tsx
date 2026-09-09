@@ -36,19 +36,19 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
     .toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-3 backdrop-blur-sm sm:p-6">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="company-detail-title"
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-white shadow-2xl shadow-slate-950/25 animate-in zoom-in-95 duration-200"
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 animate-in zoom-in-95 duration-200"
       >
-        <header className="relative shrink-0 overflow-hidden bg-slate-950 px-5 py-6 text-white sm:px-8 sm:py-8">
-          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-blue-500/25 to-transparent" />
-          <div className="absolute -right-8 -top-24 h-60 w-60 rounded-full border border-blue-300/15" />
+        <header className="relative shrink-0 overflow-hidden border-b border-blue-100 bg-blue-50 px-5 py-6 text-slate-900 sm:px-8 sm:py-8">
+          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-blue-100/60 to-transparent" />
+          <div className="absolute -right-8 -top-24 h-60 w-60 rounded-full border border-blue-200/60" />
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 z-10 rounded-full border border-white/15 bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+            className="absolute right-4 top-4 z-10 rounded-full border border-blue-200 bg-white p-2 text-slate-500 transition hover:bg-blue-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             title="Close"
             type="button"
             aria-label="Close company details"
@@ -57,17 +57,17 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
           </button>
 
           <div className="relative flex items-start gap-4 pr-12 sm:gap-5">
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-blue-500 text-lg font-black tracking-tight shadow-lg shadow-blue-950/30 sm:h-16 sm:w-16 sm:text-xl">
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-blue-200 bg-white text-lg font-black tracking-tight text-blue-600 shadow-sm sm:h-16 sm:w-16 sm:text-xl">
               {initials || <Building2 className="h-8 w-8" />}
             </div>
             <div className="min-w-0">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-blue-300">Company record</p>
-              <h2 id="company-detail-title" className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-blue-600">Company record</p>
+              <h2 id="company-detail-title" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                 {formatCompanyName(company.name)}
               </h2>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-300">
-                {company.brandName && <span className="font-semibold text-white">{company.brandName}</span>}
-                {company.brandName && company.industry && <span className="text-slate-600">/</span>}
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                {company.brandName && <span className="font-semibold text-slate-800">{company.brandName}</span>}
+                {company.brandName && company.industry && <span className="text-slate-400">/</span>}
                 {company.industry && <span>{company.industry}</span>}
               </div>
             </div>
@@ -147,12 +147,12 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
               </div>
             </article>
 
-            <article className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white sm:p-6 lg:col-span-2">
+            <article className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 text-slate-800 sm:p-6 lg:col-span-2">
               <div className="mb-4 flex items-center gap-2">
-                <Server className="h-4 w-4 text-blue-400" />
-                <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-200">Infrastructure & hardware</h3>
+                <Server className="h-4 w-4 text-blue-600" />
+                <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-800">Infrastructure & hardware</h3>
               </div>
-              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
+              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-600">
                 {company.companyHardware || <span className="italic text-slate-500">No infrastructure details recorded.</span>}
               </p>
             </article>

@@ -1028,14 +1028,14 @@ export default function DatabasesPage() {
                                         void handleAddToTikus(c);
                                       }}
                                       disabled={hasConfirmedFlag || flaggingDatabaseId === c.id}
-                                      className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
+                                      className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2 text-left text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
                                     >
                                       {flaggingDatabaseId === c.id ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                                       ) : (
-                                        <ShieldAlert className="h-3.5 w-3.5" />
+                                        <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
                                       )}
-                                      {hasConfirmedFlag ? 'Sudah di Daftar Tikus' : 'Masukkan ke Daftar Tikus'}
+                                      {hasConfirmedFlag ? 'Sudah Ditandai' : 'Daftar Tikus'}
                                     </button>
                                   )}
 
@@ -1236,14 +1236,14 @@ export default function DatabasesPage() {
                                     void handleAddToTikus(c);
                                   }}
                                   disabled={hasConfirmedFlag || flaggingDatabaseId === c.id}
-                                  className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
+                                  className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2 text-left text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
                                 >
                                   {flaggingDatabaseId === c.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                                   ) : (
-                                    <ShieldAlert className="h-3.5 w-3.5" />
+                                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
                                   )}
-                                  {hasConfirmedFlag ? 'Sudah di Daftar Tikus' : 'Masukkan ke Daftar Tikus'}
+                                  {hasConfirmedFlag ? 'Sudah Ditandai' : 'Daftar Tikus'}
                                 </button>
                               )}
 
