@@ -830,6 +830,8 @@ export class CrmService extends ApiService {
     totalRows: number;
     newCount: number;
     duplicateCount: number;
+    incompleteCount: number;
+    conflictCount: number;
     rows: Array<{
       rowNum: number;
       groupName: string;
@@ -838,7 +840,7 @@ export class CrmService extends ApiService {
       lastName: string;
       jobTitle: string;
       email: string;
-      status: 'NEW' | 'DUPLICATE';
+      status: 'NEW' | 'DUPLICATE' | 'INCOMPLETE' | 'CONFLICT' | 'ERROR';
       message: string;
     }>;
   }> {

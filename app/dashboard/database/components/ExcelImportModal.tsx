@@ -547,7 +547,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold text-red-700">Import Ditolak: </span>
-                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris data bermasalah</span> (data belum lengkap atau email kembar antar kontak berbeda). Silakan tinjau tabel di bawah dan perbaiki di file Excel Anda.
+                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris data bermasalah</span> (data belum lengkap, email kembar, atau email kantor berada di kolom Personal Email). Silakan tinjau tabel di bawah dan perbaiki di file Excel Anda.
                 </div>
               </div>
             ) : importPreview.duplicateCount > 0 ? (
