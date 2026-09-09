@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { crmService } from '../../lib/services/crmService';
-import { DashboardSummaryResponse, Event } from '../../lib/types';
+import { DashboardSummaryResponse, Event, IndustrySummaryResponse } from '../../lib/types';
 import {
   Building2,
   CalendarDays,
@@ -29,18 +29,21 @@ const COLORS = {
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardSummaryResponse | null>(null);
+  const [industrySummary, setIndustrySummary] = useState<IndustrySummaryResponse | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [summary, eventItems] = await Promise.all([
+        const [summary, eventItems, industries] = await Promise.all([
           crmService.getDashboardSummary(),
-          crmService.getEvents().catch(() => [])
+          crmService.getEvents().catch(() => []),
+          crmService.getIndustrySummary().catch(() => null)
         ]);
         setDashboard(summary);
         setEvents(eventItems);
+        setIndustrySummary(industries);
       } catch (err) {
         toast.error('Failed to load dashboard data. Ensure backend is running.');
       } finally {
@@ -53,12 +56,12 @@ export default function DashboardPage() {
 
   const metrics = dashboard?.metrics;
   const eventAttendanceData = dashboard?.eventAttendancePerformance || [];
-  const topIndustries = dashboard?.industryDistribution || [];
+  const topIndustries = industrySummary?.items || [];
 
   const totalInvited = eventAttendanceData.reduce((sum, item) => sum + (item.Invited || 0), 0);
   const totalAttended = eventAttendanceData.reduce((sum, item) => sum + (item.Attended || 0), 0);
   const attendanceRate = totalInvited > 0 ? (totalAttended / totalInvited) * 100 : 0;
-  const industryTotal = topIndustries.reduce((sum, item) => sum + item.value, 0);
+  const industryTotal = industrySummary?.totals.databases || 0;
 
   const stats = [
     { name: 'Total Groups', value: metrics?.totalGroups || 0, icon: FolderTree },
@@ -154,55 +157,65 @@ export default function DashboardPage() {
               </div>
 
               <div className="rounded-lg bg-white/78 p-4">
-                <p className="text-xs font-bold mb-3" style={{ color: COLORS.ink }}>Top Industries</p>
+                <p className="text-xs font-bold mb-3" style={{ color: COLORS.ink }}>Top Industries · Kontak</p>
                 <div className="space-y-3">
                   {topIndustries.slice(0, 5).map((item, index) => {
-                    const pct = industryTotal > 0 ? Math.round((item.value / industryTotal) * 100) : 0;
+                    const pct = industryTotal > 0 ? Math.round((item.databaseCount / industryTotal) * 100) : 0;
                     return (
-                      <div key={item.name} className="flex items-center gap-3">
+                      <div key={item.industry} className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ backgroundColor: COLORS.blueSoft, color: COLORS.blue }}>
                           {index + 1}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-bold truncate" style={{ color: COLORS.ink }}>{item.name}</p>
-                          <p className="text-[10px]" style={{ color: COLORS.muted }}>{item.value.toLocaleString()} records</p>
+                          <p className="text-[11px] font-bold truncate" title={item.industry} style={{ color: COLORS.ink }}>{item.industry}</p>
+                          <p className="text-[10px]" style={{ color: COLORS.muted }}>{item.databaseCount.toLocaleString()} kontak · {item.companyCount.toLocaleString()} company</p>
                         </div>
                         <span className="text-[10px] font-bold" style={{ color: COLORS.blue }}>{pct}%</span>
                       </div>
                     );
                   })}
                   {topIndustries.length === 0 && (
-                    <p className="text-xs" style={{ color: COLORS.muted }}>No industry data available</p>
+                    <p className="text-xs" style={{ color: COLORS.muted }}>{industrySummary ? 'Belum ada data industri.' : 'Ringkasan industri gagal dimuat.'}</p>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          <div
+          <section
+            aria-labelledby="industry-records-title"
             className="rounded-lg border p-5 md:p-6 backdrop-blur-md"
             style={{ backgroundColor: COLORS.card, borderColor: 'rgba(255,255,255,0.78)' }}
           >
-            <h2 className="text-lg font-bold mb-5" style={{ color: COLORS.ink }}>Industry Records</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px]">
-                <thead>
+            <h2 id="industry-records-title" className="text-lg font-bold mb-1" style={{ color: COLORS.ink }}>Industry Records</h2>
+            {industrySummary ? <>
+            <p className="text-xs mb-2" style={{ color: COLORS.muted }}>Semua {industrySummary.totals.industries.toLocaleString()} industri · {industrySummary.totals.companies.toLocaleString()} company · <span className="font-bold" style={{ color: COLORS.blue }}>{industryTotal.toLocaleString()} kontak</span></p>
+            <p className="text-xs mb-5" style={{ color: COLORS.muted }}>Total data = kontak aktif + nonaktif. Share dihitung dari seluruh kontak, bukan jumlah company.</p>
+            <div className="max-h-[440px] overflow-auto">
+              <table className="w-full min-w-[640px] tabular-nums">
+                <thead className="sticky top-0 bg-white">
                   <tr className="text-left text-[11px]" style={{ color: COLORS.muted }}>
-                    <th className="font-semibold pb-3">Industry</th>
-                    <th className="font-semibold pb-3">Records</th>
-                    <th className="font-semibold pb-3">Share</th>
+                    <th scope="col" className="font-semibold py-3 pr-4">Industry</th>
+                    <th scope="col" className="font-semibold py-3 px-3 text-right">Companies</th>
+                    <th scope="col" className="font-semibold py-3 px-3 text-right whitespace-nowrap" style={{ color: COLORS.blue }}>Total Data</th>
+                    <th scope="col" className="font-semibold py-3 px-3 text-right">Aktif</th>
+                    <th scope="col" className="font-semibold py-3 px-3 text-right">Nonaktif</th>
+                    <th scope="col" className="font-semibold py-3 pl-3">Share Kontak</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {topIndustries.slice(0, 6).map((item) => {
-                    const pct = industryTotal > 0 ? Math.round((item.value / industryTotal) * 100) : 0;
+                  {topIndustries.map((item) => {
+                    const pct = industryTotal > 0 ? Math.round((item.databaseCount / industryTotal) * 100) : 0;
                     return (
-                      <tr key={item.name} className="border-t" style={{ borderColor: COLORS.line }}>
-                        <td className="py-3 text-xs font-semibold" style={{ color: COLORS.ink }}>{item.name}</td>
-                        <td className="py-3 text-xs" style={{ color: COLORS.muted }}>{item.value.toLocaleString()}</td>
-                        <td className="py-3">
+                      <tr key={item.industry} className="border-t" style={{ borderColor: COLORS.line }}>
+                        <th scope="row" className="py-3 pr-4 text-left text-xs font-semibold" style={{ color: COLORS.ink }}>{item.industry}</th>
+                        <td className="py-3 px-3 text-xs text-right" style={{ color: COLORS.muted }}>{item.companyCount.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-xs text-right font-bold" style={{ color: COLORS.blue, backgroundColor: COLORS.blueSoft }}>{item.databaseCount.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-xs text-right" style={{ color: COLORS.ink }}>{item.activeDatabaseCount.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-xs text-right" style={{ color: COLORS.muted }}>{item.inactiveDatabaseCount.toLocaleString()}</td>
+                        <td className="py-3 pl-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-28 h-2 rounded-full overflow-hidden" style={{ backgroundColor: COLORS.track }}>
+                            <div className="w-16 h-2 rounded-full overflow-hidden" style={{ backgroundColor: COLORS.track }}>
                               <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: COLORS.blue }} />
                             </div>
                             <span className="text-[11px] font-bold" style={{ color: COLORS.blue }}>{pct}%</span>
@@ -212,9 +225,21 @@ export default function DashboardPage() {
                     );
                   })}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t text-xs font-bold" style={{ borderColor: COLORS.line, color: COLORS.ink }}>
+                    <th scope="row" className="py-3 pr-4 text-left">Total</th>
+                    <td className="py-3 px-3 text-right">{industrySummary.totals.companies.toLocaleString()}</td>
+                    <td className="py-3 px-3 text-right" style={{ color: COLORS.blue, backgroundColor: COLORS.blueSoft }}>{industryTotal.toLocaleString()}</td>
+                    <td className="py-3 px-3 text-right">{industrySummary.totals.activeDatabases.toLocaleString()}</td>
+                    <td className="py-3 px-3 text-right">{industrySummary.totals.inactiveDatabases.toLocaleString()}</td>
+                    <td className="py-3 pl-3">{industryTotal > 0 ? '100%' : '0%'}</td>
+                  </tr>
+                </tfoot>
               </table>
+              {topIndustries.length === 0 && <p className="py-6 text-center text-sm" style={{ color: COLORS.muted }}>Belum ada data industri.</p>}
             </div>
-          </div>
+            </> : <p role="alert" className="py-4 text-sm text-amber-700">Ringkasan industri gagal dimuat. Pastikan backend mendukung API industry-summary, lalu muat ulang halaman.</p>}
+          </section>
         </div>
 
         <div className="space-y-5 min-w-0">

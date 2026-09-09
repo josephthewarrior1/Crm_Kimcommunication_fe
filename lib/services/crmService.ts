@@ -7,6 +7,9 @@ import {
   CompanyFilterOptionsResponse,
   CompanyListResponse,
   DashboardSummaryResponse,
+  IndustrySummaryResponse,
+  DatabaseUploadTarget,
+  DatabaseUploadTargetsResponse,
   Database,
   DatabaseExportResponse,
   DatabaseFilterOptionsResponse,
@@ -33,6 +36,10 @@ import {
   UserListResponse
 } from '../types';
 
+function notifyDatabaseTargetChange() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new window.Event('database-targets-updated'));
+}
+
 export class CrmService extends ApiService {
   constructor() {
     super();
@@ -56,6 +63,26 @@ export class CrmService extends ApiService {
 
   async getDashboardSummary(): Promise<DashboardSummaryResponse> {
     return this.get<DashboardSummaryResponse>('/api/dashboard/summary');
+  }
+
+  async getIndustrySummary(): Promise<IndustrySummaryResponse> {
+    return this.get<IndustrySummaryResponse>('/api/dashboard/industry-summary');
+  }
+
+  async getDatabaseUploadTargets(month?: string, date?: string): Promise<DatabaseUploadTargetsResponse> {
+    const params = new URLSearchParams();
+    if (month) params.set('month', month);
+    if (date) params.set('date', date);
+    return this.get<DatabaseUploadTargetsResponse>(`/api/database-targets?${params}`);
+  }
+
+  async getMyDatabaseUploadTarget(): Promise<DatabaseUploadTargetsResponse> {
+    return this.get<DatabaseUploadTargetsResponse>('/api/database-targets/me');
+  }
+
+  async setDatabaseUploadTarget(userId: number, month: string, targetCount: number, targetMode: DatabaseUploadTarget['targetMode']): Promise<void> {
+    await this.put(`/api/database-targets/${userId}?month=${encodeURIComponent(month)}`, { targetCount, targetMode });
+    notifyDatabaseTargetChange();
   }
 
   // --- GROUPS ---
@@ -222,7 +249,9 @@ export class CrmService extends ApiService {
 
   async createDatabase(database: Partial<Database>, companyId?: number): Promise<Database> {
     const url = companyId ? `/api/databases?companyId=${companyId}` : '/api/databases';
-    return this.post<Database>(url, database);
+    const result = await this.post<Database>(url, database);
+    notifyDatabaseTargetChange();
+    return result;
   }
 
   async updateDatabase(id: number, database: Partial<Database>, companyId?: number): Promise<Database> {
@@ -231,7 +260,8 @@ export class CrmService extends ApiService {
   }
 
   async deleteDatabase(id: number): Promise<void> {
-    return this.delete<void>(`/api/databases/${id}`);
+    await this.delete<void>(`/api/databases/${id}`);
+    notifyDatabaseTargetChange();
   }
 
   async addDatabaseEmail(databaseId: number, email: Partial<DatabaseEmail>): Promise<DatabaseEmail> {
@@ -898,7 +928,9 @@ export class CrmService extends ApiService {
       throw new Error(message);
     }
 
-    return response.json();
+    const result = await response.json();
+    notifyDatabaseTargetChange();
+    return result;
   }
 
   // --- USER MANAGEMENT ---

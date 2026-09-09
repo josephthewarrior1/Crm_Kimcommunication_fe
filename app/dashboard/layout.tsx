@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/context/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { crmService } from '../../lib/services/crmService';
 import { checkDatabaseCompleteness } from './database/utils/validationHelper';
+import DatabaseTargetWarning from './components/DatabaseTargetWarning';
 import {
   LayoutDashboard,
   Building2,
@@ -250,6 +251,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
         {/* Content Body */}
         <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
+          {!isViewer && user && <DatabaseTargetWarning />}
           {children}
         </main>
       </div>

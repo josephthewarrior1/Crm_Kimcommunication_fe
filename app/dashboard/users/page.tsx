@@ -12,6 +12,7 @@ import { EditUserModal } from './components/EditUserModal';
 import { DeleteUserConfirmModal } from './components/DeleteUserConfirmModal';
 import { ManageViewerEventsModal } from './components/ManageViewerEventsModal';
 import { ManageUserColumnsModal } from './components/ManageUserColumnsModal';
+import DatabaseUploadTargets from '../components/DatabaseUploadTargets';
 
 export default function UserManagementPage() {
   const { user: currentUser, isAdmin } = useAuth();
@@ -384,6 +385,8 @@ export default function UserManagementPage() {
           )}
         </div>
       )}
+
+      <DatabaseUploadTargets />
 
       {/* Provision New User Modal */}
       <AddUserModal

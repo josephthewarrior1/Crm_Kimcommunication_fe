@@ -92,6 +92,46 @@ export interface DashboardSummaryResponse {
   flaggedAlerts: FlaggedIdentity[];
 }
 
+export interface DatabaseUploadTarget {
+  userId: number;
+  username: string;
+  fullName: string;
+  targetCount: number;
+  targetMode: 'DAILY' | 'MONTHLY';
+  dailyCount: number;
+  progressCount: number;
+  remainingCount: number;
+  monthlyTargetCount: number;
+  excelCount: number;
+  manualCount: number;
+  totalCount: number;
+}
+
+export interface DatabaseUploadTargetsResponse {
+  month: string;
+  date: string;
+  daysInMonth: number;
+  timeZone: string;
+  items: DatabaseUploadTarget[];
+}
+
+export interface IndustrySummaryResponse {
+  totals: {
+    industries: number;
+    companies: number;
+    databases: number;
+    activeDatabases: number;
+    inactiveDatabases: number;
+  };
+  items: Array<{
+    industry: string;
+    companyCount: number;
+    databaseCount: number;
+    activeDatabaseCount: number;
+    inactiveDatabaseCount: number;
+  }>;
+}
+
 export interface Database {
   id: number;
   company?: Company | null;
