@@ -33,13 +33,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-slate-50 overflow-hidden">
-      {/* Decorative Gradients */}
-      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-blue-100/40 blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 rounded-full bg-violet-100/30 blur-3xl pointer-events-none"></div>
+    <div className="workspace-auth relative min-h-screen flex items-center justify-center bg-slate-50 overflow-hidden">
 
       {/* Login Card */}
-      <div className="w-full max-w-md p-8 bg-white border border-slate-200 rounded-2xl shadow-xl relative z-10 mx-4">
+      <div className="workspace-auth-card w-full max-w-md p-8 bg-white border border-slate-200 rounded-2xl shadow-xl relative z-10 mx-4">
         <div className="text-center mb-8">
           <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3 shadow-sm">
             <LogIn className="w-8 h-8" />
@@ -94,7 +91,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>

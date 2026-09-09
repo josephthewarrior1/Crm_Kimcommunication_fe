@@ -28,14 +28,14 @@ export const GroupDetailModal: React.FC<GroupDetailModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="group-detail-title"
-        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-white shadow-2xl shadow-slate-950/25 animate-in zoom-in-95 duration-200"
+        className="workspace-record flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-white shadow-2xl shadow-slate-950/25 animate-in zoom-in-95 duration-200"
       >
-        <header className="relative shrink-0 overflow-hidden bg-slate-950 px-5 py-6 text-white sm:px-8 sm:py-8">
+        <header className="workspace-record-header relative shrink-0 overflow-hidden bg-slate-950 px-5 py-6 text-white sm:px-8 sm:py-8">
           <div className="absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-indigo-500/25 to-transparent" />
           <div className="absolute -right-10 -top-20 h-52 w-52 rounded-full border border-indigo-300/15" />
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 z-10 rounded-full border border-white/15 bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+            className="workspace-record-close absolute right-4 top-4 z-10 rounded-full border border-white/15 bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
             type="button"
             aria-label="Close group details"
           >
@@ -43,7 +43,7 @@ export const GroupDetailModal: React.FC<GroupDetailModalProps> = ({
           </button>
 
           <div className="relative flex items-start gap-4 pr-12 sm:gap-5">
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-950/30 sm:h-16 sm:w-16">
+            <div className="workspace-record-icon grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-950/30 sm:h-16 sm:w-16">
               <FolderTree className="h-7 w-7 sm:h-8 sm:w-8" />
             </div>
             <div className="min-w-0">

@@ -56,29 +56,29 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="database-detail-title"
-        className="relative max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-white/10 bg-white text-slate-900 shadow-2xl shadow-slate-950/25 animate-in zoom-in-95 duration-200"
+        className="workspace-record relative max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-white/10 bg-white text-slate-900 shadow-2xl shadow-slate-950/25 animate-in zoom-in-95 duration-200"
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-20 rounded-full border border-white/15 bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+          className="workspace-record-close absolute right-4 top-4 z-20 rounded-full border border-white/15 bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
           type="button"
           aria-label="Close database details"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <header className="relative overflow-hidden bg-slate-950 px-5 py-6 text-white sm:px-8 sm:py-8">
+        <header className="workspace-record-header relative overflow-hidden bg-slate-950 px-5 py-6 text-white sm:px-8 sm:py-8">
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-cyan-500/20 to-transparent" />
           <div className="absolute -right-8 -top-24 h-60 w-60 rounded-full border border-cyan-300/15" />
           <div className="relative flex items-start gap-4 pr-12 sm:gap-5">
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-cyan-500 text-lg font-black text-slate-950 shadow-lg shadow-cyan-950/30 sm:h-16 sm:w-16 sm:text-xl">
+            <div className="workspace-record-icon grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-cyan-500 text-lg font-black text-slate-950 shadow-lg shadow-cyan-950/30 sm:h-16 sm:w-16 sm:text-xl">
               {initials || <Users className="h-8 w-8" />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-300">Database profile · #{database.id}</p>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 id="database-detail-title" className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{fullName}</h2>
-                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${database.isActive !== false ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300' : 'border-rose-400/30 bg-rose-400/15 text-rose-300'}`}>
+                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${database.isActive !== false ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
                   {database.isActive !== false ? 'Active' : 'Inactive'}
                 </span>
               </div>
@@ -87,10 +87,10 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
                 {database.company?.name ? <span className="text-slate-500"> · </span> : null}
                 {database.company?.name && <span className="font-semibold text-white">{database.company.name}</span>}
               </p>
-              <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-300">
-                <span className="rounded-lg bg-white/10 px-2.5 py-1.5">{emails.length} email{emails.length === 1 ? '' : 's'}</span>
-                <span className="rounded-lg bg-white/10 px-2.5 py-1.5">{events.length} event{events.length === 1 ? '' : 's'}</span>
-                <span className="rounded-lg bg-white/10 px-2.5 py-1.5 capitalize">{database.databaseType || 'Type not set'}</span>
+              <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                <span className="rounded-lg bg-slate-100 px-2.5 py-1.5">{emails.length} email{emails.length === 1 ? '' : 's'}</span>
+                <span className="rounded-lg bg-slate-100 px-2.5 py-1.5">{events.length} event{events.length === 1 ? '' : 's'}</span>
+                <span className="rounded-lg bg-slate-100 px-2.5 py-1.5 capitalize">{database.databaseType || 'Type not set'}</span>
               </div>
             </div>
           </div>

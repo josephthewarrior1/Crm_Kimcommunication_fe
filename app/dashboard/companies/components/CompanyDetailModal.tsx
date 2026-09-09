@@ -41,14 +41,14 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="company-detail-title"
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 animate-in zoom-in-95 duration-200"
+        className="workspace-record flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 animate-in zoom-in-95 duration-200"
       >
-        <header className="relative shrink-0 overflow-hidden border-b border-blue-100 bg-blue-50 px-5 py-6 text-slate-900 sm:px-8 sm:py-8">
+        <header className="workspace-record-header relative shrink-0 overflow-hidden border-b border-blue-100 bg-blue-50 px-5 py-6 text-slate-900 sm:px-8 sm:py-8">
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-blue-100/60 to-transparent" />
           <div className="absolute -right-8 -top-24 h-60 w-60 rounded-full border border-blue-200/60" />
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 z-10 rounded-full border border-blue-200 bg-white p-2 text-slate-500 transition hover:bg-blue-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="workspace-record-close absolute right-4 top-4 z-10 rounded-full border border-blue-200 bg-white p-2 text-slate-500 transition hover:bg-blue-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             title="Close"
             type="button"
             aria-label="Close company details"
@@ -57,7 +57,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
           </button>
 
           <div className="relative flex items-start gap-4 pr-12 sm:gap-5">
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-blue-200 bg-white text-lg font-black tracking-tight text-blue-600 shadow-sm sm:h-16 sm:w-16 sm:text-xl">
+            <div className="workspace-record-icon grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-blue-200 bg-white text-lg font-black tracking-tight text-blue-600 shadow-sm sm:h-16 sm:w-16 sm:text-xl">
               {initials || <Building2 className="h-8 w-8" />}
             </div>
             <div className="min-w-0">

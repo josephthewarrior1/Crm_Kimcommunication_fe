@@ -17,7 +17,22 @@ module.exports = {
       },
     },
     extend: {
+      fontWeight: {
+        bold: '600',
+        extrabold: '650',
+        black: '650',
+      },
       colors: {
+        slate: {
+          50: '#f7f7f5', 100: '#f1f1ef', 200: '#e9e9e7', 300: '#d3d3ce',
+          400: '#96958f', 500: '#787774', 600: '#605f5b', 700: '#4c4b47',
+          800: '#37352f', 900: '#2f2e2a', 950: '#242320',
+        },
+        blue: {
+          50: '#f0f7fc', 100: '#e1eef8', 200: '#c3dff2', 300: '#9ccbe9',
+          400: '#69aedc', 500: '#3994cf', 600: '#2383c5', 700: '#1b6ba5',
+          800: '#225780', 900: '#234966', 950: '#203c52',
+        },
         border: "var(--border)",
         input: "var(--input)",
         "input-background": "var(--input-background)",
@@ -69,6 +84,17 @@ module.exports = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: '0.5rem',
+        '2xl': '0.625rem',
+        '3xl': '0.75rem',
+      },
+      boxShadow: {
+        sm: '0 1px 2px rgb(15 15 15 / 0.035)',
+        DEFAULT: '0 1px 3px rgb(15 15 15 / 0.06)',
+        md: '0 2px 6px rgb(15 15 15 / 0.06)',
+        lg: '0 4px 16px rgb(15 15 15 / 0.08)',
+        xl: '0 8px 30px rgb(15 15 15 / 0.10)',
+        '2xl': '0 20px 70px rgb(15 15 15 / 0.16)',
       },
       keyframes: {
         "accordion-down": {

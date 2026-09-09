@@ -155,7 +155,8 @@ export default function GroupsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Groups (Holding Companies)</h2>
+          <div className="workspace-page-icon" aria-hidden="true"><FolderTree /></div>
+          <h2 className="workspace-page-title">Groups (Holding Companies)</h2>
           <p className="text-sm text-slate-500 mt-1">Manage holding organizations and conglomerate groups.</p>
         </div>
         {!isUser && (
@@ -231,7 +232,7 @@ export default function GroupsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="workspace-table bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>

@@ -501,7 +501,8 @@ export default function DatabasesPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Databases</h2>
+          <div className="workspace-page-icon" aria-hidden="true"><Users /></div>
+          <h2 className="workspace-page-title">Databases</h2>
           <p className="text-sm text-slate-500 mt-1">Manage database persons, corporate roles, and corporate vs personal emails.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
@@ -536,9 +537,10 @@ export default function DatabasesPage() {
       </div>
 
       {/* Quality Status Tab Pills */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+      <div className="workspace-tabs flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
         <button
           onClick={() => setActiveTabFilter('all')}
+          aria-pressed={activeTabFilter === 'all'}
           className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeTabFilter === 'all'
               ? 'bg-blue-600 text-white shadow-sm'
@@ -549,6 +551,7 @@ export default function DatabasesPage() {
         </button>
         <button
           onClick={() => setActiveTabFilter('clean')}
+          aria-pressed={activeTabFilter === 'clean'}
           className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeTabFilter === 'clean'
               ? 'bg-emerald-600 text-white shadow-sm'
@@ -560,6 +563,7 @@ export default function DatabasesPage() {
         </button>
         <button
           onClick={() => setActiveTabFilter('dirty')}
+          aria-pressed={activeTabFilter === 'dirty'}
           className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeTabFilter === 'dirty'
               ? 'bg-amber-600 text-white shadow-sm'
@@ -572,7 +576,7 @@ export default function DatabasesPage() {
       </div>
 
       {/* Advanced Filters Area */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
+      <div className="workspace-filter-panel bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div className="flex items-center flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
             <Search className="w-5 h-5 text-slate-400 mr-2" />
@@ -702,7 +706,7 @@ export default function DatabasesPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="workspace-table bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           {/* Top Horizontal Scrollbar */}
           <div
             ref={topScrollRef}
@@ -728,8 +732,8 @@ export default function DatabasesPage() {
             <table ref={tableRef} className="w-full text-left border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
                 <tr className="text-slate-500 uppercase tracking-wider text-xs font-semibold whitespace-nowrap text-left">
-                  <th className="py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
-                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-left sticky left-0 bg-slate-50 z-10">Actions</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 text-left sticky left-0 bg-slate-50 z-10">Actions</th>
+                  <th className="py-3 px-3 text-xs font-semibold text-slate-500 w-10 text-center">Status</th>
                   <th
                     onClick={() => handleSort('groupName')}
                     className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
@@ -1004,7 +1008,7 @@ export default function DatabasesPage() {
                                     top: `${dropdownPos.top}px`,
                                     right: `${dropdownPos.right}px`,
                                   }}
-                                  className="w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 duration-100 text-left animate-in fade-in zoom-in-95"
+                                  className="workspace-action-menu w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 duration-100 text-left animate-in fade-in zoom-in-95"
                                 >
                                   {!isUser && (
                                     <button
@@ -1212,7 +1216,7 @@ export default function DatabasesPage() {
                                 top: `${dropdownPos.top}px`,
                                 right: `${dropdownPos.right}px`,
                               }}
-                              className="w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 duration-100 text-left animate-in fade-in zoom-in-95"
+                              className="workspace-action-menu w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 duration-100 text-left animate-in fade-in zoom-in-95"
                             >
                               {!isUser && (
                                 <button

@@ -16,15 +16,15 @@ import { toast } from 'sonner';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from 'recharts';
 
 const COLORS = {
-  page: '#f4f7ff',
-  card: 'rgba(255,255,255,0.82)',
-  ink: '#141826',
-  muted: '#7c8190',
-  line: 'rgba(20,24,38,0.10)',
-  blue: '#2f64e8',
-  blueDark: '#183a9e',
-  blueSoft: '#eaf0ff',
-  track: '#dfe6f5'
+  page: '#ffffff',
+  card: '#ffffff',
+  ink: '#37352f',
+  muted: '#787774',
+  line: '#e9e9e7',
+  blue: '#2383c5',
+  blueDark: '#1b6ba5',
+  blueSoft: '#f0f7fc',
+  track: '#e9e9e7'
 };
 
 export default function DashboardPage() {
@@ -87,33 +87,37 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: COLORS.page }}>
+    <div className="space-y-7" style={{ backgroundColor: COLORS.page }}>
+      <div className="workspace-page-header">
+        <div className="workspace-page-icon" aria-hidden="true"><DatabaseIcon /></div>
+        <h2 className="workspace-page-title">Overview</h2>
+        <p className="mt-2 text-sm text-slate-500">Your relationships, records, and events at a glance.</p>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.name}
+              className="rounded-lg border p-4 flex items-center gap-3"
+              style={{ backgroundColor: COLORS.card, borderColor: COLORS.line }}
+            >
+              <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                <Icon className="w-4 h-4" style={{ color: COLORS.blue }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold truncate" style={{ color: COLORS.muted }}>{stat.name}</p>
+                <p className="text-2xl font-semibold leading-tight mt-1" style={{ color: COLORS.ink }}>{stat.value.toLocaleString()}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.9fr)] gap-4 max-w-[1440px] mx-auto">
         <div className="space-y-4 min-w-0">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {stats.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div
-                  key={stat.name}
-                  className="rounded-lg border p-4 flex items-center gap-3 backdrop-blur-md"
-                  style={{ backgroundColor: COLORS.card, borderColor: 'rgba(255,255,255,0.78)' }}
-                >
-                  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Icon className="w-4 h-4" style={{ color: COLORS.blue }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold truncate" style={{ color: COLORS.muted }}>{stat.name}</p>
-                    <p className="text-lg font-bold leading-tight" style={{ color: COLORS.ink }}>{stat.value.toLocaleString()}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
           <div
-            className="rounded-lg border p-5 md:p-6 backdrop-blur-md"
-            style={{ backgroundColor: COLORS.card, borderColor: 'rgba(255,255,255,0.78)' }}
+            className="rounded-lg border p-5 md:p-6"
+            style={{ backgroundColor: COLORS.card, borderColor: COLORS.line }}
           >
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
@@ -146,8 +150,8 @@ export default function DashboardPage() {
                         cursor={{ fill: 'rgba(47,100,232,0.10)' }}
                         contentStyle={{ border: '0', borderRadius: 8, boxShadow: '0 14px 30px rgba(40,34,29,0.14)' }}
                       />
-                      <Bar dataKey="Invited" fill={COLORS.track} radius={[999, 999, 0, 0]} barSize={13} />
-                      <Bar dataKey="Attended" fill={COLORS.blue} radius={[999, 999, 0, 0]} barSize={13} />
+                      <Bar dataKey="Invited" fill={COLORS.track} radius={[3, 3, 0, 0]} barSize={13} />
+                      <Bar dataKey="Attended" fill={COLORS.blue} radius={[3, 3, 0, 0]} barSize={13} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -180,8 +184,8 @@ export default function DashboardPage() {
           </div>
 
           <div
-            className="rounded-lg border p-5 md:p-6 backdrop-blur-md"
-            style={{ backgroundColor: COLORS.card, borderColor: 'rgba(255,255,255,0.78)' }}
+            className="rounded-lg border p-5 md:p-6"
+            style={{ backgroundColor: COLORS.card, borderColor: COLORS.line }}
           >
             <h2 className="text-lg font-bold mb-5" style={{ color: COLORS.ink }}>Industry Records</h2>
             <div className="overflow-x-auto">
@@ -219,31 +223,28 @@ export default function DashboardPage() {
 
         <div className="space-y-5 min-w-0">
           <div
-            className="rounded-lg p-6 text-white relative overflow-hidden min-h-[288px]"
-            style={{ background: 'linear-gradient(145deg, #183a9e 0%, #111827 58%, #0b1020 100%)', boxShadow: '0 22px 38px rgba(24,58,158,0.22)' }}
+            className="rounded-lg border border-slate-200 bg-white p-6 text-slate-800 relative overflow-hidden min-h-[288px]"
           >
-            <div className="absolute -right-10 -top-12 w-48 h-48 rounded-full border border-white/10 bg-white/5" />
-            <div className="absolute right-9 top-4 w-36 h-36 rounded-full bg-black/25" />
             <div className="relative">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold">Upcoming Events</h2>
-                <span className="text-[11px] font-bold text-white/60">{upcomingEvents.length} active</span>
+                <span className="text-[11px] font-bold text-slate-500">{upcomingEvents.length} active</span>
               </div>
               <div className="space-y-5">
                 {upcomingEvents.length === 0 ? (
-                  <div className="h-40 flex items-center justify-center text-sm text-white/45">
+                  <div className="h-40 flex items-center justify-center text-sm text-slate-500">
                     No upcoming event data available
                   </div>
                 ) : upcomingEvents.map((event, index) => (
                   <div key={event.id} className="grid grid-cols-[14px_1fr] gap-3">
                     <div className="flex flex-col items-center">
-                      <span className="w-2 h-2 rounded-full bg-white mt-1" />
-                      {index < upcomingEvents.length - 1 && <span className="w-px flex-1 bg-white/25 mt-2" />}
+                      <span className="w-2 h-2 rounded-full bg-blue-600 mt-1" />
+                      {index < upcomingEvents.length - 1 && <span className="w-px flex-1 bg-slate-200 mt-2" />}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-bold truncate">{event.name}</p>
-                      <p className="text-[11px] text-white/48 mt-0.5">{formatEventDate(event)}</p>
-                      <p className="text-[11px] text-white/56 mt-2 truncate">{event.venueName || event.venueCity || event.clientName || '-'}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{formatEventDate(event)}</p>
+                      <p className="text-[11px] text-slate-500 mt-2 truncate">{event.venueName || event.venueCity || event.clientName || '-'}</p>
                     </div>
                   </div>
                 ))}
@@ -251,7 +252,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-lg bg-white/45 border border-white/60 p-5">
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
                 <TrendingUp className="w-5 h-5" style={{ color: COLORS.blue }} />
@@ -264,12 +265,12 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-white/60 p-3">
+              <div className="rounded-md bg-white border border-slate-200 p-3">
                 <CalendarDays className="w-4 h-4 mb-2" style={{ color: COLORS.blue }} />
                 <p className="text-[11px]" style={{ color: COLORS.muted }}>Attended</p>
                 <p className="text-lg font-bold" style={{ color: COLORS.ink }}>{totalAttended.toLocaleString()}</p>
               </div>
-              <div className="rounded-lg bg-white/60 p-3">
+              <div className="rounded-md bg-white border border-slate-200 p-3">
                 <MapPin className="w-4 h-4 mb-2" style={{ color: COLORS.blue }} />
                 <p className="text-[11px]" style={{ color: COLORS.muted }}>Events</p>
                 <p className="text-lg font-bold" style={{ color: COLORS.ink }}>{(metrics?.totalEvents || 0).toLocaleString()}</p>

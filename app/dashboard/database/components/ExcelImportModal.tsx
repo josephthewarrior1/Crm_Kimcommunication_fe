@@ -349,7 +349,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`w-full ${importPreview ? 'max-w-4xl' : 'max-w-md'} bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative max-h-[92vh] flex flex-col animate-in scale-in duration-200 text-slate-900 transition-all`}>
+      <div className={`workspace-record workspace-import-dialog w-full ${importPreview ? 'max-w-6xl' : 'max-w-md'} bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl relative max-h-[92vh] flex flex-col animate-in scale-in duration-200 text-slate-900 transition-all`}>
         <button
           onClick={handleClose}
           className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors z-20"
@@ -461,7 +461,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             </form>
           </div>
         ) : (
-          <div className="flex flex-col flex-1 overflow-hidden space-y-4">
+          <div className="workspace-import-preview flex flex-col flex-1 overflow-hidden space-y-4">
             <div>
               <h3 className="text-lg font-bold text-slate-900">Hasil Analisis & Preview Excel</h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -677,14 +677,14 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl bg-white max-h-[38vh] shadow-inner">
+              <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white max-h-[45vh]">
                 {filteredRows.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 text-xs">
                     <Filter className="w-6 h-6 mx-auto mb-2 opacity-40" />
                     Tidak ada baris data yang cocok dengan filter atau pencarian ini.
                   </div>
                 ) : (
-                  <table className="w-full text-left border-collapse text-[11px]">
+                  <table className="workspace-import-table w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-100/90 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 backdrop-blur-xs">
                         <th className="py-2 px-3 w-16 text-center">Baris</th>
