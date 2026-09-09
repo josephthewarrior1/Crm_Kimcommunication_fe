@@ -123,6 +123,7 @@ export default function DatabasesPage() {
   const [serverTotalItems, setServerTotalItems] = useState(0);
   const [serverTotalPages, setServerTotalPages] = useState(1);
   const [flags, setFlags] = useState<FlaggedIdentity[]>([]);
+  const [flaggingDatabaseId, setFlaggingDatabaseId] = useState<number | null>(null);
   const [exportDatabases, setExportDatabases] = useState<Database[]>([]);
 
   const initialTab = searchParams ? searchParams.get('tab') : null;
@@ -176,7 +177,7 @@ export default function DatabasesPage() {
     } else {
       const rect = e.currentTarget.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      const dropdownHeight = 160;
+      const dropdownHeight = 205;
       let top = rect.bottom + 4;
       if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
         top = rect.top - dropdownHeight - 4;
@@ -279,6 +280,48 @@ export default function DatabasesPage() {
       loadDatabasePage(currentPage),
       crmService.getFlaggedIdentities().then((items) => setFlags(items || [])).catch(() => {})
     ]);
+  };
+
+  const handleAddToTikus = async (database: Database) => {
+    const existingFlag = flags.find(
+      flag => flag.database?.id === database.id && flag.status !== 'cleared'
+    );
+
+    if (existingFlag?.status === 'confirmed') {
+      toast.info('Database ini sudah ada di Daftar Tikus.');
+      return;
+    }
+
+    const fullName = ((database.firstName || '') + ' ' + (database.lastName || '')).trim();
+    if (!window.confirm('Masukkan ' + (fullName || 'Database #' + database.id) + ' ke Daftar Tikus?')) return;
+
+    setFlaggingDatabaseId(database.id);
+    try {
+      if (existingFlag) {
+        await crmService.updateFlaggedIdentity(existingFlag.id, {
+          status: 'confirmed',
+          evidenceNotes: existingFlag.evidenceNotes || 'Dikonfirmasi manual dari daftar Database.'
+        });
+      } else {
+        const primaryEmail = database.emails?.find(email => email.isPrimary)?.email || database.emails?.[0]?.email;
+        await crmService.createFlaggedIdentity({
+          database: { id: database.id },
+          nameUsed: fullName || undefined,
+          emailUsed: primaryEmail,
+          phoneUsed: database.mobilePhone ? normalizePhone(database.mobilePhone) : undefined,
+          flagReason: 'multiple_identity',
+          evidenceNotes: 'Ditandai manual dari daftar Database.',
+          status: 'confirmed'
+        } as any);
+      }
+
+      toast.success((fullName || 'Database') + ' berhasil dimasukkan ke Daftar Tikus.');
+      await refreshDatabasePage();
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal memasukkan database ke Daftar Tikus.');
+    } finally {
+      setFlaggingDatabaseId(null);
+    }
   };
 
   const openEditModal = (database: Database) => {
@@ -977,6 +1020,25 @@ export default function DatabasesPage() {
                                     </button>
                                   )}
 
+                                  {!isUser && (
+                                    <button
+                                      onClick={() => {
+                                        setActiveDropdownId(null);
+                                        setDropdownPos(null);
+                                        void handleAddToTikus(c);
+                                      }}
+                                      disabled={hasConfirmedFlag || flaggingDatabaseId === c.id}
+                                      className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
+                                    >
+                                      {flaggingDatabaseId === c.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <ShieldAlert className="h-3.5 w-3.5" />
+                                      )}
+                                      {hasConfirmedFlag ? 'Sudah di Daftar Tikus' : 'Masukkan ke Daftar Tikus'}
+                                    </button>
+                                  )}
+
                                   {c.isActive && !isUser && (
                                     <button
                                       onClick={() => {
@@ -1163,6 +1225,25 @@ export default function DatabasesPage() {
                                 >
                                   <Edit2 className="w-3.5 h-3.5 text-slate-400" />
                                   Edit Database
+                                </button>
+                              )}
+
+                              {!isUser && (
+                                <button
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    setDropdownPos(null);
+                                    void handleAddToTikus(c);
+                                  }}
+                                  disabled={hasConfirmedFlag || flaggingDatabaseId === c.id}
+                                  className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
+                                >
+                                  {flaggingDatabaseId === c.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <ShieldAlert className="h-3.5 w-3.5" />
+                                  )}
+                                  {hasConfirmedFlag ? 'Sudah di Daftar Tikus' : 'Masukkan ke Daftar Tikus'}
                                 </button>
                               )}
 
