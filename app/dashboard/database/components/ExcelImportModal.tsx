@@ -521,7 +521,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <h3 className="text-xl font-bold text-slate-900">Hasil Analisis & Preview Excel</h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Hanya {cleanCount} baris bersih yang diproses: {importPreview.newCount} kontak baru dan {importPreview.duplicateCount} update. {importPreview.issuesCount} baris kotor dilewati. Tab hanya menyaring tampilan.
-                Kolom kosong dan email lama tetap dipertahankan. Data company yang sudah terisi tidak ditimpa.
+                Data kontak dan perusahaan tempat bekerja mengikuti Excel. Kolom kosong dan email lama tetap dipertahankan. Data master perusahaan yang sudah terisi tidak ditimpa.
               </p>
             </div>
 
