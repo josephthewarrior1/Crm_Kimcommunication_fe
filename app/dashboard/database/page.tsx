@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { normalizePhone } from './utils/phoneHelper';
+import { findPersonalEmailConflicts } from './utils/emailIdentity';
 import { checkDatabaseCompleteness } from './utils/validationHelper';
 import { getOfficeEmail, getPersonalEmail } from '../events/utils/notesHelper';
 import indonesiaCities from './data/indonesia-cities.json';
@@ -920,13 +921,7 @@ export default function DatabasesPage() {
                   if (c.emails && c.emails.length > 0) {
                     c.emails.forEach(ce => {
                       if (!ce.email) return;
-                      const matchingDatabases = databases.filter(other => 
-                        other.id !== c.id && 
-                        other.isActive && 
-                        other.emails && 
-                        other.emails.some(oe => oe.email && oe.email.toLowerCase() === ce.email.toLowerCase()) &&
-                        (other.firstName !== c.firstName || other.lastName !== c.lastName)
-                      );
+                      const matchingDatabases = findPersonalEmailConflicts(c, ce, databases);
                       if (matchingDatabases.length > 0) {
                         localFlags.push({
                           flagReason: 'duplicate_email',
