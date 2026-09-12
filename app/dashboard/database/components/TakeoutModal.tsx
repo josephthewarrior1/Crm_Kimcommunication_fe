@@ -50,7 +50,7 @@ export const TakeoutModal: React.FC<TakeoutModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
@@ -85,7 +85,7 @@ export const TakeoutModal: React.FC<TakeoutModalProps> = ({
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Requested By</label>
               <input
@@ -119,7 +119,7 @@ export const TakeoutModal: React.FC<TakeoutModalProps> = ({
             />
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+          <div className="flex flex-wrap gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
             <button
               type="button"
               onClick={onClose}

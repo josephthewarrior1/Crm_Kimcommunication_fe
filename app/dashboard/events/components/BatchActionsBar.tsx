@@ -43,7 +43,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
   if (selectedParticipantIds.length === 0) return null;
 
   return (
-    <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50 border border-blue-100 rounded-2xl px-5 py-3.5 flex flex-row items-center justify-between flex-wrap gap-4 mb-6 shadow-[0_10px_25px_rgba(59,130,246,0.04)] animate-in slide-in-from-top duration-200">
+    <div className="min-w-0 bg-blue-50 border border-blue-200 rounded-md p-3 sm:px-4 flex flex-row items-center justify-between flex-wrap gap-3 mb-4 animate-in slide-in-from-top duration-200">
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center justify-center bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-full ring-4 ring-blue-100 shrink-0">
           {selectedParticipantIds.length}
@@ -51,9 +51,9 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
         <span className="text-xs font-bold text-slate-800 tracking-tight">Participants selected for batch update</span>
       </div>
       
-      <div className="flex flex-wrap items-center gap-3.5">
+      <div className="flex min-w-0 w-full xl:w-auto flex-wrap items-center gap-2 [&>div]:min-w-0 [&>div]:max-w-full [&>div]:flex-wrap [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-md [&_button]:rounded-md">
         {activeTab === 'request' && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => handleBatchUpdateConfirmationStatus('approve')}
               className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-all shadow-sm"

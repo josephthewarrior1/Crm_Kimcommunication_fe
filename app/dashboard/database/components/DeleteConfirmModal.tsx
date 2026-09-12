@@ -37,14 +37,14 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
         <h3 className="text-lg font-bold text-slate-900 mb-2">Hard Delete Database</h3>
         <p className="text-sm text-slate-500 mb-6">
           Are you sure you want to permanently delete database <span className="font-semibold text-slate-800">"{database.firstName} {database.lastName}"</span>?
           This will completely erase the database and all associated emails, event leads, and removal request logs. This action is irreversible.
         </p>
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex flex-wrap gap-3 justify-end">
           <button
             type="button"
             onClick={onClose}

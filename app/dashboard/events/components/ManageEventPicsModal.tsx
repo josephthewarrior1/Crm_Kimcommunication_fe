@@ -80,7 +80,7 @@ export const ManageEventPicsModal: React.FC<ManageEventPicsModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-xl max-w-lg min-w-0 w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6 space-y-5 animate-in zoom-in-95 duration-150 [&_button]:rounded-md">
         <div className="flex items-start justify-between border-b border-slate-100 pb-4 gap-4">
           <div>
             <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
@@ -132,7 +132,7 @@ export const ManageEventPicsModal: React.FC<ManageEventPicsModalProps> = ({
               >
                 <span className="min-w-0">
                   <span className="block text-xs font-bold truncate">{name}</span>
-                  <span className="block text-[10px] text-slate-400">{role} - {candidate.email}</span>
+                  <span className="block break-words text-[10px] text-slate-400">{role} - {candidate.email}</span>
                 </span>
                 {checked && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
               </button>
@@ -140,7 +140,7 @@ export const ManageEventPicsModal: React.FC<ManageEventPicsModalProps> = ({
           })}
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
           <span className="text-xs font-semibold text-slate-500">
             Terpilih: <strong className="text-blue-600">{selectedUserIds.length}</strong> PIC
           </span>

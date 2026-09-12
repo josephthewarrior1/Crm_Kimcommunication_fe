@@ -54,9 +54,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2">
+      <div className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-100">
+        <div className="flex items-center justify-between gap-2 break-words px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
               <Edit3 className="w-4 h-4" />
             </div>
@@ -116,7 +116,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               </div>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block text-xs font-bold text-slate-700 mb-1">New Password</label>
               <div className="relative">
                 <input

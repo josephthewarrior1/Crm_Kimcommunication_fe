@@ -72,23 +72,23 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
   }).map((user) => user.fullName || user.username);
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-xl p-4 space-y-4 mb-5 shrink-0 shadow-sm">
+    <div className="min-w-0 bg-white border border-slate-200 rounded-md p-3 sm:p-4 space-y-3 mb-4 shrink-0">
       {/* Row 1: Search & Reset */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center bg-slate-50 border border-slate-200/60 rounded-xl px-3.5 py-2 w-full sm:max-w-md shadow-xs">
+        <div className="flex min-w-0 items-center bg-white border border-slate-200 rounded-md px-3 py-2 w-full sm:max-w-md focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
           <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
           <input
             type="text"
             placeholder="Search participants by name, title, company..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent text-xs text-slate-900 placeholder-slate-400 focus:outline-none"
+            className="min-w-0 w-full bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
           />
         </div>
         {hasActiveFilters && (
           <button
             onClick={handleResetFilters}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-all self-start sm:self-auto shadow-xs"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-md border border-slate-200 transition-colors self-start sm:self-auto"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Reset Filters
@@ -97,7 +97,7 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
       </div>
 
       {/* Row 2: Grid Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-3 border-t border-slate-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pt-3 border-t border-slate-100 [&>div]:min-w-0 [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-md [&_label]:text-xs [&_label]:font-medium [&_label]:normal-case [&_label]:tracking-normal [&_label]:text-slate-600">
         <div>
           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Filter by Company</label>
           <select

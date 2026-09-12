@@ -33,7 +33,7 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
@@ -42,7 +42,7 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 mb-6">Create New Group</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-6 pr-6">Create New Group</h3>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -68,7 +68,7 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({
             />
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+          <div className="flex flex-wrap gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
             <button
               type="button"
               onClick={onClose}

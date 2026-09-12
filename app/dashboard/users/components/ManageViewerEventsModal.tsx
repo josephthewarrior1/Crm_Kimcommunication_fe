@@ -115,7 +115,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6 space-y-5 animate-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
             <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
@@ -135,8 +135,8 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
         </div>
 
         {/* Search & Select All Toolbar */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative min-w-0 flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
@@ -200,7 +200,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
           <span>
             Showing {events.length === 0 ? 0 : ((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalItems)} of {totalItems} events
           </span>
@@ -227,7 +227,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
           <span className="text-xs font-semibold text-slate-500">
             Allowed: <strong className="text-blue-600">{selectedIds.length}</strong> of {totalItems} events
           </span>

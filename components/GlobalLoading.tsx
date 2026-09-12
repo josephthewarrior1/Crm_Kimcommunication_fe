@@ -17,9 +17,9 @@ export const GlobalLoadingProvider: React.FC<{ children: React.ReactNode }> = ({
       {children}
       {loading && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[9999] flex items-center justify-center">
-          <div className="text-center">
+          <div role="status" className="rounded-lg border border-slate-200 bg-white px-10 py-8 text-center shadow-xl">
             <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-2" />
-            <p className="text-sm text-slate-600 font-mono">Loading...</p>
+            <p className="text-sm text-slate-600">Loading...</p>
           </div>
         </div>
       )}

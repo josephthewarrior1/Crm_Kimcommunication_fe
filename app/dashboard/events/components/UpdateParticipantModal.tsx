@@ -105,7 +105,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl p-5 shadow-xl relative animate-in scale-in duration-200 text-slate-900 my-4">
+      <div className="w-full min-w-0 max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-lg p-4 sm:p-5 shadow-xl relative animate-in scale-in duration-200 text-slate-900 [&_input]:min-w-0 [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-md [&_select]:py-2 [&_textarea]:rounded-md [&_button]:rounded-md">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
@@ -114,7 +114,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
           <X className="w-4 h-4" />
         </button>
 
-        <div className="border-b border-slate-100 pb-2 mb-3">
+        <div className="border-b border-slate-100 pb-3 mb-3 pr-8 break-words">
           <h3 className="text-base font-bold text-slate-900">Participant Detail & Qualification</h3>
           <p className="text-[10px] text-slate-500 mt-0.5">
             Manage database: <strong className="text-slate-700">{activeParticipant.database.firstName} {activeParticipant.database.lastName}</strong> ({activeParticipant.database.company?.name || 'No Company'})
@@ -123,7 +123,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
 
         <div className="space-y-3">
           {/* Profile Info */}
-          <div className="bg-slate-55 p-2.5 rounded-xl border border-slate-150 text-[10px] grid grid-cols-4 gap-2 mb-2">
+          <div className="bg-slate-50 p-3 rounded-md border border-slate-200 text-xs grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2 [&>div]:min-w-0">
             <div>
               <span className="text-slate-400 font-bold block">Job Title</span>
               <p className="font-semibold text-slate-700 truncate">{activeParticipant.database.jobTitle || '-'}</p>
@@ -145,7 +145,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-3">
             <h4 className="font-bold text-slate-900 text-xs border-b border-slate-100 pb-1">Participant Qualification</h4>
             
-            <div className={`grid ${showClientApproval || showPreEventApproval ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+            <div className={`grid grid-cols-1 ${showClientApproval || showPreEventApproval ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3 [&>div]:min-w-0`}>
               <div>
                 <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
                   <CheckCircle className="w-3 h-3 text-emerald-500" />
@@ -237,7 +237,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
             </div>
 
             <h4 className="font-bold text-slate-900 text-xs border-b border-slate-100 pb-1 pt-1">Reminders</h4>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>div]:min-w-0">
               <div>
                 <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
                   <Calendar className="w-3 h-3 text-blue-500" />
@@ -333,8 +333,8 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               />
             </div>
 
-            <div className="flex gap-2 justify-between items-center pt-3 border-t border-slate-100 mt-4">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-3 justify-between items-center pt-3 border-t border-slate-100 mt-4">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 {onRequestTakeout && (
                   <button
                     type="button"
@@ -354,7 +354,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
 
                 {onFlagAsTikus ? (
                   showFlagConfirm ? (
-                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-1.5 px-3 animate-in fade-in duration-200">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 bg-red-50 border border-red-200 rounded-md p-2 px-3 animate-in fade-in duration-200">
                       <ShieldAlert className="w-3.5 h-3.5 text-red-600 shrink-0" />
                       <span className="text-[11px] font-bold text-red-700">Yakin tandai sebagai Tikus?</span>
                       <button

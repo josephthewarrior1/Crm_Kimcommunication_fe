@@ -53,7 +53,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200">
+      <div className="w-full min-w-0 max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-lg p-4 sm:p-6 shadow-xl relative animate-in scale-in duration-200 [&_input]:min-w-0 [&_input]:rounded-md [&_select]:min-w-0 [&_select]:rounded-md [&_textarea]:rounded-md [&_button]:rounded-md">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
@@ -61,7 +61,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 mb-6">Create New Event</h3>
+        <h3 className="text-lg font-semibold text-slate-900 mb-5 pr-8">Create New Event</h3>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
@@ -98,7 +98,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>div]:min-w-0">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Event Type</label>
               <select
@@ -125,7 +125,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>div]:min-w-0">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date Start</label>
               <input
@@ -169,7 +169,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             />
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+          <div className="flex flex-wrap gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
             <button
               type="button"
               onClick={onClose}
