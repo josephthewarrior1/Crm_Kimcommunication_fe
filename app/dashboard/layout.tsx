@@ -22,7 +22,8 @@ import {
   UserX,
   UserPlus,
   History,
-  Wand2
+  Wand2,
+  Target
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -88,6 +89,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Takeout Requests', path: '/dashboard/takeout', icon: UserX },
     { name: 'Activity Logs', path: '/dashboard/audit-logs', icon: History },
     { name: 'Data Cleaner', path: '/dashboard/data-cleaner', icon: Wand2 },
+    { name: 'Target', path: '/dashboard/targets', icon: Target },
     { name: 'User Management', path: '/dashboard/users', icon: User },
   ];
 
@@ -96,7 +98,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     if (isViewer) {
       return item.path === '/dashboard/events';
     }
-    if (item.path === '/dashboard/takeout' || item.path === '/dashboard/users' || item.path === '/dashboard/data-cleaner') {
+    if (item.path === '/dashboard/takeout' || item.path === '/dashboard/users' || item.path === '/dashboard/data-cleaner' || item.path === '/dashboard/targets') {
       return isAdmin;
     }
     if (item.path === '/dashboard/audit-logs') {

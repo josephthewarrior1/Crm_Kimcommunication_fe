@@ -5,14 +5,13 @@ import { crmService } from '../../../lib/services/crmService';
 import { authService } from '../../../lib/services/authService';
 import { AppUser } from '../../../lib/types';
 import { useAuth } from '../../../lib/context/AuthContext';
-import { Users, Loader2, Trash2, Shield, UserPlus, AlertCircle, Calendar, Edit3, Columns, Search, Target } from 'lucide-react';
+import { Users, Loader2, Trash2, Shield, UserPlus, AlertCircle, Calendar, Edit3, Columns, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddUserModal } from './components/AddUserModal';
 import { EditUserModal } from './components/EditUserModal';
 import { DeleteUserConfirmModal } from './components/DeleteUserConfirmModal';
 import { ManageViewerEventsModal } from './components/ManageViewerEventsModal';
 import { ManageUserColumnsModal } from './components/ManageUserColumnsModal';
-import ManageDatabaseTargetModal from './components/ManageDatabaseTargetModal';
 
 export default function UserManagementPage() {
   const { user: currentUser, isAdmin } = useAuth();
@@ -38,7 +37,6 @@ export default function UserManagementPage() {
 
   const [managingViewerEventsUser, setManagingViewerEventsUser] = useState<AppUser | null>(null);
   const [managingColumnsUser, setManagingColumnsUser] = useState<AppUser | null>(null);
-  const [managingTargetUser, setManagingTargetUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
     if (isAdmin) {
@@ -300,16 +298,6 @@ export default function UserManagementPage() {
                               <span>Events Access</span>
                             </button>
                           )}
-                          {u.roles?.some(role => role === 'ADMIN' || role === 'MANAGER') && (
-                            <button
-                              onClick={() => setManagingTargetUser(u)}
-                              className="inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition-colors shadow-2xs bg-white cursor-pointer"
-                              title={`Atur target input ${u.fullName || u.username}`}
-                            >
-                              <Target className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Target Input</span>
-                            </button>
-                          )}
                           <button
                             onClick={() => setEditingUser(u)}
                             className="inline-flex p-1.5 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 hover:border-blue-200 text-slate-400 rounded-lg transition-colors shadow-sm bg-white"
@@ -396,11 +384,6 @@ export default function UserManagementPage() {
           )}
         </div>
       )}
-
-      {managingTargetUser && (
-        <ManageDatabaseTargetModal key={managingTargetUser.id} targetUser={managingTargetUser} onClose={() => setManagingTargetUser(null)} />
-      )}
-
       {/* Provision New User Modal */}
       <AddUserModal
         isOpen={isCreateModalOpen}
