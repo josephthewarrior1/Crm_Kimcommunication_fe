@@ -35,19 +35,22 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-md">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
           type="button"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 mb-6">Edit Group</h3>
+        <h3 className="ms-modal-title">Edit Group</h3>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="ms-modal-form">
+          <div className="ms-modal-body space-y-5">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Group Name *</label>
             <input
@@ -55,7 +58,7 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
               placeholder="e.g. Astra Group"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+              className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
               required
             />
           </div>
@@ -67,22 +70,23 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white text-sm"
+              className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white text-sm"
             />
           </div>
 
-          <div className="flex flex-wrap gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+          </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-105 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+              className="ms-modal-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50 shadow-md shadow-blue-600/10"
+              className="ms-modal-primary"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Changes

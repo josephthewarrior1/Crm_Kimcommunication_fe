@@ -104,24 +104,27 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full min-w-0 max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-lg p-4 sm:p-5 shadow-xl relative animate-in scale-in duration-200 text-slate-900 [&_input]:min-w-0 [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-md [&_select]:py-2 [&_textarea]:rounded-md [&_button]:rounded-md">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-2xl">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
           type="button"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <div className="border-b border-slate-100 pb-3 mb-3 pr-8 break-words">
-          <h3 className="text-base font-bold text-slate-900">Participant Detail & Qualification</h3>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+        <div className="pr-8 break-words">
+          <h3 className="ms-modal-title">Participant Detail & Qualification</h3>
+          <p className="ms-modal-description mt-2">
             Manage database: <strong className="text-slate-700">{activeParticipant.database.firstName} {activeParticipant.database.lastName}</strong> ({activeParticipant.database.company?.name || 'No Company'})
           </p>
         </div>
 
-        <div className="space-y-3">
+        </div>
+        <form onSubmit={handleSubmit} className="ms-modal-form">
+        <div className="ms-modal-body space-y-4">
           {/* Profile Info */}
           <div className="bg-slate-50 p-3 rounded-md border border-slate-200 text-xs grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2 [&>div]:min-w-0">
             <div>
@@ -142,7 +145,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-4">
             <h4 className="font-bold text-slate-900 text-xs border-b border-slate-100 pb-1">Participant Qualification</h4>
             
             <div className={`grid grid-cols-1 ${showClientApproval || showPreEventApproval ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3 [&>div]:min-w-0`}>
@@ -154,7 +157,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                 <select
                   value={updateParticipantStatusStr}
                   onChange={(e) => setUpdateParticipantStatusStr(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-xs focus:outline-none"
                 >
                   <option value="not_respon_yet">Not respond yet</option>
                   <option value="not_respond_2x">Not respond 2x</option>
@@ -176,13 +179,13 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               {showClientApproval && (
                 <div>
                   <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                    <CheckCircle className="w-3 h-3 text-blue-500" />
+                    <CheckCircle className="w-3 h-3 text-[#5b5fc7]" />
                     Client Approval
                   </label>
                   <select
                     value={updateConfirmationStatusStr}
                     onChange={(e) => setUpdateConfirmationStatusStr(e.target.value)}
-                    className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                    className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-xs focus:outline-none"
                   >
                     <option value="pending">Pending</option>
                     <option value="approve">Approve</option>
@@ -194,13 +197,13 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               {showPreEventApproval && (
                 <div>
                   <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                    <CheckCircle className="w-3 h-3 text-blue-500" />
+                    <CheckCircle className="w-3 h-3 text-[#5b5fc7]" />
                     Pre Event Approval
                   </label>
                   <select
                     value={updatePreEventApprovalStatusStr}
                     onChange={(e) => setUpdatePreEventApprovalStatusStr(e.target.value)}
-                    className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none"
+                    className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-xs focus:outline-none"
                   >
                     <option value="pending">Pending</option>
                     <option value="approve">Approve</option>
@@ -220,7 +223,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                   value={updatePic}
                   onChange={(e) => setUpdatePic(e.target.value)}
                   placeholder="Search/type PIC..."
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-xs focus:outline-none placeholder-slate-400"
+                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-xs focus:outline-none placeholder-slate-400"
                 />
                 <datalist id="pic-list">
                   <option value="Admin" />
@@ -240,13 +243,13 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>div]:min-w-0">
               <div>
                 <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                  <Calendar className="w-3 h-3 text-blue-500" />
+                  <Calendar className="w-3 h-3 text-[#5b5fc7]" />
                   H-7 Reminder
                 </label>
                 <select
                   value={updateReminderH7}
                   onChange={(e) => setUpdateReminderH7(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
+                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-[10px] focus:outline-none"
                 >
                   <option value="">- None</option>
                   <option value="not_respon_yet">Not respond yet</option>
@@ -265,7 +268,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                 <select
                   value={updateReminderH3}
                   onChange={(e) => setUpdateReminderH3(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
+                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-[10px] focus:outline-none"
                 >
                   <option value="">- None</option>
                   <option value="not_respon_yet">Not respond yet</option>
@@ -284,7 +287,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                 <select
                   value={updateReminderH1}
                   onChange={(e) => setUpdateReminderH1(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
+                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-[10px] focus:outline-none"
                 >
                   <option value="">- None</option>
                   <option value="not_respon_yet">Not respond yet</option>
@@ -303,7 +306,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                 <select
                   value={updateReminderHariH}
                   onChange={(e) => setUpdateReminderHariH(e.target.value)}
-                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-slate-900 text-[10px] focus:outline-none"
+                  className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-[10px] focus:outline-none"
                 >
                   <option value="">- None</option>
                   <option value="on_location">On Location</option>
@@ -329,11 +332,13 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                 value={updateParticipantNotes}
                 onChange={(e) => setUpdateParticipantNotes(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-1.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-lg text-xs placeholder-slate-400 focus:outline-none transition-all resize-none"
+                className="w-full px-3 py-1.5 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-xs placeholder-slate-400 focus:outline-none transition-all resize-none"
               />
             </div>
 
-            <div className="flex flex-wrap gap-3 justify-between items-center pt-3 border-t border-slate-100 mt-4">
+            </div>
+        </div>
+            <div className="ms-modal-footer items-center">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 {onRequestTakeout && (
                   <button
@@ -344,7 +349,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                         onClose();
                       }
                     }}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 text-xs font-bold rounded-md flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
                     title="Request Data Takeout for this contact"
                   >
                     <UserX className="w-3.5 h-3.5 text-slate-600" />
@@ -363,7 +368,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                           onFlagAsTikus(activeParticipant);
                           onClose();
                         }}
-                        className="px-2.5 py-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-[10px] font-bold rounded-lg transition-all shadow-xs cursor-pointer"
+                        className="ms-modal-danger px-2.5 py-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-[10px] font-bold rounded-lg transition-all shadow-xs cursor-pointer"
                       >
                         Ya, Flag Tikus
                       </button>
@@ -379,7 +384,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowFlagConfirm(true)}
-                      className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-md flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
                     >
                       <ShieldAlert className="w-3.5 h-3.5" />
                       Tandain Tikus (Report Spam)
@@ -391,14 +396,13 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               <button
                 type="submit"
                 disabled={submittingParticipantUpdate}
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all disabled:opacity-50 shadow-sm cursor-pointer"
+                className="ms-modal-primary px-4 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-bold rounded-md flex items-center gap-1.5 transition-all disabled:opacity-50 shadow-sm cursor-pointer"
               >
                 {submittingParticipantUpdate ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                 Save Qualification Info
               </button>
             </div>
-          </form>
-        </div>
+        </form>
       </div>
     </div>
   );

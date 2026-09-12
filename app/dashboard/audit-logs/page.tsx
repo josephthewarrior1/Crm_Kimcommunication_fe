@@ -760,32 +760,36 @@ export default function AuditLogsPage() {
 
       {/* 5. Detail Modal */}
       {selectedLog && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-xl p-6 relative space-y-4">
+        <div className="ms-modal-overlay fixed inset-0 z-50">
+          <div className="ms-modal w-full max-w-lg relative">
+            <div className="ms-modal-header">
             <button
               onClick={() => setSelectedLog(null)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+              aria-label="Tutup detail riwayat"
+              className="ms-modal-close"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center gap-3">
-              <History className="w-5 h-5 text-slate-400" />
+              <History className="w-5 h-5 shrink-0 text-blue-600" />
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">Detail Riwayat Aktivitas</h3>
-                <p className="text-xs text-slate-400 font-mono">Log ID #{selectedLog.id}</p>
+                <h3 className="ms-modal-title">Detail Riwayat Aktivitas</h3>
+                <p className="ms-modal-description">Log ID #{selectedLog.id}</p>
               </div>
             </div>
+            </div>
 
-            <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm divide-y divide-slate-200">
-              <div className="flex justify-between items-center pb-2">
+            <div className="ms-modal-body">
+            <div className="ms-modal-section space-y-3 text-sm divide-y divide-slate-200">
+              <div className="flex flex-wrap justify-between items-center gap-2 pb-2">
                 <span className="text-slate-500 font-medium">Waktu Kejadian</span>
                 <span className="font-medium text-slate-800 font-mono text-xs">
                   {formatTimestamp(selectedLog.createdAt).formatted}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center py-2">
+              <div className="flex flex-wrap justify-between items-center gap-2 py-2">
                 <span className="text-slate-500 font-medium">Pelaku (Actor)</span>
                 <div className="text-right">
                   <span className="font-medium text-slate-900 block">{selectedLog.userFullName || selectedLog.username}</span>
@@ -804,7 +808,7 @@ export default function AuditLogsPage() {
               </div>
 
               {selectedLog.targetName && (
-                <div className="flex justify-between items-center py-2">
+                <div className="flex flex-wrap justify-between items-center gap-2 py-2">
                   <span className="text-slate-500 font-medium">Target Entitas</span>
                   <span className="font-medium text-slate-900">{selectedLog.targetName}</span>
                 </div>
@@ -822,11 +826,12 @@ export default function AuditLogsPage() {
                 </p>
               </div>
             </div>
+            </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="ms-modal-footer">
               <button
                 onClick={() => setSelectedLog(null)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition-colors"
+                className="ms-modal-primary"
               >
                 Tutup
               </button>

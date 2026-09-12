@@ -764,22 +764,22 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               <DialogContent 
                 onInteractOutside={(e) => e.preventDefault()}
                 onPointerDownOutside={(e) => e.preventDefault()}
-                className="sm:max-w-4xl max-h-[85vh] overflow-y-auto bg-white p-6 rounded-2xl border border-slate-200 text-slate-900"
+                className="ms-modal sm:max-w-5xl"
               >
-                <DialogHeader>
-                  <DialogTitle className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                <DialogHeader className="ms-modal-header pr-14">
+                  <DialogTitle className="ms-modal-title">
                     {isAdmin ? 'PIC Assignment & Distribution' : `Laporan Aktivitas Follow-Up — ${myPicName}`}
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-slate-500 font-medium">
+                  <DialogDescription className="ms-modal-description mt-2">
                     {isAdmin ? 'Alokasi pembagian tugas follow-up antar PIC aktif.' : 'Riwayat aktivitas telepon, WhatsApp, dan email yang kamu kerjakan hari ini.'}
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 mt-4">
+                <div className="ms-modal-body space-y-6">
                   {selectedPic ? (
                     <div className="space-y-4">
                       {/* Header/Back button */}
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-2">
                         {isAdmin ? (
                           <button 
                             onClick={() => { setSelectedPic(null); setSearchQuery(''); setPicViewTab('report'); }}
@@ -790,7 +790,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           </button>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <span className="p-1.5 bg-blue-50 text-blue-600 rounded-xl">
+                            <span className="p-1.5 bg-blue-50 text-[#5b5fc7] rounded-md">
                               <History className="w-4 h-4" />
                             </span>
                             <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Laporan Work Log Saya</span>
@@ -804,7 +804,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                       {/* Sub-tab Switcher for Selected PIC */}
                       {isAdmin && (
-                        <div className="flex items-center gap-2 mb-4 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80">
+                        <div className="flex items-center gap-2 mb-4 bg-slate-100 p-1.5 rounded-md border border-slate-200/80">
                           <button
                             type="button"
                             onClick={() => setPicViewTab('report')}
@@ -830,7 +830,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                     {picViewTab === 'report' ? (
                       /* Daily Telemarketing & Activity Report Bar */
-                      <div className="bg-white border border-slate-200 rounded-xl space-y-4 mb-4">
+                      <div className="bg-white border border-slate-200 rounded-md p-3 sm:p-4 space-y-4 mb-4">
                         {/* Header & Controls Toolbar */}
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                           <div className="flex items-center gap-3 min-w-0">
@@ -839,7 +839,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             </div>
                             <div className="min-w-0">
                               <h5 className="text-sm font-semibold text-slate-900 truncate">
-                                Daily Telemarketing Report — <span className="text-blue-600">{selectedPic}</span>
+                                Daily Telemarketing Report — <span className="text-[#5b5fc7]">{selectedPic}</span>
                               </h5>
                               <p className="text-xs text-slate-500 truncate">
                                 Laporan lengkap aktivitas telepon, WhatsApp, dan email PIC {selectedPic}.
@@ -849,7 +849,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                           {/* Filter Controls: Date Range & Preset Dropdown */}
                           <div className="flex items-center gap-2 flex-wrap shrink-0">
-                            <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+                            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
                               <span className="text-[11px] font-medium text-slate-500 shrink-0">Filter:</span>
                               <input
                                 type="date"
@@ -864,7 +864,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); }}
                                 className="bg-transparent border-0 text-slate-700 text-xs focus:outline-none cursor-pointer"
                               />
-                              {loadingReport && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />}
+                              {loadingReport && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#5b5fc7] shrink-0" />}
                             </div>
 
                             <select
@@ -873,7 +873,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 const val = e.target.value as 'today' | '7days' | '30days' | 'all';
                                 handleSetPreset(val);
                               }}
-                              className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium focus:outline-none focus:border-blue-500 cursor-pointer hover:bg-slate-50 transition-colors"
+                              className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium focus:outline-none focus:border-[#5b5fc7] cursor-pointer hover:bg-slate-50 transition-colors"
                             >
                               <option value="today">Hari Ini</option>
                               <option value="7days">7 Hari Terakhir</option>
@@ -892,7 +892,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           const totalActivities = activitySummary?.totalActivities ?? 0;
 
                           return (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                               <div className="bg-white border border-slate-200 p-3 rounded-lg flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-sm text-slate-600">
                                   <Phone className="w-4 h-4 text-blue-500" />
@@ -937,7 +937,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                           return (
                             <div className="pt-4 border-t border-slate-100">
-                              <div className="flex items-center justify-between mb-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                                 <span className="text-xs font-medium text-slate-500">
                                   Summary Remarks Periode Ini ({totalParticipants} Peserta)
                                 </span>
@@ -947,7 +947,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                                 <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
                                   <span className="text-slate-600">Registered</span>
                                   <span className="font-semibold text-slate-900">{regCount}</span>
@@ -978,7 +978,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           </div>
 
                           {filteredPicActivities.length === 0 ? (
-                            <div className="bg-white border border-slate-200 rounded-xl p-6 text-center">
+                            <div className="bg-white border border-slate-200 rounded-md p-6 text-center">
                               <p className="text-sm text-slate-400">Belum ada aktivitas telepon, WA, atau email yang tercatat pada periode ini.</p>
                             </div>
                           ) : (
@@ -1065,7 +1065,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[55vh]">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:h-[55vh]">
                       {/* Left Column: Managed Participants */}
                       {(() => {
                         const picParticipants = participants.filter(p => {
@@ -1075,12 +1075,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         });
 
                         return (
-                          <div className="flex flex-col border border-slate-200/80 rounded-2xl p-4 bg-slate-50/30 overflow-hidden">
+                          <div className="flex min-w-0 min-h-56 max-h-[55vh] flex-col border border-slate-200 rounded-md p-4 bg-slate-50/30 overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                               <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                                 Daftar Peserta ({picParticipants.length})
                               </h5>
-                              <span className="text-[10px] font-semibold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                              <span className="text-[10px] font-semibold bg-blue-50 text-[#5b5fc7] px-2 py-0.5 rounded-full">
                                 Dikelola PIC Ini
                               </span>
                             </div>
@@ -1096,7 +1096,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   const company = p.database.company?.name || '-';
                                   const phone = p.database.mobilePhone || '-';
                                   return (
-                                    <div key={p.id} className="bg-white border border-slate-200/70 p-3 rounded-xl shadow-sm flex items-center justify-between gap-3 group/item">
+                                    <div key={p.id} className="bg-white border border-slate-200/70 p-3 rounded-md shadow-sm flex items-center justify-between gap-3 group/item">
                                       <div className="min-w-0">
                                         <p className="text-xs font-bold text-slate-800 truncate">{name}</p>
                                         <p className="text-[10px] text-slate-400 font-medium truncate">
@@ -1123,7 +1123,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                         {onOpenEngagementModal && (
                                           <button
                                             onClick={() => onOpenEngagementModal(p)}
-                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                                            className="p-1.5 text-[#5b5fc7] hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
                                             title="Lihat Telemarketing Logs (Call, Email, WA)"
                                           >
                                             <History className="w-3.5 h-3.5" />
@@ -1174,7 +1174,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         });
 
                         return (
-                          <div className="flex flex-col border border-slate-200/80 rounded-2xl p-4 bg-slate-50/30 overflow-hidden">
+                          <div className="flex min-w-0 min-h-56 max-h-[55vh] flex-col border border-slate-200 rounded-md p-4 bg-slate-50/30 overflow-hidden">
                             <div className="mb-3 space-y-2">
                               <div className="flex justify-between items-center">
                                 <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -1191,7 +1191,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   placeholder="Cari nama, perusahaan, telepon..."
                                   value={searchQuery}
                                   onChange={(e) => setSearchQuery(e.target.value)}
-                                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:border-blue-500 text-slate-900 transition-colors"
+                                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs placeholder:text-slate-400 focus:outline-none focus:border-[#5b5fc7] text-slate-900 transition-colors"
                                 />
                               </div>
                             </div>
@@ -1208,7 +1208,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                   const currentPicName = extractPicFromNotes(p.notes).pic;
                                   const isUnassigned = !currentPicName || currentPicName.trim() === '' || currentPicName.toLowerCase() === 'not set';
                                   return (
-                                    <div key={p.id} className="bg-white border border-slate-200/70 p-3 rounded-xl shadow-sm flex items-center justify-between gap-3 group/item">
+                                    <div key={p.id} className="bg-white border border-slate-200/70 p-3 rounded-md shadow-sm flex items-center justify-between gap-3 group/item">
                                       <div className="min-w-0">
                                         <p className="text-xs font-bold text-slate-800 truncate">{name}</p>
                                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -1230,7 +1230,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                           onClick={async () => {
                                             await onAssignPic([p.id], selectedPic);
                                           }}
-                                          className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-[10px] font-bold transition-all duration-150 border border-emerald-100/30 shrink-0"
+                                          className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md text-[10px] font-bold transition-all duration-150 border border-emerald-100/30 shrink-0"
                                         >
                                           <Plus className="w-3 h-3" />
                                           <span>Add</span>
@@ -1251,7 +1251,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   <>
                     {/* Auto Distribution Control Panel */}
                     {onAssignPic && (
-                      <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="bg-slate-50/70 border border-slate-100 rounded-md p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <h5 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-0.5">Alokasi Cepat (Auto-Distribute)</h5>
                           <p className="text-[10px] text-slate-500">Bagi rata tugas follow-up secara otomatis ke seluruh staff PIC aktif.</p>
@@ -1312,7 +1312,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 }
                               });
                             }}
-                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 rounded-md text-[10px] font-bold hover:bg-slate-50 transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
                           >
                             Bagi Rata Sisa Peserta
                           </button>
@@ -1358,14 +1358,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 }
                               });
                             }}
-                            className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-bold hover:bg-slate-800 transition-all duration-150 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
+                            className="px-3 py-1.5 bg-slate-900 text-white rounded-md text-[10px] font-bold hover:bg-slate-800 transition-all duration-150 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
                           >
                             Bagi Ulang Semua Peserta
                           </button>
                           <button
                             disabled={eligibleSplitUsers.length === 0}
                             onClick={() => setIsSplitModalOpen(true)}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-bold transition-all duration-150 shadow-sm flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+                            className="px-3 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-md text-[10px] font-bold transition-all duration-150 shadow-sm flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#5b5fc7]"
                           >
                             <span>⚡ Auto Split PIC Event</span>
                           </button>
@@ -1386,7 +1386,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                       ];
 
                       return (
-                        <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
+                        <div className="bg-slate-50/50 border border-slate-100 rounded-md p-4">
                           <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">
                             <span>Allocation Balance</span>
                             <span className="text-slate-700 font-bold">{totalAssigned} / {totalParticipants} Assigned ({Math.round((totalAssigned / Math.max(1, totalParticipants)) * 100)}%)</span>
@@ -1451,15 +1451,15 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
                           if (loadingPicSummary) {
                             return (
-                              <div className="col-span-full py-8 flex items-center justify-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-                                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                              <div className="col-span-full py-8 flex items-center justify-center bg-slate-50 border border-dashed border-slate-200 rounded-md">
+                                <Loader2 className="w-5 h-5 animate-spin text-[#5b5fc7]" />
                               </div>
                             );
                           }
 
                           if (activePics.length === 0) {
                             return (
-                              <div className="col-span-full py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                              <div className="col-span-full py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-md">
                                 <p className="text-xs text-slate-400 italic">Belum ada PIC yang aktif bertugas</p>
                               </div>
                             );
@@ -1575,7 +1575,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                         setSelectedPic(name);
                                         setPicViewTab('participants');
                                       }}
-                                      className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                      className="px-2 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
                                       <Users className="w-3.5 h-3.5" />
                                       <span>Kelola Peserta</span>
@@ -1617,17 +1617,19 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
       {confirmConfig && (
         <AlertDialog open={!!confirmConfig} onOpenChange={(open) => { if (!open) setConfirmConfig(null); }}>
-          <AlertDialogContent className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl text-slate-900 max-w-md">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+          <AlertDialogContent className="ms-modal max-w-md">
+            <AlertDialogHeader className="ms-modal-header">
+              <AlertDialogTitle className="ms-modal-title">
                 {confirmConfig.title}
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-xs text-slate-500 font-medium mt-1 whitespace-pre-line">
+            </AlertDialogHeader>
+            <div className="ms-modal-body">
+              <AlertDialogDescription className="ms-modal-description whitespace-pre-line">
                 {confirmConfig.description}
               </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="mt-4 flex gap-2 justify-end">
-              <AlertDialogCancel className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all">
+            </div>
+            <AlertDialogFooter className="ms-modal-footer">
+              <AlertDialogCancel className="ms-modal-secondary">
                 Batal
               </AlertDialogCancel>
               <AlertDialogAction
@@ -1635,7 +1637,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   confirmConfig.onConfirm();
                   setConfirmConfig(null);
                 }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                className="ms-modal-primary"
               >
                 Konfirmasi
               </AlertDialogAction>
@@ -1645,19 +1647,19 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       )}
       {/* Auto Split Selected PICs Dialog Modal */}
       <Dialog open={isSplitModalOpen} onOpenChange={setIsSplitModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white p-6 rounded-2xl border border-slate-200 text-slate-900">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+        <DialogContent className="ms-modal sm:max-w-lg">
+          <DialogHeader className="ms-modal-header pr-14">
+            <DialogTitle className="ms-modal-title flex items-center gap-2">
               <span>⚡ Auto Split PIC Event</span>
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 font-medium mt-1">
+            <DialogDescription className="ms-modal-description mt-2">
               Pilih PIC mana saja yang akan menangani event ini. Sistem akan membagi rata peserta ke PIC terpilih secara otomatis.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 mt-4">
+          <div className="ms-modal-body space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <label className="text-xs font-bold text-slate-700">
                   Pilih Tim PIC Bertugas ({selectedSplitPics.length} Terpilih)
                 </label>
@@ -1672,7 +1674,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                       const allEligible = eligibleSplitUsers.map(u => u.fullName || u.username);
                       setSelectedSplitPics(allEligible);
                     }}
-                    className="text-blue-600 font-bold hover:underline cursor-pointer"
+                    className="text-[#5b5fc7] font-bold hover:underline cursor-pointer"
                   >
                     Pilih Semua
                   </button>
@@ -1687,7 +1689,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 </div>
               </div>
 
-              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-2.5 space-y-1.5 bg-slate-50/50">
+              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-md p-2.5 space-y-1.5 bg-slate-50/50">
                 {eligibleSplitUsers.length === 0 ? (
                   <button
                     type="button"
@@ -1713,12 +1715,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => toggleSplitPic(name)}
-                          className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="w-3.5 h-3.5 rounded text-[#5b5fc7] focus:ring-blue-500 cursor-pointer"
                         />
                         <span>{name}</span>
                       </span>
                       {isChecked && (
-                        <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-bold bg-[#5b5fc7] text-white px-2 py-0.5 rounded-md">
                           PIC Event
                         </span>
                       )}
@@ -1733,18 +1735,19 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               <select
                 value={splitMode}
                 onChange={(e) => setSplitMode(e.target.value as 'all' | 'unassigned')}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold text-slate-800 focus:outline-none focus:border-[#5b5fc7] cursor-pointer"
               >
                 <option value="all">Bagi Seluruh Peserta Event ({participants.length} pax)</option>
                 <option value="unassigned">Hanya Bagi Peserta Sisa / Belum Ada PIC</option>
               </select>
             </div>
 
-            <div className="flex gap-2 justify-end pt-4 border-t border-slate-100">
+            </div>
+            <div className="ms-modal-footer">
               <button
                 type="button"
                 onClick={() => setIsSplitModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                className="ms-modal-secondary px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md transition-all cursor-pointer"
               >
                 Batal
               </button>
@@ -1752,12 +1755,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 type="button"
                 onClick={handleExecuteSplitSelected}
                 disabled={selectedSplitPics.length === 0}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                className="ms-modal-primary px-4 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-bold rounded-md shadow-sm transition-all cursor-pointer disabled:opacity-50"
               >
                 Jalankan Auto Split ({selectedSplitPics.length} PIC)
               </button>
             </div>
-          </div>
         </DialogContent>
       </Dialog>
     </>

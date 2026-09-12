@@ -43,23 +43,24 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl relative animate-in scale-in duration-200 text-slate-900">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-md">
+        <div className="ms-modal-header flex items-center gap-3 pr-14">
+          <h3 className="ms-modal-title flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-blue-650" />
             Add User Account
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-slate-55 rounded-lg"
+            className="ms-modal-close"
             type="button"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="ms-modal-form">
+          <div className="ms-modal-body space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Username *</label>
             <div className="relative">
@@ -71,7 +72,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="johndoe"
-                className="w-full pl-9 pr-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
+                className="w-full pl-9 pr-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
                 required
               />
             </div>
@@ -88,7 +89,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="john@example.com"
-                className="w-full pl-9 pr-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
+                className="w-full pl-9 pr-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
                 required
               />
             </div>
@@ -105,7 +106,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full pl-9 pr-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
+                className="w-full pl-9 pr-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
               />
             </div>
           </div>
@@ -119,7 +120,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-750 focus:outline-none transition-all text-xs uppercase font-bold cursor-pointer"
+                className="w-full pl-9 pr-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-750 focus:outline-none transition-all text-xs normal-case font-semibold cursor-pointer"
                 required
               >
                 <option value="USER">USER (Read-only)</option>
@@ -138,7 +139,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-3 pr-10 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
+                  className="w-full pl-3 pr-10 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
                   required
                 />
                 <button
@@ -158,7 +159,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-3 pr-10 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
+                  className="w-full pl-3 pr-10 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
                   required
                 />
                 <button
@@ -172,19 +173,20 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+          </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 bg-slate-105 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-all"
+              className="ms-modal-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md shadow-blue-600/10 transition-all"
+              className="ms-modal-primary"
             >
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
               Add User

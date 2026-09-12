@@ -224,16 +224,21 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     (isCreatingNewCompany ? !newCompanyName.trim() : !selectedCompanyId);
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-2xl">
+        <div className="ms-modal-header">
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 mb-6">Create New Database</h3>
+        <h3 className="ms-modal-title">Create New Database</h3>
+        </div>
+
+        <form onSubmit={handleCreateDatabase} className="ms-modal-form">
+        <div className="ms-modal-body space-y-5">
 
         {isFormIncomplete ? (
           <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
@@ -251,7 +256,6 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleCreateDatabase} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Salutation <span className="text-red-500 font-bold">*</span></label>
@@ -271,7 +275,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
             </div>
 
             <div>
-              <div className="flex justify-between items-center mb-1.5">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-1.5">
                 <label className="block text-sm font-semibold text-slate-700">
                   Associated Company <span className="text-red-500 font-bold">*</span>
                 </label>
@@ -565,26 +569,27 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-3 justify-between pt-4 border-t border-slate-100 mt-6">
+        </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all"
+              className="ms-modal-secondary sm:mr-auto"
             >
               Reset Form
             </button>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 hover:bg-slate-100 text-slate-600 text-sm font-medium rounded-xl transition-all"
+                className="ms-modal-secondary"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50 shadow-sm"
+                className="ms-modal-primary"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Save Database

@@ -54,20 +54,25 @@ export const EmailModal: React.FC<EmailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 flex flex-col text-slate-900">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-lg">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 mb-1">Emails for {database.firstName}</h3>
-        <p className="text-xs text-slate-500 mb-6">Manage company or personal emails for lead targeting.</p>
+        <h3 className="ms-modal-title">Emails for {database.firstName}</h3>
+        <p className="ms-modal-description">Manage company or personal emails for lead targeting.</p>
+        </div>
+
+        <form onSubmit={handleAddEmail} className="ms-modal-form">
+        <div className="ms-modal-body space-y-4">
 
         {/* List of current emails */}
-        <div className="space-y-3 mb-6 bg-slate-50 p-4 border border-slate-200 rounded-xl max-h-[200px] overflow-y-auto">
+        <div className="ms-modal-section space-y-3">
           {loadingEmails ? (
             <div className="py-6 flex items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
@@ -76,9 +81,9 @@ export const EmailModal: React.FC<EmailModalProps> = ({
             <p className="text-center text-xs text-slate-500 py-4">No email addresses added yet.</p>
           ) : (
             emails.map((em) => (
-              <div key={em.id} className="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono">
-                <div className="space-y-0.5">
-                  <p className="text-slate-900 font-bold">{em.email}</p>
+              <div key={em.id} className="flex flex-wrap items-center justify-between gap-2 p-2 bg-white border border-slate-200 rounded-md text-xs">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-slate-900 font-semibold break-all">{em.email}</p>
                   <p className="text-[10px] text-slate-500">
                     Type: <span className="capitalize">{em.emailType}</span> |{' '}
                     {em.isCorporate ? (
@@ -99,7 +104,6 @@ export const EmailModal: React.FC<EmailModalProps> = ({
         </div>
 
         {/* Add new email form */}
-        <form onSubmit={handleAddEmail} className="space-y-4 border-t border-slate-100 pt-4">
           <h4 className="font-bold text-sm text-slate-900">Add New Email Address</h4>
 
           <div>
@@ -114,7 +118,7 @@ export const EmailModal: React.FC<EmailModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Type</label>
               <select
@@ -128,7 +132,7 @@ export const EmailModal: React.FC<EmailModalProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center gap-2 pt-6">
+            <div className="flex items-center gap-2 sm:pt-6">
               <input
                 type="checkbox"
                 id="isPrimary"
@@ -142,18 +146,19 @@ export const EmailModal: React.FC<EmailModalProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-4">
+        </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
+              className="ms-modal-secondary"
             >
               Close
             </button>
             <button
               type="submit"
               disabled={submittingEmail}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+              className="ms-modal-primary"
             >
               {submittingEmail ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
               Add Email

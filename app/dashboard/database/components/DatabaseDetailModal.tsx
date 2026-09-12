@@ -51,52 +51,50 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6">
+    <div className="ms-modal-overlay">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="database-detail-title"
-        className="relative max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-white/10 bg-white text-slate-900 shadow-2xl shadow-slate-950/25 animate-in zoom-in-95 duration-200"
+        className="ms-modal w-full max-w-5xl"
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-20 rounded-full border border-white/15 bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+          className="ms-modal-close z-20"
           type="button"
           aria-label="Close database details"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <header className="relative overflow-hidden bg-slate-950 px-5 py-6 text-white sm:px-8 sm:py-8">
-          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-cyan-500/20 to-transparent" />
-          <div className="absolute -right-8 -top-24 h-60 w-60 rounded-full border border-cyan-300/15" />
-          <div className="relative flex items-start gap-4 pr-12 sm:gap-5">
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-cyan-500 text-lg font-black text-slate-950 shadow-lg shadow-cyan-950/30 sm:h-16 sm:w-16 sm:text-xl">
+        <header className="ms-modal-header">
+          <div className="flex items-start gap-3 pr-8">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-blue-50 text-base font-semibold text-blue-700">
               {initials || <Users className="h-8 w-8" />}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-300">Database profile · #{database.id}</p>
+              <p className="mb-1 text-xs text-slate-500">Database profile · #{database.id}</p>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 id="database-detail-title" className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{fullName}</h2>
-                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${database.isActive !== false ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300' : 'border-rose-400/30 bg-rose-400/15 text-rose-300'}`}>
+                <h2 id="database-detail-title" className="ms-modal-title">{fullName}</h2>
+                <span className={`rounded border px-2 py-0.5 text-xs font-medium ${database.isActive !== false ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
                   {database.isActive !== false ? 'Active' : 'Inactive'}
                 </span>
               </div>
-              <p className="mt-2 text-sm text-slate-300">
+              <p className="ms-modal-description">
                 {database.jobTitle || 'Role not recorded'}
                 {database.company?.name ? <span className="text-slate-500"> · </span> : null}
-                {database.company?.name && <span className="font-semibold text-white">{database.company.name}</span>}
+                {database.company?.name && <span className="font-semibold text-slate-700">{database.company.name}</span>}
               </p>
-              <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-300">
-                <span className="rounded-lg bg-white/10 px-2.5 py-1.5">{emails.length} email{emails.length === 1 ? '' : 's'}</span>
-                <span className="rounded-lg bg-white/10 px-2.5 py-1.5">{events.length} event{events.length === 1 ? '' : 's'}</span>
-                <span className="rounded-lg bg-white/10 px-2.5 py-1.5 capitalize">{database.databaseType || 'Type not set'}</span>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
+                <span className="rounded bg-slate-100 px-2 py-1">{emails.length} email{emails.length === 1 ? '' : 's'}</span>
+                <span className="rounded bg-slate-100 px-2 py-1">{events.length} event{events.length === 1 ? '' : 's'}</span>
+                <span className="rounded bg-slate-100 px-2 py-1 capitalize">{database.databaseType || 'Type not set'}</span>
               </div>
             </div>
           </div>
         </header>
 
-        <div className="space-y-6 p-5 sm:p-8">
+        <div className="ms-modal-body space-y-5 break-words">
           {completeness.isIncomplete && (
             <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
@@ -111,9 +109,9 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
           )}
 
           {/* SECTION A: Holding Group & Company Info */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+          <div className="ms-modal-section">
             <h4 className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-slate-900">
-              <Building2 className="h-4 w-4 text-cyan-600" />
+              <Building2 className="h-4 w-4 text-blue-600" />
               Company & group
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
@@ -187,9 +185,9 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
           </div>
 
           {/* SECTION B: Database & Personal Info */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="ms-modal-section">
             <h4 className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-slate-900">
-              <Users className="h-4 w-4 text-cyan-600" />
+              <Users className="h-4 w-4 text-blue-600" />
               Contact information
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
@@ -271,13 +269,13 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
           </div>
 
           {/* SECTION C: Email List */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="ms-modal-section">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-slate-900">
-                <Mail className="h-4 w-4 text-cyan-600" />
+                <Mail className="h-4 w-4 text-blue-600" />
                 Email addresses
               </h4>
-              <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">{emails.length} total</span>
+              <span className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">{emails.length} total</span>
             </div>
             {loadingEmails ? (
               <div className="py-4 flex items-center justify-center">
@@ -316,10 +314,10 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
           </div>
 
           {/* SECTION D: Event Participation History */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="ms-modal-section">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-slate-900">
-                <Calendar className="h-4 w-4 text-cyan-600" />
+                <Calendar className="h-4 w-4 text-blue-600" />
                 Event participation
               </h4>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{events.length} total</span>
@@ -405,11 +403,11 @@ export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = ({
           </div>
         </div>
 
-        <div className="flex justify-end border-t border-slate-200 px-5 py-4 sm:px-8">
+        <div className="ms-modal-footer">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-150 text-slate-700 text-sm font-bold rounded-xl transition-all shadow-sm"
+            className="ms-modal-secondary"
           >
             Close
           </button>

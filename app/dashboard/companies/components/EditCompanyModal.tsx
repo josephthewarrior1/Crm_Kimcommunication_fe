@@ -91,19 +91,22 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 text-slate-900">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-2xl">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
           type="button"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 mb-6">Edit Company</h3>
+        <h3 className="ms-modal-title">Edit Company</h3>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="ms-modal-form">
+          <div className="ms-modal-body space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Legal Company Name *</label>
@@ -112,7 +115,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                 placeholder="e.g. Toyota Astra Motor PT"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
                 required
               />
             </div>
@@ -124,7 +127,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                 placeholder="e.g. Toyota"
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
               />
             </div>
 
@@ -138,13 +141,13 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                     placeholder="Search group..."
                     value={groupSearchQuery}
                     onChange={(e) => setGroupSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
                   />
                 </div>
                 <select
                   value={selectedGroupId}
                   onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
+                  className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
                 >
                   <option value="">No Group (Independent)</option>
                   {filteredGroups.map((g) => (
@@ -161,7 +164,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
               <select
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
               >
                 <option value="">Select Industry</option>
                 {INDUSTRIES.map((ind) => (
@@ -179,7 +182,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                 placeholder="e.g. 021-123456"
                 value={officePhone}
                 onChange={(e) => setOfficePhone(e.target.value.replace(/[^0-9+\-()\s]/g, ''))}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
               />
             </div>
 
@@ -190,7 +193,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                 placeholder="e.g. www.toyota.co.id"
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
               />
             </div>
 
@@ -199,7 +202,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
               <select
                 value={companySizeEmployee}
                 onChange={(e) => setCompanySizeEmployee(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
               >
                 <option value="">Select Employee Size</option>
                 {EMPLOYEE_SIZES.map((sz) => (
@@ -213,7 +216,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
               <select
                 value={companySizeRevenue}
                 onChange={(e) => setCompanySizeRevenue(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 focus:outline-none transition-all focus:bg-white text-sm cursor-pointer"
               >
                 <option value="">Select Revenue Size</option>
                 {REVENUE_SIZES.map((sz) => (
@@ -229,7 +232,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                 placeholder="e.g. Jakarta Utara"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
               />
             </div>
 
@@ -240,7 +243,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                 placeholder="e.g. 14330"
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
+                className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white text-sm"
               />
             </div>
           </div>
@@ -252,7 +255,7 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               rows={2}
-              className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white text-sm"
+              className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white text-sm"
             />
           </div>
 
@@ -263,22 +266,23 @@ export const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
               value={companyHardware}
               onChange={(e) => setCompanyHardware(e.target.value)}
               rows={2}
-              className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white text-sm"
+              className="w-full px-4 py-2.5 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white text-sm"
             />
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+          </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-105 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+              className="ms-modal-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50 shadow-md shadow-blue-600/10"
+              className="ms-modal-primary"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Changes

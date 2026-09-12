@@ -20,21 +20,24 @@ export const DeleteParticipantConfirmModal: React.FC<DeleteParticipantConfirmMod
   if (!isOpen || !deletingParticipant) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-lg">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-bold text-slate-900 mb-1">Remove Participant from Event</h3>
-        <p className="text-xs text-slate-500 mb-6">
+        <h3 className="ms-modal-title pr-8">Remove Participant from Event</h3>
+        <p className="ms-modal-description mt-2">
           Are you sure you want to remove this person from the event?
         </p>
 
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 mb-6 text-sm">
+        </div>
+        <div className="ms-modal-body">
+        <div className="ms-modal-section space-y-3 text-sm">
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Name</span>
             <span className="font-bold text-slate-800">{deletingParticipant.database.firstName} {deletingParticipant.database.lastName}</span>
@@ -53,11 +56,12 @@ export const DeleteParticipantConfirmModal: React.FC<DeleteParticipantConfirmMod
           </div>
         </div>
 
-        <div className="flex gap-3 justify-end">
+        </div>
+        <div className="ms-modal-footer">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+            className="ms-modal-secondary px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-md transition-all"
           >
             Cancel
           </button>
@@ -65,7 +69,7 @@ export const DeleteParticipantConfirmModal: React.FC<DeleteParticipantConfirmMod
             type="button"
             onClick={onConfirm}
             disabled={submittingParticipantDelete}
-            className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-750 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+            className="ms-modal-danger px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-750 text-white text-sm font-bold rounded-md flex items-center gap-2 transition-all disabled:opacity-50"
           >
             {submittingParticipantDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Remove

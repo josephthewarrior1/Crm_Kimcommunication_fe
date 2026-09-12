@@ -33,25 +33,26 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl relative animate-in scale-in duration-200 text-slate-900">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-md">
+        <div className="ms-modal-header flex items-center gap-3 pr-14">
+          <h3 className="ms-modal-title flex items-center gap-2">
             <Lock className="w-5 h-5 text-blue-650" />
             Change Password
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-slate-55 rounded-lg"
+            className="ms-modal-close"
             type="button"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="text-xs text-slate-500 bg-slate-55 border border-slate-100 rounded-xl p-3 mb-2 font-medium">
-            You are updating the password for user <span className="font-bold text-slate-800">@{targetUser.username}</span> ({targetUser.fullName || targetUser.email}).
+        <form onSubmit={handleSubmit} className="ms-modal-form">
+          <div className="ms-modal-body space-y-4">
+          <div className="text-xs text-slate-500 bg-slate-55 border border-slate-100 rounded-md p-3 mb-2 font-medium">
+            You are updating the password for user <span className="font-semibold text-slate-800">@{targetUser.username}</span> ({targetUser.fullName || targetUser.email}).
           </div>
 
           <div>
@@ -62,7 +63,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-3 pr-10 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
+                className="w-full pl-3 pr-10 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
                 required
               />
               <button
@@ -83,7 +84,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-3 pr-10 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
+                className="w-full pl-3 pr-10 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all text-xs"
                 required
               />
               <button
@@ -97,22 +98,23 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           </div>
 
           {password && confirmPassword && password !== confirmPassword && (
-            <p className="text-[10px] text-red-600 font-bold">Passwords do not match.</p>
+            <p className="text-[10px] text-red-600 font-semibold">Passwords do not match.</p>
           )}
 
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-100">
+          </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 bg-slate-105 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-all"
+              className="ms-modal-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || (password !== confirmPassword)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md shadow-blue-600/10 transition-all disabled:opacity-50"
+              className="ms-modal-primary"
             >
               {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Change Password

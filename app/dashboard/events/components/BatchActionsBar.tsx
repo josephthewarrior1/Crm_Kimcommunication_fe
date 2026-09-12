@@ -184,22 +184,24 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
               Remove Selected
             </button>
           </AlertDialogTrigger>
-          <AlertDialogContent className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl text-slate-900 max-w-md">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+          <AlertDialogContent className="ms-modal max-w-md">
+            <AlertDialogHeader className="ms-modal-header">
+              <AlertDialogTitle className="ms-modal-title">
                 Remove selected participants?
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-xs text-slate-500 font-medium mt-1">
+            </AlertDialogHeader>
+            <div className="ms-modal-body">
+              <AlertDialogDescription className="ms-modal-description">
                 This removes {selectedParticipantIds.length} participant{selectedParticipantIds.length === 1 ? '' : 's'} from this event only. Database records stay intact.
               </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="mt-4 flex gap-2 justify-end">
-              <AlertDialogCancel className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all">
+            </div>
+            <AlertDialogFooter className="ms-modal-footer">
+              <AlertDialogCancel className="ms-modal-secondary">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleBatchDeleteParticipants}
-                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                className="ms-modal-danger"
               >
                 Remove
               </AlertDialogAction>

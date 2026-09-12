@@ -57,18 +57,22 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
   if (!isOpen || !editingEvent) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full min-w-0 max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-lg p-4 sm:p-6 shadow-xl relative animate-in scale-in duration-200 [&_input]:min-w-0 [&_input]:rounded-md [&_select]:min-w-0 [&_select]:rounded-md [&_textarea]:rounded-md [&_button]:rounded-md">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-lg">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-semibold text-slate-900 mb-5 pr-8">Edit Event</h3>
+        <h3 className="ms-modal-title pr-8">Edit Event</h3>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        </div>
+
+        <form onSubmit={onSubmit} className="ms-modal-form">
+          <div className="ms-modal-body space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Event Name *</label>
             <input
@@ -76,7 +80,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
               placeholder="e.g. Cloud Security Summit 2026"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all focus:bg-white"
               required
             />
           </div>
@@ -97,7 +101,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                   value={editEmsEventId || ''}
                   onChange={(e) => setEditEmsEventId(Number(e.target.value))}
                   min={0}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
                 />
               )}
             </div>
@@ -109,7 +113,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
               <select
                 value={editEventType}
                 onChange={(e) => setEditEventType(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white"
               >
                 <option value="partner">Partner</option>
                 <option value="end_user">End User</option>
@@ -125,7 +129,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 placeholder="e.g. Google Cloud"
                 value={editClientName}
                 onChange={(e) => setEditClientName(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
               />
             </div>
           </div>
@@ -137,7 +141,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 type="date"
                 value={editDateStart}
                 onChange={(e) => setEditDateStart(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white"
               />
             </div>
             <div>
@@ -146,7 +150,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 type="date"
                 value={editDateEnd}
                 onChange={(e) => setEditDateEnd(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white"
               />
             </div>
           </div>
@@ -159,7 +163,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
               value={editTargetParticipants || ''}
               onChange={(e) => setEditTargetParticipants(Number(e.target.value))}
               min={0}
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
             />
           </div>
 
@@ -187,22 +191,23 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
               rows={2}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
             />
           </div>
 
-          <div className="flex flex-wrap gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+          </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+              className="ms-modal-secondary px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-md transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submittingEvent}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+              className="ms-modal-primary px-5 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-sm font-bold rounded-md flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {submittingEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Save Changes

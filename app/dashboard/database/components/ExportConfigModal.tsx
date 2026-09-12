@@ -160,29 +160,31 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto pt-10 sm:pt-16">
-      <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 text-slate-900">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-2xl">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="mb-6">
-          <div className="inline-flex p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl mb-3">
+        <div>
+          <div className="inline-flex p-2 bg-blue-50 text-blue-600 rounded-md mb-3">
             <Download className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-bold text-slate-900">Custom Export Excel</h3>
-          <p className="text-xs text-slate-500 mt-1">
+          <h3 className="ms-modal-title">Custom Export Excel</h3>
+          <p className="ms-modal-description">
             Pilih kolom dan tentukan kontak yang ingin di-export ke dalam file Excel.
           </p>
         </div>
 
-        <div className="space-y-6">
+        </div>
+        <div className="ms-modal-body space-y-6">
           {/* Row selection info and list */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
+          <div className="ms-modal-section">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">1. Pilih Orang/Kontak yang mau di-export:</h4>
               <div className="flex gap-2">
                 <button
@@ -202,7 +204,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
             </div>
 
             <div className="border border-slate-200 rounded-lg bg-white overflow-hidden shadow-sm">
-              <div className="max-h-[180px] overflow-y-auto divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100">
                 {filteredDatabases.map((c) => {
                   const isChecked = tempSelectedDbIds.includes(c.id);
                   return (
@@ -246,7 +248,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
 
           {/* Column/Heading selection list */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">2. Kolom / Heading yang mau di-export:</h4>
               <div className="flex gap-2">
                 <button
@@ -265,7 +267,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 border border-slate-200 rounded-xl p-4 bg-white max-h-[40vh] overflow-y-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 border border-slate-200 rounded-md p-4 bg-white">
               {EXPORT_COLUMNS.map((col) => {
                 const isChecked = selectedColumns.includes(col.key);
                 return (
@@ -292,24 +294,24 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+        </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+              className="ms-modal-secondary"
             >
               Batal
             </button>
             <button
               type="button"
               onClick={handleExecuteExport}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all"
+              className="ms-modal-primary"
             >
               <Download className="w-4 h-4" />
               Unduh Excel ({tempSelectedDbIds.length} Data)
             </button>
           </div>
-        </div>
       </div>
     </div>
   );

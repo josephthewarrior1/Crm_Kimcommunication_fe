@@ -36,19 +36,23 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative animate-in scale-in duration-200 text-slate-900">
-        <h3 className="text-lg font-bold text-slate-900 mb-2">Hard Delete Database</h3>
-        <p className="text-sm text-slate-500 mb-6">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-md">
+        <div className="ms-modal-header">
+        <h3 className="ms-modal-title">Hard Delete Database</h3>
+        </div>
+        <div className="ms-modal-body">
+        <p className="text-sm leading-6 text-slate-600">
           Are you sure you want to permanently delete database <span className="font-semibold text-slate-800">"{database.firstName} {database.lastName}"</span>?
           This will completely erase the database and all associated emails, event leads, and removal request logs. This action is irreversible.
         </p>
 
-        <div className="flex flex-wrap gap-3 justify-end">
+        </div>
+        <div className="ms-modal-footer">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all"
+            className="ms-modal-secondary"
             disabled={submitting}
           >
             Cancel
@@ -57,7 +61,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             type="button"
             onClick={handleDeleteDatabase}
             disabled={submitting}
-            className="px-5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+            className="ms-modal-danger"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Yes, Delete Permanently

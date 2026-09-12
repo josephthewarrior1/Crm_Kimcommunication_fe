@@ -114,26 +114,27 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
   const allVisibleSelected = events.length > 0 && events.every((event) => selectedIds.includes(event.id));
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6 space-y-5 animate-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-lg">
+        <div className="ms-modal-header pr-14">
           <div>
-            <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+            <h3 className="ms-modal-title flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-600" />
               Event Access Permissions
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="ms-modal-description">
               Select which events <strong className="text-slate-800">{targetUser.fullName || targetUser.username}</strong> ({targetUser.roles?.[0] || 'USER'}) can access or be assigned to.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-700 rounded-lg transition-all"
+            className="ms-modal-close"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        <div className="ms-modal-body space-y-5">
         {/* Search & Select All Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="relative min-w-0 flex-1">
@@ -146,13 +147,13 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
                 setSearch(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs focus:outline-none focus:border-blue-500"
             />
           </div>
           <button
             type="button"
             onClick={handleSelectAll}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all whitespace-nowrap"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-md transition-all whitespace-nowrap"
           >
             {allVisibleSelected ? 'Deselect Page' : 'Select Page'}
           </button>
@@ -168,7 +169,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
             No events found.
           </div>
         ) : (
-          <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/50">
+          <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-md p-2 bg-slate-50/50">
             {events.map((evt) => {
               const isChecked = selectedIds.includes(evt.id);
               return (
@@ -227,22 +228,23 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+        </div>
+        <div className="ms-modal-footer">
           <span className="text-xs font-semibold text-slate-500">
             Allowed: <strong className="text-blue-600">{selectedIds.length}</strong> of {totalItems} events
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+              className="ms-modal-secondary"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSave}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/10 transition-all"
+              className="ms-modal-primary"
             >
               Save Event Access
             </button>

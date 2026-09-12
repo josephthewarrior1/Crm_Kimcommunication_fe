@@ -95,19 +95,22 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto animate-in scale-in duration-200 text-slate-900">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-2xl">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
           type="button"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 mb-6">Edit Flagged Details</h3>
+        <h3 className="ms-modal-title">Edit Flagged Details</h3>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="ms-modal-form">
+          <div className="ms-modal-body space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">Name Used</label>
             <input
@@ -115,11 +118,11 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
               placeholder="e.g. Joseph W"
               value={nameUsed}
               onChange={(e) => setNameUsed(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
+              className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Used</label>
               <input
@@ -127,13 +130,13 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
                 placeholder="email@example.com"
                 value={emailUsed}
                 onChange={(e) => setEmailUsed(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
+                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white"
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Used</label>
               <div className="flex items-center">
-                <span className="px-3 py-2 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-slate-700 font-bold text-xs shrink-0 select-none shadow-2xs">
+                <span className="px-3 py-2 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-slate-700 font-semibold text-xs shrink-0 select-none shadow-2xs">
                   +62
                 </span>
                 <input
@@ -147,13 +150,13 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Flag Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white cursor-pointer"
+                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white cursor-pointer"
               >
                 <option value="suspected">Suspected</option>
                 <option value="confirmed">Confirmed (Tikus)</option>
@@ -166,7 +169,7 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
               <select
                 value={flagReason}
                 onChange={(e) => setFlagReason(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white cursor-pointer"
+                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white cursor-pointer"
               >
                 <option value="multiple_identity">Multiple Identity</option>
                 <option value="fake_company">Fake Company Name</option>
@@ -178,13 +181,13 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Database (Optional)</label>
               <select
                 value={selectedDatabaseId}
                 onChange={(e) => handleSelectDatabaseChange(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white cursor-pointer"
+                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-[10px] focus:outline-none focus:bg-white cursor-pointer"
               >
                 <option value="">-- No linked database --</option>
                 {databases.map((c) => (
@@ -200,7 +203,7 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
               <select
                 value={selectedEventId}
                 onChange={(e) => setSelectedEventId(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-[10px] focus:outline-none focus:bg-white cursor-pointer"
+                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-[10px] focus:outline-none focus:bg-white cursor-pointer"
               >
                 <option value="">-- No linked event --</option>
                 {events.map((evt) => (
@@ -219,22 +222,23 @@ export const EditFlaggedModal: React.FC<EditFlaggedModalProps> = ({
               value={evidenceNotes}
               onChange={(e) => setEvidenceNotes(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-xl text-xs placeholder-slate-400 focus:outline-none resize-none focus:bg-white"
+              className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-xs placeholder-slate-400 focus:outline-none resize-none focus:bg-white"
             />
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
+          </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-105 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
+              className="ms-modal-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50 shadow-md shadow-blue-600/10"
+              className="ms-modal-primary"
             >
               {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Save Changes

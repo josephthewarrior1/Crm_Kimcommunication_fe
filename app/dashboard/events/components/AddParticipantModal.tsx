@@ -111,20 +111,23 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full min-w-0 max-w-lg bg-white border border-slate-200 rounded-lg p-4 sm:p-6 shadow-xl relative animate-in scale-in duration-200 max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col [&_input]:min-w-0 [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-md [&_textarea]:rounded-md [&_button]:rounded-md">
+    <div className="ms-modal-overlay">
+      <div className="ms-modal w-full max-w-2xl">
+        <div className="ms-modal-header">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+          className="ms-modal-close"
           type="button"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-semibold text-slate-900 mb-4 pr-8 shrink-0">Add Database as Participant</h3>
+        <h3 className="ms-modal-title pr-8">Add Database as Participant</h3>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 mb-4">
+        </div>
+
+        <form onSubmit={handleSubmit} className="ms-modal-form">
+          <div className="ms-modal-body space-y-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Databases</label>
 
@@ -134,10 +137,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                   placeholder="Search databases by name or company..."
                   value={databaseSearch}
                   onChange={(e) => setDatabaseSearch(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
                 />
 
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-md p-3 space-y-3">
                   <p className="text-[10px] font-bold text-slate-550 uppercase tracking-wider">Advanced Filters</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs [&>div]:min-w-0 [&_label]:text-xs [&_label]:font-medium [&_label]:normal-case [&_label]:text-slate-600 [&_select]:py-2">
                     <div>
@@ -229,10 +232,10 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                 </div>
               </div>
 
-              <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-2 max-h-[180px] overflow-y-auto">
+              <div className="border border-slate-200 rounded-md p-3 bg-slate-50/50 space-y-2 max-h-[180px] overflow-y-auto">
                 {loadingDatabases ? (
                   <div className="py-6 flex items-center justify-center">
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                    <Loader2 className="w-5 h-5 animate-spin text-[#5b5fc7]" />
                   </div>
                 ) : visibleItems.length === 0 ? (
                   <p className="text-center text-xs text-slate-400 py-4">No available databases found.</p>
@@ -256,7 +259,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                               setSelectedDatabaseIds([...selectedDatabaseIds, database.id]);
                             }
                           }}
-                          className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                          className="w-4 h-4 text-[#5b5fc7] border-slate-300 rounded focus:ring-[#5b5fc7]"
                         />
                         <div className="min-w-0 break-words text-xs flex-1">
                           <p className="font-bold text-slate-900">{database.firstName} {database.lastName}</p>
@@ -285,7 +288,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
               </div>
 
               {visibleItems.length > 0 && (
-                <div className="flex flex-wrap gap-2 items-center justify-between text-[11px] mt-2 px-1 text-blue-600 font-bold">
+                <div className="flex flex-wrap gap-2 items-center justify-between text-[11px] mt-2 px-1 text-[#5b5fc7] font-bold">
                   <button
                     type="button"
                     onClick={() => {
@@ -319,7 +322,6 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
                 </p>
               )}
             </div>
-          </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Participant Notes</label>
@@ -328,22 +330,23 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs placeholder-slate-400 focus:outline-none transition-all resize-none focus:bg-white"
             />
           </div>
 
-          <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+          </div>
+          <div className="ms-modal-footer">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl transition-all"
+              className="ms-modal-secondary px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-md transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submittingParticipant || selectedDatabaseIds.length === 0}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-300 text-white text-sm font-bold rounded-xl transition-all"
+              className="ms-modal-primary px-4 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] disabled:bg-blue-300 text-white text-sm font-bold rounded-md transition-all"
             >
               {submittingParticipant ? 'Adding...' : `Add ${selectedDatabaseIds.length || ''}`.trim()}
             </button>

@@ -202,7 +202,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
         }
         if (e.target === e.currentTarget) handleClose(e);
       }}
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150 pointer-events-auto"
+      className="ms-modal-overlay z-[99999] pointer-events-auto"
     >
       <div 
         onClick={(e) => {
@@ -211,33 +211,33 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
             e.nativeEvent.stopImmediatePropagation();
           }
         }}
-        className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh] relative z-10 pointer-events-auto"
+        className="ms-modal max-w-xl w-full relative z-10 pointer-events-auto"
       >
         {/* Header */}
-        <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between">
+        <div className="ms-modal-header pr-14">
           <div className="min-w-0">
-            <h3 className="font-medium text-sm truncate">{fullName}</h3>
-            <p className="text-xs text-slate-400 truncate">{companyName} • {participant.database.jobTitle || 'No Title'}</p>
+            <h3 className="ms-modal-title break-words">{fullName}</h3>
+            <p className="ms-modal-description mt-1 break-words">{companyName} • {participant.database.jobTitle || 'No Title'}</p>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-all cursor-pointer relative z-20 shrink-0 ml-3"
+            className="ms-modal-close z-20"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-4 space-y-4 overflow-y-auto flex-1 text-slate-900">
+        <div className="ms-modal-body space-y-5">
           {/* Quick Log Buttons - Compact Row */}
           {!isViewer && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 disabled={submitting}
                 onClick={() => handleLogActivity('CALL')}
                 className="flex-1 py-2 bg-white border border-slate-200 hover:border-blue-300 text-slate-700 font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
-                <Phone className="w-3.5 h-3.5 text-blue-500" />
+                <Phone className="w-3.5 h-3.5 text-[#5b5fc7]" />
                 <span>Call ({callLogs.length})</span>
               </button>
               <button
@@ -267,7 +267,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                 placeholder="Catatan (opsional)..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 placeholder-slate-400"
+                className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#5b5fc7] text-slate-800 placeholder-slate-400"
               />
             </div>
           )}
@@ -306,11 +306,11 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
               </div>
 
               {/* Selects + Button */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={targetStage}
                   onChange={(e) => handleStageSelect(e.target.value as any)}
-                  className="flex-1 px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  className="min-w-0 basis-28 flex-1 px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-[#5b5fc7] cursor-pointer"
                 >
                   <option value="preEventApproval">Pre Event</option>
                   <option value="reminderH7">Reminder H-7</option>
@@ -323,7 +323,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                   value={outcomeStatus}
                   disabled={targetStage === 'none'}
                   onChange={(e) => setOutcomeStatus(e.target.value)}
-                  className="flex-1 px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer disabled:opacity-50"
+                  className="min-w-0 basis-28 flex-1 px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-[#5b5fc7] cursor-pointer disabled:opacity-50"
                 >
                   {targetStage === 'preEventApproval' ? (
                     <>
@@ -406,7 +406,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                       setSubmitting(false);
                     }
                   }}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-md transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shrink-0"
+                  className="px-3 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white font-medium text-xs rounded-md transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shrink-0"
                 >
                   {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                   <span>Sync</span>
@@ -430,7 +430,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
               </div>
             ) : loading ? (
               <div className="py-6 flex justify-center items-center">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                <Loader2 className="w-5 h-5 animate-spin text-[#5b5fc7]" />
               </div>
             ) : (activities?.length ?? 0) === 0 ? (
               <div className="text-center py-6 border border-dashed border-slate-200 rounded-lg">
@@ -450,7 +450,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                   const badgeStyle = typeColorMap[typeUpper] || 'bg-slate-100 text-slate-500';
 
                   return (
-                    <div key={act.id} className="py-2 px-2.5 bg-white border border-slate-200 rounded-md flex items-center justify-between gap-2 text-xs">
+                    <div key={act.id} className="py-3 px-3 bg-white border border-slate-200 rounded-md flex flex-wrap items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${badgeStyle} shrink-0`}>
                           {act.activityType}
@@ -469,11 +469,11 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-slate-100 flex justify-end">
+        <div className="ms-modal-footer">
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-xs rounded-md transition-all cursor-pointer relative z-20"
+            className="ms-modal-secondary px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-xs rounded-md transition-all cursor-pointer relative z-20"
           >
             Tutup
           </button>
