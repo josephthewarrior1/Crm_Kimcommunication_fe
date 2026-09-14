@@ -39,11 +39,11 @@ const EXPORT_COLUMNS = [
   { key: 'employeeSize', label: 'Company Size (Employee)' },
   { key: 'hardware', label: 'Company Hardware' },
   { key: 'linkedin', label: 'Linkedin Link' },
+  { key: 'branchName', label: 'Cabang/Kantor' },
   { key: 'city', label: 'City' },
   { key: 'postalCode', label: 'Postal Code' },
   { key: 'website', label: 'Company Website' },
-  { key: 'eventHistory', label: 'Event Participation' },
-  { key: 'branchName', label: 'Cabang/Kantor' }
+  { key: 'eventHistory', label: 'Event Participation' }
 ];
 
 export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
@@ -118,6 +118,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
         if (selectedColumns.includes('employeeSize')) rowData['Company Size (Employee)'] = c.company?.companySizeEmployee || '-';
         if (selectedColumns.includes('hardware')) rowData['Company Hardware'] = c.company?.companyHardware || '-';
         if (selectedColumns.includes('linkedin')) rowData['Linkedin Link'] = c.linkedinUrl || '-';
+        if (selectedColumns.includes('branchName')) rowData['Cabang/Kantor'] = c.branch?.name || '';
         if (selectedColumns.includes('city')) rowData['City'] = office?.city || '-';
         if (selectedColumns.includes('postalCode')) rowData['Postal Code'] = office?.postalCode || '-';
         if (selectedColumns.includes('website')) rowData['Company Website'] = c.company?.website || '-';
@@ -128,7 +129,6 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
           rowData['Event Participation'] = eventNames.length > 0 ? eventNames.join(', ') : '-';
         }
 
-        if (selectedColumns.includes('branchName')) rowData['Cabang/Kantor'] = c.branch?.name || '';
         return rowData;
       });
 

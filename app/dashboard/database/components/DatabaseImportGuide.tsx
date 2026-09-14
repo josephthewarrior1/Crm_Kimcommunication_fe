@@ -10,7 +10,7 @@ const requiredColumns = [
 
 const optionalColumns = [
   'No', 'Division', 'Personal Email Address', 'Company Size (Revenue)',
-  'Company Size (Employee)', 'Company Hardware', 'Linkedin Link', 'Postal Code', 'Cabang/Kantor',
+  'Company Size (Employee)', 'Company Hardware', 'Linkedin Link', 'Cabang/Kantor', 'Postal Code',
 ];
 
 export const DatabaseImportGuide = () => (
@@ -85,7 +85,7 @@ export const DatabaseImportGuide = () => (
             <div className="rounded-md border border-slate-200">
               <h4 className="border-b border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-900">Opsional <span className="ml-1 text-xs font-normal text-slate-500">9 kolom</span></h4>
               <ul className="list-inside list-disc space-y-1.5 p-4 text-xs leading-5">{optionalColumns.map(column => <li key={column}>{column}</li>)}</ul>
-              <p className="border-t border-slate-100 px-4 py-3 text-xs leading-5">Boleh benar-benar kosong. Kolom <strong>No</strong> hanya nomor urut Excel, bukan ID kontak. Cabang/Kantor ada di kolom X pada template terbaru.</p>
+              <p className="border-t border-slate-100 px-4 py-3 text-xs leading-5">Boleh benar-benar kosong. Kolom <strong>No</strong> hanya nomor urut Excel, bukan ID kontak. Cabang/Kantor ada di kolom U, tepat setelah Linkedin Link dan sebelum City. Template lama tetap bisa digunakan.</p>
             </div>
           </div>
           <div className="mt-3 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs leading-5">

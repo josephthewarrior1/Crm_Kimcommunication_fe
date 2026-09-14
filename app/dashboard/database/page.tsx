@@ -45,11 +45,11 @@ const EXPORT_COLUMNS = [
   { key: 'employeeSize', label: 'Company Size (Employee)' },
   { key: 'hardware', label: 'Company Hardware' },
   { key: 'linkedin', label: 'Linkedin Link' },
+  { key: 'branchName', label: 'Cabang/Kantor' },
   { key: 'city', label: 'City' },
   { key: 'postalCode', label: 'Postal Code' },
   { key: 'website', label: 'Company Website' },
-  { key: 'eventHistory', label: 'Event Participation' },
-  { key: 'branchName', label: 'Cabang/Kantor' }
+  { key: 'eventHistory', label: 'Event Participation' }
 ];
 
 const normalizeCityName = (city: string | null | undefined): string => {
@@ -1006,6 +1006,7 @@ export default function DatabasesPage() {
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Employee)</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Hardware</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Linkedin Link</th>
+                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Cabang/Kantor</th>
                   <th
                     onClick={() => handleSort('city')}
                     className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
@@ -1258,7 +1259,6 @@ export default function DatabasesPage() {
                       </td>
                       <td className="py-4 px-4 text-sm font-semibold text-slate-700">
                         {c.company?.name || <span className="text-slate-400">-</span>}
-                        {c.branch && <span className="mt-1 block text-xs font-normal text-slate-500">Cabang {c.branch.name}</span>}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-500">
                         {c.salutation || '-'}
@@ -1317,6 +1317,9 @@ export default function DatabasesPage() {
                             LinkedIn <ExternalLink className="w-3 h-3" />
                           </a>
                         ) : '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-600">
+                        {c.branch?.name || '-'}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-600">
                         {office?.city || '-'}

@@ -46,7 +46,7 @@ export interface ProcessedImportPreview {
 
 type TabType = 'ISSUES' | 'ALL' | 'INCOMPLETE' | 'CONFLICT' | 'DUPLICATE' | 'NEW';
 
-// Cabang/Kantor is optional after these original columns, so legacy templates still work.
+// Original columns; optional Cabang/Kantor may follow LinkedIn or be appended in older templates.
 const EXPECTED_HEADERS = [
   'No',
   'Nama Group/Holding Company',
@@ -80,12 +80,14 @@ const validateDatabaseTemplateHeader = async (file: File) => {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false });
   const headers = rows[0] || [];
+  const hasBranchAfterLinkedin = ['cabang/kantor', 'branch', 'branch name'].includes(normalizeHeader(headers[20]));
   const problems = EXPECTED_HEADERS
     .map((expected, index) => {
-      const actual = headers[index];
+      const column = hasBranchAfterLinkedin && index >= 20 ? index + 1 : index;
+      const actual = headers[column];
       return normalizeHeader(actual) === normalizeHeader(expected)
         ? null
-        : `Kolom ${index + 1} harus "${expected}", terbaca "${actual || '[kosong]'}"`;
+        : `Kolom ${column + 1} harus "${expected}", terbaca "${actual || '[kosong]'}"`;
     })
     .filter(Boolean);
 
@@ -430,7 +432,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </p>
               <div className="mt-3">
                 <a
-                  href="/Database_Template.xlsx?v=company-branches"
+                  href="/Database_Template.xlsx?v=branch-after-linkedin"
                   download="Database_Template.xlsx"
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline"
                 >
