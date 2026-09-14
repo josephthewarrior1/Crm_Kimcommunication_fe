@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { Company, Group, Database } from '../../../lib/types';
 import { Building2, Search, Plus, Loader2, Globe, Phone, MapPin, Edit2, Trash2, Users, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
@@ -21,6 +21,10 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [detailDatabases, setDetailDatabases] = useState<Database[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [contactsError, setContactsError] = useState(false);
+  const detailRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => detailRequest.current?.abort(), []);
   const [industryOptions, setIndustryOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,19 +105,25 @@ export default function CompaniesPage() {
   }
 
   async function openCompanyDetail(company: Company) {
+    detailRequest.current?.abort();
+    const controller = new AbortController();
+    detailRequest.current = controller;
     setDetailCompany(company);
     setDetailDatabases([]);
+    setContactsLoading(true);
+    setContactsError(false);
     setIsDetailModalOpen(true);
     try {
-      const databasesData = await crmService.getDatabasesList({
+      const databasesData = await crmService.exportDatabases({
         companyId: String(company.id),
-        tab: 'all',
-        page: 1,
-        size: 100
-      });
+        tab: 'all'
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       setDetailDatabases(databasesData.items);
     } catch {
-      setDetailDatabases([]);
+      if (!controller.signal.aborted) setContactsError(true);
+    } finally {
+      if (!controller.signal.aborted) setContactsLoading(false);
     }
   }
 
@@ -553,11 +563,15 @@ export default function CompaniesPage() {
         <CompanyDetailModal
           isOpen={isDetailModalOpen}
           onClose={() => {
+            detailRequest.current?.abort();
             setIsDetailModalOpen(false);
             setDetailCompany(null);
           }}
           company={detailCompany}
           databases={detailDatabases}
+          contactsLoading={contactsLoading}
+          contactsError={contactsError}
+          onRetryContacts={() => void openCompanyDetail(detailCompany)}
           onGoToEmployeeDetails={(fullName) => {
             router.push(`/dashboard/database?search=${encodeURIComponent(fullName)}`);
           }}

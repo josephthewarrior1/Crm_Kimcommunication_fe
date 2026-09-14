@@ -6,6 +6,7 @@ import type { DatabaseImportResult } from '../../../../lib/types';
 import { auditLogService } from '../../../../lib/services/auditLogService';
 import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
+import { DatabaseImportGuide } from './DatabaseImportGuide';
 
 interface ExcelImportModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export interface ProcessedRowPreview {
   rowNum: number;
   groupName: string;
   companyName: string;
+  branchName: string;
   firstName: string;
   lastName: string;
   jobTitle: string;
@@ -44,6 +46,7 @@ export interface ProcessedImportPreview {
 
 type TabType = 'ISSUES' | 'ALL' | 'INCOMPLETE' | 'CONFLICT' | 'DUPLICATE' | 'NEW';
 
+// Cabang/Kantor is optional after these original columns, so legacy templates still work.
 const EXPECTED_HEADERS = [
   'No',
   'Nama Group/Holding Company',
@@ -195,6 +198,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           rowNum: r.rowNum,
           groupName: r.groupName || '',
           companyName: r.companyName || '',
+          branchName: r.branchName || '',
           firstName: r.firstName || '',
           lastName: r.lastName || '',
           jobTitle: r.jobTitle || '',
@@ -338,6 +342,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           row.rowNum.toString().includes(query) ||
           `${row.firstName} ${row.lastName}`.toLowerCase().includes(query) ||
           row.companyName.toLowerCase().includes(query) ||
+          row.branchName.toLowerCase().includes(query) ||
           row.groupName.toLowerCase().includes(query) ||
           row.email.toLowerCase().includes(query) ||
           row.companyEmail.toLowerCase().includes(query) ||
@@ -393,7 +398,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       {importResult.skippedRows.map(row => (
                         <tr key={row.rowNum} className="border-t border-slate-200 block sm:table-row">
                           <td className="p-4 pb-1 sm:pb-4 align-top font-bold block sm:table-cell"><span className="sm:hidden">Baris Excel </span>#{row.rowNum}</td>
-                          <td className="p-4 pt-1 sm:pt-4 align-top break-words block sm:table-cell">{row.firstName} {row.lastName}<span className="block text-slate-500">{row.companyName}</span></td>
+                          <td className="p-4 pt-1 sm:pt-4 align-top break-words block sm:table-cell">{row.firstName} {row.lastName}<span className="block text-slate-500">{row.companyName}</span>{row.branchName && <span className="block text-xs text-blue-700">Cabang/Kantor: {row.branchName}</span>}</td>
                           <td className="p-4 align-top text-red-800 bg-red-50/60 block sm:table-cell">
                             <span className="block sm:hidden font-semibold mb-2">Alasan dilewati</span>
                             <ul className="list-disc pl-5 space-y-2 text-base leading-6 font-medium break-words">
@@ -421,11 +426,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </div>
               <h3 className="ms-modal-title">Import Databases from Excel</h3>
               <p className="ms-modal-description">
-                Upload template spreadsheet untuk import massal grup holding, perusahaan, dan kontak database.
+                Upload template spreadsheet untuk import massal grup holding, perusahaan, cabang, dan kontak database.
               </p>
               <div className="mt-3">
                 <a
-                  href="/Database_Template.xlsx"
+                  href="/Database_Template.xlsx?v=company-branches"
                   download="Database_Template.xlsx"
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline"
                 >
@@ -443,6 +448,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   <p className="text-sm leading-6 whitespace-pre-wrap break-words">{uploadError}</p>
                 </div>
               )}
+              <DatabaseImportGuide />
               <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer relative group">
                 <input
                   ref={fileInputRef}
@@ -531,6 +537,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <p className="ms-modal-description">
                 Hanya {cleanCount} baris bersih yang diproses: {importPreview.newCount} kontak baru dan {importPreview.duplicateCount} update. {importPreview.issuesCount} baris kotor dilewati. Tab hanya menyaring tampilan.
                 Data kontak dan perusahaan tempat bekerja mengikuti Excel. Kolom kosong dan email lama tetap dipertahankan. Data master perusahaan yang sudah terisi tidak ditimpa.
+                {' '}Cabang terlihat di bawah nama perusahaan. Perbedaan alamat pada cabang yang sama ditandai sebagai konflik; perpindahan cabang kontak dilakukan lewat Edit kontak.
               </p>
             </div>
 
@@ -565,7 +572,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   {importPreview.issuesCount}
                 </span>
                 <span className={`text-[10px] font-semibold uppercase tracking-wider block mt-0.5 ${importPreview.issuesCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                  🚨 Bermasalah / Error
+                  <AlertTriangle aria-hidden="true" className="mr-1 inline h-3 w-3" />Bermasalah / Error
                 </span>
               </div>
 
@@ -647,7 +654,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   }`}
                 >
                   <AlertCircle className="w-3.5 h-3.5" />
-                  🚨 Bermasalah ({importPreview.issuesCount})
+                  Bermasalah ({importPreview.issuesCount})
                 </button>
 
                 <button
@@ -720,7 +727,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Cari baris, nama, email..."
+                  placeholder="Cari baris, nama, cabang, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
@@ -760,7 +767,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       <tr className="bg-slate-100/90 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 backdrop-blur-xs">
                         <th className="py-3 px-3 w-16 text-center">Baris</th>
                         <th className="py-3 px-3 w-[12%]">Nama</th>
-                        <th className="py-3 px-3 w-[15%]">Perusahaan / Holding</th>
+                        <th className="py-3 px-3 w-[15%]">Perusahaan / Cabang</th>
                         <th className="py-3 px-3 w-[18%]">Email / Mobile</th>
                         <th className="py-3 px-3 w-32">Status</th>
                         <th className="py-3 px-4">Rincian Error / Keterangan</th>
@@ -784,7 +791,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                           >
                             <td className="py-3 px-3 font-bold text-slate-600 xl:text-center">
                               <span className="xl:hidden mr-2">Baris Excel</span>
-                              <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 font-mono">
+                              <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 tabular-nums">
                                 #{r.rowNum}
                               </span>
                             </td>
@@ -793,6 +800,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                             </td>
                             <td className="py-2 px-3">
                               <span className="block text-slate-800 font-medium">{r.companyName || '-'}</span>
+                              {r.branchName && <span className="mt-1 block text-xs text-blue-700">Cabang/Kantor: {r.branchName}</span>}
                               {r.groupName && <span className="text-xs text-slate-500 block mt-1">Holding: {r.groupName}</span>}
                             </td>
                             <td className="py-2 px-3 text-xs leading-5 break-words">

@@ -1,7 +1,9 @@
 import React from 'react';
-import { Clock, X, Calendar, CheckCircle, CheckCircle2, TrendingUp, Users, UserCheck, ArrowLeft, Plus, Search, UserMinus, History, Phone, Mail, MessageSquare, Loader2, Calendar as CalendarIcon, Sliders } from 'lucide-react';
+import { Clock, X, Calendar, CheckCircle, CheckCircle2, TrendingUp, Users, UserCheck, ArrowLeft, Plus, UserMinus, History, Phone, Loader2, Shuffle, RotateCw, GitBranch } from 'lucide-react';
+import { PicDailyReport } from './PicDailyReport';
+import { PicParticipantsPanel } from './PicParticipantsPanel';
 import { EventParticipant, AppUser, EventParticipantStatisticsResponse, EventActivitySummaryResponse, EventParticipantPicSummaryResponse } from '../../../../lib/types';
-import { extractPicFromNotes, getPreEventApprovalStatus } from '../utils/notesHelper';
+import { extractPicFromNotes } from '../utils/notesHelper';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../components/ui/dialog';
@@ -112,7 +114,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   const showMissingPicAccessWarning = () => {
     setConfirmConfig({
       title: "Belum Ada PIC Event",
-      description: "Belum ada user yang ditugaskan sebagai PIC untuk event ini.\n1. Buka Dashboard > Users.\n2. Klik Events Access pada admin/manager yang akan menangani leads.\n3. Checklist event ini, lalu simpan.",
+      description: "Belum ada user yang ditugaskan sebagai PIC untuk event ini.\n1. Buka Dashboard > Users.\n2. Klik Event Access pada admin/PIC yang akan menangani leads.\n3. Checklist event ini, lalu simpan.",
       onConfirm: () => {}
     });
   };
@@ -173,32 +175,33 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   };
 
   React.useEffect(() => {
-    if (selectedPic && eventId) {
-      loadActivitiesReport();
-    }
-  }, [selectedPic, eventId, startDate, endDate]);
-
-  const loadActivitiesReport = async () => {
-    if (!eventId) return;
+    if (!isWorkloadDialogOpen || !selectedPic || !eventId) return;
+    let cancelled = false;
     setLoadingReport(true);
-    try {
-      const [data, summary] = await Promise.all([
-        crmService.getAllEventActivities(eventId, startDate, endDate),
-        crmService.getEventActivitySummary(eventId, {
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-          pic: selectedPic || undefined
-        })
-      ]);
-      setActivitiesReport(data || []);
-      setActivitySummary(summary || null);
-    } catch (err) {
-      console.error('Failed to load activity report:', err);
-      setActivitySummary(null);
-    } finally {
-      setLoadingReport(false);
-    }
-  };
+    setActivitiesReport([]);
+    setActivitySummary(null);
+    const loadReport = async () => {
+      try {
+        const [data, summary] = await Promise.all([
+          crmService.getAllEventActivities(eventId, startDate, endDate),
+          crmService.getEventActivitySummary(eventId, {
+            startDate: startDate || undefined,
+            endDate: endDate || undefined,
+            pic: selectedPic
+          })
+        ]);
+        if (cancelled) return;
+        setActivitiesReport(data || []);
+        setActivitySummary(summary || null);
+      } catch (err) {
+        if (!cancelled) console.error('Failed to load activity report:', err);
+      } finally {
+        if (!cancelled) setLoadingReport(false);
+      }
+    };
+    void loadReport();
+    return () => { cancelled = true; };
+  }, [isWorkloadDialogOpen, selectedPic, eventId, startDate, endDate]);
 
   const loadPicSummary = async () => {
     if (!eventId || !isAdmin) return;
@@ -731,7 +734,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 </h4>
                 <p className="text-xs text-slate-500">
                   {isAdmin
-                    ? `${picSummary?.activePicsCount ?? 0} PIC aktif bertugas`
+                    ? 'Lihat pembagian peserta dan aktivitas tim PIC.'
                     : `Ringkasan aktivitas telepon, WA, dan email yang dikerjakan oleh ${myPicName}`}
                 </p>
               </div>
@@ -744,7 +747,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   setSelectedPic(myPicName);
                   handleSetPreset('today');
                   setPicViewTab('report');
-                  loadActivitiesReport();
                 } else {
                   void loadPicSummary();
                 }
@@ -756,512 +758,97 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               }
             }}>
               <DialogTrigger asChild>
-                <button className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 cursor-pointer">
-                  <History className="w-4 h-4 text-blue-300" />
-                  <span>{isAdmin ? 'View PIC Workload & Balance' : 'Lihat Log Aktivitas Saya'}</span>
+                <button type="button" className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
+                  {isAdmin ? <Users aria-hidden="true" className="h-4 w-4" /> : <History aria-hidden="true" className="h-4 w-4" />}
+                  <span>{isAdmin ? 'Buka workspace PIC' : 'Lihat aktivitas saya'}</span>
                 </button>
               </DialogTrigger>
               <DialogContent 
                 onInteractOutside={(e) => e.preventDefault()}
                 onPointerDownOutside={(e) => e.preventDefault()}
-                className="ms-modal sm:max-w-5xl"
+                className="sm:max-w-5xl"
               >
-                <DialogHeader className="ms-modal-header pr-14">
+                <div aria-hidden="true" className="h-1.5 shrink-0 bg-blue-600" />
+                <DialogHeader className="ms-modal-header">
+                  <div className="mb-1 flex items-center gap-2 text-xs text-slate-500"><Users aria-hidden="true" className="h-4 w-4 text-blue-600" />Event workspace</div>
                   <DialogTitle className="ms-modal-title">
                     {isAdmin ? 'PIC Assignment & Distribution' : `Laporan Aktivitas Follow-Up — ${myPicName}`}
                   </DialogTitle>
                   <DialogDescription className="ms-modal-description mt-2">
-                    {isAdmin ? 'Alokasi pembagian tugas follow-up antar PIC aktif.' : 'Riwayat aktivitas telepon, WhatsApp, dan email yang kamu kerjakan hari ini.'}
+                    {isAdmin ? 'Pantau beban kerja, bagi peserta, dan lihat aktivitas tim dalam satu tempat.' : 'Riwayat aktivitas telepon, WhatsApp, dan email sesuai periode yang dipilih.'}
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="ms-modal-body space-y-6">
+                <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain bg-slate-100 p-4 sm:p-6">
                   {selectedPic ? (
-                    <div className="space-y-4">
-                      {/* Header/Back button */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-2">
+                    <div className="space-y-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4">
                         {isAdmin ? (
-                          <button 
-                            onClick={() => { setSelectedPic(null); setSearchQuery(''); setPicViewTab('report'); }}
-                            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider font-semibold cursor-pointer"
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                            Kembali ke Daftar PIC
+                          <button type="button" onClick={() => { setSelectedPic(null); setSearchQuery(''); setPicViewTab('report'); }} className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-blue-700">
+                            <ArrowLeft aria-hidden="true" className="h-4 w-4" />Daftar PIC
                           </button>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="p-1.5 bg-blue-50 text-[#5b5fc7] rounded-md">
-                              <History className="w-4 h-4" />
-                            </span>
-                            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Laporan Work Log Saya</span>
+                        ) : <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-600"><History aria-hidden="true" className="h-4 w-4 text-blue-600" />Aktivitas saya</span>}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">{selectedPic.charAt(0).toUpperCase()}</span>
+                          <div className="min-w-0">
+                            <p className="text-[11px] text-slate-500">Penanggung jawab</p>
+                            <p className="break-words text-sm font-semibold text-slate-900">{selectedPic}</p>
                           </div>
-                        )}
-                        <div className="text-right">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PIC Terpilih</span>
-                          <h4 className="text-sm font-bold text-slate-900">{selectedPic}</h4>
                         </div>
                       </div>
 
-                      {/* Sub-tab Switcher for Selected PIC */}
                       {isAdmin && (
-                        <div className="flex items-center gap-2 mb-4 bg-slate-100 p-1.5 rounded-md border border-slate-200/80">
-                          <button
-                            type="button"
-                            onClick={() => setPicViewTab('report')}
-                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                              picViewTab === 'report' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            <History className="w-4 h-4 text-blue-100" />
-                            <span>Daily Report (Telemarketing Logs)</span>
+                        <div className="flex flex-wrap gap-1 border-b border-slate-200" aria-label="Tampilan PIC">
+                          <button type="button" aria-pressed={picViewTab === 'report'} onClick={() => setPicViewTab('report')} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${picViewTab === 'report' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
+                            <History aria-hidden="true" className="h-4 w-4" />Daily report
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setPicViewTab('participants')}
-                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                              picViewTab === 'participants' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            <Users className="w-4 h-4 text-emerald-100" />
-                            <span>Kelola Peserta ({selectedPicSummaryItem?.totalAssigned ?? 0})</span>
+                          <button type="button" aria-pressed={picViewTab === 'participants'} onClick={() => setPicViewTab('participants')} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${picViewTab === 'participants' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
+                            <Users aria-hidden="true" className="h-4 w-4" />Kelola peserta
+                            <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">{selectedPicSummaryItem?.totalAssigned ?? 0}</span>
                           </button>
                         </div>
                       )}
 
-                    {picViewTab === 'report' ? (
-                      /* Daily Telemarketing & Activity Report Bar */
-                      <div className="bg-white border border-slate-200 rounded-md p-3 sm:p-4 space-y-4 mb-4">
-                        {/* Header & Controls Toolbar */}
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="p-2 bg-slate-100 text-slate-600 rounded-lg shrink-0">
-                              <History className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <h5 className="text-sm font-semibold text-slate-900 truncate">
-                                Daily Telemarketing Report — <span className="text-[#5b5fc7]">{selectedPic}</span>
-                              </h5>
-                              <p className="text-xs text-slate-500 truncate">
-                                Laporan lengkap aktivitas telepon, WhatsApp, dan email PIC {selectedPic}.
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Filter Controls: Date Range & Preset Dropdown */}
-                          <div className="flex items-center gap-2 flex-wrap shrink-0">
-                            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
-                              <span className="text-[11px] font-medium text-slate-500 shrink-0">Filter:</span>
-                              <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); }}
-                                className="bg-transparent border-0 text-slate-700 text-xs focus:outline-none cursor-pointer"
-                              />
-                              <span className="text-slate-400 text-xs">-</span>
-                              <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); }}
-                                className="bg-transparent border-0 text-slate-700 text-xs focus:outline-none cursor-pointer"
-                              />
-                              {loadingReport && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#5b5fc7] shrink-0" />}
-                            </div>
-
-                            <select
-                              value={datePreset}
-                              onChange={(e) => {
-                                const val = e.target.value as 'today' | '7days' | '30days' | 'all';
-                                handleSetPreset(val);
-                              }}
-                              className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium focus:outline-none focus:border-[#5b5fc7] cursor-pointer hover:bg-slate-50 transition-colors"
-                            >
-                              <option value="today">Hari Ini</option>
-                              <option value="7days">7 Hari Terakhir</option>
-                              <option value="30days">30 Hari Terakhir</option>
-                              <option value="all">Semua Periode</option>
-                              {datePreset === 'custom' && <option value="custom">Custom Date</option>}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Activity Metrics Cards */}
-                        {(() => {
-                          const callsCount = activitySummary?.byType?.call ?? 0;
-                          const waCount = activitySummary?.byType?.whatsapp ?? 0;
-                          const emailCount = activitySummary?.byType?.email ?? 0;
-                          const totalActivities = activitySummary?.totalActivities ?? 0;
-
-                          return (
-                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                              <div className="bg-white border border-slate-200 p-3 rounded-lg flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-sm text-slate-600">
-                                  <Phone className="w-4 h-4 text-blue-500" />
-                                  <span>Telepon</span>
-                                </div>
-                                <strong className="text-lg font-semibold text-slate-900">{callsCount}</strong>
-                              </div>
-
-                              <div className="bg-white border border-slate-200 p-3 rounded-lg flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-sm text-slate-600">
-                                  <MessageSquare className="w-4 h-4 text-emerald-500" />
-                                  <span>WhatsApp</span>
-                                </div>
-                                <strong className="text-lg font-semibold text-slate-900">{waCount}</strong>
-                              </div>
-
-                              <div className="bg-white border border-slate-200 p-3 rounded-lg flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-sm text-slate-600">
-                                  <Mail className="w-4 h-4 text-purple-500" />
-                                  <span>Email</span>
-                                </div>
-                                <strong className="text-lg font-semibold text-slate-900">{emailCount}</strong>
-                              </div>
-
-                              <div className="bg-slate-900 text-white p-3 rounded-lg flex items-center justify-between">
-                                <span className="text-sm font-medium text-white/80">Total Activity</span>
-                                <strong className="text-lg font-semibold text-white">{totalActivities}</strong>
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        {/* Summary Remarks Row (Filtered by Date Range) */}
-                        {(() => {
-                          const participantsSummary = activitySummary?.participantsSummary;
-                          const totalParticipants = participantsSummary?.totalParticipants ?? 0;
-                          const totalAssignedParticipants = participantsSummary?.totalAssignedParticipants ?? 0;
-                          const regCount = participantsSummary?.registered ?? 0;
-                          const tentCount = participantsSummary?.tentative ?? 0;
-                          const notRespCount = participantsSummary?.notRespond ?? 0;
-                          const notIntCount = participantsSummary?.notInterest ?? 0;
-
-                          return (
-                            <div className="pt-4 border-t border-slate-100">
-                              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                <span className="text-xs font-medium text-slate-500">
-                                  Summary Remarks Periode Ini ({totalParticipants} Peserta)
-                                </span>
-                                {(startDate || endDate) && (
-                                  <span className="text-xs text-slate-400">
-                                    Total Assigned PIC: {totalAssignedParticipants}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                                <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
-                                  <span className="text-slate-600">Registered</span>
-                                  <span className="font-semibold text-slate-900">{regCount}</span>
-                                </div>
-                                <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
-                                  <span className="text-slate-600">Tentative</span>
-                                  <span className="font-semibold text-slate-900">{tentCount}</span>
-                                </div>
-                                <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
-                                  <span className="text-slate-600">Not Respond</span>
-                                  <span className="font-semibold text-slate-900">{notRespCount}</span>
-                                </div>
-                                <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-sm">
-                                  <span className="text-slate-600">Not Interest</span>
-                                  <span className="font-semibold text-slate-900">{notIntCount}</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        {/* Activity History Stream Details */}
-                        <div className="pt-4 border-t border-slate-100">
-                          <div className="flex justify-between items-center mb-3">
-                            <h6 className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
-                              <span>Riwayat Log Telemarketing ({filteredPicActivities.length})</span>
-                            </h6>
-                          </div>
-
-                          {filteredPicActivities.length === 0 ? (
-                            <div className="bg-white border border-slate-200 rounded-md p-6 text-center">
-                              <p className="text-sm text-slate-400">Belum ada aktivitas telepon, WA, atau email yang tercatat pada periode ini.</p>
-                            </div>
-                          ) : (
-                            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1.5 custom-scrollbar">
-                              {filteredPicActivities.map((act) => {
-                                  const formatWib = (ds?: string) => {
-                                    if (!ds) return '-';
-                                    let s = ds.trim();
-                                    if (!s.includes('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) s = s.replace(' ', 'T') + 'Z';
-                                    const dt = new Date(s);
-                                    return isNaN(dt.getTime()) ? ds : dt.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
-                                  };
-                                  const timeStr = formatWib(act.createdAt);
-                                const type = (act.activityType || '').toUpperCase();
-                                
-                                let targetName = act.participantName;
-                                let targetCompany = act.companyName;
-                                let targetPhone = act.mobilePhone;
-
-                                if (!targetName && act.eventParticipant?.database) {
-                                  targetName = `${act.eventParticipant.database.firstName || ''} ${act.eventParticipant.database.lastName || ''}`.trim();
-                                  targetCompany = act.eventParticipant.database.company?.name;
-                                  targetPhone = act.eventParticipant.database.mobilePhone;
-                                }
-
-                                return (
-                                  <div key={act.id} className="bg-white border border-slate-200 p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm hover:border-slate-300 transition-colors">
-                                    <div className="flex items-start gap-3 min-w-0">
-                                      <div className={`p-1.5 rounded-lg shrink-0 ${
-                                        type === 'CALL' ? 'bg-blue-50 text-blue-600' :
-                                        type === 'WHATSAPP' ? 'bg-emerald-50 text-emerald-600' :
-                                        type === 'EMAIL' ? 'bg-purple-50 text-purple-600' :
-                                        'bg-slate-100 text-slate-600'
-                                      }`}>
-                                        {type === 'CALL' && <Phone className="w-4 h-4" />}
-                                        {type === 'WHATSAPP' && <MessageSquare className="w-4 h-4" />}
-                                        {type === 'EMAIL' && <Mail className="w-4 h-4" />}
-                                        {type === 'SYSTEM' && <Sliders className="w-4 h-4" />}
-                                      </div>
-
-                                      <div className="min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                                            type === 'CALL' ? 'bg-blue-50 text-blue-700' :
-                                            type === 'WHATSAPP' ? 'bg-emerald-50 text-emerald-700' :
-                                            type === 'EMAIL' ? 'bg-purple-50 text-purple-700' :
-                                            'bg-slate-100 text-slate-700'
-                                          }`}>
-                                            {type}
-                                          </span>
-                                          <h6 className="text-sm font-medium text-slate-900 truncate">
-                                            {targetName || 'Peserta Event'}
-                                          </h6>
-                                          {targetCompany && (
-                                            <span className="text-xs text-slate-500 truncate">
-                                              • {targetCompany}
-                                            </span>
-                                          )}
-                                          {targetPhone && (
-                                            <span className="text-xs text-slate-400">
-                                              ({targetPhone})
-                                            </span>
-                                          )}
-                                        </div>
-                                        <p className="text-xs text-slate-500 mt-1 italic">
-                                          "{act.notes || 'Activity logged'}"
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    <div className="text-right shrink-0 self-end sm:self-center">
-                                      <span className="text-xs text-slate-400 block">
-                                        {timeStr}
-                                      </span>
-                                      <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md inline-block mt-0.5">
-                                        {act.status || 'COMPLETED'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:h-[55vh]">
-                      {/* Left Column: Managed Participants */}
-                      {(() => {
-                        const picParticipants = participants.filter(p => {
-                          const pic = extractPicFromNotes(p.notes).pic;
-                          return pic.toLowerCase() === selectedPic.toLowerCase() || 
-                                 (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
-                        });
-
-                        return (
-                          <div className="flex min-w-0 min-h-56 max-h-[55vh] flex-col border border-slate-200 rounded-md p-4 bg-slate-50/30 overflow-hidden">
-                            <div className="flex justify-between items-center mb-3">
-                              <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                Daftar Peserta ({picParticipants.length})
-                              </h5>
-                              <span className="text-[10px] font-semibold bg-blue-50 text-[#5b5fc7] px-2 py-0.5 rounded-full">
-                                Dikelola PIC Ini
-                              </span>
-                            </div>
-                            
-                            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                              {picParticipants.length === 0 ? (
-                                <div className="h-full flex items-center justify-center text-center p-4">
-                                  <p className="text-xs text-slate-400 italic">Belum ada peserta yang ditugaskan ke PIC ini.</p>
-                                </div>
-                              ) : (
-                                picParticipants.map(p => {
-                                  const name = `${p.database.firstName} ${p.database.lastName}`.trim();
-                                  const company = p.database.company?.name || '-';
-                                  const phone = p.database.mobilePhone || '-';
-                                  return (
-                                    <div key={p.id} className="bg-white border border-slate-200/70 p-3 rounded-md shadow-sm flex items-center justify-between gap-3 group/item">
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-bold text-slate-800 truncate">{name}</p>
-                                        <p className="text-[10px] text-slate-400 font-medium truncate">
-                                          {company} • {phone}
-                                        </p>
-                                        <div className="flex items-center gap-1.5 mt-1">
-                                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                                            p.confirmationStatus === 'approve' || p.confirmationStatus === 'confirmed' 
-                                              ? 'bg-emerald-50 text-emerald-700' 
-                                              : p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined'
-                                                ? 'bg-rose-50 text-rose-700'
-                                                : 'bg-amber-50 text-amber-700'
-                                          }`}>
-                                            {p.confirmationStatus === 'approve' || p.confirmationStatus === 'confirmed' ? 'Approve' : p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined' ? 'Declined' : 'Pending'}
-                                          </span>
-                                          {p.participantStatus?.toLowerCase() === 'registered' && (
-                                            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded-full">
-                                              Registered
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        {onOpenEngagementModal && (
-                                          <button
-                                            onClick={() => onOpenEngagementModal(p)}
-                                            className="p-1.5 text-[#5b5fc7] hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                                            title="Lihat Telemarketing Logs (Call, Email, WA)"
-                                          >
-                                            <History className="w-3.5 h-3.5" />
-                                          </button>
-                                        )}
-                                        {onAssignPic && (
-                                          <button
-                                            onClick={async () => {
-                                              await onAssignPic([p.id], 'not set');
-                                            }}
-                                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                                            title="Hapus dari PIC ini"
-                                          >
-                                            <UserMinus className="w-3.5 h-3.5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Right Column: Add Participants */}
-                      {(() => {
-                        const otherParticipants = participants.filter(p => {
-                          const pic = extractPicFromNotes(p.notes).pic;
-                          const isThisPic = pic.toLowerCase() === selectedPic.toLowerCase() || 
-                                            (pic.toLowerCase() === 'admin' && selectedPic.toLowerCase() === adminName.toLowerCase());
-                          return !isThisPic;
-                        });
-
-                        const filteredOthers = otherParticipants.filter(p => {
-                          const q = searchQuery.toLowerCase();
-                          const name = `${p.database.firstName} ${p.database.lastName}`.toLowerCase();
-                          const company = (p.database.company?.name || '').toLowerCase();
-                          const phone = (p.database.mobilePhone || '').toLowerCase();
-                          const email = (p.database.emails?.[0]?.email || '').toLowerCase();
-                          return (
-                            name.includes(q) ||
-                            company.includes(q) ||
-                            phone.includes(q) ||
-                            email.includes(q)
-                          );
-                        });
-
-                        return (
-                          <div className="flex min-w-0 min-h-56 max-h-[55vh] flex-col border border-slate-200 rounded-md p-4 bg-slate-50/30 overflow-hidden">
-                            <div className="mb-3 space-y-2">
-                              <div className="flex justify-between items-center">
-                                <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                  Tugaskan Peserta Baru
-                                </h5>
-                                <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">
-                                  Tambah
-                                </span>
-                              </div>
-                              <div className="relative">
-                                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                <input
-                                  type="text"
-                                  placeholder="Cari nama, perusahaan, telepon..."
-                                  value={searchQuery}
-                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs placeholder:text-slate-400 focus:outline-none focus:border-[#5b5fc7] text-slate-900 transition-colors"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                              {filteredOthers.length === 0 ? (
-                                <div className="h-full flex items-center justify-center text-center p-4">
-                                  <p className="text-xs text-slate-400 italic">Tidak ada peserta lain yang ditemukan.</p>
-                                </div>
-                              ) : (
-                                filteredOthers.map(p => {
-                                  const name = `${p.database.firstName} ${p.database.lastName}`.trim();
-                                  const company = p.database.company?.name || '-';
-                                  const currentPicName = extractPicFromNotes(p.notes).pic;
-                                  const isUnassigned = !currentPicName || currentPicName.trim() === '' || currentPicName.toLowerCase() === 'not set';
-                                  return (
-                                    <div key={p.id} className="bg-white border border-slate-200/70 p-3 rounded-md shadow-sm flex items-center justify-between gap-3 group/item">
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-bold text-slate-800 truncate">{name}</p>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                          <span className="text-[9px] text-slate-400 font-medium truncate max-w-[120px]">
-                                            {company}
-                                          </span>
-                                          <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
-                                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                                            isUnassigned 
-                                              ? 'bg-slate-100 text-slate-500' 
-                                              : 'bg-amber-50 text-amber-600 border border-amber-100/20'
-                                          }`}>
-                                            {isUnassigned ? 'Belum Dialokasi' : `PIC: ${currentPicName}`}
-                                          </span>
-                                        </div>
-                                      </div>
-                                      {onAssignPic && (
-                                        <button
-                                          onClick={async () => {
-                                            await onAssignPic([p.id], selectedPic);
-                                          }}
-                                          className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md text-[10px] font-bold transition-all duration-150 border border-emerald-100/30 shrink-0"
-                                        >
-                                          <Plus className="w-3 h-3" />
-                                          <span>Add</span>
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      {picViewTab === 'report' ? (
+                        <PicDailyReport
+                          selectedPic={selectedPic}
+                          startDate={startDate}
+                          endDate={endDate}
+                          datePreset={datePreset}
+                          onStartDateChange={value => { setStartDate(value); setDatePreset('custom'); }}
+                          onEndDateChange={value => { setEndDate(value); setDatePreset('custom'); }}
+                          onPresetChange={handleSetPreset}
+                          loading={loadingReport}
+                          summary={activitySummary}
+                          activities={filteredPicActivities}
+                        />
+                      ) : (
+                        <PicParticipantsPanel
+                          participants={participants}
+                          selectedPic={selectedPic}
+                          adminName={adminName}
+                          searchQuery={searchQuery}
+                          onSearchChange={setSearchQuery}
+                          onAssignPic={onAssignPic}
+                          onOpenEngagementModal={onOpenEngagementModal}
+                        />
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                  <>
+                  ) : (
+                    <>
                     {/* Auto Distribution Control Panel */}
                     {onAssignPic && (
-                      <div className="bg-slate-50/70 border border-slate-100 rounded-md p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
                         <div>
-                          <h5 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-0.5">Alokasi Cepat (Auto-Distribute)</h5>
-                          <p className="text-[10px] text-slate-500">Bagi rata tugas follow-up secara otomatis ke seluruh staff PIC aktif.</p>
+                          <h5 className="mb-1 text-sm font-semibold text-slate-900">Bagi peserta ke tim PIC</h5>
+                          <p className="text-xs leading-5 text-slate-500">Tentukan pembagian tugas untuk peserta yang belum ditangani atau atur ulang alokasi tim.</p>
                           {eligibleSplitUsers.length === 0 && (
-                            <p className="text-[10px] font-semibold text-amber-600 mt-1">
-                              Tambahkan PIC Event dulu lewat Edit Event &gt; Manage PIC.
+                            <p className="mt-2 text-xs font-medium text-amber-700">
+                              Tambahkan PIC melalui Kelola PIC pada detail event.
                             </p>
                           )}
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
                           <button
                             disabled={eligibleSplitUsers.length === 0}
                             onClick={async () => {
@@ -1312,9 +899,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 }
                               });
                             }}
-                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 rounded-md text-[10px] font-bold hover:bg-slate-50 transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Bagi Rata Sisa Peserta
+                            <GitBranch aria-hidden="true" className="h-4 w-4" />Bagi sisa peserta
                           </button>
                           <button
                             disabled={participants.length === 0 || eligibleSplitUsers.length === 0}
@@ -1358,254 +945,114 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 }
                               });
                             }}
-                            className="px-3 py-1.5 bg-slate-900 text-white rounded-md text-[10px] font-bold hover:bg-slate-800 transition-all duration-150 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
+                            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Bagi Ulang Semua Peserta
+                            <RotateCw aria-hidden="true" className="h-4 w-4" />Bagi ulang semua peserta
                           </button>
                           <button
                             disabled={eligibleSplitUsers.length === 0}
                             onClick={() => setIsSplitModalOpen(true)}
-                            className="px-3 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-md text-[10px] font-bold transition-all duration-150 shadow-sm flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#5b5fc7]"
+                            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            <span>⚡ Auto Split PIC Event</span>
+                            <Shuffle aria-hidden="true" className="h-4 w-4" /><span>Auto Split PIC</span>
                           </button>
                         </div>
                       </div>
                     )}
 
-                    {/* Allocation Balance Stacked Bar */}
-                    {(() => {
-                      const activePics = activePicSummaryItems;
-                      const totalAssigned = picSummary?.totalAssigned ?? 0;
-                      const totalParticipants = picSummary?.totalParticipants ?? 0;
-                      const unassignedCount = picSummary?.unassignedCount ?? 0;
-                      
-                      const colors = [
-                        'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 
-                        'bg-amber-500', 'bg-rose-500', 'bg-cyan-500', 'bg-fuchsia-500'
-                      ];
-
-                      return (
-                        <div className="bg-slate-50/50 border border-slate-100 rounded-md p-4">
-                          <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">
-                            <span>Allocation Balance</span>
-                            <span className="text-slate-700 font-bold">{totalAssigned} / {totalParticipants} Assigned ({Math.round((totalAssigned / Math.max(1, totalParticipants)) * 100)}%)</span>
+                    {loadingPicSummary ? (
+                      <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white p-10 text-sm text-slate-500"><Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-blue-600" />Memuat beban kerja PIC...</div>
+                    ) : !picSummary ? (
+                      <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-5">
+                        <p className="text-sm font-semibold text-amber-900">Ringkasan PIC belum berhasil dimuat</p>
+                        <button type="button" onClick={() => { void loadPicSummary(); }} className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-amber-900 hover:underline"><RotateCw aria-hidden="true" className="h-4 w-4" />Coba lagi</button>
+                      </div>
+                    ) : (
+                      <>
+                        <section aria-labelledby="pic-allocation-title" className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+                          <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                            <h3 id="pic-allocation-title" className="text-sm font-semibold text-slate-900">Ringkasan pembagian</h3>
+                            <span className="text-xs text-slate-500">Sesuai tab dan filter peserta saat ini</span>
                           </div>
-                          <div className="w-full h-3 bg-slate-100 rounded-full flex overflow-hidden shadow-inner">
-                            {activePics.map((pic, idx) => {
-                              const percentage = (pic.totalAssigned / Math.max(1, totalParticipants)) * 100;
-                              return (
-                                <div
-                                  key={pic.userId || pic.name}
-                                  className={`${colors[idx % colors.length]} transition-all duration-300 h-full`}
-                                  style={{ width: `${percentage}%` }}
-                                  title={`${pic.name}: ${pic.totalAssigned} (${Math.round(percentage)}%)`}
-                                />
-                              );
-                            })}
-                            {unassignedCount > 0 && (
-                              <div
-                                className="bg-slate-200 h-full"
-                                style={{ width: `${(unassignedCount / Math.max(1, totalParticipants)) * 100}%` }}
-                                title={`Unassigned: ${unassignedCount}`}
-                              />
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
-                            {activePics.map((pic, idx) => (
-                              <div key={pic.userId || pic.name} className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
-                                <span className={`w-2 h-2 rounded-full ${colors[idx % colors.length]}`} />
-                                <span>{pic.name}</span>
-                                <span className="text-slate-400 font-normal">({pic.totalAssigned})</span>
+                          <dl className="mb-5 grid grid-cols-3 gap-3">
+                            {[{ label: 'Total peserta', value: picSummary.totalParticipants }, { label: 'Sudah dibagi', value: picSummary.totalAssigned }, { label: 'Belum dibagi', value: picSummary.unassignedCount }].map(({ label, value }) => (
+                              <div key={label}>
+                                <dt className="text-xs leading-5 text-slate-500">{label}</dt>
+                                <dd className="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">{value.toLocaleString()}</dd>
                               </div>
                             ))}
-                            {unassignedCount > 0 && (
-                              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
-                                <span className="w-2 h-2 rounded-full bg-slate-300" />
-                                <span>Belum Dialokasi</span>
-                                <span className="text-slate-400 font-normal">({unassignedCount})</span>
-                              </div>
-                            )}
+                          </dl>
+                          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                            <span>Distribusi peserta per PIC</span>
+                            <span className="font-medium text-blue-700">{Math.round((picSummary.totalAssigned / Math.max(1, picSummary.totalParticipants)) * 100)}% teralokasi</span>
                           </div>
-                        </div>
-                      );
-                    })()}
+                          <div aria-hidden="true" className="flex h-2.5 overflow-hidden rounded-full bg-slate-200">
+                            {activePicSummaryItems.map((pic, index) => (
+                              <div key={pic.userId || pic.name} className={['bg-blue-600', 'bg-teal-500', 'bg-sky-400', 'bg-slate-500'][index % 4]} style={{ width: `${(pic.totalAssigned / Math.max(1, picSummary.totalParticipants)) * 100}%` }} />
+                            ))}
+                          </div>
+                          <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                            {activePicSummaryItems.map((pic, index) => (
+                              <li key={pic.userId || pic.name} className="flex min-w-0 items-center gap-2 text-xs text-slate-600">
+                                <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${['bg-blue-600', 'bg-teal-500', 'bg-sky-400', 'bg-slate-500'][index % 4]}`} />
+                                <span className="break-words">{pic.name}</span><span className="font-semibold tabular-nums">{pic.totalAssigned}</span>
+                              </li>
+                            ))}
+                            {picSummary.unassignedCount > 0 && <li className="flex items-center gap-2 text-xs text-slate-600"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-slate-300" />Belum dibagi <span className="font-semibold tabular-nums">{picSummary.unassignedCount}</span></li>}
+                          </ul>
+                        </section>
 
-                    {/* Workload Cards Grid */}
-                    <div>
-                      <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">PIC Active Workloads</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {(() => {
-                          const unassignedIds = participants.filter(p => {
-                            const picName = extractPicFromNotes(p.notes).pic;
-                            if (!picName || picName.trim() === '' || picName.toLowerCase() === 'not set') return true;
-                            const isMatched = usersList.some(usr => {
-                              const name = usr.fullName || usr.username;
-                              return picName.toLowerCase() === name.toLowerCase() ||
-                                     (picName.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
-                            });
-                            return !isMatched;
-                          }).map(p => p.id);
-
-                          const activePics = activePicSummaryItems;
-
-                          if (loadingPicSummary) {
-                            return (
-                              <div className="col-span-full py-8 flex items-center justify-center bg-slate-50 border border-dashed border-slate-200 rounded-md">
-                                <Loader2 className="w-5 h-5 animate-spin text-[#5b5fc7]" />
-                              </div>
-                            );
-                          }
-
-                          if (activePics.length === 0) {
-                            return (
-                              <div className="col-span-full py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-md">
-                                <p className="text-xs text-slate-400 italic">Belum ada PIC yang aktif bertugas</p>
-                              </div>
-                            );
-                          }
-
-                          return activePics.map((picSummaryItem) => {
-                            const name = picSummaryItem.name;
-                            const count = picSummaryItem.totalAssigned;
-                            const initials = name ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) : '??';
-
-                            return (
-                              <div
-                                key={picSummaryItem.userId || name}
-                                onClick={() => setSelectedPic(name)}
-                                className="bg-white border border-slate-200 rounded-lg p-3 hover:border-blue-300 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
-                              >
-                                <div>
-                                  {/* Header - Avatar + Name */}
-                                  <div className="flex items-center justify-between gap-2 mb-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-medium text-xs shrink-0">
-                                        {initials}
-                                      </div>
-                                      <div className="min-w-0">
-                                        <h4 className="text-sm font-medium text-slate-900 truncate" title={name}>{name}</h4>
-                                        <span className="text-xs text-slate-500 capitalize block truncate">
-                                          {picSummaryItem.roleLabel || 'PIC'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-1 text-xs text-slate-500 shrink-0">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                      <span>Active</span>
+                        <section aria-labelledby="pic-workloads-title" className="space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <h3 id="pic-workloads-title" className="text-sm font-semibold text-slate-900">Beban kerja PIC</h3>
+                            <span className="rounded-md bg-white px-2 py-1 text-xs text-slate-500">{activePicSummaryItems.length} PIC</span>
+                          </div>
+                          {activePicSummaryItems.length === 0 && (
+                            <div className="rounded-lg border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
+                              <Users aria-hidden="true" className="mx-auto mb-3 h-6 w-6 text-slate-400" />
+                              <p className="text-sm font-medium text-slate-700">Belum ada beban kerja PIC</p>
+                              <p className="mt-2 text-xs text-slate-500">Peserta yang sudah dibagikan ke PIC akan muncul di sini.</p>
+                            </div>
+                          )}
+                          {(() => {
+                            const unassignedIds = participants.filter(p => {
+                              const picName = extractPicFromNotes(p.notes).pic;
+                              if (!picName || picName.trim() === '' || picName.toLowerCase() === 'not set') return true;
+                              return !usersList.some(usr => {
+                                const name = usr.fullName || usr.username;
+                                return picName.toLowerCase() === name.toLowerCase() || (picName.toLowerCase() === 'admin' && name.toLowerCase() === adminName.toLowerCase());
+                              });
+                            }).map(p => p.id);
+                            return activePicSummaryItems.map(pic => (
+                              <article key={pic.userId || pic.name} className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">{pic.name.split(' ').map(part => part[0]).join('').toUpperCase().slice(0, 2)}</span>
+                                    <div className="min-w-0">
+                                      <button type="button" onClick={() => { setSelectedPic(pic.name); setPicViewTab('report'); }} className="break-words text-left text-sm font-semibold text-slate-900 hover:text-blue-700 hover:underline">{pic.name}</button>
+                                      <p className="mt-0.5 text-xs text-slate-500">{pic.roleLabel?.replace(/\bmanager\b/gi, 'PIC') || 'PIC'}</p>
                                     </div>
                                   </div>
-
-                                  <div className="border-t border-slate-100 my-2" />
-
-                                  {/* Total Assigned */}
-                                  <div className="flex justify-between items-center text-sm mb-2">
-                                    <span className="text-slate-500">Total Assigned</span>
-                                    <span className="font-medium text-slate-900">{count} Peserta</span>
-                                  </div>
-
-                                  <div className="border-t border-slate-100 my-2" />
-
-                                  {/* Approval Status */}
-                                  <div className="mb-2">
-                                    <span className="block text-xs text-slate-400 mb-1.5">Approval Status</span>
-                                    <div className="flex items-center gap-4">
-                                      <div className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                        <span className="text-xs text-slate-500">Approve</span>
-                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.approveCount}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <Clock className="w-4 h-4 text-amber-500" />
-                                        <span className="text-xs text-slate-500">Pending</span>
-                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.pendingCount}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="border-t border-slate-100 my-2" />
-
-                                  {/* Summary Remarks */}
-                                  <div className="mb-2">
-                                    <span className="block text-xs text-slate-400 mb-1.5">Summary Remarks</span>
-                                    <div className="grid grid-cols-2 gap-1.5">
-                                      <div className="flex items-center gap-1.5">
-                                        <UserCheck className="w-3.5 h-3.5 text-blue-500" />
-                                        <span className="text-xs text-slate-500">Registered</span>
-                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.registeredCount}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                        <span className="text-xs text-slate-500">Tentative</span>
-                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.tentativeCount}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                        <span className="text-xs text-slate-500">Not Respond</span>
-                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.notRespondCount}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <X className="w-3.5 h-3.5 text-slate-400" />
-                                        <span className="text-xs text-slate-500">Not Interest</span>
-                                        <span className="text-sm font-medium text-slate-900">{picSummaryItem.notInterestCount}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="border-t border-slate-100 my-2" />
-
-                                  {/* Action Buttons */}
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedPic(name);
-                                        setPicViewTab('report');
-                                      }}
-                                      className="px-2 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer"
-                                    >
-                                      <History className="w-3.5 h-3.5 text-slate-500" />
-                                      <span>Daily Log</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedPic(name);
-                                        setPicViewTab('participants');
-                                      }}
-                                      className="px-2 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                                    >
-                                      <Users className="w-3.5 h-3.5" />
-                                      <span>Kelola Peserta</span>
-                                    </button>
-                                  </div>
+                                  <div className="text-right"><span className="text-xl font-semibold text-slate-900 tabular-nums">{pic.totalAssigned.toLocaleString()}</span><span className="ml-1.5 text-xs text-slate-500">peserta ditangani</span></div>
                                 </div>
-
-                                {onAssignPic && unassignedIds.length > 0 && (
-                                  <button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setConfirmConfig({
-                                        title: "Konfirmasi Penugasan Peserta",
-                                        description: `Apakah Anda yakin ingin menugaskan ${unassignedIds.length} sisa peserta ke ${name}?`,
-                                        onConfirm: async () => {
-                                          await onAssignPic(unassignedIds, name);
-                                        }
-                                      });
-                                    }}
-                                    className="w-full mt-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-medium transition-all duration-150 cursor-pointer"
-                                  >
-                                    Tugaskan {unassignedIds.length} Sisa Ke {name.split(' ')[0]}
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </div>
+                                <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-y border-slate-100 py-4 sm:grid-cols-3 lg:grid-cols-6">
+                                  {[{ label: 'Approve', value: pic.approveCount, icon: CheckCircle2, color: 'text-emerald-600' }, { label: 'Pending', value: pic.pendingCount, icon: Clock, color: 'text-amber-600' }, { label: 'Registered', value: pic.registeredCount, icon: UserCheck, color: 'text-blue-600' }, { label: 'Tentative', value: pic.tentativeCount, icon: Clock, color: 'text-slate-500' }, { label: 'Not respond', value: pic.notRespondCount, icon: Phone, color: 'text-slate-500' }, { label: 'Not interest', value: pic.notInterestCount, icon: X, color: 'text-slate-500' }].map(({ label, value, icon: Icon, color }) => (
+                                    <div key={label}><dt className="flex items-center gap-1.5 text-xs text-slate-500"><Icon aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${color}`} />{label}</dt><dd className="mt-1.5 text-base font-semibold text-slate-900 tabular-nums">{value.toLocaleString()}</dd></div>
+                                  ))}
+                                </dl>
+                                <div className="mt-4 flex flex-wrap items-center gap-2">
+                                  <button type="button" onClick={() => { setSelectedPic(pic.name); setPicViewTab('report'); }} className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"><History aria-hidden="true" className="h-4 w-4" />Daily report</button>
+                                  <button type="button" onClick={() => { setSelectedPic(pic.name); setPicViewTab('participants'); }} className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"><Users aria-hidden="true" className="h-4 w-4" />Kelola peserta</button>
+                                  {onAssignPic && unassignedIds.length > 0 && (
+                                    <button type="button" onClick={() => setConfirmConfig({ title: 'Konfirmasi penugasan peserta', description: `Tugaskan ${unassignedIds.length} peserta yang belum memiliki PIC ke ${pic.name}?`, onConfirm: async () => { await onAssignPic(unassignedIds, pic.name); } })} className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50 sm:ml-auto"><Plus aria-hidden="true" className="h-3.5 w-3.5" />Tugaskan {unassignedIds.length} sisa peserta</button>
+                                  )}
+                                </div>
+                              </article>
+                            ));
+                          })()}
+                        </section>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -1647,23 +1094,24 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       )}
       {/* Auto Split Selected PICs Dialog Modal */}
       <Dialog open={isSplitModalOpen} onOpenChange={setIsSplitModalOpen}>
-        <DialogContent className="ms-modal sm:max-w-lg">
-          <DialogHeader className="ms-modal-header pr-14">
+        <DialogContent className="sm:max-w-lg">
+          <div aria-hidden="true" className="h-1.5 shrink-0 bg-blue-600" />
+          <DialogHeader className="ms-modal-header">
             <DialogTitle className="ms-modal-title flex items-center gap-2">
-              <span>⚡ Auto Split PIC Event</span>
+              <Shuffle aria-hidden="true" className="h-5 w-5 shrink-0 text-blue-600" /><span>Auto Split PIC</span>
             </DialogTitle>
             <DialogDescription className="ms-modal-description mt-2">
-              Pilih PIC mana saja yang akan menangani event ini. Sistem akan membagi rata peserta ke PIC terpilih secara otomatis.
+              Pilih tim dan peserta yang ingin dibagi. Peserta akan dialokasikan secara merata ke PIC terpilih.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="ms-modal-body space-y-4">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-6">
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <label className="text-xs font-bold text-slate-700">
-                  Pilih Tim PIC Bertugas ({selectedSplitPics.length} Terpilih)
-                </label>
-                <div className="flex items-center gap-2 text-[10px]">
+                <h4 className="text-sm font-semibold text-slate-800">
+                  Tim PIC <span className="ml-1.5 rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{selectedSplitPics.length} terpilih</span>
+                </h4>
+                <div className="flex items-center gap-3 text-xs">
                   <button
                     type="button"
                     onClick={() => {
@@ -1674,27 +1122,26 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                       const allEligible = eligibleSplitUsers.map(u => u.fullName || u.username);
                       setSelectedSplitPics(allEligible);
                     }}
-                    className="text-[#5b5fc7] font-bold hover:underline cursor-pointer"
+                    className="cursor-pointer py-1 font-medium text-blue-600 hover:underline"
                   >
                     Pilih Semua
                   </button>
-                  <span className="text-slate-300">•</span>
                   <button
                     type="button"
                     onClick={() => setSelectedSplitPics([])}
-                    className="text-slate-500 font-bold hover:underline cursor-pointer"
+                    className="cursor-pointer py-1 font-medium text-slate-500 hover:underline"
                   >
                     Reset
                   </button>
                 </div>
               </div>
 
-              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-md p-2.5 space-y-1.5 bg-slate-50/50">
+              <div className="max-h-60 space-y-2 overflow-y-auto">
                 {eligibleSplitUsers.length === 0 ? (
                   <button
                     type="button"
                     onClick={showMissingPicAccessWarning}
-                    className="w-full rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-xs font-bold text-amber-800"
+                    className="w-full rounded-lg border border-amber-200 bg-amber-50 p-4 text-left text-sm leading-relaxed text-amber-800"
                   >
                     Belum ada PIC untuk event ini. Atur lewat Users &gt; Events Access.
                   </button>
@@ -1704,25 +1151,25 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   return (
                     <label
                       key={u.id}
-                      className={`flex items-center justify-between p-2 rounded-lg text-xs font-bold transition-all cursor-pointer border select-none ${
+                      className={`flex cursor-pointer select-none items-center gap-3 rounded-lg border p-3 text-sm transition-colors ${
                         isChecked
-                          ? 'bg-blue-50/80 text-blue-900 border-blue-200 shadow-2xs'
-                          : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100/60'
+                          ? 'border-blue-300 bg-blue-50 text-blue-900'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-blue-200'
                       }`}
                     >
-                      <span className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSplitPic(name)}
-                          className="w-3.5 h-3.5 rounded text-[#5b5fc7] focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span>{name}</span>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSplitPic(name)}
+                        className="h-4 w-4 shrink-0 cursor-pointer rounded accent-blue-600 focus:ring-blue-500"
+                      />
+                      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-words font-medium">{name}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">{u.roles?.map(role => role === 'MANAGER' ? 'PIC' : role).join(' / ') || 'PIC'}</span>
                       </span>
                       {isChecked && (
-                        <span className="text-[10px] font-bold bg-[#5b5fc7] text-white px-2 py-0.5 rounded-md">
-                          PIC Event
-                        </span>
+                        <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-blue-600" />
                       )}
                     </label>
                   );
@@ -1731,15 +1178,17 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Target Peserta Yang Dibagi</label>
+              <label htmlFor="pic-split-target" className="mb-2 block text-sm font-semibold text-slate-800">Peserta yang dibagi</label>
               <select
+                id="pic-split-target"
                 value={splitMode}
                 onChange={(e) => setSplitMode(e.target.value as 'all' | 'unassigned')}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold text-slate-800 focus:outline-none focus:border-[#5b5fc7] cursor-pointer"
+                className="w-full cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-blue-600 focus:outline-none"
               >
-                <option value="all">Bagi Seluruh Peserta Event ({participants.length} pax)</option>
-                <option value="unassigned">Hanya Bagi Peserta Sisa / Belum Ada PIC</option>
+                <option value="all">Semua peserta event</option>
+                <option value="unassigned">Hanya peserta yang belum memiliki PIC</option>
               </select>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">{splitMode === 'all' ? 'Penugasan PIC sebelumnya akan diganti dengan pembagian baru.' : 'Peserta yang sudah memiliki PIC tetap pada penugasannya.'}</p>
             </div>
 
             </div>
@@ -1747,7 +1196,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               <button
                 type="button"
                 onClick={() => setIsSplitModalOpen(false)}
-                className="ms-modal-secondary px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md transition-all cursor-pointer"
+                className="ms-modal-secondary"
               >
                 Batal
               </button>
@@ -1755,9 +1204,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                 type="button"
                 onClick={handleExecuteSplitSelected}
                 disabled={selectedSplitPics.length === 0}
-                className="ms-modal-primary px-4 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-bold rounded-md shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                className="ms-modal-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Jalankan Auto Split ({selectedSplitPics.length} PIC)
+                <Shuffle aria-hidden="true" className="h-4 w-4" />Bagi ke {selectedSplitPics.length} PIC
               </button>
             </div>
         </DialogContent>

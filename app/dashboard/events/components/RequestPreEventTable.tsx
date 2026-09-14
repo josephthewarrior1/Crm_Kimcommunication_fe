@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
+import { getContactOffice } from '../../../../lib/utils/companyBranch';
 import { AlertCircle, Phone, Mail, Edit2, Trash2, History, MoreVertical } from 'lucide-react';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
 import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
@@ -156,6 +157,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {filteredParticipants.map((p) => {
+            const officePhone = getContactOffice(p.database)?.officePhone;
             const { pic, cleanNotes } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
             const isTakeout = Boolean(p.notes?.includes('[TAKEOUT]') || p.notes?.includes('[Opt-Out]') || p.notes?.toLowerCase().includes('takeout') || (p.database as any)?.isRemovalRequested);
@@ -283,7 +285,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 )}
                 {columnConfig.officePhone !== false && (
                   <td className="py-2.5 px-3 text-slate-600">
-                    {p.database.company?.officePhone ? normalizePhone(p.database.company.officePhone) : '-'}
+                    {officePhone ? normalizePhone(officePhone) : '-'}
                   </td>
                 )}
                 {columnConfig.mobilePhone !== false && (

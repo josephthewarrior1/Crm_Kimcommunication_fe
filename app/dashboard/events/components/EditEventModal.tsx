@@ -171,7 +171,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
             <div className="rounded-md border border-blue-100 bg-blue-50/50 p-3 flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-slate-800">PIC Event</p>
-                <p className="text-xs text-slate-500 truncate">Pilih admin/manager yang menangani leads event ini.</p>
+                <p className="text-xs text-slate-500 truncate">Pilih admin/PIC yang menangani leads event ini.</p>
               </div>
               <button
                 type="button"

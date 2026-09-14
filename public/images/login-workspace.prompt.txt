@@ -1,0 +1,15 @@
+Generation mode: built-in imagegen; new image generation (single asset)
+Final asset: public/images/login-workspace.jpg
+Dimensions: 1196 x 1315 pixels
+Size: 133581 bytes
+Encoding: JPEG quality 85, converted from generated PNG without resizing or visual edits
+
+Exact generation prompt:
+Use case: ads-marketing
+Asset type: responsive CRM sign-in hero background, single photographic bitmap asset, NOT an interface mockup.
+Primary request: polished corporate royal-blue monochrome architectural composition, almost square portrait 1000x1100 composition.
+Scene/backdrop: rich smooth deep royal blue and cobalt field. A realistic reflective modern glass office facade rises along the RIGHT EDGE, beginning near lower right and ascending toward upper right. The architecture occupies only the rightmost 35% of the image. Reflective glazing has precise slim black grid lines and subtle sky reflection, viewed from a low angle.
+Composition/framing: reserve the entire LEFT 65% as clean, dark blue negative space for separate HTML title and feature copy; no text is rendered into this image. Large very subtle tonal blue curved overlay sweeps from upper left into center and gently blends into the facade. Dark blue curved foreground at bottom right. Architecture and gradient merge smoothly with a sophisticated blue photographic collage treatment. Maintain sufficient dark empty space down the full left side.
+Lighting/mood: clean, assured, premium corporate, crisp but restrained.
+Color palette: deep #003B9D on left and bottom, rich #0052CC through center, brighter #2684FF at upper right, all monochrome blue.
+Constraints: no text, no letters, no logos, no watermark, no symbols, no people, no icons, no UI controls, no white borders. Fill the canvas edge to edge. This is only a background asset.

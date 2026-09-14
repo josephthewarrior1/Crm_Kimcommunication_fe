@@ -59,6 +59,16 @@ export interface CompanyListResponse {
   totalPages: number;
 }
 
+export interface CompanyBranch {
+  id: number;
+  companyId: number;
+  name: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  officePhone?: string;
+}
+
 export interface CompanyFilterOptionsResponse {
   groups: Array<{ id: number; name: string }>;
   industries: string[];
@@ -135,6 +145,7 @@ export interface IndustrySummaryResponse {
 export interface Database {
   id: number;
   company?: Company | null;
+  branch?: CompanyBranch | null;
   salutation?: string;
   firstName: string;
   lastName: string;
@@ -186,6 +197,7 @@ export interface DatabaseFilterOptionsResponse {
   cities: Array<{ value: string; label: string }>;
   groups: Array<{ id: number; name: string }>;
   companies: Array<{ id: number; name: string }>;
+  branches?: Array<{ id: number; companyId: number; name: string }>;
   industries: string[];
   positionLevels: string[];
 }
@@ -507,6 +519,7 @@ export interface DatabaseImportResult {
     firstName: string;
     lastName: string;
     companyName: string;
+    branchName?: string;
     status: string;
     message: string;
   }>;

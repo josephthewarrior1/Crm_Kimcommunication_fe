@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { EventParticipant } from '../../../../lib/types';
+import { getContactOffice } from '../../../../lib/utils/companyBranch';
 import { AlertCircle, Edit2, Trash2, History, ShieldAlert, UserX, MoreVertical } from 'lucide-react';
 import { extractPicFromNotes, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 
@@ -124,6 +125,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {filteredParticipants.map((p) => {
+            const officePhone = getContactOffice(p.database)?.officePhone;
             const isTakeout = Boolean(p.notes?.includes('[TAKEOUT]') || p.notes?.includes('[Opt-Out]') || p.notes?.toLowerCase().includes('takeout') || (p.database as any)?.isRemovalRequested);
             const isTikus = Boolean(!isTakeout && (!p.database?.isActive || (p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus') || p.participantStatus === 'red'));
             const isDeclined = p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
@@ -269,7 +271,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
                 )}
                 {columnConfig.officePhone !== false && (
                   <td className="py-2.5 px-3 text-slate-600">
-                    {p.database.company?.officePhone ? normalizePhone(p.database.company.officePhone) : '-'}
+                    {officePhone ? normalizePhone(officePhone) : '-'}
                   </td>
                 )}
                 {columnConfig.mobilePhone !== false && (

@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Phone, Mail, MessageSquare, Clock, Plus, X, Loader2, CheckCircle2, UserCheck } from 'lucide-react';
+import { Phone, Mail, MessageSquare, Clock, X, Loader2, CheckCircle2, UserCheck, History, Users, Settings2 } from 'lucide-react';
 import { EventParticipant, EventParticipantActivity } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
 import { getPreEventApprovalStatus, setPreEventApprovalStatus } from '../utils/notesHelper';
-
-const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.97C16.528 2.017 14.077.99 11.457.99c-5.442 0-9.869 4.37-9.872 9.799-.001 1.764.475 3.486 1.38 5.03l-.996 3.639 3.733-.974h-.055zm11.367-7.39c-.3-.15-1.772-.875-2.046-.975-.276-.1-.476-.15-.676.15-.2.3-.776.975-.95 1.175-.175.2-.35.225-.65.075-.3-.15-1.267-.467-2.414-1.485-.893-.797-1.496-1.783-1.672-2.083-.176-.3-.019-.462.13-.61.135-.133.3-.35.45-.525.15-.175.2-.3.3-.5.1-.2.05-.375-.025-.525-.075-.15-.676-1.625-.926-2.225-.244-.589-.493-.51-.676-.519-.174-.009-.373-.01-.572-.01-.2 0-.525.075-.8.375-.276.3-1.05 1.025-1.05 2.5 0 1.475 1.075 2.9 1.225 3.1.15.2 2.11 3.22 5.11 4.52.714.31 1.27.495 1.703.63.717.228 1.368.196 1.884.12.573-.085 1.772-.725 2.022-1.425.25-.7.25-1.3 0-1.425-.075-.15-.275-.225-.575-.375z"/>
-  </svg>
-);
 
 interface EngagementModalProps {
   isOpen: boolean;
@@ -31,7 +25,6 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
   const [activities, setActivities] = useState<EventParticipantActivity[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedType, setSelectedType] = useState<'CALL' | 'EMAIL' | 'WHATSAPP'>('CALL');
   const [notes, setNotes] = useState('');
   const requestIdRef = useRef(0);
   type TargetStage = 'preEventApproval' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH' | 'none';
@@ -211,72 +204,87 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
             e.nativeEvent.stopImmediatePropagation();
           }
         }}
-        className="ms-modal max-w-xl w-full relative z-10 pointer-events-auto"
+        className="ms-modal max-w-2xl w-full relative z-10 pointer-events-auto"
       >
         {/* Header */}
         <div className="ms-modal-header pr-14">
           <div className="min-w-0">
+            <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-[#626F86]">
+              <History className="h-4 w-4 text-[#0C66E4]" aria-hidden="true" />
+              Aktivitas peserta
+            </p>
             <h3 className="ms-modal-title break-words">{fullName}</h3>
-            <p className="ms-modal-description mt-1 break-words">{companyName} • {participant.database.jobTitle || 'No Title'}</p>
+            <p className="ms-modal-description mt-1 break-words">{companyName} &middot; {participant.database.jobTitle || 'No Title'}</p>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="ms-modal-close z-20"
+            aria-label="Tutup aktivitas peserta"
+            className="ms-modal-close z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C66E4]"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="ms-modal-body space-y-5">
-          {/* Quick Log Buttons - Compact Row */}
+        <div className="ms-modal-body space-y-4 bg-[#F4F5F7]">
+          {/* Log activity */}
           {!isViewer && (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                disabled={submitting}
-                onClick={() => handleLogActivity('CALL')}
-                className="flex-1 py-2 bg-white border border-slate-200 hover:border-blue-300 text-slate-700 font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <Phone className="w-3.5 h-3.5 text-[#5b5fc7]" />
-                <span>Call ({callLogs.length})</span>
-              </button>
-              <button
-                disabled={submitting}
-                onClick={() => handleLogActivity('EMAIL')}
-                className="flex-1 py-2 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <Mail className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Email ({emailLogs.length})</span>
-              </button>
-              <button
-                disabled={submitting}
-                onClick={() => handleLogActivity('WHATSAPP')}
-                className="flex-1 py-2 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 font-medium text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <WhatsAppIcon className="w-3.5 h-3.5 text-emerald-500" />
-                <span>WA ({waLogs.length})</span>
-              </button>
-            </div>
-          )}
-
-          {/* Quick Notes */}
-          {!isViewer && (
-            <div>
-              <input
-                type="text"
-                placeholder="Catatan (opsional)..."
+            <section className="rounded-lg border border-[#DFE1E6] bg-white p-4">
+              <h4 className="text-sm font-semibold text-[#172B4D]">Catat aktivitas</h4>
+              <p className="mt-1 text-xs leading-5 text-[#626F86]">Tambahkan catatan, lalu pilih saluran untuk menyimpan aktivitas.</p>
+              <label htmlFor="engagement-notes" className="mb-1.5 mt-4 block">Catatan <span className="font-normal text-[#626F86]">(opsional)</span></label>
+              <textarea
+                id="engagement-notes"
+                rows={2}
+                placeholder="Tulis hasil percakapan atau tindak lanjut..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#5b5fc7] text-slate-800 placeholder-slate-400"
+                className="w-full resize-y px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C66E4]/20 placeholder:text-[#8590A2]"
               />
-            </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => handleLogActivity('CALL')}
+                  className="flex items-center justify-center gap-2 border border-[#B3BAC5] bg-white px-3 py-2.5 text-sm font-medium text-[#172B4D] transition-colors hover:border-[#0C66E4] hover:bg-[#E9F2FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C66E4] disabled:opacity-50"
+                >
+                  <Phone className="h-4 w-4 text-[#0C66E4]" aria-hidden="true" />
+                  <span>Telepon</span>
+                  <span className="ml-auto text-xs text-[#626F86]">{callLogs.length}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => handleLogActivity('EMAIL')}
+                  className="flex items-center justify-center gap-2 border border-[#B3BAC5] bg-white px-3 py-2.5 text-sm font-medium text-[#172B4D] transition-colors hover:border-[#0C66E4] hover:bg-[#E9F2FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C66E4] disabled:opacity-50"
+                >
+                  <Mail className="h-4 w-4 text-[#0C66E4]" aria-hidden="true" />
+                  <span>Email</span>
+                  <span className="ml-auto text-xs text-[#626F86]">{emailLogs.length}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => handleLogActivity('WHATSAPP')}
+                  className="flex items-center justify-center gap-2 border border-[#B3BAC5] bg-white px-3 py-2.5 text-sm font-medium text-[#172B4D] transition-colors hover:border-[#0C66E4] hover:bg-[#E9F2FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C66E4] disabled:opacity-50"
+                >
+                  <MessageSquare className="h-4 w-4 text-[#1F845A]" aria-hidden="true" />
+                  <span>WhatsApp</span>
+                  <span className="ml-auto text-xs text-[#626F86]">{waLogs.length}</span>
+                </button>
+              </div>
+            </section>
           )}
 
           {/* Status Milestone - Compact */}
           {!isViewer && (
-            <div>
+            <section className="rounded-lg border border-[#DFE1E6] bg-white p-4">
+              <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#172B4D]">
+                <UserCheck className="h-4 w-4 text-[#0C66E4]" aria-hidden="true" />
+                Status follow-up
+              </h4>
               {/* Status Chips */}
-              <div className="flex flex-wrap items-center gap-1 mb-2.5">
+              <div className="mb-4 flex flex-wrap items-center gap-1.5">
                 {[
                   { id: 'preEventApproval', label: 'Pre', val: getPreEventApprovalStatus(participant) },
                   { id: 'reminderH7', label: 'H-7', val: participant.reminderH7 },
@@ -290,64 +298,71 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                     <button
                       key={chip.id}
                       type="button"
-                      onClick={() => handleStageSelect(chip.id as any)}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                      onClick={() => handleStageSelect(chip.id as TargetStage)}
+                      aria-pressed={isSelected}
+                      className={`border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C66E4] ${
                         isSelected
-                          ? 'bg-blue-600 text-white'
+                          ? 'border-[#0C66E4] bg-[#E9F2FF] text-[#0C66E4]'
                           : hasValue
-                          ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                          ? 'border-[#DFE1E6] bg-[#F4F5F7] text-[#44546F] hover:bg-[#DCDFE4]'
+                          : 'border-[#DFE1E6] bg-white text-[#626F86] hover:bg-[#F4F5F7]'
                       }`}
                     >
-                      {chip.label}{chip.val ? `: ${chip.val}` : ''}
+                      {chip.label}{chip.val ? `: ${chip.val.replace(/_/g, ' ')}` : ''}
                     </button>
                   );
                 })}
               </div>
 
               {/* Selects + Button */}
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={targetStage}
-                  onChange={(e) => handleStageSelect(e.target.value as any)}
-                  className="min-w-0 basis-28 flex-1 px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-[#5b5fc7] cursor-pointer"
-                >
-                  <option value="preEventApproval">Pre Event</option>
-                  <option value="reminderH7">Reminder H-7</option>
-                  <option value="reminderH3">Reminder H-3</option>
-                  <option value="reminderH1">Reminder H-1</option>
-                  <option value="reminderHariH">Hari H</option>
-                  <option value="none">Hanya Log</option>
-                </select>
-                <select
-                  value={outcomeStatus}
-                  disabled={targetStage === 'none'}
-                  onChange={(e) => setOutcomeStatus(e.target.value)}
-                  className="min-w-0 basis-28 flex-1 px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:border-[#5b5fc7] cursor-pointer disabled:opacity-50"
-                >
-                  {targetStage === 'preEventApproval' ? (
-                    <>
-                      <option value="pending">Pending</option>
-                      <option value="approve">Approve</option>
-                      <option value="decline">Decline</option>
-                    </>
-                  ) : targetStage === 'reminderHariH' ? (
-                    <>
-                      <option value="on_location">On Location</option>
-                      <option value="on_the_way">On The Way</option>
-                      <option value="not_respon_yet">Not Respond</option>
-                      <option value="not_respond_2x">Not Respond 2x</option>
-                      <option value="unable_to_attend">Unable</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="confirm">Confirm</option>
-                      <option value="tentative">Tentative</option>
-                      <option value="unable_to_attend">Unable</option>
-                      <option value="not_respon_yet">Not Respond</option>
-                    </>
-                  )}
-                </select>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="min-w-0 basis-36 flex-1">
+                  <span className="mb-1.5 block">Tahap</span>
+                  <select
+                    value={targetStage}
+                    onChange={(e) => handleStageSelect(e.target.value as TargetStage)}
+                    className="w-full cursor-pointer px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0C66E4]/20"
+                  >
+                    <option value="preEventApproval">Pre Event</option>
+                    <option value="reminderH7">Reminder H-7</option>
+                    <option value="reminderH3">Reminder H-3</option>
+                    <option value="reminderH1">Reminder H-1</option>
+                    <option value="reminderHariH">Hari H</option>
+                    <option value="none">Hanya Log</option>
+                  </select>
+                </label>
+                <label className="min-w-0 basis-36 flex-1">
+                  <span className="mb-1.5 block">Hasil</span>
+                  <select
+                    value={outcomeStatus}
+                    disabled={targetStage === 'none'}
+                    onChange={(e) => setOutcomeStatus(e.target.value)}
+                    className="w-full cursor-pointer px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0C66E4]/20 disabled:opacity-50"
+                  >
+                    {targetStage === 'preEventApproval' ? (
+                      <>
+                        <option value="pending">Pending</option>
+                        <option value="approve">Approve</option>
+                        <option value="decline">Decline</option>
+                      </>
+                    ) : targetStage === 'reminderHariH' ? (
+                      <>
+                        <option value="on_location">On Location</option>
+                        <option value="on_the_way">On The Way</option>
+                        <option value="not_respon_yet">Not Respond</option>
+                        <option value="not_respond_2x">Not Respond 2x</option>
+                        <option value="unable_to_attend">Unable</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="confirm">Confirm</option>
+                        <option value="tentative">Tentative</option>
+                        <option value="unable_to_attend">Unable</option>
+                        <option value="not_respon_yet">Not Respond</option>
+                      </>
+                    )}
+                  </select>
+                </label>
                 <button
                   type="button"
                   disabled={submitting || targetStage === 'none'}
@@ -406,18 +421,24 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                       setSubmitting(false);
                     }
                   }}
-                  className="px-3 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white font-medium text-xs rounded-md transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shrink-0"
+                  className="ms-modal-primary shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C66E4] disabled:opacity-50"
                 >
-                  {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                  <span>Sync</span>
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+                  <span>Simpan status</span>
                 </button>
               </div>
-            </div>
+            </section>
           )}
 
           {/* Activity History */}
-          <div>
-            <h4 className="text-xs font-medium text-slate-500 mb-2">History ({activities?.length ?? 0})</h4>
+          <section className="rounded-lg border border-[#DFE1E6] bg-white p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h4 className="flex items-center gap-2 text-sm font-semibold text-[#172B4D]">
+                <History className="h-4 w-4 text-[#626F86]" aria-hidden="true" />
+                Riwayat aktivitas
+              </h4>
+              <span className="rounded bg-[#F4F5F7] px-2 py-1 text-xs font-medium text-[#626F86]">{activities?.length ?? 0} log</span>
+            </div>
 
             {isInitialLoading ? (
               <div className="space-y-2">
@@ -430,42 +451,49 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
               </div>
             ) : loading ? (
               <div className="py-6 flex justify-center items-center">
-                <Loader2 className="w-5 h-5 animate-spin text-[#5b5fc7]" />
+                <Loader2 className="w-5 h-5 animate-spin text-[#0C66E4]" />
               </div>
             ) : (activities?.length ?? 0) === 0 ? (
-              <div className="text-center py-6 border border-dashed border-slate-200 rounded-lg">
-                <p className="text-xs text-slate-400">Belum ada riwayat</p>
+              <div className="rounded-lg border border-dashed border-[#DFE1E6] bg-[#FAFBFC] px-4 py-6 text-center">
+                <History className="mx-auto mb-3 h-6 w-6 text-[#8590A2]" aria-hidden="true" />
+                <p className="text-sm font-medium text-[#44546F]">Belum ada aktivitas</p>
+                <p className="mt-1 text-xs leading-5 text-[#626F86]">Riwayat telepon, WhatsApp, dan email peserta akan tampil di sini.</p>
               </div>
             ) : (
-              <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
+              <div className="divide-y divide-[#DFE1E6]">
                 {activities!.map((act) => {
                   const typeUpper = act.activityType?.toUpperCase();
                   const typeColorMap: Record<string, string> = {
                     CALL: 'bg-blue-50 text-blue-600',
-                    EMAIL: 'bg-emerald-50 text-emerald-600',
+                    EMAIL: 'bg-blue-50 text-blue-600',
                     WHATSAPP: 'bg-emerald-50 text-emerald-600',
-                    MEETING: 'bg-purple-50 text-purple-600',
+                    MEETING: 'bg-cyan-50 text-cyan-700',
                     SYSTEM: 'bg-slate-100 text-slate-500'
                   };
                   const badgeStyle = typeColorMap[typeUpper] || 'bg-slate-100 text-slate-500';
+                  const ActivityIcon = typeUpper === 'CALL' ? Phone : typeUpper === 'EMAIL' ? Mail : typeUpper === 'WHATSAPP' ? MessageSquare : typeUpper === 'MEETING' ? Users : Settings2;
 
                   return (
-                    <div key={act.id} className="py-3 px-3 bg-white border border-slate-200 rounded-md flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${badgeStyle} shrink-0`}>
-                          {act.activityType}
-                        </span>
-                        <span className="text-slate-600 truncate">{act.notes || '-'}</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 shrink-0">
-                        {formatTimestamp(act.createdAt)}
+                    <div key={act.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${badgeStyle}`}>
+                        <ActivityIcon className="h-4 w-4" aria-hidden="true" />
                       </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                          <span className="text-xs font-semibold text-[#44546F]">{act.activityType}</span>
+                          <span className="flex items-center gap-1 text-xs text-[#626F86]">
+                            <Clock className="h-3 w-3" aria-hidden="true" />
+                            {formatTimestamp(act.createdAt)}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-6 text-[#44546F]">{act.notes || '-'}</p>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
-          </div>
+          </section>
         </div>
 
         {/* Footer */}
@@ -473,7 +501,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
           <button
             type="button"
             onClick={handleClose}
-            className="ms-modal-secondary px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-xs rounded-md transition-all cursor-pointer relative z-20"
+            className="ms-modal-secondary relative z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C66E4]"
           >
             Tutup
           </button>

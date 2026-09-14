@@ -1,37 +1,69 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { crmService } from '../../../lib/services/crmService';
 import { auditLogService } from '../../../lib/services/auditLogService';
 import { RemovalRequest } from '../../../lib/types';
-import { Loader2, RotateCcw, Check, X } from 'lucide-react';
+import { Loader2, RotateCcw, Check, X, UserMinus, Search, Clock, CheckCircle2, Shield, AlertCircle, Database, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 
-export default function SettingsPage() {
+const statusOptions = [
+  { value: 'all', label: 'Semua', icon: UserMinus },
+  { value: 'pending', label: 'Menunggu', icon: Clock },
+  { value: 'completed', label: 'Disetujui', icon: CheckCircle2 },
+  { value: 'rejected', label: 'Ditolak', icon: X },
+];
+
+const statusLabels: Record<string, string> = {
+  pending: 'Menunggu', approved: 'Disetujui', done: 'Selesai', rejected: 'Ditolak',
+};
+
+function matchesStatus(request: RemovalRequest, status: string) {
+  return status === 'all' || (status === 'completed' ? ['approved', 'done'].includes(request.status) : request.status === status);
+}
+
+function formatRequestDate(value?: string) {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export default function TakeoutRequestsPage() {
   const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [removals, setRemovals] = useState<RemovalRequest[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [submittingId, setSubmittingId] = useState<number | null>(null);
+  const loadRequest = useRef(0);
 
-  useEffect(() => {
-    if (isAdmin) {
-      loadTabDetails();
+  const loadTabDetails = useCallback(async () => {
+    if (!isAdmin) return;
+    const requestId = ++loadRequest.current;
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const data = await crmService.getRemovalRequests();
+      if (requestId === loadRequest.current) setRemovals(data);
+    } catch {
+      if (requestId !== loadRequest.current) return;
+      setRemovals([]);
+      setLoadError(true);
+    } finally {
+      if (requestId === loadRequest.current) setLoading(false);
     }
   }, [isAdmin]);
 
-  async function loadTabDetails() {
-    setLoading(true);
-    try {
-      const data = await crmService.getRemovalRequests();
-      setRemovals(data);
-    } catch (err) {
-      toast.error('Failed to load takeout requests');
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    void loadTabDetails();
+    return () => { loadRequest.current += 1; };
+  }, [loadTabDetails]);
 
   const handleUpdateRemovalStatus = async (id: number, status: string, targetName?: string) => {
+    if (!isAdmin || submittingId !== null) return;
+    setSubmittingId(id);
     try {
       await crmService.updateRemovalRequestStatus(id, status);
       
@@ -42,21 +74,25 @@ export default function SettingsPage() {
           userFullName: user.fullName,
           userRole: user.roles?.[0] || 'ADMIN',
           module: 'TAKEOUT',
-          actionType: status === 'approved' ? 'APPROVE_TAKEOUT' : 'REJECT_TAKEOUT',
+          actionType: status === 'approved' || status === 'done' ? 'APPROVE_TAKEOUT' : 'REJECT_TAKEOUT',
           targetId: id,
           targetName: targetName || `Takeout #${id}`,
           description: `Mengubah status Takeout Request #${id} (${targetName || 'Kontak'}) menjadi '${status.toUpperCase()}'.`
         });
       }
 
-      toast.success(`Request status updated to ${status}.`);
+      toast.success('Permintaan takeout berhasil disetujui.');
       loadTabDetails();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update removal status');
+      toast.error(err.message || 'Status permintaan belum berhasil diperbarui.');
+    } finally {
+      setSubmittingId(null);
     }
   };
 
   const handleRestoreContact = async (rem: RemovalRequest) => {
+    if (!isAdmin || submittingId !== null) return;
+    setSubmittingId(rem.id);
     try {
       if (rem.database?.id) {
         // Reactivate soft-deleted contact in local CRM database (send both isActive & active for Jackson compatibility)
@@ -86,136 +122,153 @@ export default function SettingsPage() {
       loadTabDetails();
     } catch (err: any) {
       toast.error(err.message || 'Gagal memulihkan kontak');
+    } finally {
+      setSubmittingId(null);
     }
   };
 
+  const query = searchQuery.trim().toLowerCase();
+  const visibleRemovals = removals.filter(request => matchesStatus(request, filterStatus) && [
+    `${request.database?.firstName || ''} ${request.database?.lastName || ''}`,
+    request.database?.company?.name, String(request.database?.id || ''), request.requestedBy,
+    request.sourceDb, request.reason?.replace(/_/g, ' '), request.notes,
+  ].some(value => (value || '').toLowerCase().includes(query)));
+
   if (!isAdmin) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl mb-4 animate-bounce">
-          🛇
-        </div>
-        <h3 className="text-xl font-bold text-slate-900">Access Denied</h3>
-        <p className="text-sm text-slate-500 mt-2 max-w-sm">
-          Only users with the <span className="font-bold text-red-600">ADMIN</span> role have permissions to audit takeout requests.
-        </p>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center">
+        <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><Shield aria-hidden="true" className="h-6 w-6" /></span>
+        <h2 className="text-xl font-semibold text-slate-900">Akses terbatas</h2>
+        <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">Hanya admin yang dapat meninjau permintaan takeout.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
-      {/* Page Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Takeout Requests</h2>
-        <p className="text-sm text-slate-500 mt-1">Audit, approve or reject takeout requests, and manage active database record deletions.</p>
+    <div className="space-y-6 text-slate-900">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500"><UserMinus aria-hidden="true" className="h-4 w-4" />Management / Takeout</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Takeout Requests</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Tinjau alasan takeout, putuskan permintaan, atau pulihkan kontak ke database.</p>
+        </div>
+        <button type="button" onClick={() => { void loadTabDetails(); }} disabled={loading || submittingId !== null} className="inline-flex items-center justify-center gap-2 self-start rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 sm:self-auto">
+          <RotateCcw aria-hidden="true" className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Muat ulang
+        </button>
       </div>
 
-      {/* Main Content */}
-      <div className="min-h-[400px]">
+      <section aria-labelledby="takeout-requests-title" className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 pt-5 sm:px-6">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+            <div>
+              <h2 id="takeout-requests-title" className="text-base font-semibold text-slate-900">Daftar permintaan</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Setujui takeout atau tolak untuk mengaktifkan kembali kontak.</p>
+            </div>
+            <div className="relative w-full lg:max-w-sm">
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input type="search" aria-label="Cari permintaan takeout" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Cari kontak, pengaju, atau alasan" className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
+            </div>
+          </div>
+          <div className="-mb-px mt-5 flex flex-wrap gap-1" aria-label="Filter status permintaan">
+            {statusOptions.map(({ value, label, icon: Icon }) => (
+              <button type="button" key={value} aria-pressed={filterStatus === value} onClick={() => setFilterStatus(value)} className={`inline-flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:px-4 ${filterStatus === value ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+                <Icon aria-hidden="true" className="h-4 w-4" />{label}
+                {!loading && !loadError && <span className={`rounded px-1.5 py-0.5 text-xs tabular-nums ${filterStatus === value ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>{removals.filter(request => matchesStatus(request, value)).length}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {loading ? (
-          <div className="h-[40vh] flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <div role="status" className="flex min-h-72 flex-col items-center justify-center gap-3 text-sm text-slate-500"><Loader2 aria-hidden="true" className="h-6 w-6 animate-spin text-blue-600" />Memuat permintaan takeout...</div>
+        ) : loadError ? (
+          <div role="alert" className="flex min-h-72 flex-col items-center justify-center px-5 py-10 text-center">
+            <AlertCircle aria-hidden="true" className="mb-3 h-7 w-7 text-slate-400" />
+            <h3 className="text-sm font-semibold text-slate-800">Permintaan belum berhasil dimuat</h3>
+            <p className="mt-1 text-sm text-slate-500">Coba muat ulang untuk melihat daftar permintaan.</p>
+            <button type="button" onClick={() => { void loadTabDetails(); }} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:underline"><RotateCcw aria-hidden="true" className="h-4 w-4" />Coba lagi</button>
+          </div>
+        ) : visibleRemovals.length === 0 ? (
+          <div className="flex min-h-72 flex-col items-center justify-center px-5 py-10 text-center">
+            <UserMinus aria-hidden="true" className="mb-3 h-7 w-7 text-slate-400" />
+            <h3 className="text-sm font-semibold text-slate-800">{removals.length === 0 ? 'Belum ada permintaan takeout' : 'Tidak ada permintaan yang sesuai'}</h3>
+            <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">{removals.length === 0 ? 'Permintaan dari halaman Database atau Event akan muncul di sini.' : 'Coba kata kunci lain atau tampilkan semua status.'}</p>
+            {(query || filterStatus !== 'all') && <button type="button" onClick={() => { setSearchQuery(''); setFilterStatus('all'); }} className="mt-4 text-sm font-medium text-blue-700 hover:underline">Reset filter</button>}
           </div>
         ) : (
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold text-slate-900">Takeout Requests</h3>
-
-            {removals.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-12">No takeout requests have been logged.</p>
-            ) : (
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/50 text-slate-500 font-semibold uppercase tracking-wider">
-                      <th className="py-3 px-4">Database Record</th>
-                      <th className="py-3 px-4">Reason</th>
-                      <th className="py-3 px-4">Requested By</th>
-                      <th className="py-3 px-4">Audit Details</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {removals.map((rem) => {
-                      const statusColors: Record<string, string> = {
-                        pending: 'bg-amber-50 border-amber-100 text-amber-600',
-                        approved: 'bg-blue-50 border-blue-100 text-blue-600',
-                        done: 'bg-emerald-50 border-emerald-100 text-emerald-600',
-                        rejected: 'bg-slate-100 border-slate-200 text-slate-500'
-                      };
-
-                      return (
-                        <tr key={rem.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-4 px-4">
-                            <p className="font-bold text-slate-900">
-                              {rem.database?.firstName || rem.database?.lastName
-                                ? `${rem.database.firstName || ''} ${rem.database.lastName || ''}`.trim()
-                                : `Record #${rem.database?.id || '-'}`}
-                            </p>
-                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">ID: {rem.database?.id}</p>
-                          </td>
-                          <td className="py-4 px-4 font-semibold text-slate-700 capitalize">{rem.reason.replace(/_/g, ' ')}</td>
-                          <td className="py-4 px-4 text-slate-600">{rem.requestedBy || '-'}</td>
-                          <td className="py-4 px-4 text-slate-500">
-                            <p>DB: {rem.sourceDb || 'Unknown'}</p>
-                            {rem.notes && <p className="italic">"{rem.notes}"</p>}
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className={`px-2 py-0.5 font-bold rounded-md border uppercase ${statusColors[rem.status] || statusColors.pending}`}>
-                              {rem.status}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            {rem.status === 'pending' ? (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    const cName = `${rem.database?.firstName || ''} ${rem.database?.lastName || ''}`.trim() || `Kontak #${rem.database?.id}`;
-                                    handleUpdateRemovalStatus(rem.id, 'done', cName);
-                                  }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-sm transition-all cursor-pointer"
-                                  title="Approve Takeout & Soft-Delete Contact"
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => handleRestoreContact(rem)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all cursor-pointer"
-                                  title="Reject Request & Keep Active"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                  Reject
-                                </button>
-                              </div>
-                            ) : rem.status === 'done' || rem.status === 'approved' ? (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => handleRestoreContact(rem)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
-                                  title="Restore / Reactivate Contact back to Database directory"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5" />
-                                  Restore Contact
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                                Contact Active
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                <caption className="sr-only">Permintaan takeout kontak dan tindakan peninjauan admin</caption>
+                <thead><tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
+                  <th scope="col" className="px-4 py-3 font-medium sm:px-6">Kontak</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Alasan & catatan</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Pengajuan</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium sm:px-6">Tindakan</th>
+                </tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {visibleRemovals.map(request => {
+                    const contactName = `${request.database?.firstName || ''} ${request.database?.lastName || ''}`.trim() || `Kontak #${request.database?.id || '-'}`;
+                    const busy = submittingId === request.id;
+                    const completed = request.status === 'done' || request.status === 'approved';
+                    const statusStyle = request.status === 'pending' ? 'border-amber-200 bg-amber-50 text-amber-700' : completed ? 'border-blue-100 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-100 text-slate-600';
+                    const StatusIcon = request.status === 'pending' ? Clock : completed ? CheckCircle2 : X;
+                    return (
+                      <tr key={request.id} className="align-top transition-colors hover:bg-slate-50/60">
+                        <td className="px-4 py-5 sm:px-6">
+                          <div className="flex items-start gap-3">
+                            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><UserMinus className="h-4 w-4" /></span>
+                            <div className="min-w-0">
+                              <p className="max-w-56 break-words font-semibold text-slate-900">{contactName}</p>
+                              {request.database?.company?.name && <p className="mt-1 max-w-56 break-words text-xs leading-5 text-slate-500">{request.database.company.name}</p>}
+                              <p className="mt-1 text-xs tabular-nums text-slate-400">Kontak #{request.database?.id || '-'} · Request #{request.id}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-5">
+                          <p className="text-sm font-medium capitalize text-slate-700">{request.reason?.replace(/_/g, ' ') || 'Tidak disebutkan'}</p>
+                          <p className="mt-2 max-w-sm whitespace-pre-wrap break-words text-xs leading-5 text-slate-500">{request.notes || 'Tidak ada catatan tambahan.'}</p>
+                        </td>
+                        <td className="px-4 py-5">
+                          <p className="break-words text-sm font-medium text-slate-700">{request.requestedBy || 'Tidak disebutkan'}</p>
+                          <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-500"><Database aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span className="max-w-40 break-words">{request.sourceDb || 'Sumber tidak dicatat'}</span></p>
+                          <p className="mt-1 flex items-center gap-1.5 text-xs leading-5 text-slate-500"><CalendarDays aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />{formatRequestDate(request.requestDate || request.createdAt)}</p>
+                        </td>
+                        <td className="px-4 py-5">
+                          <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-1 text-xs font-medium ${statusStyle}`}><StatusIcon aria-hidden="true" className="h-3.5 w-3.5" />{statusLabels[request.status] || request.status}</span>
+                        </td>
+                        <td className="px-4 py-5 sm:px-6">
+                          {request.status === 'pending' ? (
+                            <div className="flex justify-end gap-2">
+                              <button type="button" onClick={() => handleUpdateRemovalStatus(request.id, 'done', contactName)} disabled={submittingId !== null} aria-label={`Setujui takeout ${contactName}`} title="Setujui takeout; kontak tetap nonaktif" className="inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50">
+                                {busy ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <Check aria-hidden="true" className="h-3.5 w-3.5" />}Setujui
+                              </button>
+                              <button type="button" onClick={() => handleRestoreContact(request)} disabled={submittingId !== null} aria-label={`Tolak takeout ${contactName} dan aktifkan kontak`} title="Tolak permintaan dan aktifkan kembali kontak" className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"><X aria-hidden="true" className="h-3.5 w-3.5" />Tolak</button>
+                            </div>
+                          ) : completed ? (
+                            <div className="flex justify-end">
+                              <button type="button" onClick={() => handleRestoreContact(request)} disabled={submittingId !== null} aria-label={`Pulihkan kontak ${contactName}`} className="inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50">
+                                {busy ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />}Pulihkan kontak
+                              </button>
+                            </div>
+                          ) : request.status === 'rejected' ? (
+                            <span className="flex items-center justify-end gap-1.5 py-2 text-xs text-slate-500"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-emerald-600" />Kontak aktif</span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50/50 px-4 py-4 text-xs text-slate-500 sm:px-6">
+              <p>Menampilkan <span className="font-medium tabular-nums text-slate-700">{visibleRemovals.length}</span> dari {removals.length} permintaan</p>
+              <span className="inline-flex items-center gap-1.5"><Shield aria-hidden="true" className="h-3.5 w-3.5" />Peninjauan oleh admin</span>
+            </div>
+          </>
         )}
-      </div>
+      </section>
     </div>
   );
 }

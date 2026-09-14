@@ -1,36 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { crmService } from '../../lib/services/crmService';
 import { DashboardSummaryResponse, Event, IndustrySummaryResponse } from '../../lib/types';
-import {
-  Building2,
-  CalendarDays,
-  Database as DatabaseIcon,
-  FolderTree,
-  Loader2,
-  MapPin,
-  TrendingUp
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { ArrowRight, BarChart3, Building2, CalendarDays, Database as DatabaseIcon, FolderTree, MapPin, RefreshCw, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from 'recharts';
-
-const COLORS = {
-  page: '#f5f5f5',
-  card: '#ffffff',
-  ink: '#242424',
-  muted: '#616161',
-  line: '#e5e5e5',
-  blue: '#5b5fc7',
-  blueDark: '#444791',
-  blueSoft: '#f0f0fa',
-  track: '#e1e1ef'
-};
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardSummaryResponse | null>(null);
   const [industrySummary, setIndustrySummary] = useState<IndustrySummaryResponse | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<Event[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,273 +18,256 @@ export default function DashboardPage() {
       try {
         const [summary, eventItems, industries] = await Promise.all([
           crmService.getDashboardSummary(),
-          crmService.getEvents().catch(() => []),
-          crmService.getIndustrySummary().catch(() => null)
+          crmService.getEvents().catch(() => null),
+          crmService.getIndustrySummary().catch(() => null),
         ]);
         setDashboard(summary);
         setEvents(eventItems);
         setIndustrySummary(industries);
-      } catch (err) {
-        toast.error('Failed to load dashboard data. Ensure backend is running.');
+      } catch {
+        setDashboard(null);
       } finally {
         setLoading(false);
       }
     }
-
-    loadData();
+    void loadData();
   }, []);
-
-  const metrics = dashboard?.metrics;
-  const eventAttendanceData = dashboard?.eventAttendancePerformance || [];
-  const topIndustries = industrySummary?.items || [];
-
-  const totalInvited = eventAttendanceData.reduce((sum, item) => sum + (item.Invited || 0), 0);
-  const totalAttended = eventAttendanceData.reduce((sum, item) => sum + (item.Attended || 0), 0);
-  const attendanceRate = totalInvited > 0 ? (totalAttended / totalInvited) * 100 : 0;
-  const industryTotal = industrySummary?.totals.databases || 0;
-
-  const stats = [
-    { name: 'Total Groups', value: metrics?.totalGroups || 0, icon: FolderTree },
-    { name: 'Total Companies', value: metrics?.totalCompanies || 0, icon: Building2 },
-    { name: 'Total Database', value: metrics?.totalDatabase || 0, icon: DatabaseIcon },
-    { name: 'Total Events', value: metrics?.totalEvents || 0, icon: CalendarDays }
-  ];
-
-  const upcomingEvents = events
-    .filter((event) => event.dateStart || event.startDate)
-    .sort((a, b) => new Date(a.dateStart || a.startDate || '').getTime() - new Date(b.dateStart || b.startDate || '').getTime())
-    .slice(0, 4);
-
-  const formatEventDate = (event: Event) => {
-    const value = event.dateStart || event.startDate;
-    if (!value) return 'Date not set';
-    return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
 
   if (loading) {
     return (
-      <div className="h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: COLORS.blue }} />
+      <div role="status" className="space-y-6">
+        <p className="text-sm text-slate-500">Loading your overview...</p>
+        <div aria-hidden="true" className="grid animate-pulse grid-cols-2 gap-4 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((item) => <div key={item} className="h-36 rounded-xl border border-slate-200 bg-white" />)}
+        </div>
+        <div aria-hidden="true" className="h-80 animate-pulse rounded-xl border border-slate-200 bg-white" />
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6" style={{ backgroundColor: COLORS.page }}>
-      <div className="border-b border-slate-200 pb-5">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Overview</h1>
-        <p className="mt-1 text-sm text-slate-500">Your contacts, companies, and event performance in one place.</p>
+  if (!dashboard) {
+    return (
+      <div role="alert" className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
+        <h1 className="text-2xl font-semibold text-slate-900">Overview is unavailable</h1>
+        <p className="mt-2 text-sm text-slate-500">We couldn&apos;t load your workspace data. Please try again.</p>
+        <button type="button" onClick={() => window.location.reload()} className="mt-5 inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+          <RefreshCw aria-hidden="true" className="h-4 w-4" />Reload overview
+        </button>
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.9fr)] gap-4 max-w-[1440px] mx-auto">
-        <div className="space-y-4 min-w-0">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {stats.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div
-                  key={stat.name}
-                  className="rounded-lg border p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3"
-                  style={{ backgroundColor: COLORS.card, borderColor: COLORS.line }}
-                >
-                  <div className="w-9 h-9 rounded-md bg-blue-50 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4" style={{ color: COLORS.blue }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold truncate" style={{ color: COLORS.muted }}>{stat.name}</p>
-                    <p className="text-lg font-bold leading-tight" style={{ color: COLORS.ink }}>{stat.value.toLocaleString()}</p>
-                  </div>
+    );
+  }
+
+  const { metrics, eventAttendancePerformance: attendance } = dashboard;
+  const industries = industrySummary?.items || [];
+  const totalInvited = attendance.reduce((sum, item) => sum + (item.Invited || 0), 0);
+  const totalAttended = attendance.reduce((sum, item) => sum + (item.Attended || 0), 0);
+  const attendanceRate = totalInvited > 0 ? (totalAttended / totalInvited) * 100 : 0;
+  const industryTotal = industrySummary?.totals.databases || 0;
+  const stats = [
+    { name: 'Contacts', value: metrics.totalDatabase, description: 'Records in your database', href: '/dashboard/database', icon: DatabaseIcon, color: 'bg-blue-50 text-blue-600' },
+    { name: 'Companies', value: metrics.totalCompanies, description: 'Companies in your workspace', href: '/dashboard/companies', icon: Building2, color: 'bg-teal-50 text-teal-700' },
+    { name: 'Groups', value: metrics.totalGroups, description: 'Company groups', href: '/dashboard/groups', icon: FolderTree, color: 'bg-slate-100 text-slate-600' },
+    { name: 'Events', value: metrics.totalEvents, description: 'Events in your workspace', href: '/dashboard/events', icon: CalendarDays, color: 'bg-sky-50 text-sky-700' },
+  ];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingEvents = (events || [])
+    .filter((event) => new Date(event.dateStart || event.startDate || '').getTime() >= today.getTime())
+    .sort((a, b) => new Date(a.dateStart || a.startDate || '').getTime() - new Date(b.dateStart || b.startDate || '').getTime())
+    .slice(0, 4);
+
+  return (
+    <div className="space-y-7">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-slate-900">Overview</h1>
+          <p className="mt-2 text-sm text-slate-500">A clear view of your contacts, companies, and events.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/dashboard/events" className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+            <CalendarDays aria-hidden="true" className="h-4 w-4" />View events
+          </Link>
+          <Link href="/dashboard/database" className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">
+            Open database<ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+
+      <section aria-label="Workspace totals" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        {stats.map(({ name, value, description, href, icon: Icon, color }) => (
+          <Link key={name} href={href} className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-300 sm:p-5">
+            <div className="flex items-center justify-between gap-1 sm:gap-2">
+              <span className="text-sm font-medium text-slate-600">{name}</span>
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md sm:h-8 sm:w-8 ${color}`}><Icon aria-hidden="true" className="h-4 w-4" /></span>
+            </div>
+            <p className="mt-3 break-all text-3xl font-semibold tracking-tight text-slate-900 tabular-nums">{value.toLocaleString()}</p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-xs leading-5 text-slate-500">{description}</span>
+              <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600" />
+            </div>
+          </Link>
+        ))}
+      </section>
+
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
+        <section aria-labelledby="attendance-title" className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
+            <div className="flex items-center gap-2.5">
+              <BarChart3 aria-hidden="true" className="h-4 w-4 text-slate-500" />
+              <h2 id="attendance-title" className="text-sm font-semibold text-slate-900">Event performance</h2>
+            </div>
+            <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">All reported events</span>
+          </div>
+          <div className="p-5 sm:p-6">
+            <div className="grid grid-cols-2 gap-4 border-b border-slate-200 pb-5 sm:grid-cols-[1.3fr_1fr_1fr]">
+              <div className="col-span-2 sm:col-span-1">
+                <p className="text-xs font-medium text-slate-500">Attendance rate</p>
+                <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-900 tabular-nums">{attendanceRate.toFixed(1)}<span className="ml-0.5 text-2xl text-slate-400">%</span></p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500">Invited</p>
+                <p className="mt-3 text-2xl font-semibold text-slate-900 tabular-nums">{totalInvited.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500">Attended</p>
+                <p className="mt-3 text-2xl font-semibold text-blue-600 tabular-nums">{totalAttended.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="mb-3 mt-5 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs font-medium text-slate-500">Participants by event</p>
+              <div className="flex gap-3 text-[11px] text-slate-500">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-blue-200" />Invited</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-blue-600" />Attended</span>
+              </div>
+            </div>
+            <div className="h-60 min-w-0">
+              {attendance.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 text-center">
+                  <Users aria-hidden="true" className="mb-3 h-6 w-6 text-slate-400" />
+                  <p className="text-sm font-medium text-slate-700">No attendance data yet</p>
+                  <p className="mt-1 text-xs text-slate-500">Event attendance will appear here as participants are recorded.</p>
                 </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart accessibilityLayer data={attendance} margin={{ top: 12, right: 0, left: -20, bottom: 0 }} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#DFE1E6" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#626F86' }} tickMargin={10} tickFormatter={(name: string) => name.length > 16 ? `${name.slice(0, 14)}…` : name} />
+                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#626F86' }} />
+                    <ChartTooltip cursor={{ fill: '#F4F5F7' }} contentStyle={{ border: '1px solid #DFE1E6', borderRadius: 8, color: '#172B4D', fontSize: 12, boxShadow: '0 4px 12px rgb(9 30 66 / 0.1)' }} />
+                    <Bar dataKey="Invited" fill="#B3D4FF" radius={[3, 3, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="Attended" fill="#0C66E4" radius={[3, 3, 0, 0]} maxBarSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-b-xl border-t border-slate-200 bg-slate-50 px-5 py-3.5 sm:px-6">
+            <p className="text-xs text-slate-500">Attendance across {attendance.length.toLocaleString()} reported events</p>
+            <Link href="/dashboard/events" className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline">View events<ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></Link>
+          </div>
+        </section>
+
+        <section aria-labelledby="upcoming-title" className="min-w-0 rounded-xl border border-slate-200 bg-slate-200/40 p-4">
+          <div className="mb-4 flex items-center justify-between gap-3 px-1">
+            <div>
+              <h2 id="upcoming-title" className="text-sm font-semibold text-slate-900">Upcoming events</h2>
+              <p className="mt-1 text-xs text-slate-500">What&apos;s next on your schedule</p>
+            </div>
+            <CalendarDays aria-hidden="true" className="h-4 w-4 text-slate-500" />
+          </div>
+          <div className="space-y-3">
+            {upcomingEvents.map((event) => {
+              const date = new Date(event.dateStart || event.startDate || '');
+              return (
+                <Link key={event.id} href={`/dashboard/events?eventId=${event.id}`} className="group block rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-300">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 shrink-0 rounded-md bg-blue-50 py-1.5 text-center text-blue-700">
+                      <p className="text-[10px] font-semibold uppercase">{date.toLocaleDateString('en-US', { month: 'short' })}</p>
+                      <p className="text-xl font-semibold leading-6 tabular-nums">{date.getDate()}</p>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-[13px] font-semibold leading-5 text-slate-900 group-hover:text-blue-600">{event.name}</h3>
+                      <p className="mt-1 text-xs text-slate-500">{date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                    <span className="flex min-w-0 items-center gap-1.5 text-xs text-slate-500"><MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{event.venueName || event.venueCity || 'Location to be confirmed'}</span></span>
+                    <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600" />
+                  </div>
+                </Link>
               );
             })}
+            {upcomingEvents.length === 0 && (
+              <div className="rounded-lg border border-slate-200 bg-white px-5 py-9 text-center">
+                <CalendarDays aria-hidden="true" className="mx-auto mb-3 h-7 w-7 text-slate-400" />
+                <p className="text-sm font-medium text-slate-700">{events ? 'No upcoming events' : 'Schedule unavailable'}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-500">{events ? 'Your next scheduled events will appear here. Open Events to plan your next one.' : 'The event schedule could not be loaded. Try reloading the page.'}</p>
+              </div>
+            )}
           </div>
+          <Link href="/dashboard/events" className="mt-3 flex items-center justify-center gap-2 rounded-md px-3 py-2.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-white hover:text-blue-600">View all events<ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></Link>
+        </section>
+      </div>
 
-          <div
-            className="rounded-lg border p-4 sm:p-6"
-            style={{ backgroundColor: COLORS.card, borderColor: COLORS.line }}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
-              <div>
-                <h2 className="text-lg font-bold" style={{ color: COLORS.ink }}>Average Attendance Score</h2>
-                <div className="mt-4 flex flex-wrap items-end gap-3">
-                  <span className="text-5xl font-light leading-none" style={{ color: COLORS.ink }}>{attendanceRate.toFixed(2)}%</span>
-                  <span className="text-xs font-semibold pb-1" style={{ color: COLORS.muted }}>
-                    {totalAttended.toLocaleString()} attended
-                  </span>
-                </div>
-              </div>
-              <div className="px-3 py-1.5 rounded-md bg-slate-100 text-[11px] font-medium" style={{ color: COLORS.muted }}>
-                All events
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_220px] gap-5 items-stretch">
-              <div className="h-[245px] min-w-0">
-                {eventAttendanceData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-sm" style={{ color: COLORS.muted }}>
-                    No event data available
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={eventAttendanceData} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="0" vertical={false} stroke={COLORS.line} />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: COLORS.muted }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: COLORS.muted }} />
-                      <ChartTooltip
-                        cursor={{ fill: 'rgba(91,95,199,0.08)' }}
-                        contentStyle={{ border: '0', borderRadius: 8, boxShadow: '0 14px 30px rgba(40,34,29,0.14)' }}
-                      />
-                      <Bar dataKey="Invited" fill={COLORS.track} radius={[999, 999, 0, 0]} barSize={13} />
-                      <Bar dataKey="Attended" fill={COLORS.blue} radius={[999, 999, 0, 0]} barSize={13} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-
-              <div className="rounded-md bg-slate-50 p-4">
-                <p className="text-xs font-bold mb-3" style={{ color: COLORS.ink }}>Top Industries · Kontak</p>
-                <div className="space-y-3">
-                  {topIndustries.slice(0, 5).map((item, index) => {
-                    const pct = industryTotal > 0 ? Math.round((item.databaseCount / industryTotal) * 100) : 0;
-                    return (
-                      <div key={item.industry} className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ backgroundColor: COLORS.blueSoft, color: COLORS.blue }}>
-                          {index + 1}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-bold truncate" title={item.industry} style={{ color: COLORS.ink }}>{item.industry}</p>
-                          <p className="text-[10px]" style={{ color: COLORS.muted }}>{item.databaseCount.toLocaleString()} kontak · {item.companyCount.toLocaleString()} company</p>
-                        </div>
-                        <span className="text-[10px] font-bold" style={{ color: COLORS.blue }}>{pct}%</span>
-                      </div>
-                    );
-                  })}
-                  {topIndustries.length === 0 && (
-                    <p className="text-xs" style={{ color: COLORS.muted }}>{industrySummary ? 'Belum ada data industri.' : 'Ringkasan industri gagal dimuat.'}</p>
-                  )}
-                </div>
-              </div>
-            </div>
+      <section aria-labelledby="industry-records-title" className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
+          <div>
+            <h2 id="industry-records-title" className="text-sm font-semibold text-slate-900">Contacts by industry</h2>
+            <p className="mt-1 text-xs text-slate-500">Understand where your network is strongest.</p>
           </div>
-
-          <section
-            aria-labelledby="industry-records-title"
-            className="rounded-lg border p-4 sm:p-6"
-            style={{ backgroundColor: COLORS.card, borderColor: COLORS.line }}
-          >
-            <h2 id="industry-records-title" className="text-lg font-bold mb-1" style={{ color: COLORS.ink }}>Industry Records</h2>
-            {industrySummary ? <>
-            <p className="text-xs mb-2" style={{ color: COLORS.muted }}>Semua {industrySummary.totals.industries.toLocaleString()} industri · {industrySummary.totals.companies.toLocaleString()} company · <span className="font-bold" style={{ color: COLORS.blue }}>{industryTotal.toLocaleString()} kontak</span></p>
-            <p className="text-xs mb-5" style={{ color: COLORS.muted }}>Total data = kontak aktif + nonaktif. Share dihitung dari seluruh kontak, bukan jumlah company.</p>
-            <div className="max-h-[440px] overflow-auto">
-              <table className="w-full min-w-[640px] tabular-nums">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="text-left text-[11px]" style={{ color: COLORS.muted }}>
-                    <th scope="col" className="font-semibold py-3 pr-4">Industry</th>
-                    <th scope="col" className="font-semibold py-3 px-3 text-right">Companies</th>
-                    <th scope="col" className="font-semibold py-3 px-3 text-right whitespace-nowrap" style={{ color: COLORS.blue }}>Total Data</th>
-                    <th scope="col" className="font-semibold py-3 px-3 text-right">Aktif</th>
-                    <th scope="col" className="font-semibold py-3 px-3 text-right">Nonaktif</th>
-                    <th scope="col" className="font-semibold py-3 pl-3">Share Kontak</th>
+          {industrySummary && <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">{industrySummary.totals.industries.toLocaleString()} industries</span>}
+        </div>
+        {industrySummary ? (
+          <>
+            <div className="max-h-[440px] overflow-auto" role="region" aria-label="Industry contact records" tabIndex={0}>
+              <table className="w-full min-w-[720px] text-left text-xs tabular-nums">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500">
+                  <tr>
+                    <th scope="col" className="px-5 py-3 font-medium sm:pl-6">Industry</th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">Companies</th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">Total contacts</th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">Active</th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">Inactive</th>
+                    <th scope="col" className="px-5 py-3 font-medium sm:pr-6">Contact share</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {topIndustries.map((item) => {
-                    const pct = industryTotal > 0 ? Math.round((item.databaseCount / industryTotal) * 100) : 0;
+                <tbody className="divide-y divide-slate-100">
+                  {industries.map((item) => {
+                    const share = industryTotal > 0 ? (item.databaseCount / industryTotal) * 100 : 0;
                     return (
-                      <tr key={item.industry} className="border-t" style={{ borderColor: COLORS.line }}>
-                        <th scope="row" className="py-3 pr-4 text-left text-xs font-semibold" style={{ color: COLORS.ink }}>{item.industry}</th>
-                        <td className="py-3 px-3 text-xs text-right" style={{ color: COLORS.muted }}>{item.companyCount.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-xs text-right font-bold" style={{ color: COLORS.blue, backgroundColor: COLORS.blueSoft }}>{item.databaseCount.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-xs text-right" style={{ color: COLORS.ink }}>{item.activeDatabaseCount.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-xs text-right" style={{ color: COLORS.muted }}>{item.inactiveDatabaseCount.toLocaleString()}</td>
-                        <td className="py-3 pl-3">
+                      <tr key={item.industry} className="hover:bg-slate-50">
+                        <th scope="row" className="px-5 py-4 font-medium text-slate-900 sm:pl-6">{item.industry}</th>
+                        <td className="px-4 py-4 text-right text-slate-600">{item.companyCount.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right font-semibold text-slate-900">{item.databaseCount.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right text-slate-600">{item.activeDatabaseCount.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right text-slate-500">{item.inactiveDatabaseCount.toLocaleString()}</td>
+                        <td className="px-5 py-4 sm:pr-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-16 h-2 rounded-full overflow-hidden" style={{ backgroundColor: COLORS.track }}>
-                              <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: COLORS.blue }} />
-                            </div>
-                            <span className="text-[11px] font-bold" style={{ color: COLORS.blue }}>{pct}%</span>
+                            <div aria-hidden="true" className="h-1.5 w-20 overflow-hidden rounded-full bg-blue-50"><div className="h-full rounded-full bg-blue-600" style={{ width: `${share}%` }} /></div>
+                            <span className="w-10 text-right text-slate-600">{share.toFixed(1)}%</span>
                           </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-                <tfoot>
-                  <tr className="border-t text-xs font-bold" style={{ borderColor: COLORS.line, color: COLORS.ink }}>
-                    <th scope="row" className="py-3 pr-4 text-left">Total</th>
-                    <td className="py-3 px-3 text-right">{industrySummary.totals.companies.toLocaleString()}</td>
-                    <td className="py-3 px-3 text-right" style={{ color: COLORS.blue, backgroundColor: COLORS.blueSoft }}>{industryTotal.toLocaleString()}</td>
-                    <td className="py-3 px-3 text-right">{industrySummary.totals.activeDatabases.toLocaleString()}</td>
-                    <td className="py-3 px-3 text-right">{industrySummary.totals.inactiveDatabases.toLocaleString()}</td>
-                    <td className="py-3 pl-3">{industryTotal > 0 ? '100%' : '0%'}</td>
+                <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-900">
+                  <tr>
+                    <th scope="row" className="px-5 py-3.5 sm:pl-6">Total</th>
+                    <td className="px-4 py-3.5 text-right">{industrySummary.totals.companies.toLocaleString()}</td>
+                    <td className="px-4 py-3.5 text-right">{industryTotal.toLocaleString()}</td>
+                    <td className="px-4 py-3.5 text-right">{industrySummary.totals.activeDatabases.toLocaleString()}</td>
+                    <td className="px-4 py-3.5 text-right">{industrySummary.totals.inactiveDatabases.toLocaleString()}</td>
+                    <td className="px-5 py-3.5 sm:pr-6">{industryTotal > 0 ? '100%' : '0%'}</td>
                   </tr>
                 </tfoot>
               </table>
-              {topIndustries.length === 0 && <p className="py-6 text-center text-sm" style={{ color: COLORS.muted }}>Belum ada data industri.</p>}
+              {industries.length === 0 && <p className="px-5 py-8 text-center text-sm text-slate-500">No industry records yet. Add company and contact details to see your distribution.</p>}
             </div>
-            </> : <p role="alert" className="py-4 text-sm text-amber-700">Ringkasan industri gagal dimuat. Pastikan backend mendukung API industry-summary, lalu muat ulang halaman.</p>}
-          </section>
-        </div>
-
-        <div className="space-y-5 min-w-0">
-          <div
-            className="rounded-lg border border-slate-200 p-4 sm:p-6 text-white min-h-[288px]"
-            style={{ background: '#464775' }}
-          >
-            <div className="relative">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
-                <h2 className="text-lg font-bold">Upcoming Events</h2>
-                <span className="text-[11px] font-bold text-white/60">{upcomingEvents.length} active</span>
-              </div>
-              <div className="space-y-5">
-                {upcomingEvents.length === 0 ? (
-                  <div className="h-40 flex items-center justify-center text-sm text-white/75">
-                    No upcoming event data available
-                  </div>
-                ) : upcomingEvents.map((event, index) => (
-                  <div key={event.id} className="grid grid-cols-[14px_1fr] gap-3">
-                    <div className="flex flex-col items-center">
-                      <span className="w-2 h-2 rounded-full bg-white mt-1" />
-                      {index < upcomingEvents.length - 1 && <span className="w-px flex-1 bg-white/25 mt-2" />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold truncate">{event.name}</p>
-                      <p className="text-xs text-white/80 mt-1">{formatEventDate(event)}</p>
-                      <p className="text-xs text-white/70 mt-2 truncate">{event.venueName || event.venueCity || event.clientName || '-'}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-lg bg-white border border-slate-200 p-4 sm:p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                <TrendingUp className="w-5 h-5" style={{ color: COLORS.blue }} />
-              </div>
-              <div>
-                <p className="text-xs font-semibold" style={{ color: COLORS.muted }}>Event funnel</p>
-                <p className="text-xl font-bold" style={{ color: COLORS.ink }}>
-                  {totalInvited.toLocaleString()} invited
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-white/60 p-3">
-                <CalendarDays className="w-4 h-4 mb-2" style={{ color: COLORS.blue }} />
-                <p className="text-[11px]" style={{ color: COLORS.muted }}>Attended</p>
-                <p className="text-lg font-bold" style={{ color: COLORS.ink }}>{totalAttended.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg bg-white/60 p-3">
-                <MapPin className="w-4 h-4 mb-2" style={{ color: COLORS.blue }} />
-                <p className="text-[11px]" style={{ color: COLORS.muted }}>Events</p>
-                <p className="text-lg font-bold" style={{ color: COLORS.ink }}>{(metrics?.totalEvents || 0).toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            <p className="border-t border-slate-200 px-5 py-3.5 text-xs leading-5 text-slate-500 sm:px-6">Includes active and inactive contacts. Contact share is calculated from all {industryTotal.toLocaleString()} contacts.</p>
+          </>
+        ) : <p role="alert" className="px-5 py-8 text-sm text-slate-600 sm:px-6">Industry records could not be loaded. Please reload the page to try again.</p>}
+      </section>
     </div>
   );
 }

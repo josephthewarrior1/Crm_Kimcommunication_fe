@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
 import { getOfficeEmail, getPersonalEmail } from '../../events/utils/notesHelper';
+import { getContactOffice } from '../../../../lib/utils/companyBranch';
 
 interface ExportConfigModalProps {
   isOpen: boolean;
@@ -41,7 +42,8 @@ const EXPORT_COLUMNS = [
   { key: 'city', label: 'City' },
   { key: 'postalCode', label: 'Postal Code' },
   { key: 'website', label: 'Company Website' },
-  { key: 'eventHistory', label: 'Event Participation' }
+  { key: 'eventHistory', label: 'Event Participation' },
+  { key: 'branchName', label: 'Cabang/Kantor' }
 ];
 
 export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
@@ -90,6 +92,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
       }
 
       const dataToExport = rowsToExport.map((c, index) => {
+        const office = getContactOffice(c);
         const rowData: Record<string, any> = { 'No': index + 1 };
         
         if (selectedColumns.includes('groupName')) rowData['Nama Group'] = c.company?.group?.name || '-';
@@ -101,8 +104,8 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
         if (selectedColumns.includes('position')) rowData['Position'] = c.positionLevel || '-';
         if (selectedColumns.includes('specialityDivision')) rowData['Division'] = c.specialityDivision || '-';
         if (selectedColumns.includes('jobTitle')) rowData['Job Title'] = c.jobTitle || '-';
-        if (selectedColumns.includes('address')) rowData['Address'] = c.company?.address || '-';
-        if (selectedColumns.includes('officePhone')) rowData['Office Phone'] = c.company?.officePhone || '-';
+        if (selectedColumns.includes('address')) rowData['Address'] = office?.address || '-';
+        if (selectedColumns.includes('officePhone')) rowData['Office Phone'] = office?.officePhone || '-';
         if (selectedColumns.includes('mobilePhone')) rowData['Mobile Phone'] = c.mobilePhone || '-';
         if (selectedColumns.includes('companyEmail')) {
           rowData['Company Email Address'] = getOfficeEmail(c.emails);
@@ -115,8 +118,8 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
         if (selectedColumns.includes('employeeSize')) rowData['Company Size (Employee)'] = c.company?.companySizeEmployee || '-';
         if (selectedColumns.includes('hardware')) rowData['Company Hardware'] = c.company?.companyHardware || '-';
         if (selectedColumns.includes('linkedin')) rowData['Linkedin Link'] = c.linkedinUrl || '-';
-        if (selectedColumns.includes('city')) rowData['City'] = c.company?.city || '-';
-        if (selectedColumns.includes('postalCode')) rowData['Postal Code'] = c.company?.postalCode || '-';
+        if (selectedColumns.includes('city')) rowData['City'] = office?.city || '-';
+        if (selectedColumns.includes('postalCode')) rowData['Postal Code'] = office?.postalCode || '-';
         if (selectedColumns.includes('website')) rowData['Company Website'] = c.company?.website || '-';
         
         if (selectedColumns.includes('eventHistory')) {
@@ -125,6 +128,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
           rowData['Event Participation'] = eventNames.length > 0 ? eventNames.join(', ') : '-';
         }
 
+        if (selectedColumns.includes('branchName')) rowData['Cabang/Kantor'] = c.branch?.name || '';
         return rowData;
       });
 

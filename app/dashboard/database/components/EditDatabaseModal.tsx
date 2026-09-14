@@ -5,6 +5,7 @@ import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
 import { normalizePhone } from '../utils/phoneHelper';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../../lib/constants';
+import { CompanyBranchSelect, useCompanyBranches } from './CompanyBranchSelect';
 
 interface EditDatabaseModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
   const [lastName, setLastName] = useState('');
   const [salutation, setSalutation] = useState('Mr');
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState('');
   const [positionLevel, setPositionLevel] = useState('unknown');
   const [specialityDivision, setSpecialityDivision] = useState('');
   const [jobTitle, setJobTitle] = useState('');
@@ -60,6 +62,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const branchSelection = useCompanyBranches(isOpen && !isCreatingNewCompany ? selectedCompanyId : '', selectedBranchId);
 
   useEffect(() => {
     if (!database) return;
@@ -67,6 +70,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     setLastName(database.lastName || '');
     setSalutation(database.salutation || 'Mr');
     setSelectedCompanyId(database.company?.id ? database.company.id.toString() : '');
+    setSelectedBranchId(database.branch?.id?.toString() || '');
     setPositionLevel(database.positionLevel || 'unknown');
     setSpecialityDivision(database.specialityDivision || '');
     setJobTitle(database.jobTitle || '');
@@ -140,7 +144,8 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
   if (!isOpen) return null;
 
   const selectedCompany = companies.find((c) => c.id.toString() === selectedCompanyId)
-    || companyOptions.find((c) => c.id.toString() === selectedCompanyId);
+    || companyOptions.find((c) => c.id.toString() === selectedCompanyId)
+    || (database.company?.id.toString() === selectedCompanyId ? database.company : undefined);
 
   const loadCompanyOptions = async (search: string) => {
     setCompanyOptionsLoading(true);
@@ -161,7 +166,12 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
 
   const handleUpdateDatabase = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     setSubmitAttempted(true);
+    if (!isCreatingNewCompany && !branchSelection.valid) {
+      toast.error('Tunggu daftar cabang dimuat, lalu periksa pilihan cabang sebelum menyimpan.');
+      return;
+    }
 
     const missing: string[] = [];
     if (!firstName.trim()) missing.push("First Name");
@@ -227,7 +237,8 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           source,
           isActive
         },
-        resolvedCompanyId
+        resolvedCompanyId,
+        !isCreatingNewCompany && selectedBranchId ? Number(selectedBranchId) : null
       );
 
       // Handle Company Email
@@ -333,7 +344,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
             <AlertCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
             <div>
-              <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division, LinkedIn URL, Database Type, dan Data Source</h5>
+              <h5 className="text-xs font-bold text-red-800">Lengkapi kolom bertanda *. Cabang / Kantor bersifat opsional.</h5>
             </div>
           </div>
         ) : (
@@ -373,6 +384,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                   onClick={() => {
                     setIsCreatingNewCompany(!isCreatingNewCompany);
                     setSelectedCompanyId('');
+                    setSelectedBranchId('');
                     setNewCompanyName('');
                     setSelectedGroupId('');
                     setBrandName('');
@@ -420,6 +432,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                         setCompanySearchQuery(e.target.value);
                         setIsCompanyDropdownOpen(true);
                         if (selectedCompanyId) setSelectedCompanyId('');
+                        setSelectedBranchId('');
                       }}
                       className={`w-full px-4 py-2.5 pr-10 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !selectedCompanyId
                           ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
@@ -433,6 +446,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                           onClick={() => {
                             setCompanySearchQuery('');
                             setSelectedCompanyId('');
+                            setSelectedBranchId('');
                             setIsCompanyDropdownOpen(false);
                           }}
                           className="hover:text-slate-600 p-0.5 text-xs font-bold"
@@ -454,6 +468,8 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                           type="button"
                           onClick={() => {
                             setIsCreatingNewCompany(true);
+                            setSelectedCompanyId('');
+                            setSelectedBranchId('');
                             setNewCompanyName(companySearchQuery || '');
                             setSelectedGroupId('');
                             setBrandName('');
@@ -487,6 +503,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                               type="button"
                               onClick={() => {
                                 setSelectedCompanyId(comp.id.toString());
+                                if (selectedCompanyId !== comp.id.toString()) setSelectedBranchId('');
                                 setSelectedGroupId(comp.group?.id?.toString() || '');
                                 setBrandName(comp.brandName || '');
                                 setCompanyAddress(comp.address || '');
@@ -522,6 +539,8 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 </p>
               )}
             </div>
+
+            <CompanyBranchSelect companyId={selectedCompanyId} value={selectedBranchId} onChange={setSelectedBranchId} selection={branchSelection} initialBranch={database.branch} creatingCompany={isCreatingNewCompany} disabled={submitting} />
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">First Name <span className="text-red-500 font-bold">*</span></label>
@@ -706,8 +725,8 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
 
           <section className="ms-modal-section space-y-4">
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Company Details</h4>
-              <p className="text-xs text-slate-500 mt-1">Perubahan di bagian ini berlaku untuk semua kontak yang memakai perusahaan yang sama.</p>
+              <h4 className="text-sm font-bold text-slate-900">Company Details · Kantor Pusat</h4>
+              <p className="text-xs text-slate-500 mt-1">Informasi perusahaan dan kantor pusat ini berlaku untuk semua kontak di perusahaan yang sama. Alamat cabang dikelola melalui Company Details.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -730,7 +749,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Office Phone</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Telepon Kantor Pusat</label>
                 <input value={officePhone} onChange={(e) => setOfficePhone(e.target.value.replace(/[^0-9+\-()\s]/g, ''))} placeholder="e.g. 021-123456" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
               </div>
               <div>
@@ -748,11 +767,11 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">City</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kota Kantor Pusat</label>
                 <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Jakarta" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Postal Code</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kode Pos Kantor Pusat</label>
                 <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="e.g. 14330" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
               </div>
               <div className="md:col-span-2">
@@ -760,7 +779,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. www.company.co.id" className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none" />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Address</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Alamat Kantor Pusat</label>
                 <textarea value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} rows={2} placeholder="Full office address..." className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none resize-none" />
               </div>
               <div className="md:col-span-2">
@@ -797,7 +816,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || (!isCreatingNewCompany && !branchSelection.valid)}
                 className="ms-modal-primary"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

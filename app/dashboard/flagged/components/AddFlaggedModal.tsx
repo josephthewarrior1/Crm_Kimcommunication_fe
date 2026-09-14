@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ShieldAlert, User, FileText, Link2, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../../../components/ui/dialog';
 import { Database, Event } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { normalizePhone } from '../../database/utils/phoneHelper';
@@ -30,6 +31,7 @@ export const AddFlaggedModal: React.FC<AddFlaggedModalProps> = ({
   onSubmit,
   submitting
 }) => {
+  const openerRef = useRef<HTMLElement | null>(null);
   const [nameUsed, setNameUsed] = useState('');
   const [emailUsed, setEmailUsed] = useState('');
   const [phoneUsed, setPhoneUsed] = useState('');
@@ -80,157 +82,103 @@ export const AddFlaggedModal: React.FC<AddFlaggedModalProps> = ({
   };
 
   return (
-    <div className="ms-modal-overlay">
-      <div className="ms-modal w-full max-w-2xl">
-        <div className="ms-modal-header">
-        <button
-          onClick={onClose}
-          className="ms-modal-close"
-          type="button"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <h3 className="ms-modal-title">Flag Suspected Identity</h3>
-        </div>
+    <Dialog open={isOpen} onOpenChange={open => { if (!open && !submitting) onClose(); }}>
+      <DialogContent
+        className="max-w-2xl"
+        onInteractOutside={event => event.preventDefault()}
+        onOpenAutoFocus={() => { openerRef.current = document.activeElement as HTMLElement | null; }}
+        onCloseAutoFocus={event => { event.preventDefault(); openerRef.current?.focus(); }}
+      >
+        <div aria-hidden="true" className="h-1.5 shrink-0 bg-blue-600" />
+        <header className="shrink-0 border-b border-slate-200 bg-white px-4 py-5 sm:px-6">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600"><ShieldAlert aria-hidden="true" className="h-5 w-5" /></span>
+            <div className="min-w-0">
+              <DialogTitle>Flag an identity</DialogTitle>
+              <DialogDescription>Record the identity and supporting information for your team to review.</DialogDescription>
+            </div>
+          </div>
+        </header>
 
         <form onSubmit={handleSubmit} className="ms-modal-form">
-          <div className="ms-modal-body space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Name Used</label>
-            <input
-              type="text"
-              placeholder="e.g. Joseph W"
-              value={nameUsed}
-              onChange={(e) => setNameUsed(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Used</label>
-              <input
-                type="email"
-                placeholder="email@example.com"
-                value={emailUsed}
-                onChange={(e) => setEmailUsed(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Used</label>
-              <div className="flex items-center">
-                <span className="px-3 py-2 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-slate-700 font-semibold text-xs shrink-0 select-none shadow-2xs">
-                  +62
-                </span>
-                <input
-                  type="text"
-                  placeholder="81934158888"
-                  value={phoneUsed}
-                  onChange={(e) => setPhoneUsed(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-r-xl text-slate-900 text-xs focus:outline-none focus:bg-white"
-                />
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain bg-white p-4 sm:p-6">
+            <fieldset className="min-w-0 space-y-4">
+              <legend className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900"><User aria-hidden="true" className="h-4 w-4 text-slate-500" /> Identity information</legend>
+              <div>
+                <label htmlFor="add-flagged-name" className="mb-1.5 block text-sm font-medium text-slate-700">Name used</label>
+                <input id="add-flagged-name" type="text" placeholder="Enter the name used" value={nameUsed} onChange={event => setNameUsed(event.target.value)} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
               </div>
-            </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="add-flagged-email" className="mb-1.5 block text-sm font-medium text-slate-700">Email used</label>
+                  <input id="add-flagged-email" type="email" placeholder="email@example.com" value={emailUsed} onChange={event => setEmailUsed(event.target.value)} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
+                </div>
+                <div>
+                  <label htmlFor="add-flagged-phone" className="mb-1.5 block text-sm font-medium text-slate-700">Phone used</label>
+                  <input id="add-flagged-phone" type="tel" placeholder="0812 3456 7890" value={phoneUsed} onChange={event => setPhoneUsed(event.target.value)} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset className="min-w-0 space-y-4 border-t border-slate-200 pt-5">
+              <legend className="float-left mb-4 flex w-full items-center gap-2 text-sm font-semibold text-slate-900"><FileText aria-hidden="true" className="h-4 w-4 text-slate-500" /> Review details</legend>
+              <div className="clear-both grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="add-flagged-status" className="mb-1.5 block text-sm font-medium text-slate-700">Flag status</label>
+                  <select id="add-flagged-status" value={status} onChange={event => setStatus(event.target.value)} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100">
+                    <option value="suspected">Suspected</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cleared">Cleared</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="add-flagged-reason" className="mb-1.5 block text-sm font-medium text-slate-700">Reason</label>
+                  <select id="add-flagged-reason" value={flagReason} onChange={event => setFlagReason(event.target.value)} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100">
+                    <option value="multiple_identity">Multiple Identity</option>
+                    <option value="fake_company">Fake Company Name</option>
+                    <option value="no_corporate_email">No Corporate Email Address</option>
+                    <option value="duplicate_phone">Duplicate Phone Number</option>
+                    <option value="duplicate_email">Duplicate Email Address</option>
+                    <option value="suspicious_repeated_attendance">Repeated Attendance Warning</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="add-flagged-notes" className="mb-1.5 block text-sm font-medium text-slate-700">Supporting notes</label>
+                <textarea id="add-flagged-notes" placeholder="Describe what needs review and any supporting evidence..." value={evidenceNotes} onChange={event => setEvidenceNotes(event.target.value)} rows={4} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 resize-y" />
+              </div>
+            </fieldset>
+
+            <fieldset className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <legend className="float-left mb-1 flex w-full items-center gap-2 text-sm font-semibold text-slate-900"><Link2 aria-hidden="true" className="h-4 w-4 text-slate-500" /> Linked records <span className="font-normal text-slate-500">Optional</span></legend>
+              <p id="add-flagged-database-hint" className="clear-both mb-4 text-xs leading-5 text-slate-500">Selecting a CRM profile fills in its contact information.</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="add-flagged-database" className="mb-1.5 block text-sm font-medium text-slate-700">CRM profile</label>
+                  <select id="add-flagged-database" aria-describedby="add-flagged-database-hint" value={selectedDatabaseId} onChange={event => handleSelectDatabaseChange(event.target.value)} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100">
+                    <option value="">No linked profile</option>
+                    {databases.map(database => <option key={database.id} value={database.id}>{database.firstName} {database.lastName} {database.company?.name ? `(${database.company.name})` : ''}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="add-flagged-event" className="mb-1.5 block text-sm font-medium text-slate-700">Event</label>
+                  <select id="add-flagged-event" value={selectedEventId} onChange={event => setSelectedEventId(event.target.value)} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100">
+                    <option value="">No linked event</option>
+                    {events.map(event => <option key={event.id} value={event.id}>{event.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </fieldset>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Flag Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white cursor-pointer"
-              >
-                <option value="suspected">Suspected</option>
-                <option value="confirmed">Confirmed (Tikus)</option>
-                <option value="cleared">Cleared (Legitimate)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Alert Reason</label>
-              <select
-                value={flagReason}
-                onChange={(e) => setFlagReason(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-xs focus:outline-none focus:bg-white cursor-pointer"
-              >
-                <option value="multiple_identity">Multiple Identity</option>
-                <option value="fake_company">Fake Company Name</option>
-                <option value="no_corporate_email">No Corporate Email Address</option>
-                <option value="duplicate_phone">Duplicate Phone Number</option>
-                <option value="duplicate_email">Duplicate Email Address</option>
-                <option value="suspicious_repeated_attendance">Repeated Attendance Warning</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Database (Optional)</label>
-              <select
-                value={selectedDatabaseId}
-                onChange={(e) => handleSelectDatabaseChange(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-[10px] focus:outline-none focus:bg-white cursor-pointer"
-              >
-                <option value="">-- No linked database --</option>
-                {databases.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.firstName} {c.lastName} {c.company?.name ? `(${c.company.name})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Link to Event (Optional)</label>
-              <select
-                value={selectedEventId}
-                onChange={(e) => setSelectedEventId(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-slate-900 text-[10px] focus:outline-none focus:bg-white cursor-pointer"
-              >
-                <option value="">-- No linked event --</option>
-                {events.map((evt) => (
-                  <option key={evt.id} value={evt.id}>
-                    {evt.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Evidence Description</label>
-            <textarea
-              placeholder="Explain why this profile is flagged..."
-              value={evidenceNotes}
-              onChange={(e) => setEvidenceNotes(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 bg-slate-55 border border-slate-200 focus:border-blue-500 rounded-md text-xs placeholder-slate-400 focus:outline-none resize-none focus:bg-white"
-            />
-          </div>
-
-          </div>
-          <div className="ms-modal-footer">
-            <button
-              type="button"
-              onClick={onClose}
-              className="ms-modal-secondary"
-            >
-              Cancel
+          <footer className="ms-modal-footer">
+            <button type="button" onClick={onClose} disabled={submitting} className="ms-modal-secondary disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+            <button type="submit" disabled={submitting} className="ms-modal-primary disabled:cursor-not-allowed disabled:opacity-50">
+              {submitting ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <ShieldAlert aria-hidden="true" className="h-4 w-4" />}
+              {submitting ? 'Saving...' : 'Flag identity'}
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="ms-modal-danger"
-            >
-              {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              Flag Identity
-            </button>
-          </div>
+          </footer>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

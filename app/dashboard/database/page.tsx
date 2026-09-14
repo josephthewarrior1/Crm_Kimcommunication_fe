@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { crmService } from '../../../lib/services/crmService';
 import { Database, Company, DatabaseEmail, EventParticipant, FlaggedIdentity } from '../../../lib/types';
 import { Users, Search, Plus, ExternalLink, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -9,6 +10,7 @@ import { useAuth } from '../../../lib/context/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { normalizePhone } from './utils/phoneHelper';
 import { findPersonalEmailConflicts } from './utils/emailIdentity';
+import { getContactOffice } from '../../../lib/utils/companyBranch';
 import { checkDatabaseCompleteness } from './utils/validationHelper';
 import { getOfficeEmail, getPersonalEmail } from '../events/utils/notesHelper';
 import indonesiaCities from './data/indonesia-cities.json';
@@ -46,7 +48,8 @@ const EXPORT_COLUMNS = [
   { key: 'city', label: 'City' },
   { key: 'postalCode', label: 'Postal Code' },
   { key: 'website', label: 'Company Website' },
-  { key: 'eventHistory', label: 'Event Participation' }
+  { key: 'eventHistory', label: 'Event Participation' },
+  { key: 'branchName', label: 'Cabang/Kantor' }
 ];
 
 const normalizeCityName = (city: string | null | undefined): string => {
@@ -79,23 +82,30 @@ export default function DatabasesPage() {
     cities: Array<{ value: string; label: string }>;
     groups: Array<{ id: number; name: string }>;
     companies: Array<{ id: number; name: string }>;
+    branches: Array<{ id: number; companyId: number; name: string }>;
     industries: string[];
     positionLevels: string[];
   }>({
     cities: [],
     groups: [],
     companies: [],
+    branches: [],
     industries: [],
     positionLevels: []
   });
   const [loading, setLoading] = useState(true);
   const databaseRequestId = useRef(0);
   const filterOptionsRequestId = useRef(0);
+  const databaseRequest = useRef<AbortController | null>(null);
+  const filterOptionsRequest = useRef<AbortController | null>(null);
   const [filterOptionsError, setFilterOptionsError] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search')?.trim() || '');
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('search') || '');
 
   // Advanced Filter states
   const [filterCompanyId, setFilterCompanyId] = useState('');
+  const [filterBranchId, setFilterBranchId] = useState('');
+  const [filterBranchLabel, setFilterBranchLabel] = useState('');
   const [filterGroupId, setFilterGroupId] = useState('');
   const [filterPositionLevel, setFilterPositionLevel] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
@@ -170,7 +180,41 @@ export default function DatabasesPage() {
   const [databaseEmails, setDatabaseEmails] = useState<DatabaseEmail[]>([]);
   const [loadingDatabaseEmails, setLoadingEmails] = useState(false);
   const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const dropdownTriggerRef = useRef<HTMLElement | null>(null);
+  const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (activeDropdownId === null) return;
+    const trigger = dropdownTriggerRef.current;
+    const menu = dropdownMenuRef.current;
+    if (!trigger || !menu) return;
+    const close = () => { setActiveDropdownId(null); setDropdownPos(null); };
+    const position = () => {
+      const rect = trigger.getBoundingClientRect();
+      if (!trigger.isConnected || rect.bottom <= 0 || rect.top >= window.innerHeight) { close(); return; }
+      const gap = 6;
+      const below = rect.bottom + gap;
+      const top = below + menu.offsetHeight <= window.innerHeight - 8 ? below : rect.top - menu.offsetHeight - gap;
+      setDropdownPos({
+        top: Math.max(8, Math.min(top, window.innerHeight - menu.offsetHeight - 8)),
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8)),
+      });
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); trigger.focus(); }
+    };
+    position();
+    menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true });
+    window.addEventListener('scroll', position, true);
+    window.addEventListener('resize', position);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('scroll', position, true);
+      window.removeEventListener('resize', position);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [activeDropdownId]);
 
   const handleToggleDropdown = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
@@ -179,14 +223,8 @@ export default function DatabasesPage() {
       setDropdownPos(null);
     } else {
       const rect = e.currentTarget.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const dropdownHeight = 205;
-      let top = rect.bottom + 4;
-      if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
-        top = rect.top - dropdownHeight - 4;
-      }
-      const right = window.innerWidth - rect.right;
-      setDropdownPos({ top, right });
+      dropdownTriggerRef.current = e.currentTarget as HTMLElement;
+      setDropdownPos({ top: rect.bottom + 6, left: rect.left });
       setActiveDropdownId(id);
     }
   };
@@ -197,6 +235,11 @@ export default function DatabasesPage() {
   const [loadingDetailDatabaseEmails, setLoadingDetailEmails] = useState(false);
   const [detailEvents, setDetailEvents] = useState<EventParticipant[]>([]);
   const [loadingDetailEvents, setLoadingDetailEvents] = useState(false);
+  const [detailEmailsError, setDetailEmailsError] = useState('');
+  const [detailEventsError, setDetailEventsError] = useState('');
+  const detailRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => { detailRequest.current?.abort(); }, []);
 
   // Delete database target state
   const [deletingDatabase, setDeletingDatabase] = useState<Database | null>(null);
@@ -208,9 +251,21 @@ export default function DatabasesPage() {
   useEffect(() => {
     const searchVal = searchParams.get('search');
     if (searchVal) {
-      setSearchQuery(searchVal);
+      setSearchInput(searchVal);
+      setSearchQuery(searchVal.trim());
+      setCurrentPage(1);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const nextQuery = searchInput.trim();
+    if (nextQuery === searchQuery) return;
+    const timeout = setTimeout(() => {
+      setSearchQuery(nextQuery);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput, searchQuery]);
 
   async function loadAuxiliaryData() {
     try {
@@ -221,14 +276,18 @@ export default function DatabasesPage() {
     }
   }
 
-  async function loadDatabasePage(pageOverride?: number) {
+  const loadDatabasePage = useCallback(async (pageOverride?: number) => {
     const requestId = ++databaseRequestId.current;
+    databaseRequest.current?.abort();
+    const controller = new AbortController();
+    databaseRequest.current = controller;
     setLoading(true);
     try {
       const response = await crmService.getDatabasesList({
         search: searchQuery || undefined,
         groupId: filterGroupId || undefined,
         companyId: filterCompanyId || undefined,
+        branchId: filterBranchId || undefined,
         positionLevel: filterPositionLevel || undefined,
         industry: filterIndustry || undefined,
         city: filterCity || undefined,
@@ -237,58 +296,64 @@ export default function DatabasesPage() {
         sortOrder,
         page: pageOverride ?? currentPage,
         size: itemsPerPage
-      });
+      }, controller.signal);
 
-      if (requestId !== databaseRequestId.current) return;
+      if (controller.signal.aborted || requestId !== databaseRequestId.current) return;
       setDatabases(response.items || []);
       setServerTotalItems(response.total || 0);
       setServerTotalPages(response.totalPages || 1);
       setDatabaseSummary(response.summary || { all: 0, clean: 0, dirty: 0 });
     } catch (err) {
-      if (requestId === databaseRequestId.current) {
+      if (!controller.signal.aborted && requestId === databaseRequestId.current) {
         setDatabases([]);
         setServerTotalItems(0);
         setServerTotalPages(1);
         toast.error('Failed to load databases list');
       }
     } finally {
-      if (requestId === databaseRequestId.current) setLoading(false);
+      if (!controller.signal.aborted && requestId === databaseRequestId.current) setLoading(false);
     }
-  }
+  }, [searchQuery, filterGroupId, filterCompanyId, filterBranchId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter, sortBy, sortOrder, currentPage]);
 
-  async function loadDatabaseFilterOptions() {
+  const loadDatabaseFilterOptions = useCallback(async () => {
     const requestId = ++filterOptionsRequestId.current;
+    filterOptionsRequest.current?.abort();
+    const controller = new AbortController();
+    filterOptionsRequest.current = controller;
     setFilterOptionsError(false);
     try {
       const response = await crmService.getDatabaseFilterOptions({
         search: searchQuery || undefined,
         groupId: filterGroupId || undefined,
         companyId: filterCompanyId || undefined,
+        branchId: filterBranchId || undefined,
         positionLevel: filterPositionLevel || undefined,
         industry: filterIndustry || undefined,
         city: filterCity || undefined,
         tab: activeTabFilter
-      });
-      if (requestId !== filterOptionsRequestId.current) return;
+      }, controller.signal);
+      if (controller.signal.aborted || requestId !== filterOptionsRequestId.current) return;
       setDatabaseFilterOptions({
         cities: response.cities || [],
         groups: response.groups || [],
         companies: response.companies || [],
+        branches: response.branches || [],
         industries: response.industries || [],
         positionLevels: response.positionLevels || []
       });
     } catch {
-      if (requestId !== filterOptionsRequestId.current) return;
+      if (controller.signal.aborted || requestId !== filterOptionsRequestId.current) return;
       setFilterOptionsError(true);
       setDatabaseFilterOptions({
         cities: [],
         groups: [],
         companies: [],
+        branches: [],
         industries: [],
         positionLevels: []
       });
     }
-  }
+  }, [searchQuery, filterGroupId, filterCompanyId, filterBranchId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter]);
 
   const refreshDatabasePage = async () => {
     await Promise.all([
@@ -351,27 +416,41 @@ export default function DatabasesPage() {
   };
 
   const handleOpenDetailModal = async (database: Database) => {
+    detailRequest.current?.abort();
+    const controller = new AbortController();
+    detailRequest.current = controller;
+    const isCurrent = () => !controller.signal.aborted && detailRequest.current === controller;
     setDetailDatabase(database);
     setIsDetailModalOpen(true);
+    setDetailEmails([]);
+    setDetailEvents([]);
+    setDetailEmailsError('');
+    setDetailEventsError('');
     setLoadingDetailEmails(true);
     setLoadingDetailEvents(true);
-    try {
-      const emails = await crmService.getDatabaseEmails(database.id);
-      setDetailEmails(emails);
-    } catch (err) {
-      toast.error('Failed to load database emails');
-    } finally {
-      setLoadingDetailEmails(false);
-    }
+    await Promise.allSettled([
+      crmService.getDatabaseEmails(database.id, controller.signal)
+        .then(emails => { if (isCurrent()) setDetailEmails(emails); })
+        .catch(() => { if (isCurrent()) setDetailEmailsError('Email kontak gagal dimuat. Silakan coba lagi.'); })
+        .finally(() => { if (isCurrent()) setLoadingDetailEmails(false); }),
+      crmService.getDatabaseEventParticipants(database.id, controller.signal)
+        .then(events => { if (isCurrent()) setDetailEvents(events); })
+        .catch(() => { if (isCurrent()) setDetailEventsError('Riwayat event gagal dimuat. Silakan coba lagi.'); })
+        .finally(() => { if (isCurrent()) setLoadingDetailEvents(false); }),
+    ]);
+  };
 
-    try {
-      const events = await crmService.getDatabaseEventParticipants(database.id);
-      setDetailEvents(events);
-    } catch (err) {
-      toast.error('Failed to load database event participation history');
-    } finally {
-      setLoadingDetailEvents(false);
-    }
+  const handleCloseDetailModal = () => {
+    detailRequest.current?.abort();
+    detailRequest.current = null;
+    setIsDetailModalOpen(false);
+    setDetailDatabase(null);
+    setDetailEmails([]);
+    setDetailEvents([]);
+    setDetailEmailsError('');
+    setDetailEventsError('');
+    setLoadingDetailEmails(false);
+    setLoadingDetailEvents(false);
   };
 
   const handleOpenEmailModal = async (database: Database) => {
@@ -414,6 +493,7 @@ export default function DatabasesPage() {
 
   const handleGroupChange = (groupId: string) => {
     setFilterGroupId(groupId);
+    setFilterBranchId('');
     if (groupId && filterCompanyId && !filteredCompanyOptions.some((company) => company.id.toString() === filterCompanyId)) {
       setFilterCompanyId('');
     }
@@ -421,6 +501,7 @@ export default function DatabasesPage() {
 
   const handleCompanyChange = (companyId: string) => {
     setFilterCompanyId(companyId);
+    setFilterBranchId('');
   };
 
   const handleIndustryChange = (industry: string) => {
@@ -431,18 +512,23 @@ export default function DatabasesPage() {
     setFilterCity(city);
   };
 
-  const isFilterActive = searchQuery || filterGroupId || filterCompanyId || filterPositionLevel || filterIndustry || filterCity || sortBy !== 'id' || sortOrder !== 'asc' || activeTabFilter !== 'all';
+  const isSearchPending = searchInput.trim() !== searchQuery;
+  const isSearching = loading || isSearchPending;
+  const isFilterActive = searchInput || filterGroupId || filterCompanyId || filterBranchId || filterPositionLevel || filterIndustry || filterCity || sortBy !== 'id' || sortOrder !== 'asc' || activeTabFilter !== 'all';
 
   const handleResetFilters = () => {
+    setSearchInput('');
     setSearchQuery('');
     setFilterGroupId('');
     setFilterCompanyId('');
+    setFilterBranchId('');
     setFilterPositionLevel('');
     setFilterIndustry('');
     setFilterCity('');
     setSortBy('id');
     setSortOrder('asc');
     setActiveTabFilter('all');
+    setCurrentPage(1);
   };
 
   const filteredDatabases = databases;
@@ -467,18 +553,29 @@ export default function DatabasesPage() {
     }
   };
 
-  // Reset current page when query, filter or sorting changes
+  const listQueryKey = JSON.stringify([searchQuery, filterCompanyId, filterBranchId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, sortBy, sortOrder, activeTabFilter]);
+  const previousListQuery = useRef(listQueryKey);
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, sortBy, sortOrder, activeTabFilter]);
-
-  useEffect(() => {
+    const queryChanged = previousListQuery.current !== listQueryKey;
+    previousListQuery.current = listQueryKey;
+    if (queryChanged && currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
     void loadDatabasePage();
-  }, [currentPage, searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, sortBy, sortOrder, activeTabFilter]);
+    return () => {
+      databaseRequestId.current += 1;
+      databaseRequest.current?.abort();
+    };
+  }, [currentPage, listQueryKey, loadDatabasePage]);
 
   useEffect(() => {
     void loadDatabaseFilterOptions();
-  }, [searchQuery, filterCompanyId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter]);
+    return () => {
+      filterOptionsRequestId.current += 1;
+      filterOptionsRequest.current?.abort();
+    };
+  }, [loadDatabaseFilterOptions]);
 
   // Update table scroll width for top scrollbar sync
   useEffect(() => {
@@ -493,6 +590,7 @@ export default function DatabasesPage() {
   const indexOfLastItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   const handleOpenExportConfig = async () => {
+    if (isSearching) return;
     if (filteredDatabases.length === 0) {
       toast.error("Tidak ada data database untuk di-export.");
       return;
@@ -502,6 +600,7 @@ export default function DatabasesPage() {
         search: searchQuery || undefined,
         groupId: filterGroupId || undefined,
         companyId: filterCompanyId || undefined,
+        branchId: filterBranchId || undefined,
         positionLevel: filterPositionLevel || undefined,
         industry: filterIndustry || undefined,
         city: filterCity || undefined,
@@ -528,7 +627,8 @@ export default function DatabasesPage() {
           {filteredDatabases.length > 0 && (
             <button
               onClick={handleOpenExportConfig}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl shadow-sm transition-all"
+              disabled={isSearching}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl shadow-sm transition-all disabled:opacity-50"
             >
               <Download className="w-4 h-4 text-slate-500" />
               Export Excel
@@ -595,13 +695,20 @@ export default function DatabasesPage() {
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div className="flex items-center flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-            <Search className="w-5 h-5 text-slate-400 mr-2" />
+            {isSearching ? <Loader2 aria-hidden="true" className="mr-2 h-5 w-5 shrink-0 animate-spin text-blue-600" /> : <Search aria-hidden="true" className="mr-2 h-5 w-5 shrink-0 text-slate-400" />}
             <input
-              type="text"
-              placeholder="Search by name, company, job title, phone, source..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
+              type="search"
+              aria-label="Cari database"
+              placeholder="Cari nama, company, cabang, jabatan, atau telepon..."
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                if (!e.target.value.trim()) { setSearchQuery(''); setCurrentPage(1); }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { setSearchQuery(searchInput.trim()); setCurrentPage(1); }
+              }}
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
             />
           </div>
           {isFilterActive && (
@@ -615,7 +722,11 @@ export default function DatabasesPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
+        <p role="status" className="min-h-5 text-xs text-slate-500">
+          {isSearching ? (databases.length > 0 ? 'Memperbarui hasil, daftar sebelumnya tetap ditampilkan...' : 'Mencari database...') : `${serverTotalItems.toLocaleString()} database ditemukan`}
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-2 border-t border-slate-100">
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">City</label>
             <Select
@@ -670,6 +781,28 @@ export default function DatabasesPage() {
           </div>
 
           <div>
+            <label htmlFor="database-branch-filter" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Cabang/Kantor</label>
+            <Select value={filterBranchId || 'ALL'} onValueChange={(value) => {
+              setFilterBranchId(value === 'ALL' ? '' : value);
+              setFilterBranchLabel(databaseFilterOptions.branches.find(branch => String(branch.id) === value)?.name || '');
+            }}>
+              <SelectTrigger id="database-branch-filter" className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 shadow-none">
+                <SelectValue placeholder="Semua cabang" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Semua cabang</SelectItem>
+                {filterBranchId && !databaseFilterOptions.branches.some(branch => String(branch.id) === filterBranchId) && (
+                  <SelectItem value={filterBranchId}>{filterBranchLabel}</SelectItem>
+                )}
+                {databaseFilterOptions.branches.map((branch) => (
+                  <SelectItem key={branch.id} value={String(branch.id)}>
+                    {branch.name}{!filterCompanyId && ` — ${databaseFilterOptions.companies.find(company => company.id === branch.companyId)?.name || `Company #${branch.companyId}`}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <label htmlFor="database-industry-filter" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Industry</label>
             <Select
               value={filterIndustry || 'ALL'}
@@ -717,7 +850,7 @@ export default function DatabasesPage() {
 
 
       {/* Databases List Table */}
-      {loading ? (
+      {loading && filteredDatabases.length === 0 ? (
         <div className="h-[40vh] flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
@@ -730,7 +863,7 @@ export default function DatabasesPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <div aria-busy={isSearching} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           {/* Top Horizontal Scrollbar */}
           <div
             ref={topScrollRef}
@@ -888,11 +1021,11 @@ export default function DatabasesPage() {
                   </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Postal Code</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Website</th>
-                  <th className="hidden">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {currentDatabases.map((c, idx, slicedArray) => {
+                  const office = getContactOffice(c);
                   const isNearBottom = slicedArray.length <= 2 || idx >= slicedArray.length - 2;
                   
                   // 1. Get flags from database
@@ -1006,27 +1139,37 @@ export default function DatabasesPage() {
                               onClick={(e) => handleToggleDropdown(e, c.id)}
                               className="inline-flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
                               title="Actions"
+                              aria-label={`Aksi untuk ${c.firstName} ${c.lastName}`}
+                              aria-expanded={activeDropdownId === c.id}
+                              aria-controls={activeDropdownId === c.id ? 'database-row-actions' : undefined}
+                              type="button"
                             >
                               <MoreVertical className="w-4 h-4" />
                             </button>
 
-                            {activeDropdownId === c.id && dropdownPos && (
+                            {activeDropdownId === c.id && dropdownPos && createPortal(
                               <>
                                 {/* Overlay to close when clicking outside */}
                                 <div
                                   className="fixed inset-0 z-40 bg-transparent"
-                                  onClick={() => {
+                                  onClick={(event) => {
+                                    event.stopPropagation();
                                     setActiveDropdownId(null);
                                     setDropdownPos(null);
                                   }}
                                 />
                                 <div
+                                  ref={dropdownMenuRef}
+                                  id="database-row-actions"
+                                  role="group"
+                                  aria-label="Aksi database"
+                                  onClick={event => event.stopPropagation()}
                                   style={{
                                     position: 'fixed',
                                     top: `${dropdownPos.top}px`,
-                                    right: `${dropdownPos.right}px`,
+                                    left: `${dropdownPos.left}px`,
                                   }}
-                                  className="w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 duration-100 text-left animate-in fade-in zoom-in-95"
+                                  className="w-48 max-h-[calc(100dvh-16px)] overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 text-left"
                                 >
                                   {!isUser && (
                                     <button
@@ -1092,7 +1235,7 @@ export default function DatabasesPage() {
                                     </>
                                   )}
                                 </div>
-                              </>
+                              </>, document.body
                             )}
                           </div>
                         </div>
@@ -1115,6 +1258,7 @@ export default function DatabasesPage() {
                       </td>
                       <td className="py-4 px-4 text-sm font-semibold text-slate-700">
                         {c.company?.name || <span className="text-slate-400">-</span>}
+                        {c.branch && <span className="mt-1 block text-xs font-normal text-slate-500">Cabang {c.branch.name}</span>}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-500">
                         {c.salutation || '-'}
@@ -1134,11 +1278,11 @@ export default function DatabasesPage() {
                       <td className="py-4 px-4 text-sm text-slate-950 font-medium">
                         {c.jobTitle || '-'}
                       </td>
-                      <td className="py-4 px-4 text-xs text-slate-600 max-w-[200px] truncate" title={c.company?.address}>
-                        {c.company?.address || '-'}
+                      <td className="py-4 px-4 text-xs text-slate-600 max-w-[200px] truncate" title={office?.address}>
+                        {office?.address || '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-mono text-slate-600">
-                        {c.company?.officePhone ? normalizePhone(c.company.officePhone) : '-'}
+                        {office?.officePhone ? normalizePhone(office.officePhone) : '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-mono text-slate-700">
                         {c.mobilePhone ? normalizePhone(c.mobilePhone) : '-'}
@@ -1175,10 +1319,10 @@ export default function DatabasesPage() {
                         ) : '-'}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-600">
-                        {c.company?.city || '-'}
+                        {office?.city || '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-mono text-slate-600">
-                        {c.company?.postalCode || '-'}
+                        {office?.postalCode || '-'}
                       </td>
                       <td className="py-4 px-4 text-xs">
                         {c.company?.website ? (
@@ -1193,118 +1337,6 @@ export default function DatabasesPage() {
                           </a>
                         ) : '-'}
                       </td>
-                      <td className="hidden">
-                        <div className="inline-flex items-center justify-end gap-2">
-                          {isFlaggedTikus && !hasConfirmedFlag && (
-                            <span
-                              className="inline-flex items-center gap-1 cursor-help px-2 py-0.5 text-xs font-semibold bg-amber-100/90 border border-amber-300 text-amber-800 rounded-md shrink-0 transition-colors shadow-2xs"
-                              title={`Mencurigakan / Dicurigai Tikus:\n${allFlags.map(f => `• ${f.flagReason === 'duplicate_phone' ? 'Nomor telepon duplikat dengan nama lain' : f.flagReason === 'duplicate_email' ? 'Email duplikat dengan nama lain' : f.flagReason || 'Aktivitas mencurigakan'}: ${f.evidenceNotes || ''}`).join('\n')}`}
-                            >
-                              <ShieldAlert className="w-3 h-3 text-amber-600 shrink-0" />
-                              Suspected
-                            </span>
-                          )}
-                          {!c.isActive && (
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-red-100/90 border border-red-300 text-red-800 rounded-md shrink-0 shadow-2xs">
-                              INACTIVE
-                            </span>
-                          )}
-                          <div className="relative text-left">
-                            <button
-                              onClick={(e) => handleToggleDropdown(e, c.id)}
-                              className="inline-flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm"
-                              title="Actions"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-
-                        {activeDropdownId === c.id && dropdownPos && (
-                          <>
-                            {/* Overlay to close when clicking outside */}
-                            <div
-                              className="fixed inset-0 z-40 bg-transparent"
-                              onClick={() => {
-                                setActiveDropdownId(null);
-                                setDropdownPos(null);
-                              }}
-                            />
-                            <div
-                              style={{
-                                position: 'fixed',
-                                top: `${dropdownPos.top}px`,
-                                right: `${dropdownPos.right}px`,
-                              }}
-                              className="w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 duration-100 text-left animate-in fade-in zoom-in-95"
-                            >
-                              {!isUser && (
-                                <button
-                                  onClick={() => {
-                                    setActiveDropdownId(null);
-                                    setDropdownPos(null);
-                                    openEditModal(c);
-                                  }}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-                                  Edit Database
-                                </button>
-                              )}
-
-                              {!isUser && (
-                                <button
-                                  onClick={() => {
-                                    setActiveDropdownId(null);
-                                    setDropdownPos(null);
-                                    void handleAddToTikus(c);
-                                  }}
-                                  disabled={hasConfirmedFlag || flaggingDatabaseId === c.id}
-                                  className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2 text-left text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-white"
-                                >
-                                  {flaggingDatabaseId === c.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                                  ) : (
-                                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-                                  )}
-                                  {hasConfirmedFlag ? 'Sudah Ditandai' : 'Daftar Tikus'}
-                                </button>
-                              )}
-
-                              {c.isActive && !isUser && (
-                                <button
-                                  onClick={() => {
-                                    setActiveDropdownId(null);
-                                    setDropdownPos(null);
-                                    handleOpenTakeoutModal(c);
-                                  }}
-                                  className="w-full px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 hover:text-amber-900 transition-colors flex items-center gap-2"
-                                >
-                                  <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
-                                  Request Takeout
-                                </button>
-                              )}
-
-                              {isAdmin && (
-                                <>
-                                  <div className="border-t border-slate-100 my-1" />
-                                  <button
-                                    onClick={() => {
-                                      setActiveDropdownId(null);
-                                      setDropdownPos(null);
-                                      openDeleteConfirm(c);
-                                    }}
-                                    className="w-full px-4 py-2 text-xs font-semibold text-red-650 hover:bg-red-50 hover:text-red-900 transition-colors flex items-center gap-2"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                                    Delete
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </>
-                        )}
-                        </div>
-                      </div>
-                    </td>
                   </tr>
                   );
                 })}
@@ -1387,17 +1419,15 @@ export default function DatabasesPage() {
       {/* View Database Detail Modal */}
       <DatabaseDetailModal
         isOpen={isDetailModalOpen}
-        onClose={() => {
-          setIsDetailModalOpen(false);
-          setDetailDatabase(null);
-          setDetailEmails([]);
-          setDetailEvents([]);
-        }}
+        onClose={handleCloseDetailModal}
         database={detailDatabase!}
         emails={detailDatabaseEmails}
         loadingEmails={loadingDetailDatabaseEmails}
         events={detailEvents}
         loadingEvents={loadingDetailEvents}
+        emailsError={detailEmailsError}
+        eventsError={detailEventsError}
+        onRetry={() => { if (detailDatabase) void handleOpenDetailModal(detailDatabase); }}
         companies={modalCompanies}
       />
 

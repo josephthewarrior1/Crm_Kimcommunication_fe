@@ -1,3 +1,5 @@
+const uiFontFamily = ['"Segoe UI Variable"', '"Segoe UI"', 'Arial', 'sans-serif'];
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
@@ -18,7 +20,9 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['"Segoe UI Variable"', '"Segoe UI"', 'Arial', 'sans-serif'],
+        sans: uiFontFamily,
+        // Existing data-field utilities should use the same font as the workspace.
+        mono: uiFontFamily,
       },
       fontWeight: {
         bold: '600',
@@ -27,16 +31,16 @@ module.exports = {
       },
       colors: {
         blue: {
-          50: '#f0f0fa', 100: '#e8e8f7', 200: '#d1d1ef',
-          300: '#b4b4e2', 400: '#9293ce', 500: '#7578bd',
-          600: '#5b5fc7', 700: '#4f52b2', 800: '#444791',
-          900: '#383966', 950: '#292a48',
+          50: '#E9F2FF', 100: '#CCE0FF', 200: '#B3D4FF',
+          300: '#85B8FF', 400: '#579DFF', 500: '#1D7AFC',
+          600: '#0C66E4', 700: '#0052CC', 800: '#0747A6',
+          900: '#09326C', 950: '#092957',
         },
         slate: {
-          50: '#fafafa', 100: '#f5f5f5', 200: '#e5e5e5',
-          300: '#d1d1d1', 400: '#949494', 500: '#707070',
-          600: '#616161', 700: '#424242', 800: '#323232',
-          900: '#242424', 950: '#161616',
+          50: '#FAFBFC', 100: '#F4F5F7', 200: '#DFE1E6',
+          300: '#B3BAC5', 400: '#8590A2', 500: '#626F86',
+          600: '#44546F', 700: '#344563', 800: '#253858',
+          900: '#172B4D', 950: '#091E42',
         },
         border: "var(--border)",
         input: "var(--input)",

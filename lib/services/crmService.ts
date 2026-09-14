@@ -4,6 +4,7 @@ import {
   GroupListResponse,
   GroupSummaryResponse,
   Company,
+  CompanyBranch,
   CompanyFilterOptionsResponse,
   CompanyListResponse,
   DashboardSummaryResponse,
@@ -168,6 +169,22 @@ export class CrmService extends ApiService {
     return this.delete<void>(`/api/companies/${id}`);
   }
 
+  async getCompanyBranches(companyId: number, signal?: AbortSignal): Promise<CompanyBranch[]> {
+    return this.get<CompanyBranch[]>(`/api/companies/${companyId}/branches`, { signal });
+  }
+
+  async createCompanyBranch(companyId: number, branch: Partial<CompanyBranch>): Promise<CompanyBranch> {
+    return this.post<CompanyBranch>(`/api/companies/${companyId}/branches`, branch);
+  }
+
+  async updateCompanyBranch(companyId: number, branchId: number, branch: Partial<CompanyBranch>): Promise<CompanyBranch> {
+    return this.put<CompanyBranch>(`/api/companies/${companyId}/branches/${branchId}`, branch);
+  }
+
+  async deleteCompanyBranch(companyId: number, branchId: number): Promise<void> {
+    return this.delete<void>(`/api/companies/${companyId}/branches/${branchId}`);
+  }
+
   // --- DATABASES ---
   async getDatabases(): Promise<Database[]> {
     return this.get<Database[]>('/api/databases');
@@ -177,6 +194,7 @@ export class CrmService extends ApiService {
     search?: string;
     groupId?: string;
     companyId?: string;
+    branchId?: string;
     positionLevel?: string;
     industry?: string;
     city?: string;
@@ -185,11 +203,12 @@ export class CrmService extends ApiService {
     sortOrder?: 'asc' | 'desc';
     page?: number;
     size?: number;
-  }): Promise<DatabaseListResponse> {
+  }, signal?: AbortSignal): Promise<DatabaseListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
+    if (params?.branchId) searchParams.set('branchId', params.branchId);
     if (params?.positionLevel) searchParams.set('positionLevel', params.positionLevel);
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.city) searchParams.set('city', params.city);
@@ -199,24 +218,26 @@ export class CrmService extends ApiService {
     if (params?.page) searchParams.set('page', String(params.page));
     if (params?.size) searchParams.set('size', String(params.size));
     const query = searchParams.toString();
-    return this.get<DatabaseListResponse>(`/api/databases/list${query ? `?${query}` : ''}`);
+    return this.get<DatabaseListResponse>(`/api/databases/list${query ? `?${query}` : ''}`, { signal });
   }
 
   async exportDatabases(params?: {
     search?: string;
     groupId?: string;
     companyId?: string;
+    branchId?: string;
     positionLevel?: string;
     industry?: string;
     city?: string;
     tab?: 'all' | 'clean' | 'dirty';
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
-  }): Promise<DatabaseExportResponse> {
+  }, signal?: AbortSignal): Promise<DatabaseExportResponse> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
+    if (params?.branchId) searchParams.set('branchId', params.branchId);
     if (params?.positionLevel) searchParams.set('positionLevel', params.positionLevel);
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.city) searchParams.set('city', params.city);
@@ -224,39 +245,49 @@ export class CrmService extends ApiService {
     if (params?.sortBy) searchParams.set('sortBy', params.sortBy);
     if (params?.sortOrder) searchParams.set('sortOrder', params.sortOrder);
     const query = searchParams.toString();
-    return this.get<DatabaseExportResponse>(`/api/databases/export${query ? `?${query}` : ''}`);
+    return this.get<DatabaseExportResponse>(`/api/databases/export${query ? `?${query}` : ''}`, { signal });
   }
 
   async getDatabaseFilterOptions(params?: {
     search?: string;
     groupId?: string;
     companyId?: string;
+    branchId?: string;
     positionLevel?: string;
     industry?: string;
     city?: string;
     tab?: 'all' | 'clean' | 'dirty';
-  }): Promise<DatabaseFilterOptionsResponse> {
+  }, signal?: AbortSignal): Promise<DatabaseFilterOptionsResponse> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
+    if (params?.branchId) searchParams.set('branchId', params.branchId);
     if (params?.positionLevel) searchParams.set('positionLevel', params.positionLevel);
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.city) searchParams.set('city', params.city);
     if (params?.tab) searchParams.set('tab', params.tab);
     const query = searchParams.toString();
-    return this.get<DatabaseFilterOptionsResponse>(`/api/databases/filter-options${query ? `?${query}` : ''}`);
+    return this.get<DatabaseFilterOptionsResponse>(`/api/databases/filter-options${query ? `?${query}` : ''}`, { signal });
   }
 
-  async createDatabase(database: Partial<Database>, companyId?: number): Promise<Database> {
-    const url = companyId ? `/api/databases?companyId=${companyId}` : '/api/databases';
+  async createDatabase(database: Partial<Database>, companyId?: number, branchId?: number | null): Promise<Database> {
+    const params = new URLSearchParams();
+    if (companyId) params.set('companyId', String(companyId));
+    if (branchId != null) params.set('branchId', String(branchId));
+    if (branchId === null) params.set('clearBranch', 'true');
+    const url = `/api/databases${params.size ? `?${params}` : ''}`;
     const result = await this.post<Database>(url, database);
     notifyDatabaseTargetChange();
     return result;
   }
 
-  async updateDatabase(id: number, database: Partial<Database>, companyId?: number): Promise<Database> {
-    const url = companyId ? `/api/databases/${id}?companyId=${companyId}` : `/api/databases/${id}`;
+  async updateDatabase(id: number, database: Partial<Database>, companyId?: number, branchId?: number | null): Promise<Database> {
+    const params = new URLSearchParams();
+    if (companyId) params.set('companyId', String(companyId));
+    if (branchId != null) params.set('branchId', String(branchId));
+    if (branchId === null) params.set('clearBranch', 'true');
+    const url = `/api/databases/${id}${params.size ? `?${params}` : ''}`;
     return this.put<Database>(url, database);
   }
 
@@ -269,8 +300,8 @@ export class CrmService extends ApiService {
     return this.post<DatabaseEmail>(`/api/databases/${databaseId}/emails`, email);
   }
 
-  async getDatabaseEmails(databaseId: number): Promise<DatabaseEmail[]> {
-    return this.get<DatabaseEmail[]>(`/api/databases/${databaseId}/emails`);
+  async getDatabaseEmails(databaseId: number, signal?: AbortSignal): Promise<DatabaseEmail[]> {
+    return this.get<DatabaseEmail[]>(`/api/databases/${databaseId}/emails`, { signal });
   }
 
   async updateDatabaseEmail(databaseId: number, emailId: number, email: Partial<DatabaseEmail>): Promise<DatabaseEmail> {
@@ -281,8 +312,8 @@ export class CrmService extends ApiService {
     return this.delete<void>(`/api/databases/${databaseId}/emails/${emailId}`);
   }
 
-  async getDatabaseEventParticipants(databaseId: number): Promise<EventParticipant[]> {
-    return this.get<EventParticipant[]>(`/api/databases/${databaseId}/event-participants`);
+  async getDatabaseEventParticipants(databaseId: number, signal?: AbortSignal): Promise<EventParticipant[]> {
+    return this.get<EventParticipant[]>(`/api/databases/${databaseId}/event-participants`, { signal });
   }
 
   // --- EVENTS ---
@@ -867,6 +898,7 @@ export class CrmService extends ApiService {
       rowNum: number;
       groupName: string;
       companyName: string;
+      branchName?: string;
       firstName: string;
       lastName: string;
       jobTitle: string;

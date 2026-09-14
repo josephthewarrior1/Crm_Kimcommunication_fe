@@ -17,6 +17,8 @@ export default function GroupsPage() {
   const { isAdmin, isManager, isUser } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [detailCompanies, setDetailCompanies] = useState<Company[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -41,6 +43,7 @@ export default function GroupsPage() {
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailGroup, setDetailGroup] = useState<Group | null>(null);
+  const detailGroupId = detailGroup?.id;
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,6 +61,20 @@ export default function GroupsPage() {
   useEffect(() => {
     loadGroups();
   }, [searchQuery, currentPage, sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (detailGroupId === undefined) return;
+    let active = true;
+
+    crmService.getCompaniesList({ groupId: String(detailGroupId), page: 1, size: 100 })
+      .then(
+        data => { if (active) setDetailCompanies(data.items); },
+        () => { if (active) setDetailError(true); }
+      )
+      .finally(() => { if (active) setDetailLoading(false); });
+
+    return () => { active = false; };
+  }, [detailGroupId]);
 
   async function loadGroups() {
     setLoading(true);
@@ -79,20 +96,12 @@ export default function GroupsPage() {
     }
   }
 
-  async function openGroupDetail(group: Group) {
+  function openGroupDetail(group: Group) {
     setDetailGroup(group);
     setDetailCompanies([]);
+    setDetailLoading(true);
+    setDetailError(false);
     setIsDetailModalOpen(true);
-    try {
-      const companiesData = await crmService.getCompaniesList({
-        groupId: String(group.id),
-        page: 1,
-        size: 100
-      });
-      setDetailCompanies(companiesData.items);
-    } catch {
-      setDetailCompanies([]);
-    }
   }
 
   const handleCreateGroup = async (data: { name: string; notes?: string }) => {
@@ -265,7 +274,18 @@ export default function GroupsPage() {
                     onClick={() => openGroupDetail(g)}
                     className="hover:bg-slate-50/80 transition-all cursor-pointer group/row"
                   >
-                    <td className="py-4 px-6 text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">{g.name}</td>
+                    <td className="py-4 px-6 text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openGroupDetail(g);
+                        }}
+                        className="text-left text-sm font-bold hover:underline"
+                      >
+                        {g.name}
+                      </button>
+                    </td>
                     <td className="py-4 px-6 text-sm text-slate-600">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-blue-50 border border-blue-100 text-blue-600 rounded-lg">
                         <Building2 className="w-3.5 h-3.5" />
@@ -431,6 +451,8 @@ export default function GroupsPage() {
           }}
           group={detailGroup}
           companies={detailCompanies}
+          loading={detailLoading}
+          error={detailError}
           onGoToCompanyDetails={(companyName) => {
             router.push(`/dashboard/companies?search=${encodeURIComponent(companyName)}`);
           }}

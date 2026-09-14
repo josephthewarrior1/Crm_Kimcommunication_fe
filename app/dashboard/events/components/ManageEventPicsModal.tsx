@@ -88,7 +88,7 @@ export const ManageEventPicsModal: React.FC<ManageEventPicsModalProps> = ({
               Manage PIC Event
             </h3>
             <p className="ms-modal-description mt-2">
-              Pilih admin atau manager yang ditugaskan menangani leads untuk event ini.
+              Pilih admin atau PIC yang ditugaskan menangani leads untuk event ini.
             </p>
           </div>
           <button
@@ -114,11 +114,11 @@ export const ManageEventPicsModal: React.FC<ManageEventPicsModalProps> = ({
         <div className="space-y-2">
           {candidateUsers.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
-              Belum ada user ADMIN atau MANAGER.
+              Belum ada user Admin atau PIC.
             </div>
           ) : candidateUsers.map((candidate) => {
             const name = getUserName(candidate);
-            const role = candidate.roles?.includes('ADMIN') ? 'ADMIN' : 'MANAGER';
+            const role = candidate.roles?.includes('ADMIN') ? 'ADMIN' : 'PIC';
             const checked = selectedUserIds.includes(candidate.id);
             return (
               <button

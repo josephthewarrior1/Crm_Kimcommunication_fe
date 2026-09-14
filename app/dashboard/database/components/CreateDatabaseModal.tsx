@@ -6,6 +6,7 @@ import { auditLogService } from '../../../../lib/services/auditLogService';
 import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
 import { normalizePhone } from '../utils/phoneHelper';
+import { CompanyBranchSelect, useCompanyBranches } from './CompanyBranchSelect';
 
 interface CreateDatabaseModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
   const [lastName, setLastName] = useState('');
   const [salutation, setSalutation] = useState('Mr');
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState('');
   const [positionLevel, setPositionLevel] = useState('unknown');
   const [specialityDivision, setSpecialityDivision] = useState('');
   const [jobTitle, setJobTitle] = useState('');
@@ -43,12 +45,14 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const branchSelection = useCompanyBranches(isOpen && !isCreatingNewCompany ? selectedCompanyId : '', selectedBranchId);
 
   const resetForm = () => {
     setFirstName('');
     setLastName('');
     setSalutation('Mr');
     setSelectedCompanyId('');
+    setSelectedBranchId('');
     setPositionLevel('unknown');
     setSpecialityDivision('');
     setJobTitle('');
@@ -106,7 +110,12 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
 
   const handleCreateDatabase = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     setSubmitAttempted(true);
+    if (!isCreatingNewCompany && !branchSelection.valid) {
+      toast.error('Tunggu daftar cabang dimuat, lalu periksa pilihan cabang sebelum menyimpan.');
+      return;
+    }
 
     const missing: string[] = [];
     if (!firstName.trim()) missing.push("First Name");
@@ -155,7 +164,8 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
           source,
           isActive: true
         },
-        resolvedCompanyId
+        resolvedCompanyId,
+        !isCreatingNewCompany && selectedBranchId ? Number(selectedBranchId) : null
       );
 
       // Save Company Email if filled
@@ -244,7 +254,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
           <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
             <AlertCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
             <div>
-              <h5 className="text-xs font-bold text-red-800">Semua kolom wajib diisi kecuali Division, LinkedIn URL, Database Type, dan Data Source</h5>
+              <h5 className="text-xs font-bold text-red-800">Lengkapi kolom bertanda *. Cabang / Kantor bersifat opsional.</h5>
             </div>
           </div>
         ) : (
@@ -284,6 +294,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                   onClick={() => {
                     setIsCreatingNewCompany(!isCreatingNewCompany);
                     setSelectedCompanyId('');
+                    setSelectedBranchId('');
                     setNewCompanyName('');
                     setCompanySearchQuery('');
                     setIsCompanyDropdownOpen(false);
@@ -320,6 +331,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                         setCompanySearchQuery(e.target.value);
                         setIsCompanyDropdownOpen(true);
                         if (selectedCompanyId) setSelectedCompanyId('');
+                        setSelectedBranchId('');
                       }}
                       className={`w-full px-4 py-2.5 pr-10 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !selectedCompanyId
                           ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
@@ -333,6 +345,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                           onClick={() => {
                             setCompanySearchQuery('');
                             setSelectedCompanyId('');
+                            setSelectedBranchId('');
                             setIsCompanyDropdownOpen(false);
                           }}
                           className="hover:text-slate-600 p-0.5 text-xs font-bold"
@@ -354,6 +367,8 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                           type="button"
                           onClick={() => {
                             setIsCreatingNewCompany(true);
+                            setSelectedCompanyId('');
+                            setSelectedBranchId('');
                             setNewCompanyName(companySearchQuery || '');
                             setCompanySearchQuery('');
                             setIsCompanyDropdownOpen(false);
@@ -376,6 +391,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                               type="button"
                               onClick={() => {
                                 setSelectedCompanyId(comp.id.toString());
+                                if (selectedCompanyId !== comp.id.toString()) setSelectedBranchId('');
                                 setCompanySearchQuery('');
                                 setIsCompanyDropdownOpen(false);
                               }}
@@ -400,6 +416,8 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                 </p>
               )}
             </div>
+
+            <CompanyBranchSelect companyId={selectedCompanyId} value={selectedBranchId} onChange={setSelectedBranchId} selection={branchSelection} creatingCompany={isCreatingNewCompany} disabled={submitting} />
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">First Name <span className="text-red-500 font-bold">*</span></label>
@@ -588,7 +606,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || (!isCreatingNewCompany && !branchSelection.valid)}
                 className="ms-modal-primary"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

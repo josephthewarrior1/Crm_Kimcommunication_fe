@@ -124,7 +124,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 required
               >
                 <option value="USER">USER (Read-only)</option>
-                <option value="MANAGER">MANAGER (Read/Write)</option>
+                <option value="MANAGER">PIC (Read/Write)</option>
                 <option value="ADMIN">ADMIN (Full Control)</option>
               </select>
             </div>

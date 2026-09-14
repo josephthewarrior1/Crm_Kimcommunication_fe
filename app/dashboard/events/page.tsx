@@ -22,6 +22,7 @@ import { TakeoutModal } from '../database/components/TakeoutModal';
 import { EngagementModal } from './components/EngagementModal';
 import { EventStatistics } from './components/EventStatistics';
 import { ManageEventPicsModal } from './components/ManageEventPicsModal';
+import { EventPicPanel } from './components/EventPicPanel';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
 import { ManageUserColumnsModal } from '../users/components/ManageUserColumnsModal';
@@ -167,6 +168,8 @@ export default function EventsPage() {
   const [activeTab, setActiveTab] = useState<'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday'>('request');
   const [usersList, setUsersList] = useState<AppUser[]>([]);
   const [eligibleManagers, setEligibleManagers] = useState<AppUser[]>([]);
+  const [eligibleManagersLoad, setEligibleManagersLoad] = useState<{ eventId: number; status: 'loading' | 'ready' | 'error' } | null>(null);
+  const eligibleManagersRequest = React.useRef(0);
   const [filterPic, setFilterPic] = useState('');
   const [currentAllowedEventIds, setCurrentAllowedEventIds] = useState<number[]>([]);
   
@@ -245,11 +248,18 @@ export default function EventsPage() {
   };
 
   const loadEligibleManagers = async (eventId: number) => {
+    const request = ++eligibleManagersRequest.current;
+    setEligibleManagers([]);
+    setEligibleManagersLoad({ eventId, status: 'loading' });
     try {
       const data = await crmService.getEligibleManagersForEvent(eventId);
+      if (request !== eligibleManagersRequest.current) return;
       setEligibleManagers(Array.isArray(data) ? data : []);
+      setEligibleManagersLoad({ eventId, status: 'ready' });
     } catch {
+      if (request !== eligibleManagersRequest.current) return;
       setEligibleManagers([]);
+      setEligibleManagersLoad({ eventId, status: 'error' });
     }
   };
 
@@ -1686,7 +1696,7 @@ export default function EventsPage() {
               
               {selectedEvent.notes && (
                 <p className="text-sm text-slate-500 mt-3 italic max-w-2xl">
-                  "{selectedEvent.notes}"
+                  &quot;{selectedEvent.notes}&quot;
                 </p>
               )}
             </div>
@@ -1712,6 +1722,13 @@ export default function EventsPage() {
               </div>
             )}
           </div>
+
+          <EventPicPanel
+            users={eligiblePicUsers}
+            status={eligibleManagersLoad?.eventId === selectedEvent.id ? eligibleManagersLoad.status : 'loading'}
+            onRetry={() => { void loadEligibleManagers(selectedEvent.id); }}
+            onManage={isAdmin && !isViewer ? () => setIsManagePicsModalOpen(true) : undefined}
+          />
 
           {/* Tab Switcher & Participant Action Buttons */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 shrink-0">

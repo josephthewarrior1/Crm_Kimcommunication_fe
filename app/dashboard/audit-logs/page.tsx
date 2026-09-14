@@ -76,7 +76,7 @@ export default function AuditLogsPage() {
   useEffect(() => {
     if (isLoading) return;
     if (!isAdmin && !isManager) {
-      toast.error('Access denied. Only ADMIN or MANAGER can view Activity Logs.');
+      toast.error('Access denied. Only Admin or PIC can view Activity Logs.');
       router.replace('/dashboard');
     }
   }, [isAdmin, isManager, isLoading, router]);
@@ -286,7 +286,7 @@ export default function AuditLogsPage() {
       case 'ADMIN':
         return <span className="px-1.5 py-0.5 rounded bg-blue-50 text-[9px] font-bold text-blue-600 leading-none">Admin</span>;
       case 'MANAGER':
-        return <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-[9px] font-bold text-emerald-600 leading-none">Manager</span>;
+        return <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-[9px] font-bold text-emerald-600 leading-none">PIC</span>;
       default:
         return <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 leading-none">User</span>;
     }
@@ -793,7 +793,7 @@ export default function AuditLogsPage() {
                 <span className="text-slate-500 font-medium">Pelaku (Actor)</span>
                 <div className="text-right">
                   <span className="font-medium text-slate-900 block">{selectedLog.userFullName || selectedLog.username}</span>
-                  <span className="text-xs text-slate-400">@{selectedLog.username} ({selectedLog.userRole || 'USER'})</span>
+                  <span className="text-xs text-slate-400">@{selectedLog.username} ({selectedLog.userRole?.toUpperCase() === 'MANAGER' ? 'PIC' : selectedLog.userRole || 'USER'})</span>
                 </div>
               </div>
 

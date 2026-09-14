@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Event, EventParticipant } from '../../../../lib/types';
+import { getContactOffice } from '../../../../lib/utils/companyBranch';
 import { extractPicFromNotes, getOfficeEmail, getPersonalEmail, getPreEventApprovalStatus } from './notesHelper';
 import { getStatusLabel } from './statusHelper';
 
@@ -52,7 +53,7 @@ export const exportParticipantsToExcel = (
         'Last Name': p.database.lastName || '-',
         'Position': p.database.positionLevel || '-',
         'Job Title': p.database.jobTitle || '-',
-        'Office Phone': p.database.company?.officePhone || '-',
+        'Office Phone': getContactOffice(p.database)?.officePhone || '-',
         'Mobile Phone': p.database.mobilePhone || '-',
         'Office Email': getOfficeEmail(p.database.emails),
         'Personal Email': getPersonalEmail(p.database.emails),
@@ -84,7 +85,7 @@ export const exportParticipantsToExcel = (
         'Last Name': p.database.lastName || '-',
         'Position': p.database.positionLevel || '-',
         'Job Title': p.database.jobTitle || '-',
-        'Office Phone': p.database.company?.officePhone || '-',
+        'Office Phone': getContactOffice(p.database)?.officePhone || '-',
         'Mobile Phone': p.database.mobilePhone || '-',
         'Office Email': getOfficeEmail(p.database.emails),
         'Personal Email': getPersonalEmail(p.database.emails),
@@ -108,7 +109,7 @@ export const exportParticipantsToExcel = (
         'Last Name': p.database.lastName || '-',
         'Position': p.database.positionLevel || '-',
         'Job Title': p.database.jobTitle || '-',
-        'Office Phone': p.database.company?.officePhone || '-',
+        'Office Phone': getContactOffice(p.database)?.officePhone || '-',
         'Mobile Phone': p.database.mobilePhone || '-',
         'Office Email': getOfficeEmail(p.database.emails),
         'Personal Email': getPersonalEmail(p.database.emails),
