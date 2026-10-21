@@ -1,4 +1,5 @@
-import { ApiService } from './apiService';
+import { ApiService, getAuthHeaders } from './apiService';
+import { tagtogSsoEnabled, notifyCrmSessionEnded } from '../utils/tagtogAuth';
 import {
   Group,
   GroupListResponse,
@@ -581,6 +582,7 @@ export class CrmService extends ApiService {
   }
 
   async syncPmsEvents(): Promise<{ syncedCount: number; totalCount: number }> {
+    if (tagtogSsoEnabled) throw new Error('PMS event sync is not configured for this isolated CRM login preview.');
     // ponytail: manual on-demand sync from PMS endpoint (configurable via NEXT_PUBLIC_PMS_URL) to local CRM DB
     const pmsUrl = process.env.NEXT_PUBLIC_PMS_URL || 'https://pms.kimcommunication.com/api/public/events';
     const response = await fetch(pmsUrl, {
@@ -588,6 +590,7 @@ export class CrmService extends ApiService {
     });
 
     if (!response.ok) {
+      notifyCrmSessionEnded(response.status);
       throw new Error(`PMS server returned status ${response.status}`);
     }
 
@@ -914,8 +917,7 @@ export class CrmService extends ApiService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = getAuthHeaders();
 
     const response = await fetch(`${this.baseUrl}/api/databases/import/preview`, {
       method: 'POST',
@@ -924,6 +926,7 @@ export class CrmService extends ApiService {
     });
 
     if (!response.ok) {
+      notifyCrmSessionEnded(response.status);
       let message = `HTTP ${response.status}: ${response.statusText}`;
       try {
         const errorData = await response.json();
@@ -941,8 +944,7 @@ export class CrmService extends ApiService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = getAuthHeaders();
 
     const response = await fetch(`${this.baseUrl}/api/databases/import`, {
       method: 'POST',
@@ -951,6 +953,7 @@ export class CrmService extends ApiService {
     });
 
     if (!response.ok) {
+      notifyCrmSessionEnded(response.status);
       let message = `HTTP ${response.status}: ${response.statusText}`;
       try {
         const errorData = await response.json();

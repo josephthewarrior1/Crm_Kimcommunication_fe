@@ -1,5 +1,7 @@
 'use client';
 
+import { tagtogSsoEnabled } from '../../../../lib/utils/tagtogAuth';
+
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, Loader2, Search, ShieldCheck } from 'lucide-react';
 import { AppUser, Event } from '../../../../lib/types';
@@ -102,7 +104,7 @@ export const ManageViewerEventsModal: React.FC<ManageViewerEventsModalProps> = (
       // Browser storage is a cache; permissions are saved by the API first.
       try {
         saveViewerAllowedEventIds(targetUser.id, selectedIds);
-        const savedUserJson = localStorage.getItem('user');
+        const savedUserJson = tagtogSsoEnabled ? null : localStorage.getItem('user');
         if (savedUserJson) {
           const parsed = JSON.parse(savedUserJson);
           if (parsed.id === targetUser.id) {

@@ -68,3 +68,10 @@ docs/
 *.csv
 
 
+
+# Local TAGTOG login prototype
+/.next-*/
+!tests/tagtog-sso.test.mjs
+!docs/
+docs/*
+!docs/TAGTOG-SSO-LOCAL.md

@@ -1,4 +1,7 @@
-﻿'use client';
+'use client';
+
+import { tagtogSsoEnabled } from '../../lib/utils/tagtogAuth';
+import TagtogSignIn from './TagtogSignIn';
 
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/context/AuthContext';
@@ -30,6 +33,8 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (tagtogSsoEnabled) return <TagtogSignIn />;
 
   return (
     <main className={styles.page}>
