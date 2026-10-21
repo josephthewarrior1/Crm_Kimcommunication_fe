@@ -1,5 +1,7 @@
 'use client';
 
+import { tagtogSsoEnabled } from '../../../lib/utils/tagtogAuth';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { crmService } from '../../../lib/services/crmService';
@@ -37,7 +39,7 @@ export default function EventsPage() {
   const searchParams = useSearchParams();
   const eventIdParam = searchParams.get('eventId') || searchParams.get('id');
 
-  const { isAdmin, isManager, isUser, user, token, isLoading: authLoading, refreshUser } = useAuth();
+  const { isAdmin, isManager, isUser, user, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
   const isViewer = isUser || (!isAdmin && !isManager);
   const [events, setEvents] = useState<Event[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
@@ -321,7 +323,7 @@ export default function EventsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!token || !user) {
+    if (!isAuthenticated || !user) {
       setLoading(false);
       setEvents([]);
       setEventListTotal(0);
@@ -341,16 +343,16 @@ export default function EventsPage() {
       setEligibleManagers([]);
       return;
     }
-  }, [authLoading, token, user?.id]);
+  }, [authLoading, isAuthenticated, user?.id]);
 
   useEffect(() => {
-    if (authLoading || !token || !user) return;
+    if (authLoading || !isAuthenticated || !user) return;
     void loadData();
-  }, [authLoading, token, user?.id, searchQuery, eventListPage, isAdmin]);
+  }, [authLoading, isAuthenticated, user?.id, searchQuery, eventListPage, isAdmin]);
 
   useEffect(() => {
     const syncSelectedEvent = async () => {
-      if (authLoading || !token || !user) {
+      if (authLoading || !isAuthenticated || !user) {
         setSelectedEvent(null);
         setParticipants([]);
         setStatsParticipants([]);
@@ -417,14 +419,14 @@ export default function EventsPage() {
     };
 
     void syncSelectedEvent();
-  }, [authLoading, token, user?.id, eventIdParam, events, currentAllowedEventIds, router]);
+  }, [authLoading, isAuthenticated, user?.id, eventIdParam, events, currentAllowedEventIds, router]);
 
   useEffect(() => {
     setEventListPage(1);
   }, [searchQuery]);
 
   async function loadData() {
-    const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('session') : token;
+    const sessionToken = isAuthenticated;
     if (authLoading) return;
     if (!sessionToken || !user) {
       setLoading(false);
@@ -478,11 +480,13 @@ export default function EventsPage() {
         setCurrentAllowedEventIds(resolvedAllowed);
 
         try {
+          if (!tagtogSsoEnabled) {
           const saved = JSON.parse(localStorage.getItem('user') || '{}');
           saved.allowedEventIds = resolvedAllowed;
           localStorage.setItem('user', JSON.stringify(saved));
           localStorage.setItem(`user_allowed_events_${user.id}`, JSON.stringify(resolvedAllowed));
           localStorage.setItem(`viewer_allowed_events_${user.id}`, JSON.stringify(resolvedAllowed));
+          }
         } catch {}
       }
 
@@ -520,7 +524,7 @@ export default function EventsPage() {
         }
       }
     } catch (err) {
-      const latestSessionToken = typeof window !== 'undefined' ? localStorage.getItem('session') : token;
+      const latestSessionToken = isAuthenticated;
       if (latestSessionToken) {
         toast.error('Failed to load events or databases');
       }

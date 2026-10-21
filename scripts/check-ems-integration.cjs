@@ -27,6 +27,7 @@ class MockApiService {
   async get(endpoint) { calls.push(endpoint); if (failure) throw failure; return response; }
 }
 const { crmService } = load('lib/services/crmService.ts', name => {
+  if (name === '../utils/tagtogAuth') return { tagtogSsoEnabled: true, notifyCrmSessionEnded() {} };
   assert.equal(name, './apiService'); return { ApiService: MockApiService };
 });
 (async () => {

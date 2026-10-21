@@ -37,10 +37,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ponytail: Viewer role is restricted to Events page only.
   useEffect(() => {
-    if (!isLoading && isViewer && pathname !== '/dashboard/events') {
+    if (!isLoading && user && isViewer && pathname !== '/dashboard/events') {
       router.replace('/dashboard/events');
     }
-  }, [isLoading, isViewer, pathname, router]);
+  }, [isLoading, user, isViewer, pathname, router]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -68,6 +68,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
     );
   }
+
+  if (!user) return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500" role="status">Opening sign-in…</div>;
 
   const menuItems = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
