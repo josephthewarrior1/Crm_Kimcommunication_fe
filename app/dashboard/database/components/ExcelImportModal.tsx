@@ -432,7 +432,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </p>
               <div className="mt-3">
                 <a
-                  href="/Database_Template.xlsx?v=branch-after-linkedin"
+                  href="/Database_Template.xlsx?v=locked-header-v2"
                   download="Database_Template.xlsx"
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline"
                 >

@@ -89,6 +89,15 @@ export interface GroupSummaryResponse {
   ungroupedCompanies: number;
 }
 
+export interface PositionSummary {
+  total: number;
+  cLevel: number;
+  managerial: number;
+  staff: number;
+  other: number;
+  otherPositions?: Array<{ position: string | null; count: number }>;
+}
+
 export interface DashboardSummaryResponse {
   metrics: {
     totalGroups: number;
@@ -100,6 +109,7 @@ export interface DashboardSummaryResponse {
   industryDistribution: Array<{ name: string; value: number }>;
   eventAttendancePerformance: Array<{ name: string; Invited: number; Attended: number }>;
   flaggedAlerts: FlaggedIdentity[];
+  positionSummary?: PositionSummary;
 }
 
 export interface DatabaseUploadTarget {
@@ -175,12 +185,21 @@ export interface DatabaseEmail {
   createdAt?: string;
 }
 
+export interface DatabaseAnalytics {
+  total: number;
+  clean: number;
+  dirty: number;
+  industries: Array<{ name: string; count: number }>;
+  otherIndustries?: Array<{ name: string; count: number }>;
+}
+
 export interface DatabaseListResponse {
   page: number;
   size: number;
   total: number;
   totalPages: number;
   items: Database[];
+  analytics?: DatabaseAnalytics;
   summary: {
     all: number;
     clean: number;
@@ -201,6 +220,8 @@ export interface DatabaseFilterOptionsResponse {
   industries: string[];
   positionLevels: string[];
 }
+
+export type EmsSource = 'LEGACY' | 'V2';
 
 export interface Event {
   id: number;
@@ -226,7 +247,8 @@ export interface Event {
   hedgingUsd?: number | null;
   addOn?: string | null;
   pmsEventId?: number;
-  emsEventId?: number;
+  emsEventId?: number | null;
+  emsSource?: EmsSource;
   createdAt?: string;
   updatedAt?: string;
   registeredCount?: number;

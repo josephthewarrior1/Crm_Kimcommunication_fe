@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Loader2, Users } from 'lucide-react';
-import { Event } from '../../../../lib/types';
-import { EmsEventSelector } from './EmsEventSelector';
+import { Event, EmsSource } from '../../../../lib/types';
+import { EmsMappingField } from './EmsMappingField';
 
 interface EditEventModalProps {
   isOpen: boolean;
@@ -21,7 +21,8 @@ interface EditEventModalProps {
   setEditNotes: (v: string) => void;
   editTargetParticipants: number;
   setEditTargetParticipants: (v: number) => void;
-  emsEvents?: { id: number; name: string }[];
+  emsSource: EmsSource;
+  setEmsSource: (value: EmsSource) => void;
   editEmsEventId?: number;
   setEditEmsEventId?: (v: number) => void;
   submittingEvent: boolean;
@@ -47,7 +48,8 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
   setEditNotes,
   editTargetParticipants,
   setEditTargetParticipants,
-  emsEvents = [],
+  emsSource,
+  setEmsSource,
   editEmsEventId = 0,
   setEditEmsEventId,
   submittingEvent,
@@ -86,25 +88,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
           </div>
 
           {setEditEmsEventId && (
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Link ke Event EMS (ID / Dropdown)</label>
-              {emsEvents.length > 0 ? (
-                <EmsEventSelector
-                  events={emsEvents}
-                  value={editEmsEventId}
-                  onChange={setEditEmsEventId}
-                />
-              ) : (
-                <input
-                  type="number"
-                  placeholder="Masukkan ID Event EMS (misal: 1, 2, 3)"
-                  value={editEmsEventId || ''}
-                  onChange={(e) => setEditEmsEventId(Number(e.target.value))}
-                  min={0}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-[#5b5fc7] rounded-md text-slate-900 text-xs focus:outline-none placeholder-slate-400 focus:bg-white"
-                />
-              )}
-            </div>
+            <EmsMappingField source={emsSource} onSourceChange={setEmsSource} eventId={editEmsEventId} onEventIdChange={setEditEmsEventId} />
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>div]:min-w-0">

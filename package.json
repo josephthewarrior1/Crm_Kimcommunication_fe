@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 8084",
-    "build": "next build",
+    "dev": "next dev --webpack -p 8084",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint app components lib next.config.js",
     "type-check": "tsc --noEmit",
     "ngrok": " ngrok http 3000"
   },
@@ -16,17 +16,17 @@
     "@radix-ui/react-select": "^2.2.2",
     "@radix-ui/react-slot": "^1.1.0",
     "@types/node": "^20.0.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "autoprefixer": "^10.4.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
-    "lucide-react": "^0.292.0",
-    "next": "^14.2.33",
+    "lucide-react": "1.61.0",
+    "next": "16.4.2",
     "next-themes": "^0.4.6",
     "postcss": "^8.4.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "recharts": "^2.8.0",
     "sonner": "^1.2.0",
     "tailwind-merge": "^2.0.0",
@@ -36,8 +36,13 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.10",
-    "eslint": "^8.0.0",
-    "eslint-config-next": "^14.0.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.2",
     "tailwindcss-animate": "^1.0.7"
+  },
+  "overrides": {
+    "recharts": {
+      "react-is": "19.3.1"
+    }
   }
 }

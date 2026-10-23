@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { crmService } from '../../../lib/services/crmService';
-import { Database, Company, DatabaseEmail, EventParticipant, FlaggedIdentity } from '../../../lib/types';
+import { Database, DatabaseAnalytics, Company, DatabaseEmail, EventParticipant, FlaggedIdentity } from '../../../lib/types';
 import { Users, Search, Plus, ExternalLink, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -23,6 +23,7 @@ import { TakeoutModal } from './components/TakeoutModal';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { ExportConfigModal } from './components/ExportConfigModal';
+import { DatabaseCharts } from './components/DatabaseCharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 
 const EXPORT_COLUMNS = [
@@ -78,6 +79,7 @@ export default function DatabasesPage() {
   const searchParams = useSearchParams();
   const [databases, setDatabases] = useState<Database[]>([]);
   const [databaseSummary, setDatabaseSummary] = useState({ all: 0, clean: 0, dirty: 0 });
+  const [databaseAnalytics, setDatabaseAnalytics] = useState<DatabaseAnalytics | null>(null);
   const [databaseFilterOptions, setDatabaseFilterOptions] = useState<{
     cities: Array<{ value: string; label: string }>;
     groups: Array<{ id: number; name: string }>;
@@ -303,11 +305,13 @@ export default function DatabasesPage() {
       setServerTotalItems(response.total || 0);
       setServerTotalPages(response.totalPages || 1);
       setDatabaseSummary(response.summary || { all: 0, clean: 0, dirty: 0 });
+      setDatabaseAnalytics(response.analytics || null);
     } catch (err) {
       if (!controller.signal.aborted && requestId === databaseRequestId.current) {
         setDatabases([]);
         setServerTotalItems(0);
         setServerTotalPages(1);
+        setDatabaseAnalytics(null);
         toast.error('Failed to load databases list');
       }
     } finally {
@@ -848,6 +852,8 @@ export default function DatabasesPage() {
         </div>
       </div>
 
+
+      <DatabaseCharts data={databaseAnalytics} loading={loading} onRetry={() => void loadDatabasePage()} />
 
       {/* Databases List Table */}
       {loading && filteredDatabases.length === 0 ? (

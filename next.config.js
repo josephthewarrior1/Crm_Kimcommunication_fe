@@ -2,9 +2,8 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:808
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
   images: {
-    domains: ['localhost'],
+    remotePatterns: [{ hostname: 'localhost' }],
   },
   async rewrites() {
     return [

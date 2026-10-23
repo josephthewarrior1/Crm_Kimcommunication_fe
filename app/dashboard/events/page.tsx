@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { crmService } from '../../../lib/services/crmService';
-import { Event, EventParticipant, Database, AppUser, EventParticipantFilterOptions, EventParticipantStatisticsResponse } from '../../../lib/types';
+import { Event, EmsSource, EventParticipant, Database, AppUser, EventParticipantFilterOptions, EventParticipantStatisticsResponse } from '../../../lib/types';
 import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload, RefreshCw, Columns } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -155,7 +155,8 @@ export default function EventsPage() {
   const [editTargetParticipants, setEditTargetParticipants] = useState(0);
 
   // ponytail: EMS event mapping state
-  const [emsEventsList, setEmsEventsList] = useState<{ id: number; name: string }[]>([]);
+  const [emsSource, setEmsSource] = useState<EmsSource>('LEGACY');
+  const [editEmsSource, setEditEmsSource] = useState<EmsSource>('LEGACY');
   const [emsEventId, setEmsEventId] = useState<number>(0);
   const [editEmsEventId, setEditEmsEventId] = useState<number>(0);
 
@@ -433,15 +434,14 @@ export default function EventsPage() {
     setLoading(true);
     try {
       const freshUser = user && !isAdmin ? await refreshUser() : user;
-      const [eventListResponse, cList, uList, emsList] = await Promise.all([
+      const [eventListResponse, cList, uList] = await Promise.all([
         crmService.getEventsList({
           search: searchQuery || undefined,
           page: eventListPage,
           size: eventListPageSize
         }),
         crmService.getDatabases(),
-        crmService.getUsers().catch(() => []),
-        crmService.getEmsEvents().catch(() => [])
+        crmService.getUsers().catch(() => [])
       ]);
       const eventItems = eventListResponse?.items || [];
       setEvents(eventItems);
@@ -450,7 +450,6 @@ export default function EventsPage() {
       setEventListSummary(eventListResponse?.summary || { total: 0, upcoming: 0, ongoing: 0, past: 0 });
       setDatabases(cList.filter(c => c.isActive)); // only active databases
       setUsersList(uList);
-      setEmsEventsList(emsList);
 
       if (!isAdmin && user) {
         let currentAllowed: number[] | undefined;
@@ -564,7 +563,8 @@ export default function EventsPage() {
         dateEnd: dateEnd || undefined,
         notes: notes.trim() || undefined,
         targetParticipants: targetParticipants || 0,
-        emsEventId: emsEventId || undefined
+        emsEventId: emsEventId || null,
+        emsSource
       });
 
       toast.success('Event created successfully!');
@@ -576,6 +576,7 @@ export default function EventsPage() {
       setNotes('');
       setTargetParticipants(0);
       setEmsEventId(0);
+      setEmsSource('LEGACY');
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create event');
@@ -603,6 +604,7 @@ export default function EventsPage() {
     setEditNotes(event.notes || event.description || '');
     setEditTargetParticipants(event.targetParticipants || event.targetPax || 0);
     setEditEmsEventId(event.emsEventId || 0);
+    setEditEmsSource(event.emsSource || 'LEGACY');
     setIsEditEventModalOpen(true);
   };
 
@@ -629,7 +631,8 @@ export default function EventsPage() {
         dateEnd: editDateEnd || undefined,
         notes: editNotes.trim() || undefined,
         targetParticipants: editTargetParticipants || 0,
-        emsEventId: editEmsEventId || undefined
+        emsEventId: editEmsEventId || null,
+        emsSource: editEmsSource
       });
 
       toast.success('Event updated successfully!');
@@ -1817,10 +1820,10 @@ export default function EventsPage() {
                     }
                   }}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-all"
-                  title="Sinkronisasi data peserta dari EMS"
+                  title={`Sinkronisasi data peserta dari ${selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}`}
                 >
                   <Loader2 className={`w-4 h-4 ${loadingParticipants ? 'animate-spin' : ''}`} />
-                  Sync EMS
+                  Sync {selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}
                 </button>
               )}
               {statsParticipants.length > 0 && (
@@ -2112,7 +2115,8 @@ export default function EventsPage() {
         setNotes={setNotes}
         targetParticipants={targetParticipants}
         setTargetParticipants={setTargetParticipants}
-        emsEvents={emsEventsList}
+        emsSource={emsSource}
+        setEmsSource={setEmsSource}
         emsEventId={emsEventId}
         setEmsEventId={setEmsEventId}
         submittingEvent={submittingEvent}
@@ -2141,7 +2145,8 @@ export default function EventsPage() {
         setEditNotes={setEditNotes}
         editTargetParticipants={editTargetParticipants}
         setEditTargetParticipants={setEditTargetParticipants}
-        emsEvents={emsEventsList}
+        emsSource={editEmsSource}
+        setEmsSource={setEditEmsSource}
         editEmsEventId={editEmsEventId}
         setEditEmsEventId={setEditEmsEventId}
         submittingEvent={submittingEvent}

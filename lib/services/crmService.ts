@@ -18,6 +18,7 @@ import {
   DatabaseListResponse,
   DatabaseEmail,
   Event,
+  EmsSource,
   EventAvailableDatabasesResponse,
   EventActivitySummaryResponse,
   EventFilterOptionsResponse,
@@ -670,18 +671,18 @@ export class CrmService extends ApiService {
   }
 
   // ponytail: fetch upcoming EMS events for dropdown mapping via backend proxy
-  async getEmsEvents(): Promise<{ id: number; name: string }[]> {
-    try {
-      const json: any = await this.get('/api/events/ems-upcoming');
-      const list = Array.isArray(json) ? json : (json?.data || []);
-      return list.map((item: any) => ({
-        id: item.id,
-        name: item.name || `EMS Event #${item.id}`
-      }));
-    } catch (error) {
-      console.error('Error fetching EMS events from backend:', error);
-      return [];
-    }
+  async getEmsEvents(source: EmsSource = 'LEGACY'): Promise<{ id: number; name: string }[]> {
+    const json: any = await this.get(`/api/events/ems-upcoming?source=${source}`);
+    if (source === 'V2' && json?.source !== 'V2') throw new Error('Backend CRM belum mendukung EMS baru. Perbarui backend sebelum menghubungkan event.');
+    const list = Array.isArray(json) ? json : json?.data;
+    if (!Array.isArray(list)) throw new Error('Daftar event EMS tidak valid. Coba muat ulang.');
+    const seen = new Set<number>();
+    return list.map((item: any) => {
+      const id = typeof item?.id === 'string' && /^[1-9]\d*$/.test(item.id) ? Number(item.id) : item?.id;
+      if (!Number.isSafeInteger(id) || id <= 0 || seen.has(id)) throw new Error('ID pada daftar event EMS tidak valid.');
+      seen.add(id);
+      return { id, name: typeof item.name === 'string' && item.name.trim() ? item.name : `EMS Event #${id}` };
+    });
   }
 
   // ponytail: fetch participants for a specific EMS event

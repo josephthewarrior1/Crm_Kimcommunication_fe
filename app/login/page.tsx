@@ -76,7 +76,7 @@ export default function LoginPage() {
                 <h1 id="login-heading">Welcome back</h1>
                 <p>Sign in to manage leads, events, and holding companies in one workspace.</p>
               </header>
-              <form onSubmit={handleSubmit} className={styles.form} aria-busy={loading}>
+              <form method="post" onSubmit={handleSubmit} className={styles.form} aria-busy={loading}>
                 <div className={styles.field}>
                   <label htmlFor="login-username">Username or Email</label>
                   <div className={styles.inputWrap}>
