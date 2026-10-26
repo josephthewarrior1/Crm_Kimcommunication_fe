@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
+mode=${1:-}
+if [ "$#" -gt 1 ] || { [ -n "$mode" ] && [ "$mode" != --prepare-background ]; }; then
+  printf 'Usage: bash recover-crm-main-lock.sh [--prepare-background]\n' >&2
+  exit 2
+fi
+if [ "$mode" = --prepare-background ]; then
+  for program in nohup setsid; do
+    command -v "$program" >/dev/null || { printf 'Program wajib tidak tersedia: %s\n' "$program" >&2; exit 1; }
+  done
+fi
 test "$(id -u)" = 0 || { printf 'Jalankan sebagai root.\n' >&2; exit 1; }
 exec 8>/var/lock/crm-main-deploy.lock
 flock -n 8 || { printf 'Proses deploy CRM lain masih berjalan.\n' >&2; exit 1; }
@@ -96,6 +106,25 @@ assert console.count('id=20261023T135006-bfdb66') == 1
 assert console.count('source_hash=' + hashes['source.tar.gz']) == 1
 console = console.replace('id=20261023T135006-bfdb66', 'id=' + release)
 console = console.replace('source_hash=' + hashes['source.tar.gz'], 'source_hash=' + source_hash)
+start = console.index('bash "$work/deploy.sh" configure ')
+end = console.index('python3 - "$work" "$id" <<\'PC_INSTRUCTIONS\'')
+prepare = console[start:end]
+console = console[:start] + '''if [ "${1:-}" = --continue ]; then
+  if [ ! -f "$work/prepare.exit" ] || [ "$(cat "$work/prepare.exit")" != 0 ] || [ ! -f "$work/prepared" ] || [ -e "$work/apply-started" ] || [ -e "$work/complete" ]; then
+    printf 'Persiapan belum selesai atau deploy sudah dimulai. Cek log dan prepare.exit.\\n' >&2
+    exit 1
+  fi
+else
+''' + prepare + '''printf '0\\n' > "$work/prepare.exit.tmp"
+mv -- "$work/prepare.exit.tmp" "$work/prepare.exit"
+fi
+''' + console[end:]
+console = console.replace('umask 077\n', '''umask 077
+if [ "$#" -gt 1 ] || { [ -n "${1:-}" ] && [ "${1:-}" != --continue ]; }; then
+  printf 'Usage: bash web-console.sh [--continue]\\n' >&2
+  exit 2
+fi
+''', 1)
 (work / 'web-console.sh').write_text(console)
 (work / 'ems-v2.env.example').write_bytes((old / 'ems-v2.env.example').read_bytes())
 (work / 'scripts.sha256').write_text(''.join(hashlib.sha256((work / name).read_bytes()).hexdigest() + '  ' + name + '\n' for name in hashes))
@@ -103,5 +132,23 @@ print(work)
 RECOVER
 )
 flock -u 8
+exec 8>&-
 printf 'Paket perbaikan: %s\nPaket lama tetap disimpan. Backup ke PC tetap wajib sebelum layanan diganti.\n' "$work"
+if [ "$mode" = --prepare-background ]; then
+  cat > "$work/prepare-background.sh" <<'PREPARE_RUNNER'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+work=$1
+id=$2
+source_hash=$3
+trap 'result=$?; printf "%s\n" "$result" > "$work/prepare.exit.tmp"; mv -- "$work/prepare.exit.tmp" "$work/prepare.exit"; if [ "$result" != 0 ]; then printf "Persiapan gagal (exit %s). Cek prepare.log dan prepare-runner.log.\n" "$result" >&2; fi' EXIT
+bash "$work/deploy.sh" prepare "$id" "$source_hash" > "$work/prepared.json"
+PREPARE_RUNNER
+  source_hash=$(sha256sum "$work/source.tar.gz")
+  source_hash=${source_hash%% *}
+  nohup setsid bash "$work/prepare-background.sh" "$work" "${work##*/crm-main-release-}" "$source_hash" < /dev/null > "$work/prepare-runner.log" 2>&1 &
+  printf '%s\n' "$!" > "$work/prepare.pid"
+  printf 'Build dan backup berjalan di background; belum mengganti layanan.\nLihat log:\ntail -n 80 -F "%s/prepare.log" "%s/prepare-runner.log"\nCek hasil (0 berarti berhasil):\ncat "%s/prepare.exit"\nSetelah berhasil, lanjutkan salin/verifikasi backup ke PC dan deploy:\nbash "%s/web-console.sh" --continue\n' "$work" "$work" "$work" "$work"
+  exit 0
+fi
 exec bash "$work/web-console.sh"
