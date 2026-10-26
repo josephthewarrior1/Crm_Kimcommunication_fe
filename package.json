@@ -42,7 +42,10 @@
   },
   "overrides": {
     "recharts": {
-      "react-is": "19.3.1"
+      "react-is": "19.3.1",
+      "prop-types": {
+        "react-is": "16.13.1"
+      }
     }
   }
 }
