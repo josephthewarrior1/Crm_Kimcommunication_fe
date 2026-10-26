@@ -202,7 +202,7 @@ with tarfile.open(w + '/source.tar.gz') as archive:
         assert parts[0] in ('frontend','backend','manifest.json')
     archive.extractall(w + '/payload',filter='data')
 m = json.load(open(w + '/payload/manifest.json'))
-assert m['frontendSource'] == '39c8bf84c04506801d3672ba1d95823e3337cfd9'
+assert m['frontendSource'] == '33e7d95f1b75d0e044e2b8dd03780258dcc4a90e'
 assert m['backendSource'] == 'd93f41d49a5651522ec381177f2bc5fa81baf3e6'
 for area, root in (('frontend',fe),('backend',be)):
     assert subprocess.check_output(['git','-C',root,'rev-parse','HEAD'],text=True).strip() == m[area + 'Base'], 'Live Git base differs'
@@ -251,6 +251,9 @@ const assert = require('node:assert/strict');
 assert.equal(require('next/package.json').version,'16.4.2');
 assert.equal(require('react/package.json').version,'19.3.1');
 assert.equal(require('react-dom/package.json').version,'19.3.1');
+const {createRequire}=require('node:module');
+const chartRequire=createRequire(require.resolve('recharts/package.json'));
+assert(chartRequire('react-is').isElement(require('react').createElement('div')),'Recharts cannot recognize installed React elements');
 const sharp = require('sharp').versions.sharp, p = sharp.split('.').map(Number);
 assert(/^\d+\.\d+\.\d+$/.test(sharp) && (p[0]>0 || p[1]>35 || (p[1]===35 && p[2]>=5)),'Unpatched Sharp');
 VERIFY_DEPENDENCIES

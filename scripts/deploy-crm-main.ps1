@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 # EO Scout, TAGTOG, local credentials, and uncommitted files are excluded.
 $repo = Split-Path -Parent $PSScriptRoot
 $backendRepo = Join-Path (Split-Path -Parent $repo) 'Crm_Kimcommunication_be'
-$frontendSource = '39c8bf84c04506801d3672ba1d95823e3337cfd9'
+$frontendSource = '33e7d95f1b75d0e044e2b8dd03780258dcc4a90e'
 $backendSource = 'd93f41d49a5651522ec381177f2bc5fa81baf3e6'
 $server = 'root@146.190.101.90'
 $key = Join-Path $env:USERPROFILE '.ssh\id_ed25519'

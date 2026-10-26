@@ -11,7 +11,7 @@ CRM Kim Communication: frontend Next.js dan backend Spring Boot di repository
   serta migrasi kolom `events.ems_source`. Mapping lama tetap menggunakan `LEGACY`.
 - EO Scout dan TAGTOG ditunda dan tidak disertakan dalam paket rilis ini.
 
-Kode aplikasi frontend berasal dari commit `39c8bf8`; backend dari `d93f41d`.
+Kode aplikasi frontend berasal dari commit `33e7d95`; backend dari `d93f41d`.
 Commit frontend setelahnya menambahkan alat deploy dan dokumentasi. Paket deploy
 mengambil commit tersebut, sehingga perubahan lokal yang belum dipush tidak ikut.
 
@@ -44,5 +44,6 @@ Periksa integrasi dan pengaman rollback tanpa menghubungi server:
 
 ```text
 node scripts/check-ems-integration.cjs
+node scripts/check-chart-dependencies.cjs
 python scripts/check-crm-main-deploy.py
 ```
