@@ -246,3 +246,21 @@ test('Next request normalization preserves POST body and requires original brows
   const forged = new Request('http://localhost:8188/api/crm/api/events', { method: 'POST', headers: { host: '127.0.0.1:8188', cookie: signedIn.cookie, origin: 'https://attacker.example', 'x-crm-csrf': signedIn.session.csrfToken, 'x-forwarded-origin': origin }, body: '{}' });
   assert.equal((await f.handlers.proxy(normalizeTagtogNextRequest(forged, config.callbackUrl))).status, 403);
 });
+
+test('flag reads require CSRF even though the legacy route uses GET or HEAD', async () => {
+  const f = fixture(), signedIn = await login(f);
+  for (const path of ['/api/crm/api/flagged-identities', '/api/crm/api/flagged-identities/list']) {
+    for (const method of ['GET', 'HEAD']) {
+      const before = f.calls.length;
+      for (const extra of [{}, { 'sec-fetch-site': 'cross-site' },
+        { 'x-crm-csrf': signedIn.session.csrfToken, origin: 'https://other.example' },
+        { 'x-crm-csrf': signedIn.session.csrfToken, 'sec-fetch-site': 'cross-site' }]) {
+        assert.equal((await f.handlers.proxy(request(path, { method, headers: { cookie: signedIn.cookie, ...extra } }))).status, 403);
+      }
+      assert.equal(f.calls.length, before, 'blocked reads never reach the mutating backend');
+      assert.equal((await f.handlers.proxy(request(path, { method, headers: {
+        cookie: signedIn.cookie, 'x-crm-csrf': signedIn.session.csrfToken, 'sec-fetch-site': 'same-origin'
+      } }))).status, 200);
+    }
+  }
+});

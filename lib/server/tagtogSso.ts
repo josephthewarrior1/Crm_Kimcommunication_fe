@@ -102,9 +102,10 @@ export function createTagtogHandlers(config: TagtogConfig, dependencies: Depende
     const session = id ? store.sessions.get(id) : null;
     return id && session && session.expires > now() ? { id, session } : null;
   }
-  function sameOriginWrite(request: Request, session: Session): boolean {
+  function sameOriginWrite(request: Request, session: Session, allowMissingOrigin = false): boolean {
     const csrf = request.headers.get('x-crm-csrf') || '';
-    return request.headers.get('origin') === callback!.origin && OPAQUE.test(csrf) && equal(csrf, session.csrf)
+    return (request.headers.get('origin') === callback!.origin || allowMissingOrigin && !request.headers.has('origin'))
+      && OPAQUE.test(csrf) && equal(csrf, session.csrf)
       && (!request.headers.has('sec-fetch-site') || request.headers.get('sec-fetch-site') === 'same-origin');
   }
   async function upstream(endpoint: string, options: RequestInit = {}) {
@@ -206,7 +207,9 @@ export function createTagtogHandlers(config: TagtogConfig, dependencies: Depende
         || /^\/api\/auth(?:\/|$)/.test(pathname) && pathname !== '/api/auth/me') return errorJson(403, 'INVALID_API_PATH');
       if (!['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) return errorJson(403, 'INVALID_METHOD');
       const mutating = !['GET', 'HEAD'].includes(request.method);
-      if (mutating && !sameOriginWrite(request, current.session)) return errorJson(403, 'INVALID_CSRF');
+      // Legacy flag-list reads can update contacts, so they need the same browser intent check as writes.
+      const mutatingRead = /^\/api\/flagged-identities(?:\/list)?\/?$/.test(pathname);
+      if ((mutating || mutatingRead) && !sameOriginWrite(request, current.session, !mutating)) return errorJson(403, 'INVALID_CSRF');
       try {
         const headers = new Headers({ Authorization: 'Bearer ' + current.session.token, Accept: request.headers.get('accept') || 'application/json' });
         if (request.headers.has('content-type')) headers.set('Content-Type', request.headers.get('content-type')!);
