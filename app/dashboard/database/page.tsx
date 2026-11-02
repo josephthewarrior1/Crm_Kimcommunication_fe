@@ -278,7 +278,7 @@ export default function DatabasesPage() {
     }
   }
 
-  const loadDatabasePage = useCallback(async (pageOverride?: number) => {
+  const loadDatabasePage = useCallback(async (pageOverride?: number, throwOnError = false) => {
     const requestId = ++databaseRequestId.current;
     databaseRequest.current?.abort();
     const controller = new AbortController();
@@ -313,13 +313,14 @@ export default function DatabasesPage() {
         setServerTotalPages(1);
         setDatabaseAnalytics(null);
         toast.error('Failed to load databases list');
+        if (throwOnError) throw err;
       }
     } finally {
       if (!controller.signal.aborted && requestId === databaseRequestId.current) setLoading(false);
     }
   }, [searchQuery, filterGroupId, filterCompanyId, filterBranchId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter, sortBy, sortOrder, currentPage]);
 
-  const loadDatabaseFilterOptions = useCallback(async () => {
+  const loadDatabaseFilterOptions = useCallback(async (throwOnError = false) => {
     const requestId = ++filterOptionsRequestId.current;
     filterOptionsRequest.current?.abort();
     const controller = new AbortController();
@@ -345,7 +346,7 @@ export default function DatabasesPage() {
         industries: response.industries || [],
         positionLevels: response.positionLevels || []
       });
-    } catch {
+    } catch (error) {
       if (controller.signal.aborted || requestId !== filterOptionsRequestId.current) return;
       setFilterOptionsError(true);
       setDatabaseFilterOptions({
@@ -356,13 +357,14 @@ export default function DatabasesPage() {
         industries: [],
         positionLevels: []
       });
+      if (throwOnError) throw error;
     }
   }, [searchQuery, filterGroupId, filterCompanyId, filterBranchId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter]);
 
-  const refreshDatabasePage = async () => {
+  const refreshDatabasePage = async (throwOnError = false) => {
     await Promise.all([
-      loadDatabasePage(currentPage),
-      loadDatabaseFilterOptions(),
+      loadDatabasePage(currentPage, throwOnError),
+      loadDatabaseFilterOptions(throwOnError),
       crmService.getFlaggedIdentities().then((items) => setFlags(items || [])).catch(() => {})
     ]);
   };
@@ -1516,7 +1518,7 @@ export default function DatabasesPage() {
       <ExcelImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-        onImportSuccess={refreshDatabasePage}
+        onImportSuccess={() => refreshDatabasePage(true)}
       />
     </div>
   );
