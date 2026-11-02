@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, AlertCircle, CheckCircle, Search, UserX } from 'lucide-react';
+import { X, Loader2, AlertCircle, Search, UserX } from 'lucide-react';
 import { Company, Database, Group } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
@@ -26,7 +26,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
 }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [salutation, setSalutation] = useState('Mr');
+  const [salutation, setSalutation] = useState('');
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [positionLevel, setPositionLevel] = useState('unknown');
@@ -68,7 +68,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     if (!database) return;
     setFirstName(database.firstName || '');
     setLastName(database.lastName || '');
-    setSalutation(database.salutation || 'Mr');
+    setSalutation(database.salutation || '');
     setSelectedCompanyId(database.company?.id ? database.company.id.toString() : '');
     setSelectedBranchId(database.branch?.id?.toString() || '');
     setPositionLevel(database.positionLevel || 'unknown');
@@ -168,27 +168,17 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     e.preventDefault();
     if (submitting) return;
     setSubmitAttempted(true);
+    if (!isCreatingNewCompany && !selectedCompanyId && (database.company?.id || companySearchQuery.trim())) {
+      toast.error('Pilih perusahaan dari hasil pencarian sebelum menyimpan. Perusahaan dan cabang yang tersimpan belum diubah.');
+      return;
+    }
     if (!isCreatingNewCompany && !branchSelection.valid) {
       toast.error('Tunggu daftar cabang dimuat, lalu periksa pilihan cabang sebelum menyimpan.');
       return;
     }
 
-    const missing: string[] = [];
-    if (!firstName.trim()) missing.push("First Name");
-    if (!lastName.trim()) missing.push("Last Name");
-    if (!salutation.trim()) missing.push("Salutation");
-    if (!jobTitle.trim()) missing.push("Job Title");
-    if (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim()) missing.push("Position Level");
-    if (!mobilePhone.trim()) missing.push("Mobile Phone");
-    if (!databaseCompanyEmail.trim()) missing.push("Company Email");
-    if (isCreatingNewCompany) {
-      if (!newCompanyName.trim()) missing.push("New Company Name");
-    } else if (!selectedCompanyId) {
-      missing.push("Associated Company");
-    }
-
-    if (missing.length > 0) {
-      toast.error(`Harap isi semua kolom wajib: ${missing.join(", ")}`);
+    if (isCreatingNewCompany && !newCompanyName.trim()) {
+      toast.error('Isi nama perusahaan baru, atau pilih Choose Existing untuk menyimpan tanpa perusahaan.');
       return;
     }
 
@@ -217,7 +207,10 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           setSubmitting(false);
           return;
         }
-      } else if (resolvedCompanyId) {
+      } else if (resolvedCompanyId && (
+        Object.entries(companyDetails).some(([key, value]) => (value || '') !== String(selectedCompany?.[key as keyof Company] || '').trim())
+        || selectedGroupId !== (selectedCompany?.group?.id?.toString() || '')
+      )) {
         await crmService.updateCompany(resolvedCompanyId, companyDetails, selectedGroupId ? Number(selectedGroupId) : undefined);
       }
 
@@ -228,11 +221,11 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           positionLevel: positionLevel || 'unknown',
-          specialityDivision: specialityDivision.trim() || undefined,
-          jobTitle: jobTitle.trim() || undefined,
-          mobilePhone: mobilePhone.trim() ? normalizePhone(mobilePhone) : undefined,
-          normalizedPhone: mobilePhone.trim() ? normalizePhone(mobilePhone) : undefined,
-          linkedinUrl: linkedinUrl.trim() || undefined,
+          specialityDivision: specialityDivision.trim(),
+          jobTitle: jobTitle.trim(),
+          mobilePhone: normalizePhone(mobilePhone),
+          normalizedPhone: normalizePhone(mobilePhone),
+          linkedinUrl: linkedinUrl.trim(),
           databaseType,
           source,
           isActive
@@ -313,16 +306,6 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     }
   };
 
-  const isFormIncomplete =
-    !salutation.trim() ||
-    !firstName.trim() ||
-    !lastName.trim() ||
-    (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim()) ||
-    !jobTitle.trim() ||
-    !mobilePhone.trim() ||
-    !databaseCompanyEmail.trim() ||
-    (isCreatingNewCompany ? !newCompanyName.trim() : !selectedCompanyId);
-
   return (
     <div className="ms-modal-overlay">
       <div className="ms-modal w-full max-w-2xl">
@@ -340,33 +323,22 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
         <form onSubmit={handleUpdateDatabase} className="ms-modal-form">
         <div className="ms-modal-body space-y-5">
 
-        {isFormIncomplete ? (
-          <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
-            <AlertCircle className="w-4.5 h-4.5 text-red-500 shrink-0 mt-0.5" />
+          <div className="mb-5 p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2.5">
+            <AlertCircle className="w-4.5 h-4.5 text-blue-500 shrink-0 mt-0.5" />
             <div>
-              <h5 className="text-xs font-bold text-red-800">Lengkapi kolom bertanda *. Cabang / Kantor bersifat opsional.</h5>
+              <p className="text-xs text-blue-800">Data boleh dilengkapi dan disimpan bertahap. Selama belum lengkap, data tetap masuk Database Kotor.</p>
             </div>
           </div>
-        ) : (
-          <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-250 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
-            <CheckCircle className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
-            <div>
-              <h5 className="text-xs font-bold text-emerald-850">Semua Kolom Wajib Terisi Lengkap</h5>
-            </div>
-          </div>
-        )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Salutation <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Salutation</label>
               <select
                 value={salutation}
                 onChange={(e) => setSalutation(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${submitAttempted && !salutation.trim()
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               >
+                <option value="">Belum diisi</option>
                 <option value="Mr">Mr</option>
                 <option value="Mrs">Mrs</option>
                 <option value="Ms">Ms</option>
@@ -377,7 +349,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             <div>
               <div className="flex flex-wrap justify-between items-center gap-2 mb-1.5">
                 <label className="block text-sm font-semibold text-slate-700">
-                  Associated Company <span className="text-red-500 font-bold">*</span>
+                  Associated Company
                 </label>
                 <button
                   type="button"
@@ -434,10 +406,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                         if (selectedCompanyId) setSelectedCompanyId('');
                         setSelectedBranchId('');
                       }}
-                      className={`w-full px-4 py-2.5 pr-10 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !selectedCompanyId
-                          ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                          : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                        }`}
+                      className="w-full px-4 py-2.5 pr-10 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
                       {(companySearchQuery || selectedCompanyId) ? (
@@ -533,9 +502,9 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                   )}
                 </div>
               )}
-              {submitAttempted && (isCreatingNewCompany ? !newCompanyName.trim() : !selectedCompanyId) && (
+              {submitAttempted && isCreatingNewCompany && !newCompanyName.trim() && (
                 <p className="text-red-500 text-[11px] mt-1 font-semibold">
-                  {isCreatingNewCompany ? 'Nama Perusahaan Baru wajib diisi' : 'Associated Company wajib diisi'}
+                  Nama Perusahaan Baru wajib diisi
                 </p>
               )}
             </div>
@@ -543,74 +512,50 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             <CompanyBranchSelect companyId={selectedCompanyId} value={selectedBranchId} onChange={setSelectedBranchId} selection={branchSelection} initialBranch={database.branch} creatingCompany={isCreatingNewCompany} disabled={submitting} />
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">First Name <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">First Name</label>
               <input
                 type="text"
                 placeholder="e.g. John"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !firstName.trim()
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
-              {submitAttempted && !firstName.trim() && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">First Name wajib diisi</p>
-              )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Last Name <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Last Name</label>
               <input
                 type="text"
                 placeholder="e.g. Doe"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !lastName.trim()
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
-              {submitAttempted && !lastName.trim() && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">Last Name wajib diisi</p>
-              )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Job Title <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Job Title</label>
               <input
                 type="text"
                 placeholder="e.g. Senior Manager IT"
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !jobTitle.trim()
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
-              {submitAttempted && !jobTitle.trim() && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">Job Title wajib diisi</p>
-              )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Position Level <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Position Level</label>
               <select
                 value={positionLevel}
                 onChange={(e) => setPositionLevel(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all ${submitAttempted && (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim())
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 rounded-xl text-slate-900 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="unknown">unknown</option>
                 <option value="C-level//GM/Director">C-level//GM/Director</option>
                 <option value="Manajerial/Head">Manajerial/Head</option>
                 <option value="Staff">Staff</option>
               </select>
-              {submitAttempted && (!positionLevel || positionLevel === 'unknown' || !positionLevel.trim()) && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">Position Level wajib diisi (tidak boleh unknown)</p>
-              )}
             </div>
 
             <div>
@@ -625,37 +570,25 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mobile Phone <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mobile Phone</label>
               <input
                 type="text"
                 placeholder="e.g. 0812345678"
                 value={mobilePhone}
                 onChange={(e) => setMobilePhone(e.target.value.replace(/\D/g, ''))}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-mono ${submitAttempted && !mobilePhone.trim()
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-mono bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
-              {submitAttempted && !mobilePhone.trim() && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">Mobile Phone wajib diisi</p>
-              )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email <span className="text-red-500 font-bold">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email</label>
               <input
                 type="email"
                 placeholder="e.g. name@company.com"
                 value={databaseCompanyEmail}
                 onChange={(e) => setDatabaseCompanyEmail(e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && !databaseCompanyEmail.trim()
-                    ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'
-                  }`}
+                className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
-              {submitAttempted && !databaseCompanyEmail.trim() && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">Company Email wajib diisi</p>
-              )}
             </div>
 
             <div>
@@ -727,9 +660,10 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             <div>
               <h4 className="text-sm font-bold text-slate-900">Company Details · Kantor Pusat</h4>
               <p className="text-xs text-slate-500 mt-1">Informasi perusahaan dan kantor pusat ini berlaku untuk semua kontak di perusahaan yang sama. Alamat cabang dikelola melalui Company Details.</p>
+              {!selectedCompanyId && !isCreatingNewCompany && <p className="text-xs text-slate-500 mt-1">Pilih atau buat perusahaan untuk mengisi detail perusahaan. Data kontak tetap bisa disimpan tanpa perusahaan.</p>}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <fieldset disabled={submitting || (!selectedCompanyId && !isCreatingNewCompany)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Group / Holding</label>
                 <select value={selectedGroupId} onChange={(e) => setSelectedGroupId(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none">
@@ -786,7 +720,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Hardware</label>
                 <textarea value={companyHardware} onChange={(e) => setCompanyHardware(e.target.value)} rows={2} placeholder="Hardware, servers, laptops, etc." className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none resize-none" />
               </div>
-            </div>
+            </fieldset>
           </section>
 
         </div>
