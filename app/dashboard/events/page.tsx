@@ -2240,6 +2240,7 @@ export default function EventsPage() {
 
       {/* Excel Import Modal */}
       <ExcelImportModal
+        key={`${selectedEvent?.id || ''}:${activeTab}`}
         isOpen={isImportParticipantsModalOpen}
         onClose={() => {
           setIsImportParticipantsModalOpen(false);

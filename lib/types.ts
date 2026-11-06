@@ -397,6 +397,8 @@ export interface EventParticipantsImportValidationRow {
   existingDatabaseId?: number | null;
   existingParticipantId?: number | null;
   issues: string[];
+  warnings?: string[];
+  missingFields?: string[];
 }
 
 export interface EventParticipantsImportValidationResponse {

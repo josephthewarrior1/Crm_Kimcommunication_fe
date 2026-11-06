@@ -37,8 +37,11 @@ interface PreviewRow {
   lastName: string;
   jobTitle: string;
   email: string;
+  mobilePhone: string;
   status: RowStatus;
   message: string;
+  warnings: string[];
+  missingFields: string[];
   isIssue: boolean;
 }
 
@@ -109,7 +112,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           row.companyName,
           row.jobTitle,
           row.email,
-          row.message
+          row.mobilePhone,
+          row.message,
+          ...row.warnings,
+          ...row.missingFields
         ]
           .join(' ')
           .toLowerCase();
@@ -125,6 +131,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
   const handlePreviewExcel = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loadingPreview || isImportingParticipants) return;
     if (!importParticipantsFile) {
       toast.error('Silakan pilih file Excel terlebih dahulu');
       return;
@@ -171,12 +178,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         if (row.status === 'conflict') {
           status = 'CONFLICT';
           conflictCount++;
-        } else if (row.status === 'duplicate') {
-          status = 'DUPLICATE';
-          duplicateCount++;
         } else if (row.status === 'error') {
           status = 'INCOMPLETE';
           incompleteCount++;
+        } else if (row.status === 'duplicate' || row.existingDatabaseId) {
+          status = 'DUPLICATE';
+          duplicateCount++;
         } else {
           newCount++;
         }
@@ -186,7 +193,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           : status === 'DUPLICATE'
           ? row.existingParticipantId
             ? 'Participant sudah ada di event ini'
-            : 'Kontak sudah ada di database'
+            : 'Kontak sudah ada di database; akan ditautkan ke event'
           : 'Siap diimport ke event';
 
         return {
@@ -196,8 +203,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           lastName: row.lastName || '-',
           jobTitle: row.jobTitle || '-',
           email: row.companyEmail || row.personalEmail || '-',
+          mobilePhone: row.mobilePhone || '-',
           status,
           message,
+          warnings: row.warnings || [],
+          missingFields: row.missingFields || [],
           isIssue: status === 'INCOMPLETE' || status === 'CONFLICT'
         };
       });
@@ -237,6 +247,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   };
 
   const handleClose = () => {
+    if (loadingPreview || isImportingParticipants) return;
     resetState();
     onClose();
   };
@@ -249,7 +260,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         <button
           onClick={handleClose}
           className="ms-modal-close z-20"
-          disabled={isImportingParticipants}
+          aria-label="Tutup import peserta"
+          disabled={loadingPreview || isImportingParticipants}
         >
           <X className="w-5 h-5" />
         </button>
@@ -263,6 +275,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <h3 className="ms-modal-title">Import Participants from Excel</h3>
               <p className="ms-modal-description mt-2">
                 Upload template spreadsheet untuk menambahkan participant ke tab <span className="font-bold text-[#5b5fc7]">{currentTabLabel}</span>.
+                {' '}Cukup nama dan minimal email valid atau nomor HP/WhatsApp. Jika keduanya kosong, baris ditahan; kolom lainnya boleh dilengkapi setelah import.
               </p>
               <div className="mt-3">
                 <button
@@ -308,6 +321,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         e.preventDefault();
                         resetState();
                       }}
+                      disabled={loadingPreview || isImportingParticipants}
                       className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1"
                     >
                       <RefreshCw className="w-3 h-3" /> Ganti File
@@ -377,7 +391,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <div className="ms-modal-header pr-14">
               <h3 className="ms-modal-title">Hasil Analisis & Preview Excel</h3>
               <p className="ms-modal-description mt-2">
-                Review kelengkapan data participant dan duplikasi event sebelum proses import.
+                Review kontak untuk {currentTabLabel}. Nama dan minimal email valid atau HP wajib; kekurangan kolom database lainnya tidak menghalangi import.
               </p>
             </div>
 
@@ -449,7 +463,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold text-red-700">Import Ditolak: </span>
-                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris data bermasalah</span> (data belum lengkap atau email kembar antar kontak berbeda). Silakan tinjau tabel di bawah dan perbaiki di file Excel Anda.
+                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris yang perlu diperbaiki</span>. Periksa nama, email/HP, atau konflik identitas pada keterangan baris. Perbaiki di Excel lalu upload ulang.
                 </div>
               </div>
             ) : importPreview.duplicateCount > 0 ? (
@@ -457,7 +471,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Info Duplikasi: </span>
-                  {importPreview.duplicateCount} participant sudah ada di event ini dan akan di-skip saat import dijalankan.
+                  {importPreview.duplicateCount} kontak sudah dikenal. Kontak yang sudah ada di event dilewati; kontak dari database ditautkan ke event tanpa membuat profil baru.
                 </div>
               </div>
             ) : (
@@ -470,19 +484,26 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </div>
             )}
 
+            {importPreview.rows.some(row => !row.isIssue && row.missingFields.length > 0) && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                Data belum lengkap tetap boleh masuk {currentTabLabel}. Kontak baru yang belum memenuhi kelengkapan database masuk Data Kotor; data kontak yang sudah tersimpan tetap dipertahankan.
+              </div>
+            )}
+
             <div className="relative shrink-0">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari berdasarkan nama, company, jabatan, email, atau pesan..."
+                placeholder="Cari nama, company, jabatan, email, HP, atau pesan..."
+                aria-label="Cari baris preview import event"
                 className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 text-sm"
               />
             </div>
 
             <div className="border border-slate-200 rounded-md overflow-hidden min-w-0 bg-white">
               <div className="overflow-auto max-h-[40vh]">
-                <table className="w-full min-w-[680px] text-left border-collapse text-xs">
+                <table className="w-full min-w-[860px] text-left border-collapse text-xs">
                   <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
                     <tr className="text-slate-500 uppercase font-semibold">
                       <th className="py-3 px-3 w-14 text-center">No</th>
@@ -491,6 +512,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       <th className="py-3 px-3">Company</th>
                       <th className="py-3 px-3">Job Title</th>
                       <th className="py-3 px-3">Email</th>
+                      <th className="py-3 px-3">HP / WhatsApp</th>
                       <th className="py-3 px-3">Keterangan</th>
                       <th className="py-3 px-3 text-right">Status</th>
                     </tr>
@@ -504,7 +526,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         <td className="py-3 px-3 text-slate-600 font-medium">{row.companyName}</td>
                         <td className="py-3 px-3 text-slate-600">{row.jobTitle}</td>
                         <td className="py-3 px-3 text-slate-500 font-mono">{row.email}</td>
-                        <td className="py-3 px-3 text-slate-500">{row.message}</td>
+                        <td className="py-3 px-3 text-slate-500 font-mono">{row.mobilePhone}</td>
+                        <td className="py-3 px-3 text-slate-500">
+                          <p>{row.message}</p>
+                          {row.warnings.map(warning => <p key={warning} className="mt-1 text-amber-800">{warning}</p>)}
+                          {!row.isIssue && row.missingFields.length > 0 && (
+                            <p className="mt-1 text-amber-800">
+                              <strong>{row.status === 'NEW' ? 'Belum lengkap — boleh import.' : 'Kelengkapan Excel.'}</strong>{' '}
+                              Belum diisi: {row.missingFields.join(', ')}.
+                            </p>
+                          )}
+                        </td>
                         <td className="py-3 px-3 text-right">
                           <span
                             className={`px-2 py-1 rounded-lg text-[10px] font-semibold border ${
@@ -517,14 +549,14 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                                 : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                             }`}
                           >
-                            {row.status === 'INCOMPLETE' ? 'Incomplete' : row.status === 'CONFLICT' ? 'Conflict' : row.status === 'DUPLICATE' ? 'Duplicate' : 'New'}
+                            {row.status === 'INCOMPLETE' ? 'Perlu perbaikan' : row.status === 'CONFLICT' ? 'Konflik' : row.status === 'DUPLICATE' ? 'Sudah ada' : 'Baru'}
                           </span>
                         </td>
                       </tr>
                     ))}
                     {filteredRows.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="py-10 px-4 text-center text-slate-500">
+                        <td colSpan={9} className="py-10 px-4 text-center text-slate-500">
                           Tidak ada baris yang cocok dengan filter pencarian.
                         </td>
                       </tr>
