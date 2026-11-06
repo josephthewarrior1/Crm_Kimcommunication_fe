@@ -135,14 +135,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       return;
     }
 
-    if (eventId) {
-      try {
-        await crmService.syncEmsParticipants(eventId);
-      } catch (err) {
-        console.warn('Auto EMS Sync during split warning:', err);
-      }
-    }
-
     if (onAutoSplit) {
       await onAutoSplit({ mode: splitMode, managerNames: selectedSplitPics });
       setIsSplitModalOpen(false);
@@ -878,9 +870,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 title: "Konfirmasi Bagi Rata Sisa",
                                 description: `Apakah Anda yakin ingin membagi ${unassigned.length} peserta sisa (belum ada PIC) ke seluruh PIC secara merata?`,
                                 onConfirm: async () => {
-                                  if (eventId) {
-                                    try { await crmService.syncEmsParticipants(eventId); } catch (e) {}
-                                  }
                                   const targetPics = eligibleSplitUsers;
                                   if (targetPics.length === 0) {
                                     showMissingPicAccessWarning();
@@ -916,9 +905,6 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 title: "Peringatan Bagi Ulang Semua",
                                 description: `PERINGATAN: Apakah Anda yakin ingin membagi ulang peserta secara merata? Tindakan ini akan mengocok ulang alokasi PIC.`,
                                 onConfirm: async () => {
-                                  if (eventId) {
-                                    try { await crmService.syncEmsParticipants(eventId); } catch (e) {}
-                                  }
                                   let targetAll = participants;
                                   if (activeTab === 'request') {
                                     targetAll = participants.filter(p => {

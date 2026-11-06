@@ -20,7 +20,7 @@ export const DatabaseImportGuide = () => (
         <BookOpen aria-hidden="true" className="h-5 w-5 shrink-0 text-blue-600" />
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-slate-900">Cara import & hal yang perlu diperhatikan</span>
-          <span className="mt-1 block text-xs leading-5 text-slate-500">Panduan kolom wajib, data perusahaan, dan cabang.</span>
+          <span className="mt-1 block text-xs leading-5 text-slate-500">Pilih tujuan Perusahaan atau Peserta, lalu gunakan template yang sesuai.</span>
         </span>
         <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-blue-600" />
       </button>
@@ -40,7 +40,7 @@ export const DatabaseImportGuide = () => (
           <h3 id="import-guide-steps" className="mb-3 flex items-center gap-2 font-semibold text-slate-900"><ListChecks aria-hidden="true" className="h-4 w-4 text-blue-600" />Langkah import</h3>
           <ol className="grid gap-3 sm:grid-cols-2">
             {[
-              ['Download dan isi template', 'Isi mulai baris 2, satu kontak per baris. Ganti atau hapus baris contoh. Jangan ubah nama atau urutan kolom.'],
+              ['Pilih tujuan dan isi template', 'Pilih Database Perusahaan atau Database Peserta. Download template untuk tujuan tersebut dan isi mulai baris 2, satu kontak per baris.'],
               ['Upload file Excel', 'Simpan sebagai .xlsx atau .xls, pilih file, lalu klik “Preview & Analisis Excel”.'],
               ['Periksa hasil preview', 'Baru berarti kontak baru. Update DB berarti kontak yang cocok akan diperbarui. Periksa nama, company, dan cabangnya.'],
               ['Import data bersih', 'Perbaiki baris Belum Lengkap/Konflik lalu upload ulang, atau lanjutkan data bersih. Baris bermasalah dilewati dan dilaporkan.'],
@@ -51,7 +51,7 @@ export const DatabaseImportGuide = () => (
               </li>
             ))}
           </ol>
-          <p className="mt-2 text-xs leading-5">Tab preview hanya menyaring tampilan. Tombol import memproses seluruh baris bersih, termasuk yang tidak terlihat di tab aktif.</p>
+          <p className="mt-2 text-xs leading-5">Tujuan dipilih secara eksplisit, bukan ditentukan dari domain email. Mengganti tujuan akan menghapus preview sebelumnya. Tab preview hanya menyaring tampilan; tombol import memproses seluruh baris bersih.</p>
         </section>
 
         <section aria-labelledby="import-guide-company" className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
@@ -79,7 +79,7 @@ export const DatabaseImportGuide = () => (
           <h3 id="import-guide-columns" className="mb-3 flex items-center gap-2 font-semibold text-slate-900"><Columns aria-hidden="true" className="h-4 w-4 text-blue-600" />Kolom yang perlu diisi</h3>
           <div className="grid items-start gap-3 sm:grid-cols-2">
             <div className="rounded-md border border-slate-200">
-              <h4 className="border-b border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-900">Wajib untuk kontak baru <span className="ml-1 text-xs font-normal text-slate-500">15 kolom</span></h4>
+              <h4 className="border-b border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-900">Wajib untuk kontak korporat baru <span className="ml-1 text-xs font-normal text-slate-500">15 kolom</span></h4>
               <ul className="space-y-1.5 p-4 text-xs leading-5">{requiredColumns.map(column => <li key={column} className="flex items-start gap-2"><Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" /><span>{column}</span></li>)}</ul>
             </div>
             <div className="rounded-md border border-slate-200">
@@ -89,7 +89,8 @@ export const DatabaseImportGuide = () => (
             </div>
           </div>
           <div className="mt-3 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs leading-5">
-            <p><strong className="font-semibold text-slate-800">Saat memperbarui kontak:</strong> tetap isi First Name, Last Name, dan Company Name. Kolom wajib lainnya bisa memakai data tersimpan jika tersedia; jika nilai wajib itu belum tersedia, baris tetap Belum Lengkap. Email lama dipertahankan.</p>
+            <p><strong className="font-semibold text-slate-800">Database Peserta:</strong> First Name dan email valid wajib diisi. Email pribadi, kampus, maupun perusahaan diterima. Last Name, Mobile Phone, Kategori Peserta (pelajar/mahasiswa/umum), serta Sekolah/Kampus/Instansi opsional. Template peserta memiliki tujuh kolom; template perusahaan lama juga dapat digunakan dengan tujuan Peserta. Company Name pada template lama disimpan sebagai institusi peserta; data master perusahaan tidak dibuat atau diubah.</p>
+            <p><strong className="font-semibold text-slate-800">Saat memperbarui kontak:</strong> gunakan nama dan identitas email/HP yang sesuai dengan profil lama. Untuk Perusahaan, tetap isi First Name, Last Name, dan Company Name; kolom wajib lain bisa memakai data tersimpan. Email lama dipertahankan. Kontak Peserta tidak otomatis ditambahkan ke Perusahaan lewat import; tinjau lewat Edit kontak lebih dulu.</p>
             <p><strong className="font-semibold text-slate-800">Cabang yang sudah ada:</strong> Address, Office Phone, dan City boleh kosong jika data cabang tersebut sudah lengkap, termasuk untuk kontak baru. Data lokasi tidak diambil dari kantor pusat.</p>
             <p>Jangan isi tanda “-” untuk meloloskan kolom wajib. “-”, “n/a”, dan “tidak ada” tetap dianggap kosong.</p>
           </div>
@@ -101,7 +102,7 @@ export const DatabaseImportGuide = () => (
             <li><strong className="font-semibold text-slate-800">Cabang dan alamat:</strong> isi Company Name dengan nama perusahaan saja, lalu isi cabang di Cabang/Kantor. Cabang baru dibuat otomatis di company tersebut. Kalau cabang dikosongkan, kontak lama mempertahankan cabangnya; kontak baru terhubung langsung ke company.</li>
             <li><strong className="font-semibold text-slate-800">Data yang sudah ada:</strong> Office Phone cabang diperbarui mengikuti Excel jika diisi. Nomor kosong mempertahankan nomor lama; data master lainnya hanya dilengkapi jika kosong. Alamat cabang yang berbeda dari data tersimpan ditandai konflik. Ubah lokasi lewat Company Details; pindahkan kontak yang sudah bercabang lewat Edit kontak.</li>
             <li><strong className="font-semibold text-slate-800">Satu kontak, satu baris:</strong> nama lengkap + company yang sama, Mobile Phone yang sama, atau Personal Email yang sama pada beberapa baris dapat menyebabkan konflik. Company Email dan Office Phone boleh dipakai beberapa kontak.</li>
-            <li><strong className="font-semibold text-slate-800">Pisahkan jenis email:</strong> email kantor masuk Company Email Address. Personal Email Address hanya untuk domain pribadi yang didukung, misalnya Gmail, Yahoo, atau Outlook. Jangan taruh alamat email yang sama di kedua kolom. Pisahkan beberapa email dengan titik koma (;).</li>
+            <li><strong className="font-semibold text-slate-800">Email sesuai tujuan:</strong> Perusahaan wajib memakai email institusi/perusahaan pada Company Email Address. Gmail dan layanan pribadi pada kolom tersebut ditolak dengan arahan memilih Database Peserta. Untuk Peserta, semua domain email valid diterima, termasuk email kampus. Jangan taruh alamat yang sama di dua kolom; pisahkan beberapa email dengan titik koma (;).</li>
             <li><strong className="font-semibold text-slate-800">Format telepon dan kode pos:</strong> gunakan format sel Text agar angka nol di depan tetap tersimpan. Jangan mengisi data asal hanya supaya kolom terlihat lengkap.</li>
           </ul>
         </section>

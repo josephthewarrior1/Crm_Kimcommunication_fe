@@ -7,7 +7,7 @@ import { Database, DatabaseAnalytics, Company, DatabaseEmail, EventParticipant, 
 import { Users, Search, Plus, ExternalLink, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { normalizePhone } from './utils/phoneHelper';
 import { findPersonalEmailConflicts } from './utils/emailIdentity';
 import { getContactOffice } from '../../../lib/utils/companyBranch';
@@ -76,9 +76,13 @@ const CITY_LABELS = new Map(
 
 export default function DatabasesPage() {
   const { isAdmin, isManager, isUser } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [databases, setDatabases] = useState<Database[]>([]);
   const [databaseSummary, setDatabaseSummary] = useState({ all: 0, clean: 0, dirty: 0 });
+  const [destinationCounts, setDestinationCounts] = useState({ company: 0, participant: 0 });
+  const destination = searchParams.get('destination') === 'participant' ? 'participant' : 'company';
+  const previousDestination = useRef(destination);
   const [databaseAnalytics, setDatabaseAnalytics] = useState<DatabaseAnalytics | null>(null);
   const [databaseFilterOptions, setDatabaseFilterOptions] = useState<{
     cities: Array<{ value: string; label: string }>;
@@ -145,12 +149,6 @@ export default function DatabasesPage() {
   const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'clean' | 'dirty'>(
     initialTab === 'dirty' ? 'dirty' : initialTab === 'clean' ? 'clean' : 'all'
   );
-
-  useEffect(() => {
-    const tabParam = searchParams ? searchParams.get('tab') : null;
-    if (tabParam === 'dirty') setActiveTabFilter('dirty');
-    else if (tabParam === 'clean') setActiveTabFilter('clean');
-  }, [searchParams]);
 
   // Selection and Custom Export states
   const [selectedDatabaseIds, setSelectedDatabaseIds] = useState<number[]>([]);
@@ -286,6 +284,7 @@ export default function DatabasesPage() {
     setLoading(true);
     try {
       const response = await crmService.getDatabasesList({
+        destination,
         search: searchQuery || undefined,
         groupId: filterGroupId || undefined,
         companyId: filterCompanyId || undefined,
@@ -305,6 +304,7 @@ export default function DatabasesPage() {
       setServerTotalItems(response.total || 0);
       setServerTotalPages(response.totalPages || 1);
       setDatabaseSummary(response.summary || { all: 0, clean: 0, dirty: 0 });
+      setDestinationCounts(response.destinations || { company: 0, participant: 0 });
       setDatabaseAnalytics(response.analytics || null);
     } catch (err) {
       if (!controller.signal.aborted && requestId === databaseRequestId.current) {
@@ -318,7 +318,7 @@ export default function DatabasesPage() {
     } finally {
       if (!controller.signal.aborted && requestId === databaseRequestId.current) setLoading(false);
     }
-  }, [searchQuery, filterGroupId, filterCompanyId, filterBranchId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter, sortBy, sortOrder, currentPage]);
+  }, [searchQuery, filterGroupId, filterCompanyId, filterBranchId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter, destination, sortBy, sortOrder, currentPage]);
 
   const loadDatabaseFilterOptions = useCallback(async (throwOnError = false) => {
     const requestId = ++filterOptionsRequestId.current;
@@ -328,6 +328,7 @@ export default function DatabasesPage() {
     setFilterOptionsError(false);
     try {
       const response = await crmService.getDatabaseFilterOptions({
+        destination,
         search: searchQuery || undefined,
         groupId: filterGroupId || undefined,
         companyId: filterCompanyId || undefined,
@@ -359,7 +360,7 @@ export default function DatabasesPage() {
       });
       if (throwOnError) throw error;
     }
-  }, [searchQuery, filterGroupId, filterCompanyId, filterBranchId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter]);
+  }, [searchQuery, filterGroupId, filterCompanyId, filterBranchId, filterPositionLevel, filterIndustry, filterCity, activeTabFilter, destination]);
 
   const refreshDatabasePage = async (throwOnError = false) => {
     await Promise.all([
@@ -522,12 +523,13 @@ export default function DatabasesPage() {
   const isSearching = loading || isSearchPending;
   const isFilterActive = searchInput || filterGroupId || filterCompanyId || filterBranchId || filterPositionLevel || filterIndustry || filterCity || sortBy !== 'id' || sortOrder !== 'asc' || activeTabFilter !== 'all';
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setSearchInput('');
     setSearchQuery('');
     setFilterGroupId('');
     setFilterCompanyId('');
     setFilterBranchId('');
+    setFilterBranchLabel('');
     setFilterPositionLevel('');
     setFilterIndustry('');
     setFilterCity('');
@@ -535,7 +537,32 @@ export default function DatabasesPage() {
     setSortOrder('asc');
     setActiveTabFilter('all');
     setCurrentPage(1);
+  }, []);
+
+  const handleDestinationChange = (category: 'company' | 'participant') => {
+    if (category === destination) return;
+    const query = new URLSearchParams(searchParams.toString());
+    query.set('destination', category);
+    query.delete('search');
+    query.delete('tab');
+    router.push(`/dashboard/database?${query.toString()}`, { scroll: false });
   };
+
+  useEffect(() => {
+    if (previousDestination.current !== destination) {
+      handleResetFilters();
+      setDatabases([]);
+      setDatabaseAnalytics(null);
+      setSearchInput(searchParams.get('search') || '');
+      setSearchQuery(searchParams.get('search')?.trim() || '');
+      setSelectedDatabaseIds([]);
+      setTempSelectedDbIds([]);
+      setExportDatabases([]);
+      previousDestination.current = destination;
+    }
+    const tab = searchParams.get('tab');
+    setActiveTabFilter(tab === 'dirty' ? 'dirty' : tab === 'clean' ? 'clean' : 'all');
+  }, [destination, searchParams, handleResetFilters]);
 
   const filteredDatabases = databases;
   const currentDatabases = databases;
@@ -559,7 +586,7 @@ export default function DatabasesPage() {
     }
   };
 
-  const listQueryKey = JSON.stringify([searchQuery, filterCompanyId, filterBranchId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, sortBy, sortOrder, activeTabFilter]);
+  const listQueryKey = JSON.stringify([searchQuery, filterCompanyId, filterBranchId, filterGroupId, filterPositionLevel, filterIndustry, filterCity, sortBy, sortOrder, activeTabFilter, destination]);
   const previousListQuery = useRef(listQueryKey);
   useEffect(() => {
     const queryChanged = previousListQuery.current !== listQueryKey;
@@ -603,6 +630,7 @@ export default function DatabasesPage() {
     }
     try {
       const response = await crmService.exportDatabases({
+        destination,
         search: searchQuery || undefined,
         groupId: filterGroupId || undefined,
         companyId: filterCompanyId || undefined,
@@ -615,6 +643,7 @@ export default function DatabasesPage() {
         sortOrder
       });
       setExportDatabases(response.items || []);
+      setSelectedColumns(destination === 'participant' ? ['firstName', 'lastName', 'participantEmail', 'mobilePhone', 'institutionName', 'participantCategory', 'eventHistory'] : EXPORT_COLUMNS.map(column => column.key));
     } catch {
       setExportDatabases(databases);
     }
@@ -626,8 +655,8 @@ export default function DatabasesPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Databases</h2>
-          <p className="text-sm text-slate-500 mt-1">Manage database persons, corporate roles, and corporate vs personal emails.</p>
+          <h2 className="text-2xl font-bold text-slate-900">{destination === 'participant' ? 'Database Peserta' : 'Database Perusahaan'}</h2>
+          <p className="text-sm text-slate-500 mt-1">Lihat kontak melalui submenu Perusahaan atau Peserta. Import dan sync dari event mengikuti jenis event yang dipilih sejak awal.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
           {filteredDatabases.length > 0 && (
@@ -661,6 +690,45 @@ export default function DatabasesPage() {
         </div>
       </div>
 
+      <section aria-label="Jenis database" className="space-y-3">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Tujuan database">
+          {([
+            ['company', 'Database Perusahaan', destinationCounts.company],
+            ['participant', 'Database Peserta', destinationCounts.participant],
+          ] as const).map(([category, label, count]) => (
+            <button
+              key={category}
+              id={`database-${category}-tab`}
+              type="button"
+              role="tab"
+              aria-selected={destination === category}
+              aria-controls="database-category-panel"
+              tabIndex={destination === category ? 0 : -1}
+              onClick={() => handleDestinationChange(category)}
+              onKeyDown={event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const next = event.key === 'Home' ? 'company' : event.key === 'End' ? 'participant'
+                  : category === 'company' ? 'participant' : 'company';
+                handleDestinationChange(next);
+                event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`#database-${next}-tab`)?.focus();
+              }}
+              className={`rounded-xl border px-5 py-2.5 text-sm font-bold transition-colors ${destination === category
+                ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
+            >
+              {label} ({count.toLocaleString()})
+            </button>
+          ))}
+        </div>
+        <p className="text-xs leading-5 text-slate-500">
+          {destination === 'participant'
+            ? 'Peserta event, termasuk yang memakai email pribadi, kampus, atau kantor. Event Peserta / Publik mengirim datanya ke sini; nama dan email valid cukup untuk status Bersih.'
+            : 'Kontak bisnis yang dimasukkan ke Database Perusahaan. Email institusi/perusahaan tetap wajib untuk status Bersih; tujuan tidak ditentukan otomatis dari domain email.'}
+        </p>
+      </section>
+
+      <div id="database-category-panel" role="tabpanel" aria-labelledby={`database-${destination}-tab`} className="space-y-6">
       {/* Quality Status Tab Pills */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
         <button
@@ -732,7 +800,7 @@ export default function DatabasesPage() {
           {isSearching ? (databases.length > 0 ? 'Memperbarui hasil, daftar sebelumnya tetap ditampilkan...' : 'Mencari database...') : `${serverTotalItems.toLocaleString()} database ditemukan`}
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-2 border-t border-slate-100">
+        {destination === 'company' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-2 border-t border-slate-100">
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">City</label>
             <Select
@@ -851,11 +919,9 @@ export default function DatabasesPage() {
               </SelectContent>
             </Select>
           </div>
-        </div>
+        </div>}
       </div>
 
-
-      <DatabaseCharts data={databaseAnalytics} loading={loading} onRetry={() => void loadDatabasePage()} />
 
       {/* Databases List Table */}
       {loading && filteredDatabases.length === 0 ? (
@@ -897,8 +963,15 @@ export default function DatabasesPage() {
             <table ref={tableRef} className="w-full text-left border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
                 <tr className="text-slate-500 uppercase tracking-wider text-xs font-semibold whitespace-nowrap text-left">
-                  <th className="py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
                   <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-left sticky left-0 bg-slate-50 z-10">Actions</th>
+                  <th aria-label="Kelengkapan data" className="py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
+                  {destination === 'participant' ? <>
+                    <th className="py-3 px-4">Nama Peserta</th>
+                    <th className="py-3 px-4">Email</th>
+                    <th className="py-3 px-4">HP / WhatsApp</th>
+                    <th className="py-3 px-4">Kategori</th>
+                    <th className="py-3 px-4">Sekolah/Kampus/Instansi</th>
+                  </> : <>
                   <th
                     onClick={() => handleSort('groupName')}
                     className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
@@ -1030,6 +1103,7 @@ export default function DatabasesPage() {
                   </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Postal Code</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Website</th>
+                  </>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1250,15 +1324,22 @@ export default function DatabasesPage() {
                         </div>
                       </td>
                       <td className="py-4 px-3 text-center">
-                        {checkDatabaseCompleteness(c).isIncomplete && (
+                        {checkDatabaseCompleteness(c, destination).isIncomplete && (
                           <span
                             className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                            title={`Semua kolom wajib diisi kecuali Division, Database Type, dan Data Source.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(c).missingFields.join("\n• ")}`}
+                            title={`Data belum lengkap.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(c, destination).missingFields.join("\n• ")}`}
                           >
                             <AlertCircle className="w-4 h-4 shrink-0" />
                           </span>
                         )}
                       </td>
+                      {destination === 'participant' ? <>
+                        <td className="px-4 py-4 text-sm font-bold text-slate-900">{[c.firstName, c.lastName].filter(Boolean).join(' ')}</td>
+                        <td className="px-4 py-4 text-xs font-mono text-slate-600">{c.emails?.map(email => email.email).filter(Boolean).join(', ') || '-'}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-sm font-mono text-slate-700">{c.mobilePhone ? normalizePhone(c.mobilePhone) : '-'}</td>
+                        <td className="px-4 py-4 text-sm capitalize text-slate-600">{c.participantCategory || '-'}</td>
+                        <td className="px-4 py-4 text-sm text-slate-600">{c.institutionName || c.company?.name || '-'}</td>
+                      </> : <>
                       <td className="py-4 px-4 text-sm font-medium text-slate-600">
                         {c.company?.group?.name || <span className="text-slate-400">-</span>}
                       </td>
@@ -1348,6 +1429,7 @@ export default function DatabasesPage() {
                           </a>
                         ) : '-'}
                       </td>
+                      </>}
                   </tr>
                   );
                 })}
@@ -1427,8 +1509,14 @@ export default function DatabasesPage() {
           )}
         </div>
       )}
+      <details className="rounded-xl border border-slate-200 bg-white p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-700">Ringkasan dan grafik database</summary>
+        <div className="mt-4"><DatabaseCharts data={databaseAnalytics} loading={loading} onRetry={() => void loadDatabasePage()} /></div>
+      </details>
+      </div>
       {/* View Database Detail Modal */}
       <DatabaseDetailModal
+        viewDestination={destination}
         isOpen={isDetailModalOpen}
         onClose={handleCloseDetailModal}
         database={detailDatabase!}
@@ -1444,6 +1532,7 @@ export default function DatabasesPage() {
 
       {/* Add Database Modal */}
       <CreateDatabaseModal
+        initialDestination={destination}
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         companies={modalCompanies}
@@ -1489,6 +1578,7 @@ export default function DatabasesPage() {
 
       {/* Export Configuration Modal Overlay */}
       <ExportConfigModal
+        destination={destination}
         isOpen={isExportConfigModalOpen}
         onClose={() => setIsExportConfigModalOpen(false)}
         databases={exportDatabases.length > 0 ? exportDatabases : databases}
@@ -1516,6 +1606,7 @@ export default function DatabasesPage() {
 
       {/* Excel Import Modal Overlay */}
       <ExcelImportModal
+        initialDestination={destination}
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={() => refreshDatabasePage(true)}

@@ -12,6 +12,8 @@ import { RequestPreEventTable } from './components/RequestPreEventTable';
 import { ReminderTable } from './components/ReminderTable';
 import { ReminderDdayTable } from './components/ReminderDdayTable';
 import { CreateEventModal } from './components/CreateEventModal';
+import { EmsSyncDialog } from './components/EmsSyncDialog';
+import type { SyncDestination } from './components/SyncDestinationField';
 import { EditEventModal } from './components/EditEventModal';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { DeleteEventConfirmModal } from './components/DeleteEventConfirmModal';
@@ -157,6 +159,9 @@ export default function EventsPage() {
   // ponytail: EMS event mapping state
   const [emsSource, setEmsSource] = useState<EmsSource>('LEGACY');
   const [editEmsSource, setEditEmsSource] = useState<EmsSource>('LEGACY');
+  const [syncDestination, setSyncDestination] = useState<SyncDestination>('');
+  const [editSyncDestination, setEditSyncDestination] = useState<SyncDestination>('');
+  const [isEmsSyncOpen, setIsEmsSyncOpen] = useState(false);
   const [emsEventId, setEmsEventId] = useState<number>(0);
   const [editEmsEventId, setEditEmsEventId] = useState<number>(0);
 
@@ -552,6 +557,10 @@ export default function EventsPage() {
       toast.error('Event name is required');
       return;
     }
+    if (!syncDestination) {
+      toast.error('Pilih jenis event Korporat atau Peserta / Publik.');
+      return;
+    }
 
     setSubmittingEvent(true);
     try {
@@ -564,7 +573,8 @@ export default function EventsPage() {
         notes: notes.trim() || undefined,
         targetParticipants: targetParticipants || 0,
         emsEventId: emsEventId || null,
-        emsSource
+        emsSource,
+        syncDestination: syncDestination || null
       });
 
       toast.success('Event created successfully!');
@@ -577,6 +587,7 @@ export default function EventsPage() {
       setTargetParticipants(0);
       setEmsEventId(0);
       setEmsSource('LEGACY');
+      setSyncDestination('');
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create event');
@@ -605,6 +616,7 @@ export default function EventsPage() {
     setEditTargetParticipants(event.targetParticipants || event.targetPax || 0);
     setEditEmsEventId(event.emsEventId || 0);
     setEditEmsSource(event.emsSource || 'LEGACY');
+    setEditSyncDestination(event.syncDestination === 'company' || event.syncDestination === 'participant' ? event.syncDestination : '');
     setIsEditEventModalOpen(true);
   };
 
@@ -613,6 +625,10 @@ export default function EventsPage() {
     if (!editingEvent) return;
     if (!editName.trim()) {
       toast.error('Event name is required');
+      return;
+    }
+    if (!editSyncDestination) {
+      toast.error('Pilih jenis event Korporat atau Peserta / Publik.');
       return;
     }
 
@@ -632,7 +648,8 @@ export default function EventsPage() {
         notes: editNotes.trim() || undefined,
         targetParticipants: editTargetParticipants || 0,
         emsEventId: editEmsEventId || null,
-        emsSource: editEmsSource
+        emsSource: editEmsSource,
+        syncDestination: editSyncDestination || null
       });
 
       toast.success('Event updated successfully!');
@@ -946,8 +963,11 @@ export default function EventsPage() {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    const headers = [
+  const handleDownloadTemplate = (destination: 'company' | 'participant') => {
+    const headers = destination === 'participant' ? [
+      'First Name', 'Last Name', 'Email', 'Mobile Phone',
+      'Sekolah/Kampus/Instansi', 'Kategori Peserta'
+    ] : [
       'Nama Group', 'Nama Brand', 'Company Name', 'Salutation', 
       'First Name', 'Last Name', 'Position', 'Division',
       'Jobtitle', 'Address', 'Office Phone', 'Mobile Phone', 
@@ -956,29 +976,19 @@ export default function EventsPage() {
       'Linkedin Link', 'City', 'Company Website'
     ];
     
+    const emailHeader = destination === 'participant' ? 'Email' : 'Company Email Address';
     const sampleData = [
       {
-        'Nama Group': 'Kim Holding',
-        'Nama Brand': 'Kim Comm',
-        'Company Name': 'Kim Communication PT',
-        'Salutation': 'Mr',
-        'First Name': 'Budi',
-        'Last Name': 'Anto',
-        'Position': 'manager',
-        'Division': 'Marketing',
-        'Jobtitle': 'Marketing Director',
-        'Address': 'Jl. Merdeka No. 10',
-        'Office Phone': '021-1234567',
-        'Mobile Phone': '081234567890',
-        'Company Email Address': 'budi.anto@kimcomm.com',
-        'Personal Email Address': 'budi.anto@gmail.com',
-        'Industry': 'Telecommunication',
-        'Company Size (Revenue)': '10B',
-        'Company Size (Employee)': '100',
-        'Company Hardware': 'Cisco',
-        'Linkedin Link': 'https://linkedin.com/in/budianto',
-        'City': 'Jakarta',
-        'Company Website': 'www.kimcomm.com'
+        'First Name': 'Contoh Email',
+        'Last Name': 'Uji',
+        [emailHeader]: 'contoh.email@example.com',
+        'Mobile Phone': ''
+      },
+      {
+        'First Name': 'Contoh Telepon',
+        'Last Name': 'Uji',
+        [emailHeader]: '',
+        'Mobile Phone': '081200000001'
       }
     ];
 
@@ -988,12 +998,18 @@ export default function EventsPage() {
 
     worksheet['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 3, 15) }));
 
-    XLSX.writeFile(workbook, 'Event_Participants_Import_Template.xlsx');
+    XLSX.writeFile(workbook, destination === 'participant'
+      ? 'Event_Peserta_Import_Template.xlsx'
+      : 'Event_Perusahaan_Import_Template.xlsx');
     toast.success('Template Excel berhasil diunduh!');
   };
 
-  const handleImportParticipantsExcel = async () => {
+  const handleImportParticipantsExcel = async (destination: 'company' | 'participant') => {
     if (!importParticipantsFile || !selectedEvent) return;
+    if (!selectedEvent.syncDestination || destination !== selectedEvent.syncDestination) {
+      toast.error('Tujuan import harus mengikuti jenis event. Buka Edit Event untuk memeriksanya.');
+      return;
+    }
     setIsImportingParticipants(true);
 
     try {
@@ -1001,6 +1017,7 @@ export default function EventsPage() {
       const result = await crmService.importEventParticipants(
         selectedEvent.id,
         importParticipantsFile,
+        destination,
         activeTab
       );
       setImportParticipantsProgress(100);
@@ -1375,6 +1392,12 @@ export default function EventsPage() {
   };
 
   const handleOpenAddParticipantModal = async () => {
+    if (!selectedEvent) return;
+    if (!selectedEvent.syncDestination) {
+      toast.error('Tentukan jenis event sebelum menambahkan kontak.');
+      openEditEventModal(selectedEvent);
+      return;
+    }
     setIsAddParticipantModalOpen(true);
   };
 
@@ -1601,7 +1624,7 @@ export default function EventsPage() {
                     
                     <div className="border-t border-slate-100 pt-3 mt-4 flex items-center justify-between">
                       <span className="px-2.5 py-0.5 text-[10px] font-semibold bg-slate-50 border border-slate-200 text-slate-600 rounded-md uppercase tracking-wider">
-                        {evt.eventType}
+                        {evt.syncDestination === 'company' ? 'Korporat' : evt.syncDestination === 'participant' ? 'Peserta / Publik' : 'Jenis event belum ditentukan'}
                       </span>
                     </div>
                   </div>
@@ -1657,6 +1680,9 @@ export default function EventsPage() {
                 <h2 className="font-bold text-2xl text-slate-900">
                   {selectedEvent.name}
                 </h2>
+                <span className="rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                  {selectedEvent.syncDestination === 'company' ? 'Korporat' : selectedEvent.syncDestination === 'participant' ? 'Peserta / Publik' : 'Jenis event belum ditentukan'}
+                </span>
                 {(() => {
                   const eventStatusInfo = getEventStatus(selectedEvent.dateStart, selectedEvent.dateEnd);
                   if (eventStatusInfo === null) return null;
@@ -1801,29 +1827,18 @@ export default function EventsPage() {
 
             {/* Participant Management Buttons */}
             <div className="flex flex-wrap items-center gap-2 pb-2 md:pb-0 self-start md:self-auto">
+              <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Tujuan import &amp; sync: <strong>{selectedEvent.syncDestination === 'participant' ? 'Database Peserta' : selectedEvent.syncDestination === 'company' ? 'Database Perusahaan' : 'Belum ditentukan'}</strong>
+              </span>
+              {!isViewer && !selectedEvent.syncDestination && <button type="button" onClick={() => openEditEventModal(selectedEvent)} className="text-sm font-semibold text-blue-700 underline">Atur jenis event</button>}
               {!isViewer && selectedEvent?.emsEventId && selectedEvent.emsEventId > 0 && (
                 <button
-                  onClick={async () => {
-                    if (selectedEvent) {
-                      setLoadingParticipants(true);
-                      try {
-                        toast.info('Memulai sinkronisasi data EMS...');
-                        const res = await crmService.syncEmsParticipants(selectedEvent.id);
-                        toast.success(`Berhasil menyinkronkan ${res?.count || 0} peserta dari EMS!`);
-                        // Auto-reload data and stay on the current tab
-                        await loadParticipantsForEvent(selectedEvent, activeTab);
-                      } catch (err: any) {
-                        toast.error(err?.message || 'Gagal menyinkronkan data EMS');
-                      } finally {
-                        setLoadingParticipants(false);
-                      }
-                    }
-                  }}
+                  onClick={() => setIsEmsSyncOpen(true)}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-all"
                   title={`Sinkronisasi data peserta dari ${selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}`}
                 >
                   <Loader2 className={`w-4 h-4 ${loadingParticipants ? 'animate-spin' : ''}`} />
-                  Sync {selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}
+                  Preview & Sync {selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}
                 </button>
               )}
               {statsParticipants.length > 0 && (
@@ -2117,16 +2132,30 @@ export default function EventsPage() {
         setTargetParticipants={setTargetParticipants}
         emsSource={emsSource}
         setEmsSource={setEmsSource}
+        syncDestination={syncDestination}
+        setSyncDestination={setSyncDestination}
         emsEventId={emsEventId}
         setEmsEventId={setEmsEventId}
         submittingEvent={submittingEvent}
         onSubmit={handleCreateEvent}
       />
 
+      <EmsSyncDialog
+        isOpen={isEmsSyncOpen}
+        event={selectedEvent}
+        onClose={() => setIsEmsSyncOpen(false)}
+        onConfigureEvent={() => {
+          setIsEmsSyncOpen(false);
+          if (selectedEvent) openEditEventModal(selectedEvent);
+        }}
+        onSynced={async () => { if (selectedEvent) await loadParticipantsForEvent(selectedEvent, activeTab); }}
+      />
+
       {/* Edit Event Modal */}
       <EditEventModal
         isOpen={isEditEventModalOpen}
         editingEvent={editingEvent}
+        hasParticipants={Boolean(editingEvent && selectedEvent?.id === editingEvent.id && (participantsTotal > 0 || allStatsParticipants.length > 0))}
         onClose={() => {
           setIsEditEventModalOpen(false);
           setEditingEvent(null);
@@ -2147,6 +2176,8 @@ export default function EventsPage() {
         setEditTargetParticipants={setEditTargetParticipants}
         emsSource={editEmsSource}
         setEmsSource={setEditEmsSource}
+        syncDestination={editSyncDestination}
+        setSyncDestination={setEditSyncDestination}
         editEmsEventId={editEmsEventId}
         setEditEmsEventId={setEditEmsEventId}
         submittingEvent={submittingEvent}
@@ -2240,6 +2271,13 @@ export default function EventsPage() {
 
       {/* Excel Import Modal */}
       <ExcelImportModal
+        key={`${selectedEvent?.id || ''}:${selectedEvent?.syncDestination || ''}:${activeTab}`}
+        eventDestination={selectedEvent?.syncDestination || undefined}
+        onConfigureEvent={() => {
+          setIsImportParticipantsModalOpen(false);
+          setImportParticipantsFile(null);
+          if (selectedEvent) openEditEventModal(selectedEvent);
+        }}
         isOpen={isImportParticipantsModalOpen}
         onClose={() => {
           setIsImportParticipantsModalOpen(false);

@@ -152,8 +152,13 @@ export interface IndustrySummaryResponse {
   }>;
 }
 
+export type DatabaseDestination = 'company' | 'participant' | 'both';
+
 export interface Database {
   id: number;
+  databaseDestination?: DatabaseDestination;
+  participantCategory?: string;
+  institutionName?: string;
   company?: Company | null;
   branch?: CompanyBranch | null;
   salutation?: string;
@@ -200,6 +205,7 @@ export interface DatabaseListResponse {
   totalPages: number;
   items: Database[];
   analytics?: DatabaseAnalytics;
+  destinations?: { company: number; participant: number };
   summary: {
     all: number;
     clean: number;
@@ -222,6 +228,21 @@ export interface DatabaseFilterOptionsResponse {
 }
 
 export type EmsSource = 'LEGACY' | 'V2';
+
+export interface EmsSyncPreview {
+  destination: 'company' | 'participant';
+  totalRows: number;
+  newCount: number;
+  existingCount: number;
+  rejectedCount: number;
+  previewToken: string;
+  rows: Array<{ rowNum: number; name: string; email: string; status: 'NEW' | 'EXISTING' | 'REJECTED'; existingDatabaseId?: number; message: string }>;
+}
+
+export interface EmsSyncResult extends EmsSyncPreview {
+  count: number;
+  message: string;
+}
 
 export interface Event {
   id: number;
@@ -249,6 +270,7 @@ export interface Event {
   pmsEventId?: number;
   emsEventId?: number | null;
   emsSource?: EmsSource;
+  syncDestination?: 'company' | 'participant' | null;
   createdAt?: string;
   updatedAt?: string;
   registeredCount?: number;
@@ -397,9 +419,12 @@ export interface EventParticipantsImportValidationRow {
   existingDatabaseId?: number | null;
   existingParticipantId?: number | null;
   issues: string[];
+  warnings?: string[];
+  missingFields?: string[];
 }
 
 export interface EventParticipantsImportValidationResponse {
+  destination: 'company' | 'participant';
   eventId: number;
   eventName: string;
   tab?: string;

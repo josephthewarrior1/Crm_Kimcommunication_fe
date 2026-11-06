@@ -1,9 +1,16 @@
 import { Database, Company, CompanyBranch } from '../../../../lib/types';
 import { getContactOffice } from '../../../../lib/utils/companyBranch';
+import { isCompanyContactEmail, isParticipantProfile, isValidContactEmail } from './emailCategory';
 
-export const checkDatabaseCompleteness = (c: Database) => {
+export const checkDatabaseCompleteness = (c: Database, destination?: 'company' | 'participant') => {
   const missing: string[] = [];
   const office = getContactOffice(c);
+
+  if (isParticipantProfile(c, destination)) {
+    if (!c.firstName?.trim()) missing.push('First Name');
+    if (!c.emails?.some(email => email && isValidContactEmail(email.email))) missing.push('Email Peserta');
+    return { isIncomplete: missing.length > 0, missingFields: missing };
+  }
 
   if (!c.company?.group?.name?.trim()) missing.push("Nama Group Holding");
   if (!c.company?.brandName?.trim()) missing.push("Nama Brand");
@@ -18,7 +25,7 @@ export const checkDatabaseCompleteness = (c: Database) => {
   if (!c.mobilePhone?.trim()) missing.push("Mobile Phone");
 
   const emails = c.emails || [];
-  const hasCompanyEmail = emails.some(e => e.isCorporate || e.emailType === 'company');
+  const hasCompanyEmail = emails.some(isCompanyContactEmail);
 
   if (!hasCompanyEmail) missing.push("Company Email");
 
@@ -44,10 +51,12 @@ export const checkFormCompleteness = (
   linkedinUrlVal: string,
   compSelectedId: string,
   companiesList: Company[],
-  branch?: CompanyBranch | null
+  branch?: CompanyBranch | null,
+  destination: 'company' | 'participant' = 'company'
 ) => {
   const selectedComp = companiesList.find(comp => comp.id.toString() === compSelectedId);
   const mockDb: any = {
+    databaseDestination: destination,
     salutation: salutationVal,
     firstName: firstNameVal,
     lastName: lastNameVal,

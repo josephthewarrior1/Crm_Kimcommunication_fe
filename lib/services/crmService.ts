@@ -19,6 +19,8 @@ import {
   DatabaseEmail,
   Event,
   EmsSource,
+  EmsSyncPreview,
+  EmsSyncResult,
   EventAvailableDatabasesResponse,
   EventActivitySummaryResponse,
   EventFilterOptionsResponse,
@@ -192,6 +194,7 @@ export class CrmService extends ApiService {
   }
 
   async getDatabasesList(params?: {
+    destination?: 'all' | 'company' | 'participant';
     search?: string;
     groupId?: string;
     companyId?: string;
@@ -206,6 +209,7 @@ export class CrmService extends ApiService {
     size?: number;
   }, signal?: AbortSignal): Promise<DatabaseListResponse> {
     const searchParams = new URLSearchParams();
+    if (params?.destination) searchParams.set('destination', params.destination);
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
@@ -223,6 +227,7 @@ export class CrmService extends ApiService {
   }
 
   async exportDatabases(params?: {
+    destination?: 'all' | 'company' | 'participant';
     search?: string;
     groupId?: string;
     companyId?: string;
@@ -235,6 +240,7 @@ export class CrmService extends ApiService {
     sortOrder?: 'asc' | 'desc';
   }, signal?: AbortSignal): Promise<DatabaseExportResponse> {
     const searchParams = new URLSearchParams();
+    if (params?.destination) searchParams.set('destination', params.destination);
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
@@ -250,6 +256,7 @@ export class CrmService extends ApiService {
   }
 
   async getDatabaseFilterOptions(params?: {
+    destination?: 'all' | 'company' | 'participant';
     search?: string;
     groupId?: string;
     companyId?: string;
@@ -260,6 +267,7 @@ export class CrmService extends ApiService {
     tab?: 'all' | 'clean' | 'dirty';
   }, signal?: AbortSignal): Promise<DatabaseFilterOptionsResponse> {
     const searchParams = new URLSearchParams();
+    if (params?.destination) searchParams.set('destination', params.destination);
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
@@ -272,7 +280,7 @@ export class CrmService extends ApiService {
     return this.get<DatabaseFilterOptionsResponse>(`/api/databases/filter-options${query ? `?${query}` : ''}`, { signal });
   }
 
-  async createDatabase(database: Partial<Database>, companyId?: number, branchId?: number | null): Promise<Database> {
+  async createDatabase(database: Omit<Partial<Database>, 'emails'> & { emails?: Partial<DatabaseEmail>[] }, companyId?: number, branchId?: number | null): Promise<Database> {
     const params = new URLSearchParams();
     if (companyId) params.set('companyId', String(companyId));
     if (branchId != null) params.set('branchId', String(branchId));
@@ -456,10 +464,12 @@ export class CrmService extends ApiService {
   async validateEventParticipantsImport(
     eventId: number,
     file: File,
+    destination: 'company' | 'participant',
     tab?: string
   ): Promise<EventParticipantsImportValidationResponse> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('destination', destination);
     if (tab) formData.append('tab', tab);
     return this.postFormData<EventParticipantsImportValidationResponse>(`/api/events/${eventId}/participants/import/validate`, formData);
   }
@@ -467,6 +477,7 @@ export class CrmService extends ApiService {
   async importEventParticipants(
     eventId: number,
     file: File,
+    destination: 'company' | 'participant',
     tab?: string
   ): Promise<{
     message: string;
@@ -480,6 +491,7 @@ export class CrmService extends ApiService {
   }> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('destination', destination);
     if (tab) formData.append('tab', tab);
     return this.postFormData<{
       message: string;
@@ -697,8 +709,16 @@ export class CrmService extends ApiService {
   }
 
   // ponytail: trigger EMS participant sync for a CRM event
-  async syncEmsParticipants(eventId: number): Promise<{ message: string; count: number }> {
-    return this.post<{ message: string; count: number }>(`/api/events/${eventId}/sync-ems`, {});
+  async previewEmsParticipants(eventId: number): Promise<EmsSyncPreview> {
+    return this.post<EmsSyncPreview>(`/api/events/${eventId}/sync-ems/preview`, {});
+  }
+
+  async setEventSyncDestination(eventId: number, destination: 'company' | 'participant'): Promise<Event> {
+    return this.patch<Event>(`/api/events/${eventId}/sync-destination`, { destination });
+  }
+
+  async syncEmsParticipants(eventId: number, confirmation: { previewToken: string }): Promise<EmsSyncResult> {
+    return this.post<EmsSyncResult>(`/api/events/${eventId}/sync-ems`, confirmation);
   }
 
   // --- EVENT PARTICIPANTS ---
@@ -889,7 +909,8 @@ export class CrmService extends ApiService {
   }
 
   // --- EXCEL IMPORT ---
-  async previewDatabasesExcel(file: File): Promise<{
+  async previewDatabasesExcel(file: File, destination: 'company' | 'participant'): Promise<{
+    destination: 'company' | 'participant';
     totalRows: number;
     newCount: number;
     duplicateCount: number;
@@ -918,7 +939,7 @@ export class CrmService extends ApiService {
     const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const response = await fetch(`${this.baseUrl}/api/databases/import/preview`, {
+    const response = await fetch(`${this.baseUrl}/api/databases/import/preview?destination=${destination}`, {
       method: 'POST',
       headers,
       body: formData
@@ -938,14 +959,14 @@ export class CrmService extends ApiService {
     return response.json();
   }
 
-  async importDatabasesExcel(file: File): Promise<DatabaseImportResult> {
+  async importDatabasesExcel(file: File, destination: 'company' | 'participant'): Promise<DatabaseImportResult> {
     const formData = new FormData();
     formData.append('file', file);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const response = await fetch(`${this.baseUrl}/api/databases/import`, {
+    const response = await fetch(`${this.baseUrl}/api/databases/import?destination=${destination}`, {
       method: 'POST',
       headers,
       body: formData

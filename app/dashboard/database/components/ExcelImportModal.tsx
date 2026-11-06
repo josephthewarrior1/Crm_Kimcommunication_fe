@@ -11,6 +11,7 @@ import { DatabaseImportGuide } from './DatabaseImportGuide';
 
 interface ExcelImportModalProps {
   isOpen: boolean;
+  initialDestination?: 'company' | 'participant';
   onClose: () => void;
   onImportSuccess: () => void | Promise<void>;
 }
@@ -74,19 +75,31 @@ const EXPECTED_HEADERS = [
   'Company Website',
 ];
 
+const PARTICIPANT_HEADERS = ['No', 'First Name', 'Last Name', 'Email', 'Mobile Phone', 'Kategori Peserta', 'Sekolah/Kampus/Instansi'];
+
 const normalizeHeader = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 
-const validateDatabaseTemplateHeader = async (file: File) => {
+const validateDatabaseTemplateHeader = async (file: File, destination: 'company' | 'participant') => {
   const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false });
   const headers = rows[0] || [];
+  if (destination === 'participant') {
+    const names = headers.map(normalizeHeader);
+    if (names.includes('email') || names.includes('email peserta')) {
+      if (!names.includes('first name') && !names.includes('nama')) throw new Error('Template Peserta memerlukan First Name dan Email.');
+      return;
+    }
+  }
   const hasBranchAfterLinkedin = ['cabang/kantor', 'branch', 'branch name'].includes(normalizeHeader(headers[20]));
   const problems = EXPECTED_HEADERS
     .map((expected, index) => {
       const column = hasBranchAfterLinkedin && index >= 20 ? index + 1 : index;
       const actual = headers[column];
-      return normalizeHeader(actual) === normalizeHeader(expected)
+      const actualName = normalizeHeader(actual);
+      const expectedName = normalizeHeader(expected);
+      return actualName === expectedName || (destination === 'participant'
+        && ((expectedName === 'first name' && actualName === 'firts name') || (expectedName === 'linkedin link' && actualName === 'linkedin')))
         ? null
         : `Kolom ${column + 1} harus "${expected}", terbaca "${actual || '[kosong]'}"`;
     })
@@ -99,10 +112,12 @@ const validateDatabaseTemplateHeader = async (file: File) => {
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   isOpen,
+  initialDestination,
   onClose,
   onImportSuccess
 }) => {
   const { user } = useAuth();
+  const [destination, setDestination] = useState<'company' | 'participant' | ''>(initialDestination || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
@@ -137,11 +152,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       resetState();
+      setDestination(initialDestination || '');
     }
-  }, [isOpen]);
+  }, [isOpen, initialDestination]);
 
   const handlePreviewExcel = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!destination) { toast.error('Pilih tujuan import terlebih dahulu.'); return; }
     if (!selectedImportFile) {
       toast.error('Silakan pilih file Excel terlebih dahulu');
       return;
@@ -168,8 +185,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }, 450);
 
     try {
-      await validateDatabaseTemplateHeader(selectedImportFile);
-      const data = await crmService.previewDatabasesExcel(selectedImportFile);
+      await validateDatabaseTemplateHeader(selectedImportFile, destination);
+      const data = await crmService.previewDatabasesExcel(selectedImportFile, destination);
+      if (data.destination !== destination) throw new Error('Tujuan pada preview tidak sesuai. Muat ulang dan periksa pilihan tujuan sebelum import.');
       clearInterval(ticker);
       setImportProgress(100);
       setImportPhase('Preview siap!');
@@ -258,7 +276,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       return;
     }
 
-    if (!importPreview || importingExcel || importResult) return;
+    if (!destination || !importPreview || importingExcel || importResult) return;
 
     if (cleanCount === 0) {
       toast.error('Tidak ada baris bersih untuk diimport. Perbaiki file Excel terlebih dahulu.');
@@ -289,7 +307,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }, 600);
 
     try {
-      const res = databaseImportResult(await crmService.importDatabasesExcel(selectedImportFile));
+      const res = databaseImportResult(await crmService.importDatabasesExcel(selectedImportFile, destination));
       clearInterval(ticker);
       setImportProgress(100);
       setImportPhase('Import selesai!');
@@ -339,6 +357,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     onClose();
   };
 
+  const downloadParticipantTemplate = () => {
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.aoa_to_sheet([PARTICIPANT_HEADERS]);
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Peserta');
+    XLSX.writeFile(workbook, 'Database_Peserta_Template.xlsx');
+  };
+
   // Filter and search rows
   const filteredRows = useMemo(() => {
     if (!importPreview) return [];
@@ -385,6 +410,18 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         >
           <X className="w-5 h-5" />
         </button>
+
+        <div className="border-b border-slate-200 px-5 py-4 pr-14">
+          <label htmlFor="database-import-destination" className="mb-1.5 block text-xs font-semibold text-slate-700">Tujuan import</label>
+          <select id="database-import-destination" value={destination} disabled={loadingPreview || importingExcel || !!importResult}
+            onChange={event => { resetState(); setDestination(event.target.value as 'company' | 'participant' | ''); }}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 disabled:bg-slate-50">
+            <option value="">Pilih tujuan import</option>
+            <option value="company">Database Perusahaan</option>
+            <option value="participant">Database Peserta</option>
+          </select>
+          <p className="mt-1.5 text-xs leading-5 text-slate-500">Tujuan mengikuti pilihan ini, bukan domain email. Database Peserta menerima email pribadi, kampus, maupun perusahaan.</p>
+        </div>
 
         {importResult ? (
           <div className="ms-modal-form" role="region" aria-label="Hasil import">
@@ -452,17 +489,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </div>
               <h3 className="ms-modal-title">Import Databases from Excel</h3>
               <p className="ms-modal-description">
-                Upload template spreadsheet untuk import massal grup holding, perusahaan, cabang, dan kontak database.
+                {destination === 'participant' ? 'Import profil peserta dengan nama dan email valid. Institusi dan nomor WhatsApp boleh diisi bila tersedia.' : 'Upload template spreadsheet untuk import massal grup holding, perusahaan, cabang, dan kontak database.'}
               </p>
               <div className="mt-3">
-                <a
+                {destination === 'participant' ? <button type="button" onClick={downloadParticipantTemplate} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline"><Download className="h-3.5 w-3.5" />Download Template Peserta (.xlsx)</button> : destination === 'company' ? <a
                   href="/Database_Template.xlsx?v=locked-header-v2"
                   download="Database_Template.xlsx"
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 hover:underline"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download Database Template (.xlsx)
-                </a>
+                </a> : <p className="text-xs text-slate-500">Pilih tujuan untuk mengunduh template yang sesuai.</p>}
               </div>
             </div>
 
@@ -547,7 +584,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={loadingPreview || !selectedImportFile}
+                  disabled={loadingPreview || !selectedImportFile || !destination}
                   className="ms-modal-primary"
                 >
                   {loadingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -562,8 +599,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <h3 className="ms-modal-title">Hasil Analisis & Preview Excel</h3>
               <p className="ms-modal-description">
                 Hanya {cleanCount} baris bersih yang diproses: {importPreview.newCount} kontak baru dan {importPreview.duplicateCount} update. {importPreview.issuesCount} baris kotor dilewati. Tab hanya menyaring tampilan.
-                Data kontak dan perusahaan tempat bekerja mengikuti Excel. Kolom kosong dan email lama tetap dipertahankan. Office Phone cabang diperbarui mengikuti Excel jika diisi. Data master perusahaan yang sudah terisi tidak ditimpa.
-                {' '}Cabang terlihat di bawah nama perusahaan. Perbedaan alamat pada cabang yang sama ditandai sebagai konflik; perpindahan cabang kontak dilakukan lewat Edit kontak.
+                {destination === 'participant' ? ' Tujuan: Database Peserta. Email kampus dan perusahaan tetap diterima. Sekolah/kampus disimpan sebagai institusi peserta; data master perusahaan tidak diubah.' : ' Data kontak dan perusahaan tempat bekerja mengikuti Excel. Kolom kosong dan email lama tetap dipertahankan. Office Phone cabang diperbarui mengikuti Excel jika diisi. Data master perusahaan yang sudah terisi tidak ditimpa. Perpindahan cabang dilakukan lewat Edit kontak.'}
               </p>
             </div>
 
@@ -643,7 +679,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold text-red-700">Baris kotor akan dilewati: </span>
-                  {importPreview.issuesCount} baris belum lengkap atau konflik tidak akan disimpan. {cleanCount > 0 ? `${cleanCount} baris bersih tetap bisa diimport.` : 'Tidak ada baris bersih; perbaiki file lalu upload ulang.'} Company email dan nomor kantor boleh digunakan bersama. Hasil import akan menyertakan daftar baris yang dilewati.
+                  {importPreview.issuesCount} baris belum lengkap atau konflik tidak akan disimpan. {cleanCount > 0 ? `${cleanCount} baris bersih tetap bisa diimport.` : 'Tidak ada baris bersih; perbaiki file lalu upload ulang.'} {destination === 'participant' ? 'Email peserta dan nomor HP diperiksa agar satu identitas tidak menjadi beberapa profil.' : 'Company email dan nomor kantor boleh digunakan bersama.'} Hasil import akan menyertakan daftar baris yang dilewati.
                 </div>
               </div>
             ) : importPreview.duplicateCount > 0 ? (
@@ -793,7 +829,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       <tr className="bg-slate-100/90 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 backdrop-blur-xs">
                         <th className="py-3 px-3 w-16 text-center">Baris</th>
                         <th className="py-3 px-3 w-[12%]">Nama</th>
-                        <th className="py-3 px-3 w-[15%]">Perusahaan / Cabang</th>
+                        <th className="py-3 px-3 w-[15%]">{destination === 'participant' ? 'Sekolah/Kampus/Instansi' : 'Perusahaan / Cabang'}</th>
                         <th className="py-3 px-3 w-[18%]">Email / Mobile</th>
                         <th className="py-3 px-3 w-32">Status</th>
                         <th className="py-3 px-4">Rincian Error / Keterangan</th>
