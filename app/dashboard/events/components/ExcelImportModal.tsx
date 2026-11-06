@@ -275,7 +275,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <h3 className="ms-modal-title">Import Participants from Excel</h3>
               <p className="ms-modal-description mt-2">
                 Upload template spreadsheet untuk menambahkan participant ke tab <span className="font-bold text-[#5b5fc7]">{currentTabLabel}</span>.
-                {' '}Cukup nama dan minimal email valid atau nomor HP/WhatsApp. Jika keduanya kosong, baris ditahan; kolom lainnya boleh dilengkapi setelah import.
+                {' '}Cukup minimal email valid atau nomor HP/WhatsApp. Nama dan kolom lainnya boleh dilengkapi setelah import. Jika email dan HP sama-sama kosong, baris ditahan. Beberapa nomor milik orang yang sama boleh dipisah koma.
               </p>
               <div className="mt-3">
                 <button
@@ -391,7 +391,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <div className="ms-modal-header pr-14">
               <h3 className="ms-modal-title">Hasil Analisis & Preview Excel</h3>
               <p className="ms-modal-description mt-2">
-                Review kontak untuk {currentTabLabel}. Nama dan minimal email valid atau HP wajib; kekurangan kolom database lainnya tidak menghalangi import.
+                Review kontak untuk {currentTabLabel}. Minimal email valid atau HP wajib; nama dan kolom lainnya boleh dilengkapi setelah import.
               </p>
             </div>
 
@@ -463,7 +463,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold text-red-700">Import Ditolak: </span>
-                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris yang perlu diperbaiki</span>. Periksa nama, email/HP, atau konflik identitas pada keterangan baris. Perbaiki di Excel lalu upload ulang.
+                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris yang perlu diperbaiki</span>. Periksa email/HP atau konflik identitas pada keterangan baris. Perbaiki di Excel lalu upload ulang.
                 </div>
               </div>
             ) : importPreview.duplicateCount > 0 ? (

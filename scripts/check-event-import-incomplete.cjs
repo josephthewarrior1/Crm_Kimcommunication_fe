@@ -89,6 +89,11 @@ async function modalFlow() {
   assert(email.content().includes('belum bisa ditelepon'));
   const gmail = await mount([row({ companyEmail: 'uji@gmail.com' })]);
   await gmail.preview(); assert.equal(gmail.button('Mulai Import').props.disabled, false, 'No new domain policy in the original CRM');
+  const unnamed = await mount([row({ firstName: '', lastName: '', companyEmail: 'uji@example.org',
+    mobilePhone: '081200001111, 081300002222', missingFields: ['First Name', 'Last Name'] })]);
+  await unnamed.preview(); assert.equal(unnamed.button('Mulai Import').props.disabled, false, 'Missing names are soft warnings for Event import');
+  assert(unnamed.content().includes('081200001111, 081300002222'));
+  assert(unnamed.content().includes('First Name, Last Name'));
 
   const known = await mount([row({ existingDatabaseId: 9, mobilePhone: '081200009601', missingFields: ['Company Email'] })]);
   await known.preview(); assert.equal(known.button('Mulai Import').props.disabled, false);
@@ -96,7 +101,7 @@ async function modalFlow() {
   assert(known.content().includes('akan ditautkan ke event'));
   assert(!known.content().includes('Belum lengkap — boleh import.'), 'Sparse Excel must not relabel an enriched existing profile');
 
-  for (const issue of ['Isi minimal satu kontak: email atau nomor HP/WhatsApp.', 'First Name wajib diisi', 'Format email tidak valid', 'Mobile Phone tidak valid']) {
+  for (const issue of ['Isi minimal satu kontak: email atau nomor HP/WhatsApp.', 'Format email tidak valid', 'Mobile Phone tidak valid']) {
     const blocked = await mount([row({ status: 'error', existingDatabaseId: 9, issues: [issue] })]);
     await blocked.preview(); assert.equal(blocked.button('Mulai Import').props.disabled, true, issue);
     assert(blocked.content().includes(issue)); assert(blocked.content().includes('Perlu perbaikan')); assert.equal(blocked.applied(), 0);
