@@ -5,12 +5,16 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const project = path.join(__dirname, '..');
+const contactHelpers = { exports: {} };
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(project, 'app/dashboard/events/utils/notesHelper.ts'), 'utf8'), {
+  compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
+}).outputText, contactHelpers);
 const children = node => [node?.props?.children].flat(Infinity);
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...children(node).flatMap(nodes)];
 const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : children(node).map(text).join('');
 let query = '', pathname = '/dashboard/database', viewer = false, stateIndex = 0;
 const pushes = [], changes = [];
-const fixture = { id: 1, firstName: 'Uji Peserta', lastName: 'Demo', isActive: true, emails: [{ email: 'uji@kampus.example.org' }],
+const fixture = { id: 1, firstName: 'Uji Peserta', lastName: 'Demo', isActive: true, emails: [{ email: 'uji@kampus.example.org', emailType: 'personal', isCorporate: false }],
   mobilePhone: '081200009602', institutionName: 'Kampus Uji', participantCategory: 'mahasiswa' };
 const React = {
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
@@ -35,7 +39,7 @@ function compile(file) {
     if (name.endsWith('/emailIdentity')) return { findPersonalEmailConflicts: () => [] };
     if (name.endsWith('/companyBranch')) return { getContactOffice: value => value.company };
     if (name.endsWith('/validationHelper')) return { checkDatabaseCompleteness: () => ({ isIncomplete: false, missingFields: [] }) };
-    if (name.endsWith('/notesHelper')) return { getOfficeEmail: () => '-', getPersonalEmail: () => '-' };
+    if (name.endsWith('/notesHelper')) return contactHelpers.exports;
     return generic;
   } };
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: {
@@ -69,10 +73,10 @@ const participantTree = page.component();
 const participantTable = nodes(participantTree).find(node => node.type === 'table');
 assert(participantTable);
 const participantHead = text(nodes(participantTable).find(node => node.type === 'thead'));
-for (const label of ['Nama Peserta', 'Email', 'HP / WhatsApp', 'Kategori', 'Sekolah/Kampus/Instansi']) assert(participantHead.includes(label));
-assert(!participantHead.includes('Nama Group'), 'Participant table must not show empty corporate columns');
-assert(text(participantTable).includes('uji@kampus.example.org'));
-assert(text(participantTable).includes('Kampus Uji'));
+for (const label of ['Nama Group/Holding Company', 'Company Name', 'First Name', 'Last Name', 'Mobile Phone', 'Personal Email Address', 'Company Email Address']) assert(participantHead.includes(label));
+assert(!participantHead.includes('Linkedin Link'), 'Only LinkedIn is omitted from Participant columns');
+assert(text(participantTable).includes('uji@kampus.example.org'), 'The real email helpers retain campus addresses stored as personal');
+assert(text(participantTable).includes('Kampus Uji'), 'Participant institution appears under Company Name without creating a company');
 const originalIdentity = { firstName: fixture.firstName, lastName: fixture.lastName, emails: fixture.emails, mobilePhone: fixture.mobilePhone };
 for (const [identity, label] of [
   [{ firstName: 'Uji Peserta Gmail', lastName: null }, 'Uji Peserta Gmail'],
@@ -98,7 +102,11 @@ assert.equal(next.searchParams.get('view'), 'owned');
 assert(!next.searchParams.has('search') && !next.searchParams.has('tab'));
 assert.equal(pushes[0][1].scroll, false);
 query = 'destination=company'; stateIndex = 0;
-assert(text(nodes(page.component()).find(node => node.type === 'thead')).includes('Nama Group/Holding Company'));
+const companyHead = nodes(page.component()).find(node => node.type === 'thead');
+assert(text(companyHead).includes('Nama Group/Holding Company'));
+const headerLabels = head => nodes(head).filter(node => node.type === 'th').map(text);
+assert.deepEqual(headerLabels(nodes(participantTable).find(node => node.type === 'thead')),
+  headerLabels(companyHead).filter(label => label !== 'Linkedin Link'), 'Participant columns match Company order except LinkedIn');
 
 let destinationEffect;
 function findEffect(node) {
@@ -124,4 +132,4 @@ assert.equal(resetCalls.length, 1); assert.equal(selectionCalls[0], 0); assert.e
 effectContext.exports.effect(); assert.equal(resetCalls.length, 1, 'Same destination must not reset local filters');
 effectContext.destination = 'company'; effectContext.searchParams = new URLSearchParams('destination=company');
 effectContext.exports.effect(); assert.equal(resetCalls.length, 2); assert.equal(tabCalls.at(-1), 'all');
-console.log('Database navigation passed: shared desktop/mobile submenu, query selection, URL tabs, scoped reset/back navigation, compact participant data, charts below records.');
+console.log('Database navigation passed: shared desktop/mobile submenu, URL/filter navigation, Company/Participant column parity except LinkedIn, campus email and institution display, safe optional names, charts below records.');

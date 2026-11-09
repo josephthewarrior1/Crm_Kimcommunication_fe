@@ -227,8 +227,9 @@ async function checkPageFlow() {
   assert.deepEqual(plain(page.state.databaseSummary), { all: 3, clean: 2, dirty: 1 });
   assert.deepEqual(plain(page.state.destinationCounts), { company: 1200, participant: 3 });
   assert.equal(page.state.exportDatabases[0].id, 2);
-  for (const field of ['participantEmail', 'institutionName', 'participantCategory', 'eventHistory']) assert(page.state.selectedColumns.includes(field), 'Participant export must include ' + field);
-  assert(!page.state.selectedColumns.includes('companyName'), 'Participant export must use institution metadata rather than a company prospect field');
+  const participantExportColumns = plain(page.state.selectedColumns);
+  for (const field of ['companyName', 'firstName', 'lastName', 'mobilePhone', 'companyEmail', 'personalEmail', 'eventHistory']) assert(participantExportColumns.includes(field), 'Participant export retains the shared Company column ' + field);
+  assert(!participantExportColumns.includes('linkedin'), 'Participant export omits LinkedIn');
   assert.equal(page.state.isExportConfigModalOpen, true);
   const categoryTree = page.renderCategories(), html = renderToStaticMarkup(categoryTree);
   assert(html.includes(`Database Perusahaan (${(1200).toLocaleString()})`) && html.includes('Database Peserta (3)'));
@@ -252,6 +253,9 @@ async function checkPageFlow() {
   assert.equal(page.calls.at(-1).params.destination, 'company');
   assert.equal(page.calls.at(-1).params.tab, 'all');
   assert.equal(page.state.serverTotalItems, 1200, 'Server counts survive a one-row page fixture');
+  await page.callbacks.handleOpenExportConfig();
+  assert(page.state.selectedColumns.includes('linkedin'), 'Company export retains LinkedIn');
+  assert.deepEqual(participantExportColumns, plain(page.state.selectedColumns).filter(key => key !== 'linkedin'), 'Participant export choices match Company order except LinkedIn');
 }
 
 (async () => {

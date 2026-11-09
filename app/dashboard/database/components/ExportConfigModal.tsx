@@ -62,9 +62,8 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
   onExportSuccess
 }) => {
   const [tempSelectedDbIds, setTempSelectedDbIds] = useState<number[]>([]);
-  const availableColumns = destination === 'participant'
-    ? EXPORT_COLUMNS.filter(column => ['firstName', 'lastName', 'participantEmail', 'mobilePhone', 'institutionName', 'participantCategory', 'eventHistory'].includes(column.key))
-    : EXPORT_COLUMNS.filter(column => !['participantEmail', 'institutionName', 'participantCategory'].includes(column.key));
+  const availableColumns = EXPORT_COLUMNS.filter(column => !['participantEmail', 'institutionName', 'participantCategory'].includes(column.key)
+    && (destination !== 'participant' || column.key !== 'linkedin'));
   const columns = selectedColumns.filter(key => availableColumns.some(column => column.key === key));
 
   useEffect(() => {
@@ -106,7 +105,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
         
         if (columns.includes('groupName')) rowData['Nama Group'] = c.company?.group?.name || '-';
         if (columns.includes('brandName')) rowData['Nama Brand'] = c.company?.brandName || '-';
-        if (columns.includes('companyName')) rowData['Company Name'] = c.company?.name || '-';
+        if (columns.includes('companyName')) rowData['Company Name'] = (destination === 'participant' ? c.institutionName || c.company?.name : c.company?.name) || '-';
         if (columns.includes('salutation')) rowData['Salutation'] = c.salutation || '-';
         if (columns.includes('firstName')) rowData['First Name'] = c.firstName || '-';
         if (columns.includes('lastName')) rowData['Last Name'] = c.lastName || '-';

@@ -643,7 +643,7 @@ export default function DatabasesPage() {
         sortOrder
       });
       setExportDatabases(response.items || []);
-      setSelectedColumns(destination === 'participant' ? ['firstName', 'lastName', 'participantEmail', 'mobilePhone', 'institutionName', 'participantCategory', 'eventHistory'] : EXPORT_COLUMNS.map(column => column.key));
+      setSelectedColumns(EXPORT_COLUMNS.filter(column => destination !== 'participant' || column.key !== 'linkedin').map(column => column.key));
     } catch {
       setExportDatabases(databases);
     }
@@ -965,13 +965,6 @@ export default function DatabasesPage() {
                 <tr className="text-slate-500 uppercase tracking-wider text-xs font-semibold whitespace-nowrap text-left">
                   <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-left sticky left-0 bg-slate-50 z-10">Actions</th>
                   <th aria-label="Kelengkapan data" className="py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
-                  {destination === 'participant' ? <>
-                    <th className="py-3 px-4">Nama Peserta</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">HP / WhatsApp</th>
-                    <th className="py-3 px-4">Kategori</th>
-                    <th className="py-3 px-4">Sekolah/Kampus/Instansi</th>
-                  </> : <>
                   <th
                     onClick={() => handleSort('groupName')}
                     className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
@@ -1086,7 +1079,7 @@ export default function DatabasesPage() {
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Revenue)</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Employee)</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Hardware</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Linkedin Link</th>
+                  {destination !== 'participant' && <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Linkedin Link</th>}
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Cabang/Kantor</th>
                   <th
                     onClick={() => handleSort('city')}
@@ -1103,7 +1096,6 @@ export default function DatabasesPage() {
                   </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Postal Code</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Website</th>
-                  </>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1336,13 +1328,6 @@ export default function DatabasesPage() {
                           </span>
                         )}
                       </td>
-                      {destination === 'participant' ? <>
-                        <td className="px-4 py-4 text-sm font-bold text-slate-900">{[c.firstName, c.lastName].filter(Boolean).join(' ') || 'Nama belum diisi'}</td>
-                        <td className="px-4 py-4 text-xs font-mono text-slate-600">{c.emails?.map(email => email.email).filter(Boolean).join(', ') || '-'}</td>
-                        <td className="px-4 py-4 text-sm text-slate-700">{c.mobilePhone ? <span className="font-mono">{c.mobilePhone}</span> : <><span>Email saja</span><span className="mt-1 block text-xs text-amber-800">Belum bisa ditelepon</span></>}</td>
-                        <td className="px-4 py-4 text-sm capitalize text-slate-600">{c.participantCategory || '-'}</td>
-                        <td className="px-4 py-4 text-sm text-slate-600">{c.institutionName || c.company?.name || '-'}</td>
-                      </> : <>
                       <td className="py-4 px-4 text-sm font-medium text-slate-600">
                         {c.company?.group?.name || <span className="text-slate-400">-</span>}
                       </td>
@@ -1350,13 +1335,13 @@ export default function DatabasesPage() {
                         {c.company?.brandName || <span className="text-slate-400">-</span>}
                       </td>
                       <td className="py-4 px-4 text-sm font-semibold text-slate-700">
-                        {c.company?.name || <span className="text-slate-400">-</span>}
+                        {(destination === 'participant' ? c.institutionName || c.company?.name : c.company?.name) || <span className="text-slate-400">-</span>}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-500">
                         {c.salutation || '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-bold text-slate-900 group-hover/row:text-blue-600 transition-colors">
-                        {c.firstName}
+                        {c.firstName || (destination === 'participant' && !c.lastName ? 'Nama belum diisi' : '-')}
                       </td>
                       <td className="py-4 px-4 text-sm font-bold text-slate-900">
                         {c.lastName || '-'}
@@ -1377,7 +1362,7 @@ export default function DatabasesPage() {
                         {office?.officePhone ? normalizePhone(office.officePhone) : '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-mono text-slate-700">
-                        {c.mobilePhone ? normalizePhone(c.mobilePhone) : '-'}
+                        {c.mobilePhone ? (destination === 'participant' ? c.mobilePhone : normalizePhone(c.mobilePhone)) : destination === 'participant' ? <><span>Email saja</span><span className="mt-1 block text-xs text-amber-800">Belum bisa ditelepon</span></> : '-'}
                       </td>
                       <td className="py-4 px-4 text-xs font-mono text-slate-600">
                         {getOfficeEmail(c.emails)}
@@ -1397,7 +1382,7 @@ export default function DatabasesPage() {
                       <td className="py-4 px-4 text-xs text-slate-600 max-w-[150px] truncate" title={c.company?.companyHardware}>
                         {c.company?.companyHardware || '-'}
                       </td>
-                      <td className="py-4 px-4 text-xs">
+                      {destination !== 'participant' && <td className="py-4 px-4 text-xs">
                         {c.linkedinUrl ? (
                           <a
                             href={c.linkedinUrl}
@@ -1409,7 +1394,7 @@ export default function DatabasesPage() {
                             LinkedIn <ExternalLink className="w-3 h-3" />
                           </a>
                         ) : '-'}
-                      </td>
+                      </td>}
                       <td className="py-4 px-4 text-sm text-slate-600">
                         {c.branch?.name || '-'}
                       </td>
@@ -1432,7 +1417,6 @@ export default function DatabasesPage() {
                           </a>
                         ) : '-'}
                       </td>
-                      </>}
                   </tr>
                   );
                 })}
