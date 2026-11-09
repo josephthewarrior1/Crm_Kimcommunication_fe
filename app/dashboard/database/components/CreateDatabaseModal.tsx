@@ -9,6 +9,21 @@ import { normalizePhone, normalizePhoneList } from '../utils/phoneHelper';
 import { isPersonalContactEmail, isValidContactEmail, isValidContactPhone } from '../utils/emailCategory';
 import { CompanyBranchSelect, useCompanyBranches } from './CompanyBranchSelect';
 
+const participantOrganizationFields = [
+  ['organizationGroupName', 'Holding Group', 255],
+  ['organizationBrandName', 'Brand', 255],
+  ['organizationAddress', 'Address', undefined],
+  ['organizationOfficePhone', 'Office Phone', 50],
+  ['organizationIndustry', 'Industry', 100],
+  ['organizationSizeRevenue', 'Company Size (Revenue)', 100],
+  ['organizationSizeEmployee', 'Company Size (Employee)', 100],
+  ['organizationBranchName', 'Cabang / Kantor', 255],
+  ['organizationPostalCode', 'Postal Code', 20],
+  ['organizationWebsite', 'Company Website', undefined],
+] as const;
+type ParticipantOrganization = Record<typeof participantOrganizationFields[number][0], string>;
+const emptyOrganization = Object.fromEntries(participantOrganizationFields.map(([key]) => [key, ''])) as ParticipantOrganization;
+
 interface CreateDatabaseModalProps {
   initialDestination?: 'company' | 'participant';
   isOpen: boolean;
@@ -28,6 +43,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
   const [destination, setDestination] = useState<'company' | 'participant'>(initialDestination);
   const [institutionName, setInstitutionName] = useState('');
   const [participantCategory, setParticipantCategory] = useState('');
+  const [organization, setOrganization] = useState<ParticipantOrganization>(emptyOrganization);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [salutation, setSalutation] = useState('');
@@ -51,12 +67,13 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const branchSelection = useCompanyBranches(isOpen && !isCreatingNewCompany ? selectedCompanyId : '', selectedBranchId);
+  const branchSelection = useCompanyBranches(isOpen && destination !== 'participant' && !isCreatingNewCompany ? selectedCompanyId : '', selectedBranchId);
 
   const resetForm = (nextDestination: 'company' | 'participant') => {
     setDestination(nextDestination);
     setInstitutionName('');
     setParticipantCategory('');
+    setOrganization(emptyOrganization);
     setFirstName('');
     setLastName('');
     setSalutation('');
@@ -106,7 +123,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     ? !newCompanyName.trim() : !selectedCompanyId);
   const missing: string[] = [];
   if (!isPersonalProfile && !firstName.trim()) missing.push('First Name');
-  if (isPersonalProfile && ![databaseCompanyEmail, databasePersonalEmail].some(isValidContactEmail) && !isValidContactPhone(mobilePhone)) missing.push('Email atau HP/WhatsApp valid');
+  if (isPersonalProfile && !isValidContactEmail(databasePersonalEmail) && !isValidContactPhone(mobilePhone)) missing.push('Email atau HP/WhatsApp valid');
   if (!isPersonalProfile) {
     if (!lastName.trim()) missing.push('Last Name');
     if (!salutation.trim()) missing.push('Salutation');
@@ -115,7 +132,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     if (!hasCompanyEmail) missing.push('Company Email perusahaan yang valid');
   }
   if (companySelectionMissing) missing.push(isCreatingNewCompany ? 'New Company Name' : 'Associated Company');
-  const invalidCompanyEmail = !!databaseCompanyEmail.trim() && !isValidContactEmail(databaseCompanyEmail);
+  const invalidCompanyEmail = !isPersonalProfile && !!databaseCompanyEmail.trim() && !isValidContactEmail(databaseCompanyEmail);
   const invalidPersonalEmail = !!databasePersonalEmail.trim() && !isValidContactEmail(databasePersonalEmail);
   const invalidMobilePhone = !!mobilePhone.trim() && (!isValidContactPhone(mobilePhone) || normalizePhoneList(mobilePhone).length > 50);
   const isFormIncomplete = missing.length > 0 || invalidCompanyEmail || invalidPersonalEmail || invalidMobilePhone;
@@ -184,6 +201,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
           databaseDestination: destination,
           institutionName: institutionName.trim(),
           participantCategory,
+          ...(isPersonalProfile ? Object.fromEntries(participantOrganizationFields.map(([key]) => [key, organization[key].trim()])) : {}),
           salutation,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
@@ -192,11 +210,11 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
           jobTitle: jobTitle.trim() || undefined,
           mobilePhone: mobilePhone.trim() ? normalizePhoneList(mobilePhone) : undefined,
           normalizedPhone: mobilePhone.trim() ? normalizePhone(mobilePhone) : undefined,
-          linkedinUrl: linkedinUrl.trim() || undefined,
+          linkedinUrl: !isPersonalProfile ? linkedinUrl.trim() || undefined : undefined,
           databaseType,
           source,
           isActive: true,
-          emails: isPersonalProfile ? [databasePersonalEmail, databaseCompanyEmail]
+          emails: isPersonalProfile ? [databasePersonalEmail]
             .filter(address => address.trim()).map((address, index) => ({
               email: address.trim().toLowerCase(), emailType: 'personal', isCorporate: false,
               isPrimary: index === 0, isVerified: true,
@@ -284,6 +302,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
         <label className="block text-sm font-semibold text-slate-700">Tujuan database
           <select aria-label="Tujuan database" value={destination} onChange={event => {
             setDestination(event.target.value as 'company' | 'participant');
+            setDatabaseCompanyEmail('');
             setSelectedCompanyId(''); setSelectedBranchId(''); setIsCreatingNewCompany(false); setNewCompanyName(''); setCompanySearchQuery('');
           }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
             <option value="company">Database Perusahaan</option>
@@ -292,9 +311,12 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
         </label>
         <p className="text-xs leading-5 text-slate-600">Tujuan mengikuti pilihan ini. Peserta cukup memiliki email valid atau HP/WhatsApp. Nama boleh dilengkapi belakangan; nama kosong tetap tersimpan sebagai Data Kotor. Email pribadi, kampus, atau kantor diterima.</p>
         {isPersonalProfile && <div className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm font-semibold text-slate-700">Sekolah/Kampus/Instansi
-            <input placeholder="Nama sekolah, kampus, atau instansi (opsional)" value={institutionName} onChange={event => setInstitutionName(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal" />
+          <label className="text-sm font-semibold text-slate-700">Company Name / Sekolah/Kampus/Instansi
+            <input placeholder="Nama sekolah, kampus, atau instansi (opsional)" maxLength={255} value={institutionName} onChange={event => setInstitutionName(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal" />
           </label>
+          {participantOrganizationFields.map(([key, label, maxLength]) => <label key={key} className="text-sm font-semibold text-slate-700">{label}
+            <input aria-label={label} maxLength={maxLength} value={organization[key]} onChange={event => setOrganization(previous => ({ ...previous, [key]: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal" />
+          </label>)}
           <label className="text-sm font-semibold text-slate-700">Kategori peserta
             <select aria-label="Kategori peserta" value={participantCategory} onChange={event => setParticipantCategory(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal">
               <option value="">Belum dikategorikan</option><option value="pelajar">Pelajar</option><option value="mahasiswa">Mahasiswa</option><option value="umum">Umum</option>
@@ -565,8 +587,8 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{isPersonalProfile ? 'Email tambahan (opsional)' : 'Company Email'} {!isPersonalProfile && <span className="text-red-500 font-bold">*</span>}</label>
+            {!isPersonalProfile && <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email <span className="text-red-500 font-bold">*</span></label>
               <input
                 type="email"
                 placeholder="e.g. name@company.com"
@@ -580,10 +602,10 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
               {submitAttempted && (invalidCompanyEmail || (!isPersonalProfile && !hasCompanyEmail)) && (
                 <p className="text-red-500 text-[11px] mt-1 font-semibold">{invalidCompanyEmail ? 'Format Company Email tidak valid' : 'Isi email perusahaan yang valid untuk kontak korporat'}</p>
               )}
-            </div>
+            </div>}
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{isPersonalProfile ? 'Email Peserta' : 'Personal Email'} {isPersonalProfile && !isValidContactEmail(databaseCompanyEmail) && !isValidContactPhone(mobilePhone) ? <span className="text-red-500 font-bold">*</span> : <span className="text-slate-400 font-normal text-xs">(Optional)</span>}</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Personal Email {isPersonalProfile && !isValidContactPhone(mobilePhone) ? <span className="text-red-500 font-bold">*</span> : <span className="text-slate-400 font-normal text-xs">(Optional)</span>}</label>
               <input
                 type="email"
                 placeholder="e.g. name@gmail.com"
@@ -594,7 +616,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
               {submitAttempted && invalidPersonalEmail && <p className="text-red-500 text-[11px] mt-1 font-semibold">Format Personal Email tidak valid</p>}
             </div>
 
-            <div>
+            {!isPersonalProfile && <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">LinkedIn Profile URL</label>
               <input
                 type="text"
@@ -603,7 +625,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                 onChange={(e) => setLinkedinUrl(e.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
               />
-            </div>
+            </div>}
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Database Type</label>
@@ -654,7 +676,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={submitting || (!isCreatingNewCompany && !branchSelection.valid)}
+                disabled={submitting || (!isPersonalProfile && !isCreatingNewCompany && !branchSelection.valid)}
                 className="ms-modal-primary"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

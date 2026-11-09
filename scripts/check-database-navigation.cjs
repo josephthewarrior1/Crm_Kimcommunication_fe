@@ -9,13 +9,21 @@ const contactHelpers = { exports: {} };
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(project, 'app/dashboard/events/utils/notesHelper.ts'), 'utf8'), {
   compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
 }).outputText, contactHelpers);
+const organizationHelpers = { exports: {} };
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(project, 'lib/utils/companyBranch.ts'), 'utf8'), {
+  compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
+}).outputText, organizationHelpers);
 const children = node => [node?.props?.children].flat(Infinity);
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...children(node).flatMap(nodes)];
 const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : children(node).map(text).join('');
 let query = '', pathname = '/dashboard/database', viewer = false, stateIndex = 0;
 const pushes = [], changes = [];
 const fixture = { id: 1, firstName: 'Uji Peserta', lastName: 'Demo', isActive: true, emails: [{ email: 'uji@kampus.example.org', emailType: 'personal', isCorporate: false }],
-  mobilePhone: '081200009602', institutionName: 'Kampus Uji', participantCategory: 'mahasiswa' };
+  mobilePhone: '081200009602', institutionName: 'Kampus Uji', participantCategory: 'mahasiswa',
+  organizationGroupName: 'Grup Peserta', organizationBrandName: 'Brand Peserta', organizationAddress: 'Alamat Peserta',
+  organizationOfficePhone: '0215557001', organizationIndustry: 'Education', organizationSizeRevenue: 'Small',
+  organizationSizeEmployee: 'Medium', organizationBranchName: 'Cabang Peserta', organizationPostalCode: '00123',
+  organizationWebsite: 'https://campus.example.invalid' };
 const React = {
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
   useState(initial) { const index = stateIndex++; return [index === 0 && pathname === 'test-page' ? [fixture]
@@ -37,7 +45,7 @@ function compile(file) {
     if (name.endsWith('/crmService')) return { crmService: new Proxy({}, { get() { throw Error('No network during render'); } }) };
     if (name.endsWith('/phoneHelper')) return { normalizePhone: value => value };
     if (name.endsWith('/emailIdentity')) return { findPersonalEmailConflicts: () => [] };
-    if (name.endsWith('/companyBranch')) return { getContactOffice: value => value.company };
+    if (name.endsWith('/companyBranch')) return organizationHelpers.exports;
     if (name.endsWith('/validationHelper')) return { checkDatabaseCompleteness: () => ({ isIncomplete: false, missingFields: [] }) };
     if (name.endsWith('/notesHelper')) return contactHelpers.exports;
     return generic;
@@ -73,10 +81,11 @@ const participantTree = page.component();
 const participantTable = nodes(participantTree).find(node => node.type === 'table');
 assert(participantTable);
 const participantHead = text(nodes(participantTable).find(node => node.type === 'thead'));
-for (const label of ['Nama Group/Holding Company', 'Company Name', 'First Name', 'Last Name', 'Mobile Phone', 'Personal Email Address', 'Company Email Address']) assert(participantHead.includes(label));
-assert(!participantHead.includes('Linkedin Link'), 'Only LinkedIn is omitted from Participant columns');
+for (const label of ['No', 'Nama Group/Holding Company', 'Company Name', 'First Name', 'Last Name', 'Mobile Phone', 'Personal Email Address']) assert(participantHead.includes(label));
+for (const label of ['Company Email Address', 'Company Hardware', 'Linkedin Link', 'City']) assert(!participantHead.includes(label), 'Student omits ' + label);
 assert(text(participantTable).includes('uji@kampus.example.org'), 'The real email helpers retain campus addresses stored as personal');
 assert(text(participantTable).includes('Kampus Uji'), 'Participant institution appears under Company Name without creating a company');
+for (const value of ['Grup Peserta', 'Brand Peserta', 'Alamat Peserta', '0215557001', 'Education', 'Small', 'Medium', 'Cabang Peserta', '00123']) assert(text(participantTable).includes(value), 'Student shows its own organization data: ' + value);
 const originalIdentity = { firstName: fixture.firstName, lastName: fixture.lastName, emails: fixture.emails, mobilePhone: fixture.mobilePhone };
 for (const [identity, label] of [
   [{ firstName: 'Uji Peserta Gmail', lastName: null }, 'Uji Peserta Gmail'],
@@ -106,7 +115,8 @@ const companyHead = nodes(page.component()).find(node => node.type === 'thead');
 assert(text(companyHead).includes('Nama Group/Holding Company'));
 const headerLabels = head => nodes(head).filter(node => node.type === 'th').map(text);
 assert.deepEqual(headerLabels(nodes(participantTable).find(node => node.type === 'thead')),
-  headerLabels(companyHead).filter(label => label !== 'Linkedin Link'), 'Participant columns match Company order except LinkedIn');
+  ['Actions', '', 'No', 'Nama Group/Holding Company', 'Nama Brand', 'Company Name', 'Salutation', 'First Name', 'Last Name', 'Position', 'Division', 'Jobtitle', 'Address', 'Office Phone', 'Mobile Phone', 'Personal Email Address', 'Industry', 'Company Size (Revenue)', 'Company Size (Employee)', 'Cabang/Kantor', 'Postal Code', 'Company Website'], 'Student data columns match the requested twenty-column order');
+assert(headerLabels(companyHead).includes('Company Email Address') && headerLabels(companyHead).includes('City'), 'Company columns remain unchanged');
 
 let destinationEffect;
 function findEffect(node) {

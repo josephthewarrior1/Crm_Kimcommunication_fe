@@ -10,7 +10,7 @@ import { useAuth } from '../../../lib/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { normalizePhone } from './utils/phoneHelper';
 import { findPersonalEmailConflicts } from './utils/emailIdentity';
-import { getContactOffice } from '../../../lib/utils/companyBranch';
+import { getContactOffice, getContactOrganization } from '../../../lib/utils/companyBranch';
 import { checkDatabaseCompleteness } from './utils/validationHelper';
 import { getOfficeEmail, getPersonalEmail } from '../events/utils/notesHelper';
 import indonesiaCities from './data/indonesia-cities.json';
@@ -643,7 +643,7 @@ export default function DatabasesPage() {
         sortOrder
       });
       setExportDatabases(response.items || []);
-      setSelectedColumns(EXPORT_COLUMNS.filter(column => destination !== 'participant' || column.key !== 'linkedin').map(column => column.key));
+      setSelectedColumns(EXPORT_COLUMNS.filter(column => destination !== 'participant' || !['companyEmail', 'hardware', 'linkedin', 'city', 'eventHistory'].includes(column.key)).map(column => column.key));
     } catch {
       setExportDatabases(databases);
     }
@@ -965,6 +965,7 @@ export default function DatabasesPage() {
                 <tr className="text-slate-500 uppercase tracking-wider text-xs font-semibold whitespace-nowrap text-left">
                   <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-left sticky left-0 bg-slate-50 z-10">Actions</th>
                   <th aria-label="Kelengkapan data" className="py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10 text-center"></th>
+                  {destination === 'participant' && <th className="py-3 px-4">No</th>}
                   <th
                     onClick={() => handleSort('groupName')}
                     className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none group/th"
@@ -1061,7 +1062,7 @@ export default function DatabasesPage() {
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Address</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Office Phone</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile Phone</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Email Address</th>
+                  {destination !== 'participant' && <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Email Address</th>}
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Personal Email Address</th>
                   <th
                     onClick={() => handleSort('industry')}
@@ -1078,10 +1079,10 @@ export default function DatabasesPage() {
                   </th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Revenue)</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Size (Employee)</th>
-                  <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Hardware</th>
+                  {destination !== 'participant' && <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Hardware</th>}
                   {destination !== 'participant' && <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Linkedin Link</th>}
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Cabang/Kantor</th>
-                  <th
+                  {destination !== 'participant' && <th
                     onClick={() => handleSort('city')}
                     className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/80 transition-colors select-none group/th"
                   >
@@ -1093,7 +1094,7 @@ export default function DatabasesPage() {
                         <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
                       )}
                     </div>
-                  </th>
+                  </th>}
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Postal Code</th>
                   <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company Website</th>
                 </tr>
@@ -1101,6 +1102,7 @@ export default function DatabasesPage() {
               <tbody className="divide-y divide-slate-100">
                 {currentDatabases.map((c, idx, slicedArray) => {
                   const office = getContactOffice(c);
+                  const organization = getContactOrganization(c, destination);
                   const contactLabel = [c.firstName, c.lastName].filter(Boolean).join(' ').trim()
                     || c.emails?.find(email => email?.email?.trim())?.email?.trim()
                     || c.mobilePhone?.trim() || 'kontak tanpa nama';
@@ -1328,14 +1330,15 @@ export default function DatabasesPage() {
                           </span>
                         )}
                       </td>
+                      {destination === 'participant' && <td className="py-4 px-4 text-sm text-slate-600">{indexOfFirstItem + idx}</td>}
                       <td className="py-4 px-4 text-sm font-medium text-slate-600">
-                        {c.company?.group?.name || <span className="text-slate-400">-</span>}
+                        {organization.groupName || <span className="text-slate-400">-</span>}
                       </td>
                       <td className="py-4 px-4 text-sm font-medium text-slate-650">
-                        {c.company?.brandName || <span className="text-slate-400">-</span>}
+                        {organization.brandName || <span className="text-slate-400">-</span>}
                       </td>
                       <td className="py-4 px-4 text-sm font-semibold text-slate-700">
-                        {(destination === 'participant' ? c.institutionName || c.company?.name : c.company?.name) || <span className="text-slate-400">-</span>}
+                        {organization.companyName || <span className="text-slate-400">-</span>}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-500">
                         {c.salutation || '-'}
@@ -1355,33 +1358,33 @@ export default function DatabasesPage() {
                       <td className="py-4 px-4 text-sm text-slate-950 font-medium">
                         {c.jobTitle || '-'}
                       </td>
-                      <td className="py-4 px-4 text-xs text-slate-600 max-w-[200px] truncate" title={office?.address}>
-                        {office?.address || '-'}
+                      <td className="py-4 px-4 text-xs text-slate-600 max-w-[200px] truncate" title={organization.address}>
+                        {organization.address || '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-mono text-slate-600">
-                        {office?.officePhone ? normalizePhone(office.officePhone) : '-'}
+                        {organization.officePhone ? (destination === 'participant' ? organization.officePhone : normalizePhone(organization.officePhone)) : '-'}
                       </td>
                       <td className="py-4 px-4 text-sm font-mono text-slate-700">
                         {c.mobilePhone ? (destination === 'participant' ? c.mobilePhone : normalizePhone(c.mobilePhone)) : destination === 'participant' ? <><span>Email saja</span><span className="mt-1 block text-xs text-amber-800">Belum bisa ditelepon</span></> : '-'}
                       </td>
-                      <td className="py-4 px-4 text-xs font-mono text-slate-600">
+                      {destination !== 'participant' && <td className="py-4 px-4 text-xs font-mono text-slate-600">
                         {getOfficeEmail(c.emails)}
-                      </td>
+                      </td>}
                       <td className="py-4 px-4 text-xs font-mono text-slate-600">
-                        {getPersonalEmail(c.emails)}
+                        {destination === 'participant' ? Array.from(new Set(c.emails?.map(email => email.email).filter(Boolean))).join(', ') || '-' : getPersonalEmail(c.emails)}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-600">
-                        {c.company?.industry || '-'}
+                        {organization.industry || '-'}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-600">
-                        {c.company?.companySizeRevenue || '-'}
+                        {organization.sizeRevenue || '-'}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-600">
-                        {c.company?.companySizeEmployee || '-'}
+                        {organization.sizeEmployee || '-'}
                       </td>
-                      <td className="py-4 px-4 text-xs text-slate-600 max-w-[150px] truncate" title={c.company?.companyHardware}>
+                      {destination !== 'participant' && <td className="py-4 px-4 text-xs text-slate-600 max-w-[150px] truncate" title={c.company?.companyHardware}>
                         {c.company?.companyHardware || '-'}
-                      </td>
+                      </td>}
                       {destination !== 'participant' && <td className="py-4 px-4 text-xs">
                         {c.linkedinUrl ? (
                           <a
@@ -1396,18 +1399,18 @@ export default function DatabasesPage() {
                         ) : '-'}
                       </td>}
                       <td className="py-4 px-4 text-sm text-slate-600">
-                        {c.branch?.name || '-'}
+                        {organization.branchName || '-'}
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-600">
+                      {destination !== 'participant' && <td className="py-4 px-4 text-sm text-slate-600">
                         {office?.city || '-'}
-                      </td>
+                      </td>}
                       <td className="py-4 px-4 text-sm font-mono text-slate-600">
-                        {office?.postalCode || '-'}
+                        {organization.postalCode || '-'}
                       </td>
                       <td className="py-4 px-4 text-xs">
-                        {c.company?.website ? (
+                        {organization.website ? (
                           <a
-                            href={c.company.website.startsWith('http') ? c.company.website : `https://${c.company.website}`}
+                            href={organization.website.startsWith('http') ? organization.website : `https://${organization.website}`}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}

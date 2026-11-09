@@ -28,7 +28,7 @@ function nodes(node) {
 }
 
 async function mount({ branchValid = true, emailFailure = false, initialDestination = 'company' } = {}) {
-  const hooks = [], effects = [], calls = [], messages = [];
+  const hooks = [], effects = [], calls = [], messages = [], companyReads = [], branchKeys = [];
   let cursor = 0, changed = false, tree, closed = 0, created = 0;
   const React = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
@@ -47,7 +47,7 @@ async function mount({ branchValid = true, emailFailure = false, initialDestinat
     },
   };
   const company = { id: 7, name: 'Example Company' };
-  const service = { getCompaniesList: async () => ({ items: [company] }) };
+  const service = { getCompaniesList: async () => { companyReads.push('getCompaniesList'); return { items: [company] }; } };
   for (const operation of ['createCompany', 'createDatabase', 'addDatabaseEmail']) {
     service[operation] = async (...args) => {
       calls.push({ operation, args });
@@ -65,7 +65,7 @@ async function mount({ branchValid = true, emailFailure = false, initialDestinat
     sonner: { toast: Object.fromEntries(['error', 'warning', 'success'].map(kind => [kind, message => messages.push({ kind, message })])) },
     '../utils/phoneHelper': phone,
     '../utils/emailCategory': category,
-    './CompanyBranchSelect': { CompanyBranchSelect() {}, useCompanyBranches: () => ({ valid: branchValid }) },
+    './CompanyBranchSelect': { CompanyBranchSelect() {}, useCompanyBranches: companyId => { branchKeys.push(companyId); return { valid: branchValid }; } },
   };
   const { CreateDatabaseModal } = compile('app/dashboard/database/components/CreateDatabaseModal.tsx', name => {
     assert(name in modules, 'Unexpected component dependency: ' + name);
@@ -86,10 +86,15 @@ async function mount({ branchValid = true, emailFailure = false, initialDestinat
   }
   render(); await settle();
   return {
-    calls, messages,
+    calls, messages, companyReads, branchKeys,
     get closed() { return closed; }, get created() { return created; },
     find(predicate) { const result = nodes(tree).find(predicate); assert(result, 'Control not found'); return result; },
     label(label) { const node = nodes(tree).find(node => node.type === 'label' && text(node).trim().startsWith(label)); assert(node, 'Label not found: ' + label); return node; },
+    controls() { return nodes(tree); },
+    async field(label, value) {
+      this.find(node => node.type === 'input' && node.props['aria-label'] === label).props.onChange({ target: { value } });
+      render(); await settle();
+    },
     async change(placeholder, value) {
       this.find(node => node.type === 'input' && node.props.placeholder === placeholder).props.onChange({ target: { value } });
       render(); await settle();
@@ -122,17 +127,17 @@ async function mount({ branchValid = true, emailFailure = false, initialDestinat
   assert.equal(legacyDefault.calls.length, 0, 'Gmail must not automatically choose the participant database');
 
   for (const address of ['alex@gmail.com', 'alex@yahoo.com', 'alex@outlook.com', 'alex@campus.ac.id', 'alex@employer.example']) {
-    const personal = await mount();
-    await personal.select('Tujuan database', 'participant');
+    const personal = await mount({ initialDestination: 'participant' });
     await personal.change('e.g. John', '  Alex  ');
     await personal.change('e.g. name@gmail.com', address);
     await personal.change('Nama sekolah, kampus, atau instansi (opsional)', '  Example Campus  ');
     await personal.select('Kategori peserta', 'mahasiswa');
-    for (const label of ['Salutation', 'Last Name', 'Job Title', 'Mobile Phone', 'Email tambahan', 'Position Level']) {
+    for (const label of ['Salutation', 'Last Name', 'Job Title', 'Mobile Phone', 'Position Level']) {
       assert(!text(personal.label(label)).includes('*'), label + ' must be optional for personal-only contacts');
     }
     assert(!text(personal.label('First Name')).includes('*'), 'Participant name may be filled later');
-    assert(text(personal.label('Email Peserta')).includes('*'));
+    assert(text(personal.label('Personal Email')).includes('*'));
+    assert(!personal.controls().some(node => node.type === 'input' && ['e.g. name@company.com', 'e.g. https://linkedin.com/...', 'Type to search company...'].includes(node.props.placeholder)));
     await personal.submit();
     assert.deepEqual(personal.calls.map(call => call.operation), ['createDatabase'], 'Participant profile and email must be saved in one request');
     const saved = personal.calls[0];
@@ -148,27 +153,36 @@ async function mount({ branchValid = true, emailFailure = false, initialDestinat
     assert.equal(saved.args[1], undefined, 'Personal contact must not need a company');
     assert.deepEqual(plain(saved.args[0].emails), [{ email: address, emailType: 'personal', isPrimary: true, isVerified: true, isCorporate: false }]);
     assert.equal(personal.created, 1); assert.equal(personal.closed, 1);
+    assert.deepEqual(personal.companyReads, []); assert(personal.branchKeys.every(key => !key));
     assert(!personal.messages.some(message => message.kind === 'error'));
   }
 
-  const publicCompanyField = await mount();
-  await publicCompanyField.select('Tujuan database', 'participant');
-  await publicCompanyField.change('e.g. John', 'Alex');
-  await publicCompanyField.change('e.g. name@company.com', 'alex@gmail.com');
-  await publicCompanyField.submit();
-  assert.equal(publicCompanyField.created, 1, 'Explicit participant destination accepts public email in either legacy email field');
-  assert.equal(publicCompanyField.calls[0].args[0].databaseDestination, 'participant');
+  const hiddenCompanyEmail = await mount();
+  await hiddenCompanyEmail.change('e.g. name@company.com', 'hidden@company.example');
+  await hiddenCompanyEmail.select('Tujuan database', 'participant');
+  await hiddenCompanyEmail.change('e.g. name@gmail.com', 'participant@campus.ac.id');
+  await hiddenCompanyEmail.submit();
+  assert.deepEqual(plain(hiddenCompanyEmail.calls[0].args[0].emails).map(email => email.email), ['participant@campus.ac.id'], 'Hidden Company Email is never saved as an extra Participant address');
 
-  const dualParticipant = await mount({ initialDestination: 'participant' });
-  await dualParticipant.change('e.g. John', 'Participant');
-  await dualParticipant.change('e.g. name@company.com', 'person@employer.example');
-  await dualParticipant.change('e.g. name@gmail.com', 'person@gmail.com');
-  await dualParticipant.submit();
-  assert.equal(dualParticipant.created, 1);
-  assert.deepEqual(dualParticipant.calls.map(call => call.operation), ['createDatabase']);
-  assert.deepEqual(plain(dualParticipant.calls[0].args[0].emails).map(email => [email.email, email.emailType, email.isCorporate]),
-    [['person@gmail.com', 'personal', false], ['person@employer.example', 'personal', false]]);
-  assert.equal(dualParticipant.calls[0].args[0].databaseDestination, 'participant', 'Adding a company email must not reroute an explicit participant');
+  const organizationFields = {
+    organizationGroupName: ['Holding Group', 'Local Group'], organizationBrandName: ['Brand', 'Local Brand'],
+    organizationAddress: ['Address', 'Local address'], organizationOfficePhone: ['Office Phone', '021-123456'],
+    organizationIndustry: ['Industry', 'Education'], organizationSizeRevenue: ['Company Size (Revenue)', 'Small'],
+    organizationSizeEmployee: ['Company Size (Employee)', '50'], organizationBranchName: ['Cabang / Kantor', 'Local branch'],
+    organizationPostalCode: ['Postal Code', '12345'], organizationWebsite: ['Company Website', 'https://campus.example'],
+  };
+  const organization = await mount({ initialDestination: 'participant', branchValid: false });
+  await organization.change('e.g. name@gmail.com', 'student@campus.ac.id');
+  for (const [label, value] of Object.values(organizationFields)) {
+    assert(!text(organization.label(label)).includes('*'), label + ' must remain optional');
+    await organization.field(label, '  ' + value + '  ');
+  }
+  assert.equal(organization.find(node => node.type === 'button' && node.props.type === 'submit').props.disabled, false);
+  await organization.submit();
+  assert.deepEqual(organization.calls.map(call => call.operation), ['createDatabase']);
+  for (const [key, [, value]] of Object.entries(organizationFields)) assert.equal(organization.calls[0].args[0][key], value);
+  assert.equal(organization.calls[0].args[0].linkedinUrl, undefined);
+  assert.deepEqual(organization.companyReads, []); assert(organization.branchKeys.every(key => !key));
 
   for (const contact of [
     ['e.g. name@gmail.com', 'unnamed@campus.ac.id'],
@@ -194,7 +208,6 @@ async function mount({ branchValid = true, emailFailure = false, initialDestinat
 
   for (const inputs of [
     [['e.g. name@gmail.com', 'alex.gmail.com']],
-    [['e.g. name@gmail.com', 'alex@gmail.com'], ['e.g. name@company.com', 'invalid-company-email']],
   ]) {
     const invalid = await mount({ initialDestination: 'participant' });
     await invalid.change('e.g. John', 'Alex');

@@ -234,8 +234,8 @@ async function checkPageFlow() {
   assert.deepEqual(plain(page.state.destinationCounts), { company: 1200, participant: 3 });
   assert.equal(page.state.exportDatabases[0].id, 2);
   const participantExportColumns = plain(page.state.selectedColumns);
-  for (const field of ['companyName', 'firstName', 'lastName', 'mobilePhone', 'companyEmail', 'personalEmail', 'eventHistory']) assert(participantExportColumns.includes(field), 'Participant export retains the shared Company column ' + field);
-  assert(!participantExportColumns.includes('linkedin'), 'Participant export omits LinkedIn');
+  for (const field of ['companyName', 'firstName', 'lastName', 'mobilePhone', 'personalEmail', 'branchName', 'postalCode', 'website']) assert(participantExportColumns.includes(field), 'Student export includes ' + field);
+  for (const field of ['companyEmail', 'hardware', 'linkedin', 'city', 'eventHistory']) assert(!participantExportColumns.includes(field), 'Student export omits ' + field);
   assert.equal(page.state.isExportConfigModalOpen, true);
   const categoryTree = page.renderCategories(), html = renderToStaticMarkup(categoryTree);
   assert(html.includes(`Database Perusahaan (${(1200).toLocaleString()})`) && html.includes('Database Peserta (3)'));
@@ -261,7 +261,8 @@ async function checkPageFlow() {
   assert.equal(page.state.serverTotalItems, 1200, 'Server counts survive a one-row page fixture');
   await page.callbacks.handleOpenExportConfig();
   assert(page.state.selectedColumns.includes('linkedin'), 'Company export retains LinkedIn');
-  assert.deepEqual(participantExportColumns, plain(page.state.selectedColumns).filter(key => key !== 'linkedin'), 'Participant export choices match Company order except LinkedIn');
+  assert.deepEqual(participantExportColumns, plain(page.state.selectedColumns).filter(key => !['companyEmail', 'hardware', 'linkedin', 'city', 'eventHistory'].includes(key)), 'Student export follows the requested subset in Company order');
+  assert.equal(participantExportColumns.length, 19, 'Nineteen fields plus the automatic No column');
 }
 
 (async () => {

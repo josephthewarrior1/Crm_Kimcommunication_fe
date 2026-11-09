@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
 import { getOfficeEmail, getPersonalEmail } from '../../events/utils/notesHelper';
-import { getContactOffice } from '../../../../lib/utils/companyBranch';
+import { getContactOffice, getContactOrganization } from '../../../../lib/utils/companyBranch';
 
 interface ExportConfigModalProps {
   destination?: 'company' | 'participant';
@@ -63,7 +63,8 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
 }) => {
   const [tempSelectedDbIds, setTempSelectedDbIds] = useState<number[]>([]);
   const availableColumns = EXPORT_COLUMNS.filter(column => !['participantEmail', 'institutionName', 'participantCategory'].includes(column.key)
-    && (destination !== 'participant' || column.key !== 'linkedin'));
+    && (destination !== 'participant' || !['companyEmail', 'hardware', 'linkedin', 'city', 'eventHistory'].includes(column.key)))
+    .map(column => destination !== 'participant' ? column : { ...column, label: column.key === 'groupName' ? 'Nama Group/Holding Company' : column.key === 'jobTitle' ? 'Jobtitle' : column.label });
   const columns = selectedColumns.filter(key => availableColumns.some(column => column.key === key));
 
   useEffect(() => {
@@ -101,38 +102,39 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
 
       const dataToExport = rowsToExport.map((c, index) => {
         const office = getContactOffice(c);
+        const organization = getContactOrganization(c, destination);
         const rowData: Record<string, any> = { 'No': index + 1 };
         
-        if (columns.includes('groupName')) rowData['Nama Group'] = c.company?.group?.name || '-';
-        if (columns.includes('brandName')) rowData['Nama Brand'] = c.company?.brandName || '-';
-        if (columns.includes('companyName')) rowData['Company Name'] = (destination === 'participant' ? c.institutionName || c.company?.name : c.company?.name) || '-';
+        if (columns.includes('groupName')) rowData[destination === 'participant' ? 'Nama Group/Holding Company' : 'Nama Group'] = organization.groupName || '-';
+        if (columns.includes('brandName')) rowData['Nama Brand'] = organization.brandName || '-';
+        if (columns.includes('companyName')) rowData['Company Name'] = organization.companyName || '-';
         if (columns.includes('salutation')) rowData['Salutation'] = c.salutation || '-';
         if (columns.includes('firstName')) rowData['First Name'] = c.firstName || '-';
         if (columns.includes('lastName')) rowData['Last Name'] = c.lastName || '-';
         if (columns.includes('position')) rowData['Position'] = c.positionLevel || '-';
         if (columns.includes('specialityDivision')) rowData['Division'] = c.specialityDivision || '-';
-        if (columns.includes('jobTitle')) rowData['Job Title'] = c.jobTitle || '-';
-        if (columns.includes('address')) rowData['Address'] = office?.address || '-';
-        if (columns.includes('officePhone')) rowData['Office Phone'] = office?.officePhone || '-';
+        if (columns.includes('jobTitle')) rowData[destination === 'participant' ? 'Jobtitle' : 'Job Title'] = c.jobTitle || '-';
+        if (columns.includes('address')) rowData['Address'] = organization.address || '-';
+        if (columns.includes('officePhone')) rowData['Office Phone'] = organization.officePhone || '-';
         if (columns.includes('mobilePhone')) rowData['Mobile Phone'] = c.mobilePhone || '-';
         if (columns.includes('companyEmail')) {
           rowData['Company Email Address'] = getOfficeEmail(c.emails);
         }
         if (columns.includes('personalEmail')) {
-          rowData['Personal Email Address'] = getPersonalEmail(c.emails);
+          rowData['Personal Email Address'] = destination === 'participant' ? Array.from(new Set(c.emails?.map(email => email.email).filter(Boolean))).join('; ') || '-' : getPersonalEmail(c.emails);
         }
         if (columns.includes('participantEmail')) rowData['Email'] = (c.emails || []).map(email => email.email).filter(Boolean).join('; ');
         if (columns.includes('institutionName')) rowData['Sekolah/Kampus/Instansi'] = c.institutionName || '';
         if (columns.includes('participantCategory')) rowData['Kategori Peserta'] = c.participantCategory || '';
-        if (columns.includes('industry')) rowData['Industry'] = c.company?.industry || '-';
-        if (columns.includes('revenueSize')) rowData['Company Size (Revenue)'] = c.company?.companySizeRevenue || '-';
-        if (columns.includes('employeeSize')) rowData['Company Size (Employee)'] = c.company?.companySizeEmployee || '-';
+        if (columns.includes('industry')) rowData['Industry'] = organization.industry || '-';
+        if (columns.includes('revenueSize')) rowData['Company Size (Revenue)'] = organization.sizeRevenue || '-';
+        if (columns.includes('employeeSize')) rowData['Company Size (Employee)'] = organization.sizeEmployee || '-';
         if (columns.includes('hardware')) rowData['Company Hardware'] = c.company?.companyHardware || '-';
         if (columns.includes('linkedin')) rowData['Linkedin Link'] = c.linkedinUrl || '-';
-        if (columns.includes('branchName')) rowData['Cabang/Kantor'] = c.branch?.name || '';
+        if (columns.includes('branchName')) rowData['Cabang/Kantor'] = organization.branchName || '';
         if (columns.includes('city')) rowData['City'] = office?.city || '-';
-        if (columns.includes('postalCode')) rowData['Postal Code'] = office?.postalCode || '-';
-        if (columns.includes('website')) rowData['Company Website'] = c.company?.website || '-';
+        if (columns.includes('postalCode')) rowData['Postal Code'] = organization.postalCode || '-';
+        if (columns.includes('website')) rowData['Company Website'] = organization.website || '-';
         
         if (columns.includes('eventHistory')) {
           const matchingParticipants = eventParticipants.filter(p => p.database?.id === c.id);

@@ -7,6 +7,21 @@ import { normalizePhone, normalizePhoneList } from '../utils/phoneHelper';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../../lib/constants';
 import { CompanyBranchSelect, useCompanyBranches } from './CompanyBranchSelect';
 
+const participantOrganizationFields = [
+  ['organizationGroupName', 'Holding Group', 255],
+  ['organizationBrandName', 'Brand', 255],
+  ['organizationAddress', 'Address', undefined],
+  ['organizationOfficePhone', 'Office Phone', 50],
+  ['organizationIndustry', 'Industry', 100],
+  ['organizationSizeRevenue', 'Company Size (Revenue)', 100],
+  ['organizationSizeEmployee', 'Company Size (Employee)', 100],
+  ['organizationBranchName', 'Cabang / Kantor', 255],
+  ['organizationPostalCode', 'Postal Code', 20],
+  ['organizationWebsite', 'Company Website', undefined],
+] as const;
+type ParticipantOrganization = Record<typeof participantOrganizationFields[number][0], string>;
+const emptyOrganization = Object.fromEntries(participantOrganizationFields.map(([key]) => [key, ''])) as ParticipantOrganization;
+
 interface EditDatabaseModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,9 +40,10 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
   onRequestTakeout
 }) => {
   const [firstName, setFirstName] = useState('');
-  const [destination, setDestination] = useState<DatabaseDestination>('company');
+  const [destination, setDestination] = useState<DatabaseDestination>(database?.databaseDestination || 'company');
   const [institutionName, setInstitutionName] = useState('');
   const [participantCategory, setParticipantCategory] = useState('');
+  const [organization, setOrganization] = useState<ParticipantOrganization>(emptyOrganization);
   const [lastName, setLastName] = useState('');
   const [salutation, setSalutation] = useState('');
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
@@ -65,13 +81,14 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const branchSelection = useCompanyBranches(isOpen && !isCreatingNewCompany ? selectedCompanyId : '', selectedBranchId);
+  const branchSelection = useCompanyBranches(isOpen && destination !== 'participant' && !isCreatingNewCompany ? selectedCompanyId : '', selectedBranchId);
 
   useEffect(() => {
     if (!database) return;
     setDestination(database.databaseDestination || 'company');
     setInstitutionName(database.institutionName || '');
     setParticipantCategory(database.participantCategory || '');
+    setOrganization(Object.fromEntries(participantOrganizationFields.map(([key]) => [key, database[key] || ''])) as ParticipantOrganization);
     setFirstName(database.firstName || '');
     setLastName(database.lastName || '');
     setSalutation(database.salutation || '');
@@ -113,6 +130,12 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
         const emails = await crmService.getDatabaseEmails(database.id);
         if (!active) return;
         if (emails && emails.length > 0) {
+          if (database.databaseDestination === 'participant') {
+            const mainEmail = emails.find(email => email.isPrimary) || emails[0];
+            setDatabasePersonalEmail(mainEmail.email);
+            setDatabasePersonalEmailId(mainEmail.id.toString());
+            return;
+          }
           const compEmail = emails.find(e => (e.isCorporate || e.emailType === 'company') && e.isPrimary) 
             || [...emails.filter(e => e.isCorporate || e.emailType === 'company')].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
           if (compEmail) {
@@ -228,6 +251,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           databaseDestination: destination,
           institutionName: institutionName.trim(),
           participantCategory,
+          ...(isPersonalProfile ? Object.fromEntries(participantOrganizationFields.map(([key]) => [key, organization[key].trim()])) : {}),
           salutation,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
@@ -236,7 +260,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           jobTitle: jobTitle.trim(),
           mobilePhone: normalizePhoneList(mobilePhone),
           normalizedPhone: normalizePhone(mobilePhone),
-          linkedinUrl: linkedinUrl.trim(),
+          linkedinUrl: !isPersonalProfile ? linkedinUrl.trim() : undefined,
           databaseType,
           source,
           isActive
@@ -246,7 +270,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
       );
 
       // Handle Company Email
-      if (databaseCompanyEmail.trim()) {
+      if (!isPersonalProfile && databaseCompanyEmail.trim()) {
         if (databaseCompanyEmailId) {
           try {
             await crmService.updateDatabaseEmail(database.id, Number(databaseCompanyEmailId), {
@@ -268,7 +292,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             toast.warning(`Database updated, but failed to save company email: ${emailErr.message}`);
           }
         }
-      } else if (databaseCompanyEmailId) {
+      } else if (!isPersonalProfile && databaseCompanyEmailId) {
         try {
           await crmService.deleteDatabaseEmail(database.id, Number(databaseCompanyEmailId));
         } catch (emailErr: any) {
@@ -339,10 +363,13 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             </select>
           </label>
           <p className="text-xs leading-5 text-slate-500">Profil Perusahaan dan Peserta disimpan terpisah. Email atau HP yang sama di database lain tidak mengubah profil ini.</p>
-          {destination !== 'company' && <div className="grid gap-4 md:grid-cols-2">
-            <label className="text-sm font-semibold text-slate-700">Sekolah/Kampus/Instansi
-              <input placeholder="Nama sekolah, kampus, atau instansi (opsional)" value={institutionName} onChange={event => setInstitutionName(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal" />
+          {isPersonalProfile && <div className="grid gap-4 md:grid-cols-2">
+            <label className="text-sm font-semibold text-slate-700">Company Name / Sekolah/Kampus/Instansi
+              <input placeholder="Nama sekolah, kampus, atau instansi (opsional)" maxLength={255} value={institutionName} onChange={event => setInstitutionName(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal" />
             </label>
+            {participantOrganizationFields.map(([key, label, maxLength]) => <label key={key} className="text-sm font-semibold text-slate-700">{label}
+              <input aria-label={label} maxLength={maxLength} value={organization[key]} onChange={event => setOrganization(previous => ({ ...previous, [key]: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal" />
+            </label>)}
             <label className="text-sm font-semibold text-slate-700">Kategori peserta
               <select aria-label="Kategori peserta" value={participantCategory} onChange={event => setParticipantCategory(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal">
                 <option value="">Belum dikategorikan</option><option value="pelajar">Pelajar</option><option value="mahasiswa">Mahasiswa</option><option value="umum">Umum</option>
@@ -607,8 +634,8 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{isPersonalProfile ? 'Email tambahan (opsional)' : 'Company Email'}</label>
+            {!isPersonalProfile && <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email</label>
               <input
                 type="email"
                 placeholder="e.g. name@company.com"
@@ -616,7 +643,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 onChange={(e) => setDatabaseCompanyEmail(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
-            </div>
+            </div>}
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Personal Email <span className="text-slate-400 font-normal text-xs">(Optional)</span></label>
@@ -629,7 +656,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
               />
             </div>
 
-            <div>
+            {!isPersonalProfile && <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">LinkedIn Profile URL</label>
               <input
                 type="text"
@@ -638,7 +665,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 onChange={(e) => setLinkedinUrl(e.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
               />
-            </div>
+            </div>}
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Database Type</label>

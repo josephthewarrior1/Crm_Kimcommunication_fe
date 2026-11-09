@@ -953,8 +953,10 @@ export default function EventsPage() {
 
   const handleDownloadTemplate = (destination: 'company' | 'participant') => {
     const headers = destination === 'participant' ? [
-      'First Name', 'Last Name', 'Email', 'Mobile Phone',
-      'Sekolah/Kampus/Instansi', 'Kategori Peserta'
+      'No', 'Nama Group/Holding Company', 'Nama Brand', 'Company Name', 'Salutation',
+      'First Name', 'Last Name', 'Position', 'Division', 'Jobtitle', 'Address', 'Office Phone', 'Mobile Phone',
+      'Personal Email Address', 'Industry', 'Company Size (Revenue)', 'Company Size (Employee)', 'Cabang/Kantor',
+      'Postal Code', 'Company Website'
     ] : [
       'Nama Group', 'Nama Brand', 'Company Name', 'Salutation', 
       'First Name', 'Last Name', 'Position', 'Division',
@@ -964,15 +966,17 @@ export default function EventsPage() {
       'Linkedin Link', 'City', 'Company Website'
     ];
     
-    const emailHeader = destination === 'participant' ? 'Email' : 'Company Email Address';
+    const emailHeader = destination === 'participant' ? 'Personal Email Address' : 'Company Email Address';
     const sampleData = [
       {
+        ...(destination === 'participant' ? { No: 1 } : {}),
         'First Name': 'Contoh Email',
         'Last Name': 'Uji',
         [emailHeader]: 'contoh.email@example.com',
         'Mobile Phone': ''
       },
       {
+        ...(destination === 'participant' ? { No: 2 } : {}),
         'First Name': 'Contoh Telepon',
         'Last Name': 'Uji',
         [emailHeader]: '',

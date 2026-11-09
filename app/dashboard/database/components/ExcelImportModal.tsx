@@ -75,7 +75,10 @@ const EXPECTED_HEADERS = [
   'Company Website',
 ];
 
-const PARTICIPANT_HEADERS = ['No', 'First Name', 'Last Name', 'Email', 'Mobile Phone', 'Kategori Peserta', 'Sekolah/Kampus/Instansi'];
+const PARTICIPANT_HEADERS = ['No', 'Nama Group/Holding Company', 'Nama Brand', 'Company Name', 'Salutation',
+  'First Name', 'Last Name', 'Position', 'Division', 'Jobtitle', 'Address', 'Office Phone', 'Mobile Phone',
+  'Personal Email Address', 'Industry', 'Company Size (Revenue)', 'Company Size (Employee)', 'Cabang/Kantor',
+  'Postal Code', 'Company Website'];
 
 const normalizeHeader = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 

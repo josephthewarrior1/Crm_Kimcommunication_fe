@@ -3,7 +3,7 @@ import { AlertCircle, ArrowUpRight, Briefcase, Building2, CalendarDays, CheckCir
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '../../../../components/ui/dialog';
 import { Database, DatabaseEmail, EventParticipant, Company } from '../../../../lib/types';
 import { checkDatabaseCompleteness } from '../utils/validationHelper';
-import { getContactOffice } from '../../../../lib/utils/companyBranch';
+import { getContactOffice, getContactOrganization } from '../../../../lib/utils/companyBranch';
 import { getStatusLabel } from '../../events/utils/statusHelper';
 import { isPublicPersonalEmail } from '../../events/utils/notesHelper';
 
@@ -66,9 +66,11 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
   const fullName = `${database.firstName || ''} ${database.lastName || ''}`.trim() || 'Kontak tanpa nama';
   const initials = [database.firstName, database.lastName].filter(Boolean).map(name => name[0]).join('').slice(0, 2).toUpperCase();
   const company = database.company;
+  const isParticipant = (viewDestination ?? database.databaseDestination) === 'participant';
+  const organization = getContactOrganization(database, viewDestination);
   const office = getContactOffice(database);
   const completeness = !loadingEmails && !emailsError ? checkDatabaseCompleteness({ ...database, emails }, viewDestination) : null;
-  const website = websiteUrl(company?.website);
+  const website = websiteUrl(organization.website);
   const linkedin = websiteUrl(database.linkedinUrl);
   const databaseType = ({ partner_it: 'Partner IT', partner_marketing: 'Partner marketing', end_user: 'End user', unknown: 'Belum ditentukan' } as Record<string, string>)[database.databaseType] || database.databaseType?.replace(/_/g, ' ');
   const tabs = [
@@ -92,7 +94,7 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
               </div>
               <DialogDescription className="mt-1.5 break-words">{database.jobTitle || 'Jabatan belum diisi'}{database.specialityDivision ? ` · ${database.specialityDivision}` : ''}</DialogDescription>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-600">
-                <span className="inline-flex min-w-0 items-center gap-1.5"><Building2 aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><span className="break-words">{company?.name || 'Company belum diisi'}</span></span>
+                <span className="inline-flex min-w-0 items-center gap-1.5"><Building2 aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><span className="break-words">{organization.companyName || 'Company belum diisi'}</span></span>
                 {database.branch && <span className="inline-flex min-w-0 items-center gap-1.5 text-blue-700"><MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><span className="break-words">{database.branch.name}</span></span>}
               </div>
             </div>
@@ -123,7 +125,7 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
                 <dl className="space-y-4">
                   <Field label="Nomor handphone"><span className="tabular-nums">{database.mobilePhone || 'Belum diisi'}</span></Field>
                   {!database.mobilePhone && (viewDestination === 'participant' || database.databaseDestination === 'participant') && <p className="text-xs leading-5 text-amber-800">Email saja — belum bisa ditelepon. Nomor HP tidak wajib untuk status Bersih jika nama dan email valid sudah terisi.</p>}
-                  <Field label="LinkedIn">{linkedin ? <a href={linkedin} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-700 hover:underline">Lihat profil LinkedIn<ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" /></a> : database.linkedinUrl}</Field>
+                  {!isParticipant && <Field label="LinkedIn">{linkedin ? <a href={linkedin} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-700 hover:underline">Lihat profil LinkedIn<ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" /></a> : database.linkedinUrl}</Field>}
                 </dl>
                 <div className="mt-5 border-t border-slate-100 pt-4">
                   <div className="mb-3 flex items-center justify-between gap-2"><h4 className="text-xs font-medium text-slate-500">Alamat email</h4>{!loadingEmails && !emailsError && <span className="text-xs tabular-nums text-slate-500">{emails.length} email</span>}</div>
@@ -150,7 +152,18 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
             </div>
           </div>}
 
-          {activeTab === 'company' && <div className="grid items-start gap-5 md:grid-cols-2">
+          {activeTab === 'company' && isParticipant && <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <h3 className="mb-5 text-sm font-semibold text-slate-900">Company & kantor peserta</h3>
+            <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+              <Field label="Nama Group/Holding Company">{organization.groupName}</Field><Field label="Nama Brand">{organization.brandName}</Field>
+              <Field label="Company Name">{organization.companyName}</Field><Field label="Industry">{organization.industry}</Field>
+              <Field label="Company Size (Revenue)">{organization.sizeRevenue}</Field><Field label="Company Size (Employee)">{organization.sizeEmployee}</Field>
+              <Field label="Address">{organization.address}</Field><Field label="Office Phone">{organization.officePhone}</Field>
+              <Field label="Cabang/Kantor">{organization.branchName}</Field><Field label="Postal Code">{organization.postalCode}</Field>
+              <Field label="Company Website">{website ? <a href={website} target="_blank" rel="noreferrer" className="break-all text-blue-700 hover:underline">{organization.website}</a> : organization.website}</Field>
+            </dl>
+          </section>}
+          {activeTab === 'company' && !isParticipant && <div className="grid items-start gap-5 md:grid-cols-2">
             <div className="min-w-0 space-y-5">
               <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                 <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-900"><Building2 aria-hidden="true" className="h-4 w-4 text-slate-400" />Company & holding group</h3>

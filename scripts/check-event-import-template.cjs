@@ -28,17 +28,16 @@ for (const destination of ['company', 'participant']) {
   const { workbook, filename } = downloaded;
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const [headers, emailOnly, phoneOnly] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-  const emailHeader = destination === 'participant' ? 'Email' : 'Company Email Address';
-  assert.equal(headers.length, destination === 'participant' ? 6 : 21);
+  const emailHeader = destination === 'participant' ? 'Personal Email Address' : 'Company Email Address';
+  assert.equal(headers.length, destination === 'participant' ? 20 : 21);
   for (const header of ['First Name', 'Last Name', emailHeader, 'Mobile Phone']) assert(headers.includes(header));
   assert(emailOnly[headers.indexOf(emailHeader)].endsWith('@example.com'));
   assert.equal(emailOnly[headers.indexOf('Mobile Phone')], '');
   assert.equal(phoneOnly[headers.indexOf(emailHeader)], '');
   assert.equal(phoneOnly[headers.indexOf('Mobile Phone')], '081200000001');
   if (destination === 'participant') {
-    assert(headers.includes('Sekolah/Kampus/Instansi'));
-    assert(headers.includes('Kategori Peserta'));
-    assert(!headers.includes('Company Name'));
+    assert.deepEqual(headers, ['No', 'Nama Group/Holding Company', 'Nama Brand', 'Company Name', 'Salutation', 'First Name', 'Last Name', 'Position', 'Division', 'Jobtitle', 'Address', 'Office Phone', 'Mobile Phone', 'Personal Email Address', 'Industry', 'Company Size (Revenue)', 'Company Size (Employee)', 'Cabang/Kantor', 'Postal Code', 'Company Website']);
+    assert.equal(emailOnly[0], 1); assert.equal(phoneOnly[0], 2);
     assert.equal(filename, 'Event_Peserta_Import_Template.xlsx');
   } else {
     assert(headers.includes('Company Name'));

@@ -159,6 +159,16 @@ export interface Database {
   databaseDestination?: DatabaseDestination;
   participantCategory?: string;
   institutionName?: string;
+  organizationGroupName?: string;
+  organizationBrandName?: string;
+  organizationAddress?: string;
+  organizationOfficePhone?: string;
+  organizationIndustry?: string;
+  organizationSizeRevenue?: string;
+  organizationSizeEmployee?: string;
+  organizationBranchName?: string;
+  organizationPostalCode?: string;
+  organizationWebsite?: string;
   company?: Company | null;
   branch?: CompanyBranch | null;
   salutation?: string;

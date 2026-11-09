@@ -22,8 +22,8 @@ function nodes(node) {
   return [node, ...(node.props?.children || []).flat(Infinity).flatMap(nodes)];
 }
 
-async function mount(database = {}, { branchValid = true, emails = [] } = {}) {
-  const hooks = [], effects = [], calls = [], messages = [];
+async function mount(database = {}, { branchValid = true, emails = [], isOpen = true } = {}) {
+  const hooks = [], effects = [], calls = [], messages = [], companyReads = [], branchKeys = [], emailReads = [];
   let cursor = 0, changed = false, tree, closed = 0, updated = 0;
   const React = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
@@ -41,11 +41,11 @@ async function mount(database = {}, { branchValid = true, emails = [] } = {}) {
       hooks[index] = deps;
     },
   };
-  const company = database.company;
+  const company = database?.company;
   const service = {
-    getDatabaseEmails: async () => emails,
-    getCompaniesList: async () => ({ items: company ? [company] : [] }),
-    getGroups: async () => company?.group ? [company.group] : [],
+    getDatabaseEmails: async id => { emailReads.push(id); return emails; },
+    getCompaniesList: async () => { companyReads.push('getCompaniesList'); return { items: company ? [company] : [] }; },
+    getGroups: async () => { companyReads.push('getGroups'); return company?.group ? [company.group] : []; },
   };
   for (const operation of ['createCompany', 'updateCompany', 'updateDatabase', 'addDatabaseEmail', 'updateDatabaseEmail', 'deleteDatabaseEmail']) {
     service[operation] = async (...args) => {
@@ -60,13 +60,13 @@ async function mount(database = {}, { branchValid = true, emails = [] } = {}) {
     sonner: { toast: Object.fromEntries(['error', 'warning', 'success'].map(kind => [kind, message => messages.push({ kind, message })])) },
     '../utils/phoneHelper': phone,
     '../../../../lib/constants': { INDUSTRIES: [], REVENUE_SIZES: [], EMPLOYEE_SIZES: [] },
-    './CompanyBranchSelect': { CompanyBranchSelect() {}, useCompanyBranches: () => ({ valid: branchValid }) },
+    './CompanyBranchSelect': { CompanyBranchSelect() {}, useCompanyBranches: companyId => { branchKeys.push(companyId); return { valid: branchValid }; } },
   };
   const { EditDatabaseModal } = compile('app/dashboard/database/components/EditDatabaseModal.tsx', name => {
     assert(name in modules, 'Unexpected component dependency: ' + name);
     return modules[name];
   });
-  const props = { isOpen: true, database: { id: 41, ...database }, companies: company ? [company] : [],
+  const props = { isOpen, database: database === null ? null : { id: 41, ...database }, companies: company ? [company] : [],
     onClose: () => closed++, onUpdated: () => updated++ };
   function render() {
     cursor = 0; changed = false; tree = EditDatabaseModal(props);
@@ -82,9 +82,14 @@ async function mount(database = {}, { branchValid = true, emails = [] } = {}) {
   }
   render(); await settle();
   return {
-    calls, messages,
+    calls, messages, companyReads, branchKeys, emailReads,
     get closed() { return closed; }, get updated() { return updated; },
     find(predicate) { const result = nodes(tree).find(predicate); assert(result, 'Control not found'); return result; },
+    controls() { return nodes(tree); },
+    async field(label, value) {
+      this.find(node => node.type === 'input' && node.props['aria-label'] === label).props.onChange({ target: { value } });
+      render(); await settle();
+    },
     async change(placeholder, value) {
       this.find(node => node.type === 'input' && node.props.placeholder === placeholder).props.onChange({ target: { value } });
       render(); await settle();
@@ -105,6 +110,10 @@ async function mount(database = {}, { branchValid = true, emails = [] } = {}) {
 }
 
 (async () => {
+  const closed = await mount(null, { isOpen: false });
+  assert.equal(closed.controls().length, 0, 'Closed modal may mount with a null editing database');
+  assert.deepEqual(closed.calls, []); assert.deepEqual(closed.companyReads, []); assert.deepEqual(closed.emailReads, []);
+  assert(closed.branchKeys.every(key => !key), 'Closed null modal must not read a Company branch');
   const partial = await mount();
   assert.equal(partial.find(node => node.type === 'fieldset').props.disabled, true, 'Company details require a selected or newly created company');
   await partial.change('e.g. John', '  Alex  ');
@@ -152,6 +161,39 @@ async function mount(database = {}, { branchValid = true, emails = [] } = {}) {
   assert.equal(participant.calls[0].args[1].databaseDestination, 'participant');
   assert.equal(participant.calls[0].args[2], undefined);
   assert.equal(participant.calls[0].args[3], null);
+  assert.deepEqual(participant.companyReads, []); assert(participant.branchKeys.every(key => !key));
+
+  const organizationFields = {
+    organizationGroupName: ['Holding Group', 'Local Group'], organizationBrandName: ['Brand', 'Local Brand'],
+    organizationAddress: ['Address', 'Local address'], organizationOfficePhone: ['Office Phone', '021-123456'],
+    organizationIndustry: ['Industry', 'Education'], organizationSizeRevenue: ['Company Size (Revenue)', 'Small'],
+    organizationSizeEmployee: ['Company Size (Employee)', '50'], organizationBranchName: ['Cabang / Kantor', 'Local branch'],
+    organizationPostalCode: ['Postal Code', '12345'], organizationWebsite: ['Company Website', 'https://campus.example'],
+  };
+  const storedOrganization = Object.fromEntries(Object.entries(organizationFields).map(([key, [, value]]) => [key, value]));
+  for (const primaryType of ['personal', 'company']) {
+    const storedEmails = [
+      { id: 91, email: 'primary@campus.ac.id', emailType: primaryType, isCorporate: primaryType === 'company', isPrimary: true },
+      { id: 92, email: 'other@gmail.com', emailType: 'personal', isCorporate: false, isPrimary: false },
+    ];
+    const edited = await mount({ databaseDestination: 'participant', firstName: 'Student', institutionName: 'Local Campus',
+      linkedinUrl: 'https://linkedin.example/legacy', ...storedOrganization }, { emails: storedEmails });
+    assert(!edited.controls().some(node => node.type === 'input' && ['e.g. name@company.com', 'e.g. https://linkedin.com/...', 'Type to search company...'].includes(node.props.placeholder)), 'Participant form has no Company Email, LinkedIn or master company selection');
+    assert.equal(edited.find(node => node.type === 'input' && node.props.placeholder === 'e.g. name@gmail.com').props.value, storedEmails[0].email, 'Single Personal Email uses the actual primary, including migrated company-typed addresses');
+    for (const [key, [label, value]] of Object.entries(organizationFields)) {
+      assert.equal(edited.find(node => node.type === 'input' && node.props['aria-label'] === label).props.value, value);
+      await edited.field(label, key === 'organizationAddress' ? '' : '  Updated ' + value + '  ');
+    }
+    await edited.change('e.g. name@gmail.com', 'updated@campus.ac.id');
+    await edited.submit();
+    assert.deepEqual(edited.calls.map(call => call.operation), ['updateDatabase', 'updateDatabaseEmail'], 'Organization edits only update Participant and its chosen existing email');
+    const payload=edited.calls[0].args[1];
+    for (const [key, [, value]] of Object.entries(organizationFields)) assert.equal(payload[key], key === 'organizationAddress' ? '' : 'Updated ' + value, 'Optional own text can be edited or cleared: ' + key);
+    assert.equal(payload.institutionName, 'Local Campus'); assert.equal(payload.linkedinUrl, undefined, 'Hidden legacy LinkedIn is omitted rather than cleared');
+    assert.deepEqual(plain(edited.calls[1].args), [41, 91, { email: 'updated@campus.ac.id' }], 'Primary email ID is edited once; second stored email ID remains untouched');
+    assert.equal(storedEmails[1].email, 'other@gmail.com');
+    assert.deepEqual(edited.companyReads, []); assert(edited.branchKeys.every(key => !key));
+  }
 
   const branch = { id: 11, companyId: company.id, name: 'Example branch' };
   for (const pendingAction of ['clear', 'search']) {
