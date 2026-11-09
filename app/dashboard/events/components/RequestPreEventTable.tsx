@@ -131,6 +131,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
             </th>
+            {columnConfig.pic !== false && isAdmin && activeTab === 'pre_event' && <th className="py-2 px-3">PIC</th>}
             {columnConfig.companyName !== false && <th className="py-3 px-3">Company Name</th>}
             {columnConfig.salutation !== false && <th className="py-3 px-3">Salutation</th>}
             {columnConfig.firstName !== false && <th className="py-3 px-3">First Name</th>}
@@ -150,7 +151,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 {activeTab === 'pre_event' ? 'Pre Event Approval' : activeTab === 'request' ? 'Client Approval' : 'Client Status'}
               </th>
             )}
-            {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && <th className="py-2 px-3">PIC</th>}
+            {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && activeTab !== 'pre_event' && <th className="py-2 px-3">PIC</th>}
             {columnConfig.notes !== false && <th className="py-2 px-3">Notes</th>}
             {!isUser && <th className="hidden">Actions</th>}
           </tr>
@@ -236,6 +237,11 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
                   />
                 </td>
+                {columnConfig.pic !== false && isAdmin && activeTab === 'pre_event' && (
+                  <td className="py-2.5 px-3 font-medium text-slate-700">
+                    {displayPic}
+                  </td>
+                )}
                 {columnConfig.companyName !== false && (
                   <td className="py-2.5 px-3 font-medium text-slate-700">
                     {p.database.company?.name || <span className="text-slate-400">-</span>}
@@ -396,7 +402,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </div>
                   </td>
                 )}
-                {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && (
+                {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && activeTab !== 'pre_event' && (
                   <td className="py-2.5 px-3 font-medium text-slate-700">
                     {displayPic}
                   </td>

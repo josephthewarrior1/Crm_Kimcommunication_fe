@@ -105,6 +105,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
             </th>
+            {columnConfig.pic !== false && <th className="py-3 px-3">PIC</th>}
             {columnConfig.companyName !== false && <th className="py-3 px-3">Company Name</th>}
             {columnConfig.salutation !== false && <th className="py-3 px-3">Salutation</th>}
             {columnConfig.firstName !== false && <th className="py-3 px-3">First Name</th>}
@@ -124,7 +125,6 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 <th className="py-3 px-3 text-center">H-1</th>
               </>
             )}
-            {columnConfig.pic !== false && <th className="py-3 px-3">PIC</th>}
             {columnConfig.notes !== false && <th className="py-3 px-3">Notes</th>}
             {!isUser && <th className="hidden">Actions</th>}
           </tr>
@@ -220,6 +220,14 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                     className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
                   />
                 </td>
+                {columnConfig.pic !== false && (
+                  <td className="py-2.5 px-3 text-slate-700 font-medium whitespace-nowrap">
+                    {(() => {
+                      const pic = extractPicFromNotes(p.notes).pic;
+                      return pic.toLowerCase() === 'admin' ? adminName : pic;
+                    })()}
+                  </td>
+                )}
                 {columnConfig.companyName !== false && (
                   <td className="py-2.5 px-3 font-medium text-slate-700">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -369,14 +377,6 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                       </div>
                     </td>
                   </>
-                )}
-                {columnConfig.pic !== false && (
-                  <td className="py-2.5 px-3 text-slate-700 font-medium whitespace-nowrap">
-                    {(() => {
-                      const pic = extractPicFromNotes(p.notes).pic;
-                      return pic.toLowerCase() === 'admin' ? adminName : pic;
-                    })()}
-                  </td>
                 )}
                 {columnConfig.notes !== false && (
                   <td
