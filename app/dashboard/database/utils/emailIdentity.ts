@@ -5,6 +5,7 @@ export function findPersonalEmailConflicts(contact: Database, email: DatabaseEma
   if (!address) return [];
   const personal = email.emailType?.toLowerCase() === 'personal';
   return contacts.filter(other => other.id !== contact.id && other.isActive
+    && (other.databaseDestination || 'company') === (contact.databaseDestination || 'company')
     && (other.firstName !== contact.firstName || other.lastName !== contact.lastName)
     && other.emails?.some(candidate => candidate.email?.trim().toLowerCase() === address
       && (personal || candidate.emailType?.toLowerCase() === 'personal')));

@@ -138,16 +138,18 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
   }, [database]);
 
   useEffect(() => {
-    if (!isOpen || isCreatingNewCompany) return;
+    if (!isOpen || destination === 'participant' || isCreatingNewCompany) return;
     void loadCompanyOptions(companySearchQuery);
-  }, [isOpen, isCreatingNewCompany, companySearchQuery]);
+  }, [isOpen, destination, isCreatingNewCompany, companySearchQuery]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || destination === 'participant') return;
     crmService.getGroups().then(setGroups).catch(() => setGroups([]));
-  }, [isOpen]);
+  }, [isOpen, destination]);
 
   if (!isOpen) return null;
+
+  const isPersonalProfile = destination === 'participant';
 
   const selectedCompany = companies.find((c) => c.id.toString() === selectedCompanyId)
     || companyOptions.find((c) => c.id.toString() === selectedCompanyId)
@@ -174,23 +176,23 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     e.preventDefault();
     if (submitting) return;
     setSubmitAttempted(true);
-    if (!isCreatingNewCompany && !selectedCompanyId && (database.company?.id || companySearchQuery.trim())) {
+    if (!isPersonalProfile && !isCreatingNewCompany && !selectedCompanyId && (database.company?.id || companySearchQuery.trim())) {
       toast.error('Pilih perusahaan dari hasil pencarian sebelum menyimpan. Perusahaan dan cabang yang tersimpan belum diubah.');
       return;
     }
-    if (!isCreatingNewCompany && !branchSelection.valid) {
+    if (!isPersonalProfile && !isCreatingNewCompany && !branchSelection.valid) {
       toast.error('Tunggu daftar cabang dimuat, lalu periksa pilihan cabang sebelum menyimpan.');
       return;
     }
 
-    if (isCreatingNewCompany && !newCompanyName.trim()) {
+    if (!isPersonalProfile && isCreatingNewCompany && !newCompanyName.trim()) {
       toast.error('Isi nama perusahaan baru, atau pilih Choose Existing untuk menyimpan tanpa perusahaan.');
       return;
     }
 
     setSubmitting(true);
     try {
-      let resolvedCompanyId: number | undefined = selectedCompanyId ? Number(selectedCompanyId) : undefined;
+      let resolvedCompanyId: number | undefined = !isPersonalProfile && selectedCompanyId ? Number(selectedCompanyId) : undefined;
       const companyDetails = {
         name: isCreatingNewCompany ? newCompanyName.trim() : (selectedCompany?.name || database.company?.name || '').trim(),
         brandName: brandName.trim() || undefined,
@@ -204,7 +206,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
         city: city.trim() || undefined,
         postalCode: postalCode.trim() || undefined
       };
-      if (isCreatingNewCompany && newCompanyName.trim()) {
+      if (!isPersonalProfile && isCreatingNewCompany && newCompanyName.trim()) {
         try {
           const createdComp = await crmService.createCompany(companyDetails, selectedGroupId ? Number(selectedGroupId) : undefined);
           resolvedCompanyId = createdComp.id;
@@ -213,7 +215,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           setSubmitting(false);
           return;
         }
-      } else if (resolvedCompanyId && (
+      } else if (!isPersonalProfile && resolvedCompanyId && (
         Object.entries(companyDetails).some(([key, value]) => (value || '') !== String(selectedCompany?.[key as keyof Company] || '').trim())
         || selectedGroupId !== (selectedCompany?.group?.id?.toString() || '')
       )) {
@@ -240,7 +242,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           isActive
         },
         resolvedCompanyId,
-        !isCreatingNewCompany && selectedBranchId ? Number(selectedBranchId) : null
+        !isPersonalProfile && !isCreatingNewCompany && selectedBranchId ? Number(selectedBranchId) : null
       );
 
       // Handle Company Email
@@ -257,10 +259,10 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
           try {
             await crmService.addDatabaseEmail(database.id, {
               email: databaseCompanyEmail.trim().toLowerCase(),
-              emailType: 'company',
+              emailType: isPersonalProfile ? 'personal' : 'company',
               isPrimary: true,
               isVerified: true,
-              isCorporate: true
+              isCorporate: !isPersonalProfile
             });
           } catch (emailErr: any) {
             toast.warning(`Database updated, but failed to save company email: ${emailErr.message}`);
@@ -332,11 +334,11 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
         <form onSubmit={handleUpdateDatabase} className="ms-modal-form">
         <div className="ms-modal-body space-y-5">
           <label className="block text-sm font-semibold text-slate-700">Tujuan database
-            <select aria-label="Tujuan database" value={destination} onChange={event => setDestination(event.target.value as DatabaseDestination)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
-              <option value="company">Database Perusahaan</option><option value="participant">Database Peserta</option><option value="both">Perusahaan dan Peserta</option>
+            <select aria-label="Tujuan database" value={destination} disabled className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <option value="company">Database Perusahaan</option><option value="participant">Database Peserta</option>
             </select>
           </label>
-          <p className="text-xs leading-5 text-slate-500">Perubahan tujuan hanya mengikuti pilihan ini. Pilih Perusahaan dan Peserta jika profil yang sama sudah ditinjau untuk kebutuhan bisnis dan event.</p>
+          <p className="text-xs leading-5 text-slate-500">Profil Perusahaan dan Peserta disimpan terpisah. Email atau HP yang sama di database lain tidak mengubah profil ini.</p>
           {destination !== 'company' && <div className="grid gap-4 md:grid-cols-2">
             <label className="text-sm font-semibold text-slate-700">Sekolah/Kampus/Instansi
               <input placeholder="Nama sekolah, kampus, atau instansi (opsional)" value={institutionName} onChange={event => setInstitutionName(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal" />
@@ -371,7 +373,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
               </select>
             </div>
 
-            <div>
+            {!isPersonalProfile && <div>
               <div className="flex flex-wrap justify-between items-center gap-2 mb-1.5">
                 <label className="block text-sm font-semibold text-slate-700">
                   Associated Company
@@ -532,9 +534,9 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                   Nama Perusahaan Baru wajib diisi
                 </p>
               )}
-            </div>
+            </div>}
 
-            <CompanyBranchSelect companyId={selectedCompanyId} value={selectedBranchId} onChange={setSelectedBranchId} selection={branchSelection} initialBranch={database.branch} creatingCompany={isCreatingNewCompany} disabled={submitting} />
+            {!isPersonalProfile && <CompanyBranchSelect companyId={selectedCompanyId} value={selectedBranchId} onChange={setSelectedBranchId} selection={branchSelection} initialBranch={database.branch} creatingCompany={isCreatingNewCompany} disabled={submitting} />}
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">First Name</label>
@@ -606,7 +608,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{isPersonalProfile ? 'Email tambahan (opsional)' : 'Company Email'}</label>
               <input
                 type="email"
                 placeholder="e.g. name@company.com"
@@ -681,7 +683,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             </div>
           </div>
 
-          <section className="ms-modal-section space-y-4">
+          {!isPersonalProfile && <section className="ms-modal-section space-y-4">
             <div>
               <h4 className="text-sm font-bold text-slate-900">Company Details · Kantor Pusat</h4>
               <p className="text-xs text-slate-500 mt-1">Informasi perusahaan dan kantor pusat ini berlaku untuk semua kontak di perusahaan yang sama. Alamat cabang dikelola melalui Company Details.</p>
@@ -746,7 +748,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 <textarea value={companyHardware} onChange={(e) => setCompanyHardware(e.target.value)} rows={2} placeholder="Hardware, servers, laptops, etc." className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 rounded-xl text-slate-900 focus:outline-none resize-none" />
               </div>
             </fieldset>
-          </section>
+          </section>}
 
         </div>
           <div className="ms-modal-footer">
@@ -775,7 +777,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={submitting || (!isCreatingNewCompany && !branchSelection.valid)}
+                disabled={submitting || (!isPersonalProfile && !isCreatingNewCompany && !branchSelection.valid)}
                 className="ms-modal-primary"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

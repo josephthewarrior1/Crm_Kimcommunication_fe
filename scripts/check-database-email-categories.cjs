@@ -21,6 +21,7 @@ function compile(file, requireModule = unexpected) {
   return evaluate(fs.readFileSync(path.join(project, file), 'utf8'), { require: requireModule }, file).exports;
 }
 const notes = compile('app/dashboard/events/utils/notesHelper.ts');
+const identity = compile('app/dashboard/database/utils/emailIdentity.ts');
 const email = compile('app/dashboard/database/utils/emailCategory.ts', name =>
   name === '../../events/utils/notesHelper' ? notes : unexpected(name));
 const office = compile('lib/utils/companyBranch.ts');
@@ -30,6 +31,11 @@ const address = (value, isCorporate = false) => ({ email: value, isCorporate });
 const person = (value, firstName = 'Student') => ({ firstName, emails: [address(value, true)] });
 
 function checkClassification() {
+  const sharedEmail = { email: 'same@gmail.com', emailType: 'personal' };
+  const corporateOwner = { id: 1, firstName: 'Company', lastName: 'Contact', isActive: true, emails: [sharedEmail], databaseDestination: 'company' };
+  const participant = { id: 2, firstName: 'Student', lastName: 'Contact', isActive: true, emails: [sharedEmail], databaseDestination: 'participant' };
+  assert.equal(identity.findPersonalEmailConflicts(participant, sharedEmail, [corporateOwner]).length, 0, 'The same email in Company cannot flag a Participant as an identity conflict');
+  assert.equal(identity.findPersonalEmailConflicts(participant, sharedEmail, [{ ...corporateOwner, databaseDestination: 'participant' }]).length, 1, 'Same-kind ambiguous email owners remain visible');
   for (const domain of ['gmail.com', 'yahoo.com', 'outlook.com', 'campus.ac.id', 'employer.example']) {
     const contact = { ...person(' NAME@' + domain.toUpperCase() + ' '), databaseDestination: 'participant' };
     assert.equal(email.isParticipantProfile(contact), true, domain);

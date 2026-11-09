@@ -17,6 +17,8 @@ type CleanerItem = {
 };
 
 type CleanerResult = {
+  destination: 'company' | 'participant';
+  previewToken: string;
   mode: 'preview' | 'apply';
   fixCount: number;
   reviewCount: number;
@@ -67,11 +69,12 @@ export default function DataCleanerPage() {
   };
 
   const applyCleaner = async () => {
-    if (!confirm('Apply cleaner ke database local sekarang?')) return;
+    if (!result?.previewToken || result.destination !== 'company') return;
+    if (!confirm('Apply cleaner ke Database Perusahaan sekarang?')) return;
     try {
       setApplying(true);
       setError('');
-      const applied = await crmService.applyDataCleaner();
+      const applied = await crmService.applyDataCleaner(result.previewToken, result.destination);
       setResult(applied);
       await loadPreview();
     } catch (err: any) {
@@ -92,7 +95,7 @@ export default function DataCleanerPage() {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-500">Maintenance</p>
           <h1 className="mt-2 text-3xl font-black text-blue-950">Data Cleaner</h1>
           <p className="mt-1 text-sm font-medium text-slate-500">
-            Preview dulu perubahan aman, lalu apply ke database local.
+            Preview dan perbaikan ini hanya untuk Database Perusahaan. Profil Peserta dikelola terpisah.
           </p>
         </div>
         <div className="flex gap-2">
@@ -106,7 +109,7 @@ export default function DataCleanerPage() {
           </button>
           <button
             onClick={applyCleaner}
-            disabled={loading || applying || !result || result.fixCount === 0}
+            disabled={loading || applying || !result?.previewToken || result.destination !== 'company' || result.fixCount === 0}
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}

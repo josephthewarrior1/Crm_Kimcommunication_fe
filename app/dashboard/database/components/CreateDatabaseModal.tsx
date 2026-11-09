@@ -86,9 +86,9 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
   }, [isOpen, initialDestination]);
 
   useEffect(() => {
-    if (!isOpen || isCreatingNewCompany) return;
+    if (!isOpen || destination === 'participant' || isCreatingNewCompany) return;
     void loadCompanyOptions(companySearchQuery);
-  }, [isOpen, isCreatingNewCompany, companySearchQuery]);
+  }, [isOpen, destination, isCreatingNewCompany, companySearchQuery]);
 
   const handleClose = () => {
     resetForm(initialDestination);
@@ -102,9 +102,8 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
 
   const isPersonalProfile = destination === 'participant';
   const hasCompanyEmail = isValidContactEmail(databaseCompanyEmail) && !isPersonalContactEmail(databaseCompanyEmail);
-  const companySelectionMissing = isCreatingNewCompany
-    ? !newCompanyName.trim()
-    : !selectedCompanyId && (!isPersonalProfile || !!companySearchQuery.trim());
+  const companySelectionMissing = !isPersonalProfile && (isCreatingNewCompany
+    ? !newCompanyName.trim() : !selectedCompanyId);
   const missing: string[] = [];
   if (!isPersonalProfile && !firstName.trim()) missing.push('First Name');
   if (isPersonalProfile && ![databaseCompanyEmail, databasePersonalEmail].some(isValidContactEmail) && !isValidContactPhone(mobilePhone)) missing.push('Email atau HP/WhatsApp valid');
@@ -142,7 +141,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     e.preventDefault();
     if (submitting) return;
     setSubmitAttempted(true);
-    if (!isCreatingNewCompany && !branchSelection.valid) {
+    if (!isPersonalProfile && !isCreatingNewCompany && !branchSelection.valid) {
       toast.error('Tunggu daftar cabang dimuat, lalu periksa pilihan cabang sebelum menyimpan.');
       return;
     }
@@ -168,8 +167,8 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
 
     setSubmitting(true);
     try {
-      let resolvedCompanyId: number | undefined = selectedCompanyId ? Number(selectedCompanyId) : undefined;
-      if (isCreatingNewCompany && newCompanyName.trim()) {
+      let resolvedCompanyId: number | undefined = !isPersonalProfile && selectedCompanyId ? Number(selectedCompanyId) : undefined;
+      if (!isPersonalProfile && isCreatingNewCompany && newCompanyName.trim()) {
         try {
           const createdComp = await crmService.createCompany({ name: newCompanyName.trim() });
           resolvedCompanyId = createdComp.id;
@@ -204,7 +203,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
             })) : undefined,
         },
         resolvedCompanyId,
-        !isCreatingNewCompany && selectedBranchId ? Number(selectedBranchId) : null
+        !isPersonalProfile && !isCreatingNewCompany && selectedBranchId ? Number(selectedBranchId) : null
       );
       let emailSaveFailed = false;
 
@@ -338,7 +337,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
               </select>
             </div>
 
-            <div>
+            {!isPersonalProfile && <div>
               <div className="flex flex-wrap justify-between items-center gap-2 mb-1.5">
                 <label className="block text-sm font-semibold text-slate-700">
                   Associated Company {(!isPersonalProfile || isCreatingNewCompany) && <span className="text-red-500 font-bold">*</span>}
@@ -469,9 +468,9 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                   {isCreatingNewCompany ? 'Nama Perusahaan Baru wajib diisi' : isPersonalProfile ? 'Pilih Associated Company atau kosongkan pencarian untuk kontak personal' : 'Associated Company wajib diisi'}
                 </p>
               )}
-            </div>
+            </div>}
 
-            <CompanyBranchSelect companyId={selectedCompanyId} value={selectedBranchId} onChange={setSelectedBranchId} selection={branchSelection} creatingCompany={isCreatingNewCompany} disabled={submitting} />
+            {!isPersonalProfile && <CompanyBranchSelect companyId={selectedCompanyId} value={selectedBranchId} onChange={setSelectedBranchId} selection={branchSelection} creatingCompany={isCreatingNewCompany} disabled={submitting} />}
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">First Name {!isPersonalProfile && <span className="text-red-500 font-bold">*</span>}</label>

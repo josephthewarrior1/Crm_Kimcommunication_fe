@@ -92,8 +92,9 @@ export class CrmService extends ApiService {
     return this.get<any>('/api/data-cleaner/preview');
   }
 
-  async applyDataCleaner(): Promise<any> {
-    return this.post<any>('/api/data-cleaner/apply', {});
+  async applyDataCleaner(previewToken: string, destination: 'company' | 'participant' = 'company'): Promise<any> {
+    const query = new URLSearchParams({ destination, previewToken });
+    return this.post<any>(`/api/data-cleaner/apply?${query}`, {});
   }
 
   async mergeCleanerGroups(targetGroupId: number, sourceGroupIds: number[]): Promise<any> {

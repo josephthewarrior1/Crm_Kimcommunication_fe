@@ -142,6 +142,17 @@ async function mount(database = {}, { branchValid = true, emails = [] } = {}) {
   assert.deepEqual(unchanged.calls.map(call => call.operation), ['updateDatabase'], 'Contact-only edits must not rewrite shared company details');
   assert.equal(unchanged.calls[0].args[2], 7);
 
+  const participant = await mount({ firstName: 'Alex', databaseDestination: 'participant', company }, { branchValid: false });
+  const participantDestination = participant.find(node => node.type === 'select' && node.props['aria-label'] === 'Tujuan database');
+  assert.equal(participantDestination.props.disabled, true, 'Destination cannot be changed to merge the two databases');
+  assert(!text(participantDestination).includes('Perusahaan dan Peserta'));
+  await participant.change('e.g. John', 'Peserta Terpisah');
+  await participant.submit();
+  assert.deepEqual(participant.calls.map(call => call.operation), ['updateDatabase'], 'Participant edit cannot update the Company master, even with a stale company relation');
+  assert.equal(participant.calls[0].args[1].databaseDestination, 'participant');
+  assert.equal(participant.calls[0].args[2], undefined);
+  assert.equal(participant.calls[0].args[3], null);
+
   const branch = { id: 11, companyId: company.id, name: 'Example branch' };
   for (const pendingAction of ['clear', 'search']) {
     const pending = await mount({ firstName: 'Alex', company, branch });

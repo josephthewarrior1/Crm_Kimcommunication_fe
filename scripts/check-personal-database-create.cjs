@@ -128,7 +128,7 @@ async function mount({ branchValid = true, emailFailure = false, initialDestinat
     await personal.change('e.g. name@gmail.com', address);
     await personal.change('Nama sekolah, kampus, atau instansi (opsional)', '  Example Campus  ');
     await personal.select('Kategori peserta', 'mahasiswa');
-    for (const label of ['Associated Company', 'Salutation', 'Last Name', 'Job Title', 'Mobile Phone', 'Email tambahan', 'Position Level']) {
+    for (const label of ['Salutation', 'Last Name', 'Job Title', 'Mobile Phone', 'Email tambahan', 'Position Level']) {
       assert(!text(personal.label(label)).includes('*'), label + ' must be optional for personal-only contacts');
     }
     assert(!text(personal.label('First Name')).includes('*'), 'Participant name may be filled later');
@@ -234,16 +234,13 @@ async function mount({ branchValid = true, emailFailure = false, initialDestinat
   assert.equal(companyGmail.calls.length, 0);
   assert(companyGmail.messages.some(message => message.kind === 'error' && message.message.includes('Email pribadi masuk melalui Database Peserta')));
 
-  for (const pending of ['new', 'search', 'branch']) {
-    const guarded = await mount({ initialDestination: 'participant', branchValid: pending !== 'branch' });
-    await guarded.change('e.g. John', 'Alex');
-    await guarded.change('e.g. name@gmail.com', 'alex@gmail.com');
-    if (pending === 'new') await guarded.click('+ Create New Company');
-    if (pending === 'search') await guarded.change('Type to search company...', 'Unselected company');
-    await guarded.submit();
-    assert.equal(guarded.calls.length, 0, 'Personal profile must preserve pending company/branch guard: ' + pending);
-    assert(guarded.messages.some(message => message.kind === 'error'));
-  }
+  const separateParticipant = await mount({ initialDestination: 'participant', branchValid: false });
+  await separateParticipant.change('e.g. John', 'Alex');
+  await separateParticipant.change('e.g. name@gmail.com', 'alex@gmail.com');
+  await separateParticipant.submit();
+  assert.deepEqual(separateParticipant.calls.map(call => call.operation), ['createDatabase'], 'Participant create never creates or updates Company masters');
+  assert.equal(separateParticipant.calls[0].args[1], undefined);
+  assert.equal(separateParticipant.calls[0].args[2], null);
 
   const failedEmail = await mount({ initialDestination: 'participant', emailFailure: true });
   await failedEmail.change('e.g. John', 'Alex');
