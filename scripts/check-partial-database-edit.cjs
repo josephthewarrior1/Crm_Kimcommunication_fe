@@ -126,6 +126,12 @@ async function mount(database = {}, { branchValid = true, emails = [] } = {}) {
   assert.equal(cleared.calls[0].args[1].mobilePhone, '');
   assert.equal(cleared.calls[0].args[1].normalizedPhone, '');
 
+  const multiplePhones = await mount({ firstName: '', databaseDestination: 'participant', mobilePhone: '081200001111, 081300002222' });
+  await multiplePhones.change('e.g. John', 'Nama Dilengkapi');
+  await multiplePhones.submit();
+  assert.equal(multiplePhones.calls[0].args[1].mobilePhone, '+6281200001111, +6281300002222', 'Filling a name must preserve both stored numbers');
+  assert.equal(multiplePhones.calls[0].args[1].normalizedPhone, '+6281200001111', 'Only the primary number is used as the normalized lookup');
+
   const company = { id: 7, name: 'Example Company', group: { id: 2, name: 'Example Group' },
     brandName: 'Example', address: 'Example street', officePhone: '02112345', website: 'example.test',
     industry: 'Technology', companySizeRevenue: 'Small', companySizeEmployee: 'Small', companyHardware: 'Laptop',

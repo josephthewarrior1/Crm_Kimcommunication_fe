@@ -27,3 +27,6 @@ export const normalizePhone = (phone: string | null | undefined): string => {
   return `+62${digits}`;
 };
 
+export const normalizePhoneList = (value: string): string => Array.from(new Set(value.trim().split(/[,;/|\r\n]+/)
+  .map(phone => normalizePhone(phone.trim())).filter(Boolean))).join(', ');
+

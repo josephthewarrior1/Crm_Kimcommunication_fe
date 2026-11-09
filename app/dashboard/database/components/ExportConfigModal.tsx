@@ -9,6 +9,7 @@ import { getOfficeEmail, getPersonalEmail } from '../../events/utils/notesHelper
 import { getContactOffice } from '../../../../lib/utils/companyBranch';
 
 interface ExportConfigModalProps {
+  destination?: 'company' | 'participant';
   isOpen: boolean;
   onClose: () => void;
   databases: Database[];
@@ -34,6 +35,9 @@ const EXPORT_COLUMNS = [
   { key: 'mobilePhone', label: 'Mobile Phone' },
   { key: 'companyEmail', label: 'Company Email Address' },
   { key: 'personalEmail', label: 'Personal Email Address' },
+  { key: 'participantEmail', label: 'Email Peserta' },
+  { key: 'institutionName', label: 'Sekolah/Kampus/Instansi' },
+  { key: 'participantCategory', label: 'Kategori Peserta' },
   { key: 'industry', label: 'Industry' },
   { key: 'revenueSize', label: 'Company Size (Revenue)' },
   { key: 'employeeSize', label: 'Company Size (Employee)' },
@@ -47,6 +51,7 @@ const EXPORT_COLUMNS = [
 ];
 
 export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
+  destination = 'company',
   isOpen,
   onClose,
   databases,
@@ -57,6 +62,10 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
   onExportSuccess
 }) => {
   const [tempSelectedDbIds, setTempSelectedDbIds] = useState<number[]>([]);
+  const availableColumns = destination === 'participant'
+    ? EXPORT_COLUMNS.filter(column => ['firstName', 'lastName', 'participantEmail', 'mobilePhone', 'institutionName', 'participantCategory', 'eventHistory'].includes(column.key))
+    : EXPORT_COLUMNS.filter(column => !['participantEmail', 'institutionName', 'participantCategory'].includes(column.key));
+  const columns = selectedColumns.filter(key => availableColumns.some(column => column.key === key));
 
   useEffect(() => {
     if (isOpen) {
@@ -78,7 +87,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
       return;
     }
 
-    if (selectedColumns.length === 0) {
+    if (columns.length === 0) {
       toast.error("Harap pilih minimal satu kolom untuk di-export.");
       return;
     }
@@ -87,7 +96,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
 
     try {
       let eventParticipants: EventParticipant[] = [];
-      if (selectedColumns.includes('eventHistory')) {
+      if (columns.includes('eventHistory')) {
         eventParticipants = await crmService.getEventParticipants();
       }
 
@@ -95,35 +104,38 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
         const office = getContactOffice(c);
         const rowData: Record<string, any> = { 'No': index + 1 };
         
-        if (selectedColumns.includes('groupName')) rowData['Nama Group'] = c.company?.group?.name || '-';
-        if (selectedColumns.includes('brandName')) rowData['Nama Brand'] = c.company?.brandName || '-';
-        if (selectedColumns.includes('companyName')) rowData['Company Name'] = c.company?.name || '-';
-        if (selectedColumns.includes('salutation')) rowData['Salutation'] = c.salutation || '-';
-        if (selectedColumns.includes('firstName')) rowData['First Name'] = c.firstName || '-';
-        if (selectedColumns.includes('lastName')) rowData['Last Name'] = c.lastName || '-';
-        if (selectedColumns.includes('position')) rowData['Position'] = c.positionLevel || '-';
-        if (selectedColumns.includes('specialityDivision')) rowData['Division'] = c.specialityDivision || '-';
-        if (selectedColumns.includes('jobTitle')) rowData['Job Title'] = c.jobTitle || '-';
-        if (selectedColumns.includes('address')) rowData['Address'] = office?.address || '-';
-        if (selectedColumns.includes('officePhone')) rowData['Office Phone'] = office?.officePhone || '-';
-        if (selectedColumns.includes('mobilePhone')) rowData['Mobile Phone'] = c.mobilePhone || '-';
-        if (selectedColumns.includes('companyEmail')) {
+        if (columns.includes('groupName')) rowData['Nama Group'] = c.company?.group?.name || '-';
+        if (columns.includes('brandName')) rowData['Nama Brand'] = c.company?.brandName || '-';
+        if (columns.includes('companyName')) rowData['Company Name'] = c.company?.name || '-';
+        if (columns.includes('salutation')) rowData['Salutation'] = c.salutation || '-';
+        if (columns.includes('firstName')) rowData['First Name'] = c.firstName || '-';
+        if (columns.includes('lastName')) rowData['Last Name'] = c.lastName || '-';
+        if (columns.includes('position')) rowData['Position'] = c.positionLevel || '-';
+        if (columns.includes('specialityDivision')) rowData['Division'] = c.specialityDivision || '-';
+        if (columns.includes('jobTitle')) rowData['Job Title'] = c.jobTitle || '-';
+        if (columns.includes('address')) rowData['Address'] = office?.address || '-';
+        if (columns.includes('officePhone')) rowData['Office Phone'] = office?.officePhone || '-';
+        if (columns.includes('mobilePhone')) rowData['Mobile Phone'] = c.mobilePhone || '-';
+        if (columns.includes('companyEmail')) {
           rowData['Company Email Address'] = getOfficeEmail(c.emails);
         }
-        if (selectedColumns.includes('personalEmail')) {
+        if (columns.includes('personalEmail')) {
           rowData['Personal Email Address'] = getPersonalEmail(c.emails);
         }
-        if (selectedColumns.includes('industry')) rowData['Industry'] = c.company?.industry || '-';
-        if (selectedColumns.includes('revenueSize')) rowData['Company Size (Revenue)'] = c.company?.companySizeRevenue || '-';
-        if (selectedColumns.includes('employeeSize')) rowData['Company Size (Employee)'] = c.company?.companySizeEmployee || '-';
-        if (selectedColumns.includes('hardware')) rowData['Company Hardware'] = c.company?.companyHardware || '-';
-        if (selectedColumns.includes('linkedin')) rowData['Linkedin Link'] = c.linkedinUrl || '-';
-        if (selectedColumns.includes('branchName')) rowData['Cabang/Kantor'] = c.branch?.name || '';
-        if (selectedColumns.includes('city')) rowData['City'] = office?.city || '-';
-        if (selectedColumns.includes('postalCode')) rowData['Postal Code'] = office?.postalCode || '-';
-        if (selectedColumns.includes('website')) rowData['Company Website'] = c.company?.website || '-';
+        if (columns.includes('participantEmail')) rowData['Email'] = (c.emails || []).map(email => email.email).filter(Boolean).join('; ');
+        if (columns.includes('institutionName')) rowData['Sekolah/Kampus/Instansi'] = c.institutionName || '';
+        if (columns.includes('participantCategory')) rowData['Kategori Peserta'] = c.participantCategory || '';
+        if (columns.includes('industry')) rowData['Industry'] = c.company?.industry || '-';
+        if (columns.includes('revenueSize')) rowData['Company Size (Revenue)'] = c.company?.companySizeRevenue || '-';
+        if (columns.includes('employeeSize')) rowData['Company Size (Employee)'] = c.company?.companySizeEmployee || '-';
+        if (columns.includes('hardware')) rowData['Company Hardware'] = c.company?.companyHardware || '-';
+        if (columns.includes('linkedin')) rowData['Linkedin Link'] = c.linkedinUrl || '-';
+        if (columns.includes('branchName')) rowData['Cabang/Kantor'] = c.branch?.name || '';
+        if (columns.includes('city')) rowData['City'] = office?.city || '-';
+        if (columns.includes('postalCode')) rowData['Postal Code'] = office?.postalCode || '-';
+        if (columns.includes('website')) rowData['Company Website'] = c.company?.website || '-';
         
-        if (selectedColumns.includes('eventHistory')) {
+        if (columns.includes('eventHistory')) {
           const matchingParticipants = eventParticipants.filter(p => p.database?.id === c.id);
           const eventNames = matchingParticipants.map(p => p.event?.name).filter(Boolean);
           rowData['Event Participation'] = eventNames.length > 0 ? eventNames.join(', ') : '-';
@@ -256,7 +268,7 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">2. Kolom / Heading yang mau di-export:</h4>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setSelectedColumns(EXPORT_COLUMNS.map(col => col.key))}
+                  onClick={() => setSelectedColumns(availableColumns.map(col => col.key))}
                   className="text-[10px] font-bold text-blue-600 hover:underline"
                 >
                   Select All
@@ -272,8 +284,8 @@ export const ExportConfigModal: React.FC<ExportConfigModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 border border-slate-200 rounded-md p-4 bg-white">
-              {EXPORT_COLUMNS.map((col) => {
-                const isChecked = selectedColumns.includes(col.key);
+              {availableColumns.map((col) => {
+                const isChecked = columns.includes(col.key);
                 return (
                   <label
                     key={col.key}

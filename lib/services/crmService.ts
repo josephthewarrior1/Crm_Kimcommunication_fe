@@ -19,6 +19,8 @@ import {
   DatabaseEmail,
   Event,
   EmsSource,
+  EmsSyncPreview,
+  EmsSyncResult,
   EventAvailableDatabasesResponse,
   EventActivitySummaryResponse,
   EventFilterOptionsResponse,
@@ -41,6 +43,44 @@ import {
 
 function notifyDatabaseTargetChange() {
   if (typeof window !== 'undefined') window.dispatchEvent(new window.Event('database-targets-updated'));
+}
+
+export type PmsDestination = 'company' | 'participant';
+export interface PmsEventSyncRow {
+  pmsEventId: number;
+  event: Partial<Event>;
+  packageName: string;
+  existingEvent?: Event;
+  status: 'NEW' | 'EXISTING' | 'CONFLICT';
+  message: string;
+}
+export interface PmsEventSyncPreview { rows: PmsEventSyncRow[]; totalCount: number }
+export interface PmsEventSyncResult {
+  createdCount: number;
+  updatedCount: number;
+  unchangedCount: number;
+  failedCount: number;
+  totalCount: number;
+  errors: Array<{ pmsEventId: number; name: string; message: string }>;
+}
+
+const pmsDestination = (value: unknown): value is PmsDestination => value === 'company' || value === 'participant';
+const pmsNameKey = (value: string | undefined) => (value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
+function planPmsEvents(source: PmsEventSyncRow[], events: Event[]): PmsEventSyncPreview {
+  // ponytail: compare one PMS/CRM snapshot directly; index IDs and names if event lists become large.
+  return { totalCount: source.length, rows: source.map(row => {
+    const mapped = events.filter(event => event.pmsEventId === row.pmsEventId);
+    const sameName = events.filter(event => pmsNameKey(event.name) === pmsNameKey(row.event.name));
+    const legacy = sameName.filter(event => !event.pmsEventId);
+    const repeatedName = source.filter(other => pmsNameKey(other.event.name) === pmsNameKey(row.event.name)).length > 1;
+    const conflict = mapped.length > 1 ? 'ID PMS cocok dengan beberapa event CRM. Tinjau pemetaan event.'
+      : !mapped.length && repeatedName ? 'Beberapa ID PMS memakai nama event yang sama. Periksa nama event sebelum menghubungkan.'
+      : !mapped.length && legacy.length > 1 ? 'Nama cocok dengan beberapa event CRM lama. Tinjau pemetaan event.'
+      : !mapped.length && sameName.some(event => event.pmsEventId) ? 'Nama event sudah dipakai oleh ID PMS lain. Periksa pemetaan; event tidak digabung otomatis.' : '';
+    const existingEvent = mapped.length === 1 ? mapped[0] : legacy.length === 1 ? legacy[0] : undefined;
+    return { ...row, existingEvent, status: conflict ? 'CONFLICT' : existingEvent ? 'EXISTING' : 'NEW', message: conflict };
+  }) };
 }
 
 export class CrmService extends ApiService {
@@ -192,6 +232,7 @@ export class CrmService extends ApiService {
   }
 
   async getDatabasesList(params?: {
+    destination?: 'all' | 'company' | 'participant';
     search?: string;
     groupId?: string;
     companyId?: string;
@@ -206,6 +247,7 @@ export class CrmService extends ApiService {
     size?: number;
   }, signal?: AbortSignal): Promise<DatabaseListResponse> {
     const searchParams = new URLSearchParams();
+    if (params?.destination) searchParams.set('destination', params.destination);
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
@@ -223,6 +265,7 @@ export class CrmService extends ApiService {
   }
 
   async exportDatabases(params?: {
+    destination?: 'all' | 'company' | 'participant';
     search?: string;
     groupId?: string;
     companyId?: string;
@@ -235,6 +278,7 @@ export class CrmService extends ApiService {
     sortOrder?: 'asc' | 'desc';
   }, signal?: AbortSignal): Promise<DatabaseExportResponse> {
     const searchParams = new URLSearchParams();
+    if (params?.destination) searchParams.set('destination', params.destination);
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
@@ -250,6 +294,7 @@ export class CrmService extends ApiService {
   }
 
   async getDatabaseFilterOptions(params?: {
+    destination?: 'all' | 'company' | 'participant';
     search?: string;
     groupId?: string;
     companyId?: string;
@@ -260,6 +305,7 @@ export class CrmService extends ApiService {
     tab?: 'all' | 'clean' | 'dirty';
   }, signal?: AbortSignal): Promise<DatabaseFilterOptionsResponse> {
     const searchParams = new URLSearchParams();
+    if (params?.destination) searchParams.set('destination', params.destination);
     if (params?.search) searchParams.set('search', params.search);
     if (params?.groupId) searchParams.set('groupId', params.groupId);
     if (params?.companyId) searchParams.set('companyId', params.companyId);
@@ -272,7 +318,7 @@ export class CrmService extends ApiService {
     return this.get<DatabaseFilterOptionsResponse>(`/api/databases/filter-options${query ? `?${query}` : ''}`, { signal });
   }
 
-  async createDatabase(database: Partial<Database>, companyId?: number, branchId?: number | null): Promise<Database> {
+  async createDatabase(database: Omit<Partial<Database>, 'emails'> & { emails?: Partial<DatabaseEmail>[] }, companyId?: number, branchId?: number | null): Promise<Database> {
     const params = new URLSearchParams();
     if (companyId) params.set('companyId', String(companyId));
     if (branchId != null) params.set('branchId', String(branchId));
@@ -456,10 +502,12 @@ export class CrmService extends ApiService {
   async validateEventParticipantsImport(
     eventId: number,
     file: File,
+    destination: 'company' | 'participant',
     tab?: string
   ): Promise<EventParticipantsImportValidationResponse> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('destination', destination);
     if (tab) formData.append('tab', tab);
     return this.postFormData<EventParticipantsImportValidationResponse>(`/api/events/${eventId}/participants/import/validate`, formData);
   }
@@ -467,6 +515,7 @@ export class CrmService extends ApiService {
   async importEventParticipants(
     eventId: number,
     file: File,
+    destination: 'company' | 'participant',
     tab?: string
   ): Promise<{
     message: string;
@@ -480,6 +529,7 @@ export class CrmService extends ApiService {
   }> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('destination', destination);
     if (tab) formData.append('tab', tab);
     return this.postFormData<{
       message: string;
@@ -581,81 +631,75 @@ export class CrmService extends ApiService {
     );
   }
 
-  async syncPmsEvents(): Promise<{ syncedCount: number; totalCount: number }> {
-    // ponytail: manual on-demand sync from PMS endpoint (configurable via NEXT_PUBLIC_PMS_URL) to local CRM DB
+  async previewPmsEvents(): Promise<PmsEventSyncPreview> {
     const pmsUrl = process.env.NEXT_PUBLIC_PMS_URL || 'https://pms.kimcommunication.com/api/public/events';
-    const response = await fetch(pmsUrl, {
-      signal: AbortSignal.timeout(5000),
+    const response = await fetch(pmsUrl, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
+    if (!response.ok) throw new Error(`PMS server returned status ${response.status}`);
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) throw new Error('Daftar event PMS tidak valid. Muat preview ulang.');
+    const ids = new Set<number>();
+    const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+    const source = data.map((item): PmsEventSyncRow => {
+      if (!item || typeof item !== 'object') throw new Error('Baris event PMS tidak valid.');
+      const id = typeof item.id === 'string' && /^[1-9]\d*$/.test(item.id) ? Number(item.id) : item.id;
+      if (!Number.isSafeInteger(id) || id <= 0 || ids.has(id)) throw new Error('ID event PMS tidak valid atau berulang. Periksa sumber PMS.');
+      ids.add(id);
+      const name = text(item.name);
+      if (!name) throw new Error(`Nama event PMS #${id} kosong. Perbaiki di PMS sebelum sync.`);
+      const packageName = text(item.addOn || item.add_on || item.package || item.packageName || item.package_name || item.addOnPackage || item.add_on_package || item.servicePackage || item.service_package);
+      const notes = text(item.description || item.notes || item.venueName);
+      const eventType = text(item.eventType).toLowerCase();
+      return { pmsEventId: id, packageName, status: 'NEW', message: '', event: {
+        pmsEventId: id, name, eventType: ['partner', 'end_user', 'internal', 'other'].includes(eventType) ? eventType : 'other',
+        clientName: text(item.client || item.clientName), dateStart: text(item.startDate || item.dateStart).slice(0, 10),
+        dateEnd: text(item.endDate || item.dateEnd).slice(0, 10),
+        targetParticipants: Number.isSafeInteger(item.targetPax || item.targetParticipants) ? (item.targetPax || item.targetParticipants) : 0,
+        notes: packageName ? [notes, `Package: ${packageName}`].filter(Boolean).join(' | ') : notes,
+      } };
     });
+    return planPmsEvents(source, await this.getEvents());
+  }
 
-    if (!response.ok) {
-      throw new Error(`PMS server returned status ${response.status}`);
-    }
-
-    const data = await response.json();
-    if (!Array.isArray(data)) {
-      return { syncedCount: 0, totalCount: 0 };
-    }
-
-    const crmEvents = await this.getEvents();
-    let syncedCount = 0;
-
-    for (const item of data) {
-      const pmsEvId = item.id;
-      const pmsName = item.name || 'Untitled Event';
-      const addOn = item.addOn || item.add_on || item.package || item.packageName || item.package_name || item.addOnPackage || item.add_on_package || item.servicePackage || item.service_package || null;
-
-      const existingEv = crmEvents.find(
-        (crmEv) =>
-          (crmEv.pmsEventId && crmEv.pmsEventId === pmsEvId) ||
-          (crmEv.name && pmsName && crmEv.name.trim().toLowerCase() === pmsName.trim().toLowerCase())
-      );
-
-      if (!existingEv) {
-        try {
-          const eventType = ['partner', 'end_user', 'internal', 'other'].includes((item.eventType || '').toLowerCase())
-            ? (item.eventType || '').toLowerCase()
-            : 'partner';
-
-          const notesText = item.description || item.notes || item.venueName || '';
-          const finalNotes = addOn ? (notesText ? `${notesText} | Package: ${addOn}` : `Package: ${addOn}`) : notesText;
-
-          await this.createEvent({
-            name: pmsName,
-            eventType,
-            clientName: item.client || item.clientName || '',
-            dateStart: item.startDate || item.dateStart || '',
-            dateEnd: item.endDate || item.dateEnd || '',
-            notes: finalNotes,
-            addOn: addOn,
-            targetParticipants: item.targetPax || item.targetParticipants || 0,
-            pmsEventId: pmsEvId,
+  async syncPmsEvents(preview: PmsEventSyncPreview, choices: Record<number, PmsDestination>): Promise<PmsEventSyncResult> {
+    const current = planPmsEvents(preview.rows, await this.getEvents());
+    const missing = current.rows.find(row => row.status !== 'CONFLICT'
+      && !pmsDestination(row.existingEvent?.syncDestination) && !pmsDestination(choices[row.pmsEventId]));
+    if (missing) throw new Error(`Pilih jenis event untuk "${missing.event.name}" sebelum menyimpan.`);
+    const result: PmsEventSyncResult = { createdCount: 0, updatedCount: 0, unchangedCount: 0, failedCount: 0, totalCount: current.totalCount, errors: [] };
+    for (const row of current.rows) {
+      try {
+        if (row.status === 'CONFLICT') throw new Error(row.message);
+        const previous = preview.rows.find(item => item.pmsEventId === row.pmsEventId);
+        const existing = row.existingEvent;
+        if (previous?.existingEvent?.id !== existing?.id || previous?.existingEvent?.syncDestination !== existing?.syncDestination) {
+          throw new Error('Pemetaan atau jenis event berubah sejak preview. Muat preview ulang.');
+        }
+        if (!existing) {
+          await this.createEvent({ ...row.event, syncDestination: choices[row.pmsEventId] });
+          result.createdCount++;
+          continue;
+        }
+        const packageText = row.packageName ? `Package: ${row.packageName}` : '';
+        const notes = packageText && !existing.notes?.split(' | ').some(part => part.trim() === packageText)
+          ? [existing.notes, packageText].filter(Boolean).join(' | ') : existing.notes;
+        const needsKind = !pmsDestination(existing.syncDestination);
+        if (!existing.pmsEventId || notes !== existing.notes || needsKind) {
+          // PUT requires the persisted event fields; do not send participant data or replace an existing destination.
+          await this.updateEvent(existing.id, {
+            name: existing.name, eventType: existing.eventType, clientName: existing.clientName,
+            dateStart: existing.dateStart, dateEnd: existing.dateEnd, notes,
+            targetParticipants: existing.targetParticipants, emsEventId: existing.emsEventId, emsSource: existing.emsSource,
+            pmsEventId: row.pmsEventId, ...(needsKind ? { syncDestination: choices[row.pmsEventId] } : {}),
           });
-          syncedCount++;
-        } catch (err) {
-          console.error(`Failed to sync PMS event "${pmsName}":`, err);
-        }
-      } else {
-        // Sync addOn / package info to existing event if missing
-        if (addOn && (!existingEv.addOn || !existingEv.notes?.includes(addOn))) {
-          try {
-            const updatedNotes = existingEv.notes 
-              ? (existingEv.notes.includes('Package:') ? existingEv.notes : `${existingEv.notes} | Package: ${addOn}`) 
-              : `Package: ${addOn}`;
-            await this.updateEvent(existingEv.id, {
-              ...existingEv,
-              addOn: addOn,
-              notes: updatedNotes
-            });
-            syncedCount++;
-          } catch (err) {
-            console.error(`Failed to update addOn for existing event "${pmsName}":`, err);
-          }
-        }
+          result.updatedCount++;
+        } else result.unchangedCount++;
+      } catch (failure) {
+        result.failedCount++;
+        result.errors.push({ pmsEventId: row.pmsEventId, name: row.event.name || '',
+          message: failure instanceof Error ? failure.message : 'Event gagal disinkronkan.' });
       }
     }
-
-    return { syncedCount, totalCount: data.length };
+    return result;
   }
 
   async createEvent(event: Partial<Event>): Promise<Event> {
@@ -697,8 +741,16 @@ export class CrmService extends ApiService {
   }
 
   // ponytail: trigger EMS participant sync for a CRM event
-  async syncEmsParticipants(eventId: number): Promise<{ message: string; count: number }> {
-    return this.post<{ message: string; count: number }>(`/api/events/${eventId}/sync-ems`, {});
+  async previewEmsParticipants(eventId: number): Promise<EmsSyncPreview> {
+    return this.post<EmsSyncPreview>(`/api/events/${eventId}/sync-ems/preview`, {});
+  }
+
+  async setEventSyncDestination(eventId: number, destination: 'company' | 'participant'): Promise<Event> {
+    return this.patch<Event>(`/api/events/${eventId}/sync-destination`, { destination });
+  }
+
+  async syncEmsParticipants(eventId: number, confirmation: { previewToken: string }): Promise<EmsSyncResult> {
+    return this.post<EmsSyncResult>(`/api/events/${eventId}/sync-ems`, confirmation);
   }
 
   // --- EVENT PARTICIPANTS ---
@@ -889,7 +941,8 @@ export class CrmService extends ApiService {
   }
 
   // --- EXCEL IMPORT ---
-  async previewDatabasesExcel(file: File): Promise<{
+  async previewDatabasesExcel(file: File, destination: 'company' | 'participant'): Promise<{
+    destination: 'company' | 'participant';
     totalRows: number;
     newCount: number;
     duplicateCount: number;
@@ -918,7 +971,7 @@ export class CrmService extends ApiService {
     const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const response = await fetch(`${this.baseUrl}/api/databases/import/preview`, {
+    const response = await fetch(`${this.baseUrl}/api/databases/import/preview?destination=${destination}`, {
       method: 'POST',
       headers,
       body: formData
@@ -938,14 +991,14 @@ export class CrmService extends ApiService {
     return response.json();
   }
 
-  async importDatabasesExcel(file: File): Promise<DatabaseImportResult> {
+  async importDatabasesExcel(file: File, destination: 'company' | 'participant'): Promise<DatabaseImportResult> {
     const formData = new FormData();
     formData.append('file', file);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const response = await fetch(`${this.baseUrl}/api/databases/import`, {
+    const response = await fetch(`${this.baseUrl}/api/databases/import?destination=${destination}`, {
       method: 'POST',
       headers,
       body: formData

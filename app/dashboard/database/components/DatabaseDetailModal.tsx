@@ -8,6 +8,7 @@ import { getStatusLabel } from '../../events/utils/statusHelper';
 import { isPublicPersonalEmail } from '../../events/utils/notesHelper';
 
 interface DatabaseDetailModalProps {
+  viewDestination?: 'company' | 'participant';
   isOpen: boolean;
   onClose: () => void;
   database: Database;
@@ -58,7 +59,7 @@ function LoadError({ message, onRetry }: { message: string; onRetry?: () => void
 export const DatabaseDetailModal: React.FC<DatabaseDetailModalProps> = props =>
   props.isOpen && props.database ? <DatabaseDetailContent key={props.database.id} {...props} /> : null;
 
-function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmails, events, loadingEvents, emailsError, eventsError, onRetry }: DatabaseDetailModalProps) {
+function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmails, events, loadingEvents, emailsError, eventsError, onRetry, viewDestination }: DatabaseDetailModalProps) {
   const [activeTab, setActiveTab] = useState('profile');
   const openerRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -66,7 +67,7 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
   const initials = [database.firstName, database.lastName].filter(Boolean).map(name => name[0]).join('').slice(0, 2).toUpperCase();
   const company = database.company;
   const office = getContactOffice(database);
-  const completeness = !loadingEmails && !emailsError ? checkDatabaseCompleteness({ ...database, emails }) : null;
+  const completeness = !loadingEmails && !emailsError ? checkDatabaseCompleteness({ ...database, emails }, viewDestination) : null;
   const website = websiteUrl(company?.website);
   const linkedin = websiteUrl(database.linkedinUrl);
   const databaseType = ({ partner_it: 'Partner IT', partner_marketing: 'Partner marketing', end_user: 'End user', unknown: 'Belum ditentukan' } as Record<string, string>)[database.databaseType] || database.databaseType?.replace(/_/g, ' ');
@@ -121,6 +122,7 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
                 <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-900"><Phone aria-hidden="true" className="h-4 w-4 text-slate-400" />Kontak & email</h3>
                 <dl className="space-y-4">
                   <Field label="Nomor handphone"><span className="tabular-nums">{database.mobilePhone || 'Belum diisi'}</span></Field>
+                  {!database.mobilePhone && (viewDestination === 'participant' || database.databaseDestination === 'participant') && <p className="text-xs leading-5 text-amber-800">Email saja — belum bisa ditelepon. Nomor HP tidak wajib untuk status Bersih jika nama dan email valid sudah terisi.</p>}
                   <Field label="LinkedIn">{linkedin ? <a href={linkedin} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-700 hover:underline">Lihat profil LinkedIn<ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" /></a> : database.linkedinUrl}</Field>
                 </dl>
                 <div className="mt-5 border-t border-slate-100 pt-4">
@@ -131,14 +133,14 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
                     : <ul className="space-y-2.5">{emails.map(email => {
                       const corporate = email.isCorporate || email.emailType?.toLowerCase() === 'company';
                       const personal = email.emailType?.toLowerCase() === 'personal';
-                      return <li key={email.id} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3"><div className="mb-2 flex flex-wrap items-center gap-2 text-xs"><span className="text-slate-500">{corporate ? 'Email kantor' : personal ? 'Email personal' : 'Email lainnya'}</span>{email.isPrimary && <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">Utama</span>}</div><a href={`mailto:${encodeURIComponent(email.email)}`} className="break-all text-sm font-medium text-slate-800 hover:text-blue-700 hover:underline">{email.email}</a>{!corporate && personal && !isPublicPersonalEmail(email.email) && <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-amber-700"><AlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />Domain kantor tercatat sebagai email personal.</p>}</li>;
+                      return <li key={email.id} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3"><div className="mb-2 flex flex-wrap items-center gap-2 text-xs"><span className="text-slate-500">{corporate ? 'Email kantor' : personal ? 'Email personal' : 'Email lainnya'}</span>{email.isPrimary && <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">Utama</span>}</div><a href={`mailto:${encodeURIComponent(email.email)}`} className="break-all text-sm font-medium text-slate-800 hover:text-blue-700 hover:underline">{email.email}</a>{viewDestination !== 'participant' && database.databaseDestination !== 'participant' && !corporate && personal && !isPublicPersonalEmail(email.email) && <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-amber-700"><AlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />Domain kantor tercatat sebagai email personal.</p>}</li>;
                     })}</ul>}
                 </div>
               </aside>
               <div className="min-w-0 space-y-5">
                 <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                   <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-900"><User aria-hidden="true" className="h-4 w-4 text-slate-400" />Informasi kontak</h3>
-                  <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2"><Field label="Salutation">{database.salutation}</Field><Field label="Position level">{database.positionLevel}</Field><Field label="Nama depan">{database.firstName}</Field><Field label="Nama belakang">{database.lastName}</Field><Field label="Jabatan">{database.jobTitle}</Field><Field label="Divisi">{database.specialityDivision}</Field></dl>
+                  <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2"><Field label="Salutation">{database.salutation}</Field><Field label="Position level">{database.positionLevel}</Field><Field label="Nama depan">{database.firstName}</Field><Field label="Nama belakang">{database.lastName}</Field><Field label="Jabatan">{database.jobTitle}</Field><Field label="Divisi">{database.specialityDivision}</Field><Field label="Sekolah/Kampus/Instansi">{database.institutionName}</Field><Field label="Kategori peserta">{database.participantCategory}</Field></dl>
                 </section>
                 <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                   <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-900"><FileText aria-hidden="true" className="h-4 w-4 text-slate-400" />Informasi database</h3>

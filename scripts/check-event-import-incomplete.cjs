@@ -40,13 +40,13 @@ async function mount(rows, deferPreview = false) {
     useMemo(factory) { cursor++; return factory(); },
     useRef(initial) { const index = cursor++; return hooks[index] ||= { current: initial }; },
   };
-  const service = { async validateEventParticipantsImport(...args) { calls.push(args); await gate; return { summary: { totalRows: rows.length }, rows }; } };
+  const service = { async validateEventParticipantsImport(...args) { calls.push(args); await gate; return { destination: 'participant', summary: { totalRows: rows.length }, rows }; } };
   const dependencies = { react: React, 'lucide-react': {}, '../../../../lib/services/crmService': { crmService: service },
     sonner: { toast: Object.fromEntries(['success', 'warning', 'error'].map(kind => [kind, message => messages.push({ kind, message })])) } };
   const { ExcelImportModal } = compile('app/dashboard/events/components/ExcelImportModal.tsx', name => dependencies[name] || unexpected(name), {
     setInterval: () => 0, clearInterval() {}, setTimeout: callback => queueMicrotask(callback),
   });
-  const props = { isOpen: true, eventId: 17, activeTab: 'request', importParticipantsFile: null,
+  const props = { isOpen: true, eventDestination: 'participant', eventId: 17, activeTab: 'request', importParticipantsFile: null,
     setImportParticipantsFile(value) { props.importParticipantsFile = value; }, isImportingParticipants: false, importParticipantsProgress: 0,
     onClose() { closed++; }, onImport() { applied++; }, onDownloadTemplate() {} };
   function render() { cursor = 0; changed = false; tree = ExcelImportModal(props); while (effects.length) effects.shift()(); }
@@ -74,7 +74,7 @@ const row = extra => ({ rowNumber: 2, status: 'valid', firstName: 'Uji Kontak', 
 async function modalFlow() {
   const phone = await mount([row({ mobilePhone: '081200009601', companyEmail: '',
     missingFields: ['Nama Group Holding', 'Company Name', 'Company Email', 'Industry'], warnings: [] })]);
-  await phone.preview(); assert.deepEqual(phone.calls[0], [17, file, 'request']);
+  await phone.preview(); assert.deepEqual(phone.calls[0], [17, file, 'participant', 'request']);
   assert.equal(phone.button('Mulai Import').props.disabled, false);
   assert(phone.content().includes('Belum lengkap — boleh import.'));
   assert(phone.content().includes('Company Email, Industry'));
@@ -122,13 +122,13 @@ async function serviceFlow() {
   const calls = [];
   class ApiService { postFormData(url, body) { calls.push({ url, body }); return Promise.resolve({}); } }
   const { crmService } = compile('lib/services/crmService.ts', name => name === './apiService' ? { ApiService } : unexpected(name), { FormData, URLSearchParams });
-  await crmService.validateEventParticipantsImport(17, file, 'request');
-  await crmService.importEventParticipants(17, file, 'request');
+  await crmService.validateEventParticipantsImport(17, file, 'participant', 'request');
+  await crmService.importEventParticipants(17, file, 'participant', 'request');
   assert.deepEqual(calls.map(call => call.url), ['/api/events/17/participants/import/validate', '/api/events/17/participants/import']);
   for (const call of calls) {
     assert.equal(call.body.get('file'), file); assert.equal(call.body.get('tab'), 'request');
-    assert.equal(call.body.get('destination'), null, 'Original import API has no destination parameter');
+    assert.equal(call.body.get('destination'), 'participant', 'Event destination must be forwarded explicitly');
   }
 }
-(async () => { await modalFlow(); await serviceFlow(); console.log('Event incomplete import passed: phone/email-only, soft corporate warnings, existing profiles, blocking issues, pending guards and original API. No network.'); })()
+(async () => { await modalFlow(); await serviceFlow(); console.log('Event incomplete import passed: phone/email-only, soft corporate warnings, existing profiles, blocking issues, pending guards and event destination API. No network.'); })()
   .catch(error => { console.error(error); process.exitCode = 1; });

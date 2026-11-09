@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Loader2, Users } from 'lucide-react';
 import { Event, EmsSource } from '../../../../lib/types';
 import { EmsMappingField } from './EmsMappingField';
+import { SyncDestinationField, SyncDestination } from './SyncDestinationField';
 
 interface EditEventModalProps {
   isOpen: boolean;
@@ -23,11 +24,14 @@ interface EditEventModalProps {
   setEditTargetParticipants: (v: number) => void;
   emsSource: EmsSource;
   setEmsSource: (value: EmsSource) => void;
+  syncDestination: SyncDestination;
+  setSyncDestination: (value: SyncDestination) => void;
   editEmsEventId?: number;
   setEditEmsEventId?: (v: number) => void;
   submittingEvent: boolean;
   onSubmit: (e: React.FormEvent) => void;
   onManagePics?: () => void;
+  hasParticipants?: boolean;
 }
 
 export const EditEventModal: React.FC<EditEventModalProps> = ({
@@ -50,13 +54,18 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
   setEditTargetParticipants,
   emsSource,
   setEmsSource,
+  syncDestination,
+  setSyncDestination,
   editEmsEventId = 0,
   setEditEmsEventId,
   submittingEvent,
   onSubmit,
-  onManagePics
+  onManagePics,
+  hasParticipants = false
 }) => {
   if (!isOpen || !editingEvent) return null;
+  const eventTypeLocked = Boolean(editingEvent.syncDestination)
+    && (hasParticipants || (editingEvent.registeredCount || 0) > 0);
 
   return (
     <div className="ms-modal-overlay">
@@ -87,13 +96,18 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
             />
           </div>
 
+          <SyncDestinationField value={syncDestination} onChange={setSyncDestination} disabled={submittingEvent || eventTypeLocked} />
+          {!editingEvent.syncDestination && (hasParticipants || (editingEvent.registeredCount || 0) > 0) && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Event lama ini sudah memiliki kontak. Pilihan pertama menambahkan kontak ke tampilan database yang dipilih; profil, perusahaan, cabang, dan riwayat lama tetap dipertahankan.</p>
+          )}
+
           {setEditEmsEventId && (
             <EmsMappingField source={emsSource} onSourceChange={setEmsSource} eventId={editEmsEventId} onEventIdChange={setEditEmsEventId} />
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>div]:min-w-0">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Event Type</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kategori kegiatan</label>
               <select
                 value={editEventType}
                 onChange={(e) => setEditEventType(e.target.value)}
@@ -190,7 +204,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={submittingEvent}
+              disabled={submittingEvent || !syncDestination}
               className="ms-modal-primary px-5 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-sm font-bold rounded-md flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {submittingEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

@@ -123,6 +123,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
         </button>
 
         <h3 className="ms-modal-title pr-8">Add Database as Participant</h3>
+        <p className="mt-2 text-xs text-slate-500">Jenis event: {selectedEvent.syncDestination === 'participant' ? 'Peserta / Publik' : 'Korporat'}. Daftar kontak mengikuti {selectedEvent.syncDestination === 'participant' ? 'Database Peserta' : 'Database Perusahaan'}.</p>
 
         </div>
 

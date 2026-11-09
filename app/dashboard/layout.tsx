@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useAuth } from '../../lib/context/AuthContext';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import DatabaseTargetWarning from './components/DatabaseTargetWarning';
 import {
   LayoutDashboard,
@@ -24,7 +24,29 @@ import {
   Wand2,
   Target,
   ChevronRight,
+  Users,
 } from 'lucide-react';
+
+function DatabaseSubmenu({ compact, active, onNavigate }: { compact: boolean; active: boolean; onNavigate: () => void }) {
+  const searchParams = useSearchParams();
+  const destination = searchParams.get('destination') === 'participant' ? 'participant' : 'company';
+  return (
+    <div aria-label="Jenis database" className={`mt-1 space-y-0.5 ${compact ? 'lg:ml-7 lg:border-l lg:border-slate-200 lg:pl-2' : 'ml-7 border-l border-slate-200 pl-2'}`}>
+      {([
+        ['company', 'Perusahaan', Building2],
+        ['participant', 'Peserta', Users],
+      ] as const).map(([category, label, Icon]) => {
+        const selected = active && destination === category;
+        return <Link key={category} href={`/dashboard/database?destination=${category}`} prefetch={false}
+          onClick={onNavigate} title={`Database ${label}`} aria-current={selected ? 'page' : undefined}
+          className={`flex min-h-9 items-center gap-2 rounded-md px-3 py-2 text-xs font-medium ${compact ? 'md:justify-center lg:justify-start' : ''} ${selected ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
+          <Icon aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={1.7} />
+          <span className={compact ? 'md:sr-only lg:not-sr-only' : undefined}>{label}</span>
+        </Link>;
+      })}
+    </div>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading, isAdmin, isManager, isUser } = useAuth();
@@ -111,19 +133,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               const isActive = isActivePath(item.path);
               const Icon = item.icon;
               return (
+                <div key={item.path}>
                 <Link
-                  key={item.path}
                   href={item.path}
                   prefetch={false}
                   onClick={() => setMobileMenuOpen(false)}
                   title={compact ? item.name : undefined}
-                  aria-current={isActive ? 'page' : undefined}
+                  aria-current={isActive && item.path !== '/dashboard/database' ? 'page' : undefined}
                   className={`group relative flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-colors ${compact ? 'md:justify-center lg:justify-start' : ''} ${isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                 >
                   {isActive && <span aria-hidden="true" className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-blue-600" />}
                   <Icon aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-500 group-hover:text-slate-700'}`} strokeWidth={1.7} />
                   <span className={compact ? 'md:sr-only lg:not-sr-only' : undefined}>{item.name}</span>
                 </Link>
+                {item.path === '/dashboard/database' && (
+                  <React.Suspense fallback={null}>
+                    <DatabaseSubmenu compact={compact} active={isActive} onNavigate={() => setMobileMenuOpen(false)} />
+                  </React.Suspense>
+                )}
+                </div>
               );
             })}
           </div>

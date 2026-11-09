@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { EmsMappingField } from './EmsMappingField';
+import { SyncDestinationField, SyncDestination } from './SyncDestinationField';
 import type { EmsSource } from '../../../../lib/types';
 
 interface CreateEventModalProps {
@@ -22,6 +23,8 @@ interface CreateEventModalProps {
   setTargetParticipants: (v: number) => void;
   emsSource: EmsSource;
   setEmsSource: (value: EmsSource) => void;
+  syncDestination: SyncDestination;
+  setSyncDestination: (value: SyncDestination) => void;
   emsEventId?: number;
   setEmsEventId?: (v: number) => void;
   submittingEvent: boolean;
@@ -47,6 +50,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   setTargetParticipants,
   emsSource,
   setEmsSource,
+  syncDestination,
+  setSyncDestination,
   emsEventId = 0,
   setEmsEventId,
   submittingEvent,
@@ -83,13 +88,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             />
           </div>
 
+          <SyncDestinationField value={syncDestination} onChange={setSyncDestination} disabled={submittingEvent} />
+
           {setEmsEventId && (
             <EmsMappingField source={emsSource} onSourceChange={setEmsSource} eventId={emsEventId} onEventIdChange={setEmsEventId} />
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>div]:min-w-0">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Event Type</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kategori kegiatan</label>
               <select
                 value={eventType}
                 onChange={(e) => setEventType(e.target.value)}
@@ -169,7 +176,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={submittingEvent}
+              disabled={submittingEvent || !syncDestination}
               className="ms-modal-primary px-5 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-sm font-bold rounded-md flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {submittingEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

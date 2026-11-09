@@ -49,7 +49,7 @@ function parentRefresh(failingEndpoint) {
     databaseRequestId: { current: 0 }, databaseRequest: { current: null },
     filterOptionsRequestId: { current: 0 }, filterOptionsRequest: { current: null },
     searchQuery: '', filterGroupId: '', filterCompanyId: '', filterBranchId: '', filterPositionLevel: '', filterIndustry: '', filterCity: '',
-    activeTabFilter: 'all', sortBy: 'id', sortOrder: 'asc', currentPage: 1, itemsPerPage: 10,
+    activeTabFilter: 'all', destination: 'company', sortBy: 'id', sortOrder: 'asc', currentPage: 1, itemsPerPage: 10,
     crmService: {
       getDatabasesList: async () => { if (failingEndpoint === 'list') throw new Error('Fixture list refresh failed'); return { items: [] }; },
       getDatabaseFilterOptions: async () => { if (failingEndpoint === 'filters') throw new Error('Fixture filters refresh failed'); return {}; },
@@ -57,14 +57,14 @@ function parentRefresh(failingEndpoint) {
     },
     toast: { error() {} },
   };
-  for (const setter of ['setLoading', 'setDatabases', 'setServerTotalItems', 'setServerTotalPages', 'setDatabaseSummary', 'setDatabaseAnalytics', 'setFilterOptionsError', 'setDatabaseFilterOptions', 'setFlags']) sandbox[setter] = () => {};
+  for (const setter of ['setLoading', 'setDatabases', 'setServerTotalItems', 'setServerTotalPages', 'setDatabaseSummary', 'setDestinationCounts', 'setDatabaseAnalytics', 'setFilterOptionsError', 'setDatabaseFilterOptions', 'setFlags']) sandbox[setter] = () => {};
   const code = Object.entries(callbacks).map(([name, callback]) => `const ${name} = ${callback};`).join('\n')
     + '\nexports.callbacks = { loadDatabasePage, loadDatabaseFilterOptions, refreshDatabasePage, onImportSuccess };';
   vm.runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText, sandbox);
   return sandbox.exports.callbacks;
 }
 
-async function mount(response, { rejectImport = false, rejectRefresh = false, refreshWait, refreshCallback } = {}) {
+async function mount(response, { rejectImport = false, rejectRefresh = false, refreshWait, refreshCallback, destination = 'company', inputFile = file, previewRows } = {}) {
   const hooks = [], effects = [], calls = [], messages = [];
   let cursor = 0, changed = false, tree, closed = 0, refreshed = 0;
   const hookReact = {
@@ -90,12 +90,12 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, re
     },
   };
   const service = {
-    previewDatabasesExcel: async selected => {
-      assert.equal(selected, file); calls.push('preview');
-      return { rows: [{ rowNum: 2, status: 'NEW' }, { rowNum: 3, status: 'DUPLICATE' }, { rowNum: 4, status: 'INCOMPLETE', message: 'Missing position' }] };
+    previewDatabasesExcel: async (selected, target) => {
+      assert.equal(selected, inputFile); assert.equal(target, destination); calls.push('preview');
+      return { destination, rows: previewRows || [{ rowNum: 2, status: 'NEW' }, { rowNum: 3, status: 'DUPLICATE' }, { rowNum: 4, status: 'INCOMPLETE', message: 'Missing position' }] };
     },
-    importDatabasesExcel: async selected => {
-      assert.equal(selected, file); calls.push('import');
+    importDatabasesExcel: async (selected, target) => {
+      assert.equal(selected, inputFile); assert.equal(target, destination); calls.push('import');
       if (rejectImport) throw new Error('Server menolak fixture');
       return response;
     },
@@ -115,7 +115,7 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, re
   }, { setInterval: () => 1, clearInterval() {}, setTimeout: callback => { queueMicrotask(callback); return 1; } });
   function render() {
     cursor = 0; changed = false;
-    tree = ExcelImportModal({ isOpen: true, onClose: () => closed++, onImportSuccess: async () => {
+    tree = ExcelImportModal({ isOpen: true, initialDestination: destination, onClose: () => closed++, onImportSuccess: async () => {
       refreshed++; if (rejectRefresh) throw new Error('Refresh fixture failed');
       if (refreshWait) await refreshWait;
       if (refreshCallback) await refreshCallback();
@@ -132,13 +132,13 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, re
   }
   const find = predicate => { const result = nodes(tree).find(predicate); assert(result, 'Import control not found'); return result; };
   render(); await settle();
-  find(node => node.type === 'input' && node.props.type === 'file').props.onChange({ target: { files: [file] } });
+  find(node => node.type === 'input' && node.props.type === 'file').props.onChange({ target: { files: [inputFile] } });
   render(); await settle();
   await find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
   await settle();
   assert(text(tree).includes('Hasil Analisis & Preview Excel'));
   messages.length = 0;
-  const startImport = () => find(node => node.type === 'button' && /^Import \d+ Data Bersih$/.test(text(node))).props.onClick({ preventDefault() {} });
+  const startImport = () => find(node => node.type === 'button' && /^Import \d+ (?:Data Bersih|Peserta)$/.test(text(node))).props.onClick({ preventDefault() {} });
   return {
     calls, messages, find, settle, startImport,
     has: predicate => nodes(tree).some(predicate),
@@ -150,10 +150,44 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, re
       await settle();
       assert.doesNotThrow(() => renderToStaticMarkup(tree), 'Import response must never blank the page');
     },
+    async changeDestination(value) {
+      find(node => node.type === 'select' && node.props.id === 'database-import-destination').props.onChange({ target: { value } });
+      render(); await settle();
+    },
   };
 }
 
 (async () => {
+  const participantWorkbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(participantWorkbook, XLSX.utils.aoa_to_sheet([
+    ['No', 'First Name', 'Last Name', 'Email', 'Mobile Phone', 'Kategori Peserta', 'Sekolah/Kampus/Instansi'],
+    [1, 'Student', '', 'student@campus.ac.id', '', 'mahasiswa', 'Example Campus'],
+  ]), 'Peserta');
+  const participantFile = new File([XLSX.write(participantWorkbook, { type: 'buffer', bookType: 'xlsx' })], 'anonymous-participant.xlsx');
+  const participant = await mount(valid, { destination: 'participant', inputFile: participantFile });
+  assert(participant.content.includes('Tujuan: Database Peserta'));
+  await participant.import();
+  assert.equal(participant.calls.filter(call => call === 'import').length, 1);
+  const sparseWorkbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(sparseWorkbook, XLSX.utils.aoa_to_sheet([
+    ['Email', 'Mobile Phone'], ['', '081200001111, 081300002222'], ['unnamed@campus.ac.id', ''],
+  ]), 'Peserta');
+  const sparseFile = new File([XLSX.write(sparseWorkbook, { type: 'buffer', bookType: 'xlsx' })], 'anonymous-sparse-participant.xlsx');
+  const sparse = await mount({ count: 2, newCount: 2, updatedCount: 0, skippedCount: 0, totalRows: 2 }, {
+    destination: 'participant', inputFile: sparseFile, previewRows: [
+      { rowNum: 2, status: 'NEW', firstName: '', mobilePhone: '081200001111, 081300002222', message: 'Nama belum diisi; boleh disimpan sebagai Data Kotor.' },
+      { rowNum: 3, status: 'NEW', firstName: '', email: 'unnamed@campus.ac.id', message: 'Nama belum diisi; boleh disimpan sebagai Data Kotor.' },
+    ],
+  });
+  assert(sparse.content.includes('Nama kosong tetap boleh diimport sebagai Data Kotor'));
+  assert(sparse.content.includes('081200001111, 081300002222'));
+  assert(sparse.has(node => node.type === 'button' && text(node) === 'Import 2 Peserta' && !node.props.disabled));
+  await sparse.import(); assert.equal(sparse.calls.filter(call => call === 'import').length, 1, 'Nameless email-only and phone-only participant rows remain importable');
+  const changedTarget = await mount(valid);
+  await changedTarget.changeDestination('participant');
+  assert(!changedTarget.content.includes('Hasil Analisis & Preview Excel'), 'Changing destination invalidates the previous preview');
+  assert(!changedTarget.has(node => node.type === 'button' && /^Import \d+ (?:Data Bersih|Peserta)$/.test(text(node))));
+  assert.equal(changedTarget.calls.filter(call => call === 'import').length, 0);
   const success = await mount(valid);
   const modal = harness => harness.find(node => node.props?.className?.startsWith('ms-modal w-full'));
   assert(modal(success).props.className.includes('h-[92dvh]'), 'Preview keeps its table-sized layout');
@@ -176,7 +210,7 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, re
   for (const label of ['Upload File Lain', 'Lihat Database']) {
     assert.equal(pendingRefresh.find(node => node.type === 'button' && text(node) === label).props.disabled, true);
   }
-  assert(!pendingRefresh.has(node => node.type === 'button' && /^Import \d+ Data Bersih$/.test(text(node))), 'No second import action is available while refreshing');
+  assert(!pendingRefresh.has(node => node.type === 'button' && /^Import \d+ (?:Data Bersih|Peserta)$/.test(text(node))), 'No second import action is available while refreshing');
   pendingRefresh.find(node => node.type === 'button' && node.props['aria-label'] === 'Tutup import Excel').props.onClick();
   await pendingRefresh.settle();
   assert.equal(pendingRefresh.closed, 0, 'Close guard preserves the confirmed result during refresh');

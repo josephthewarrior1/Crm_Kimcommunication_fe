@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, AlertCircle, Search, UserX } from 'lucide-react';
-import { Company, Database, Group } from '../../../../lib/types';
+import { Company, Database, DatabaseDestination, Group } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
-import { normalizePhone } from '../utils/phoneHelper';
+import { normalizePhone, normalizePhoneList } from '../utils/phoneHelper';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../../lib/constants';
 import { CompanyBranchSelect, useCompanyBranches } from './CompanyBranchSelect';
 
@@ -25,6 +25,9 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
   onRequestTakeout
 }) => {
   const [firstName, setFirstName] = useState('');
+  const [destination, setDestination] = useState<DatabaseDestination>('company');
+  const [institutionName, setInstitutionName] = useState('');
+  const [participantCategory, setParticipantCategory] = useState('');
   const [lastName, setLastName] = useState('');
   const [salutation, setSalutation] = useState('');
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
@@ -66,6 +69,9 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
 
   useEffect(() => {
     if (!database) return;
+    setDestination(database.databaseDestination || 'company');
+    setInstitutionName(database.institutionName || '');
+    setParticipantCategory(database.participantCategory || '');
     setFirstName(database.firstName || '');
     setLastName(database.lastName || '');
     setSalutation(database.salutation || '');
@@ -217,13 +223,16 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
       await crmService.updateDatabase(
         database.id,
         {
+          databaseDestination: destination,
+          institutionName: institutionName.trim(),
+          participantCategory,
           salutation,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           positionLevel: positionLevel || 'unknown',
           specialityDivision: specialityDivision.trim(),
           jobTitle: jobTitle.trim(),
-          mobilePhone: normalizePhone(mobilePhone),
+          mobilePhone: normalizePhoneList(mobilePhone),
           normalizedPhone: normalizePhone(mobilePhone),
           linkedinUrl: linkedinUrl.trim(),
           databaseType,
@@ -322,6 +331,22 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
 
         <form onSubmit={handleUpdateDatabase} className="ms-modal-form">
         <div className="ms-modal-body space-y-5">
+          <label className="block text-sm font-semibold text-slate-700">Tujuan database
+            <select aria-label="Tujuan database" value={destination} onChange={event => setDestination(event.target.value as DatabaseDestination)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <option value="company">Database Perusahaan</option><option value="participant">Database Peserta</option><option value="both">Perusahaan dan Peserta</option>
+            </select>
+          </label>
+          <p className="text-xs leading-5 text-slate-500">Perubahan tujuan hanya mengikuti pilihan ini. Pilih Perusahaan dan Peserta jika profil yang sama sudah ditinjau untuk kebutuhan bisnis dan event.</p>
+          {destination !== 'company' && <div className="grid gap-4 md:grid-cols-2">
+            <label className="text-sm font-semibold text-slate-700">Sekolah/Kampus/Instansi
+              <input placeholder="Nama sekolah, kampus, atau instansi (opsional)" value={institutionName} onChange={event => setInstitutionName(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal" />
+            </label>
+            <label className="text-sm font-semibold text-slate-700">Kategori peserta
+              <select aria-label="Kategori peserta" value={participantCategory} onChange={event => setParticipantCategory(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-normal">
+                <option value="">Belum dikategorikan</option><option value="pelajar">Pelajar</option><option value="mahasiswa">Mahasiswa</option><option value="umum">Umum</option>
+              </select>
+            </label>
+          </div>}
 
           <div className="mb-5 p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2.5">
             <AlertCircle className="w-4.5 h-4.5 text-blue-500 shrink-0 mt-0.5" />
@@ -575,7 +600,7 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
                 type="text"
                 placeholder="e.g. 0812345678"
                 value={mobilePhone}
-                onChange={(e) => setMobilePhone(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setMobilePhone(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all font-mono bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
