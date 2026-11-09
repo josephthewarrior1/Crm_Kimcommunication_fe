@@ -288,12 +288,15 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             </div>
           )}
           <p className="mt-2 text-xs leading-5 text-slate-500">
-            Import ke {currentTabLabel} cukup minimal email valid atau nomor HP/WhatsApp. Nama dan kolom lainnya boleh dilengkapi setelah import. Beberapa nomor milik orang yang sama boleh dipisah koma.
+            Import ke {currentTabLabel} cukup minimal email valid atau nomor HP/WhatsApp. Nama dan kolom lainnya boleh dilengkapi setelah import. Dua nomor milik orang yang sama ditulis dalam satu sel Mobile Phone, dipisah koma (contoh: 081200001111, 081300002222).
             {destination === 'participant'
               ? ' Database Peserta menerima email pribadi, kampus, atau kantor.'
               : destination === 'company'
               ? ' Kontak tetap masuk Database Perusahaan; email pribadi tidak mengubah tujuan dan belum memenuhi syarat email perusahaan untuk Data Bersih.'
               : ' Jenis event menentukan tujuan import dan sync.'}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-slate-600">
+            Satu orang cukup satu baris. Nama lengkap dan perusahaan sama tetapi nomor berbeda tanpa email yang cocok perlu ditinjau. Nomor sama dengan dua nama yang sudah terisi tetapi berbeda juga ditahan. Jika orangnya sama, cek profil lama dan tambahkan nomor lewat Edit Kontak, atau satukan kedua nomor dalam satu baris Excel.
           </p>
         </div>
 
@@ -306,7 +309,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <h3 className="ms-modal-title">Import Participants from Excel</h3>
               <p className="ms-modal-description mt-2">
                 Upload template spreadsheet untuk menambahkan participant ke tab <span className="font-bold text-[#5b5fc7]">{currentTabLabel}</span>.
-                {' '}Cukup minimal email valid atau nomor HP/WhatsApp. Nama dan kolom lainnya boleh dilengkapi setelah import. Jika email dan HP sama-sama kosong, baris ditahan. Beberapa nomor milik orang yang sama boleh dipisah koma.
+                {' '}Cukup minimal email valid atau nomor HP/WhatsApp. Nama dan kolom lainnya boleh dilengkapi setelah import. Jika email dan HP sama-sama kosong, baris ditahan. Dua nomor milik orang yang sama ditulis dalam satu sel Mobile Phone, dipisah koma (contoh: 081200001111, 081300002222).
               </p>
               <div className="mt-3">
                 <button
@@ -495,7 +498,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold text-red-700">Import Ditolak: </span>
-                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris yang perlu diperbaiki</span>. Periksa email/HP atau konflik identitas pada keterangan baris. Perbaiki di Excel lalu upload ulang.
+                  Ditemukan <span className="font-bold underline">{importPreview.issuesCount} baris yang perlu diperbaiki</span>. Periksa email/HP atau konflik identitas pada keterangan baris. Cocokkan dengan kontak yang sudah tersimpan dan baris lain di file. Jika orangnya sama, gunakan Edit Kontak atau satukan nomor dalam satu sel, lalu upload ulang.
                 </div>
               </div>
             ) : importPreview.duplicateCount > 0 ? (

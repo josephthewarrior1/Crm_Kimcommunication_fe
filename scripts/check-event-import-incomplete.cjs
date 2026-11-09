@@ -18,7 +18,7 @@ const children = node => [node?.props?.children].flat(Infinity);
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...children(node).flatMap(nodes)];
 const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : children(node).map(text).join('');
 const file = new File(['anonymous fixture'], 'uji-event.xlsx');
-async function mount(rows, deferPreview = false) {
+async function mount(rows, deferPreview = false, destination = 'participant') {
   const hooks = [], effects = [], calls = [], messages = [];
   let cursor = 0, changed = false, tree, applied = 0, closed = 0, releasePreview;
   const gate = deferPreview ? new Promise(resolve => { releasePreview = resolve; }) : Promise.resolve();
@@ -40,13 +40,13 @@ async function mount(rows, deferPreview = false) {
     useMemo(factory) { cursor++; return factory(); },
     useRef(initial) { const index = cursor++; return hooks[index] ||= { current: initial }; },
   };
-  const service = { async validateEventParticipantsImport(...args) { calls.push(args); await gate; return { destination: 'participant', summary: { totalRows: rows.length }, rows }; } };
+  const service = { async validateEventParticipantsImport(...args) { calls.push(args); await gate; return { destination, summary: { totalRows: rows.length }, rows }; } };
   const dependencies = { react: React, 'lucide-react': {}, '../../../../lib/services/crmService': { crmService: service },
     sonner: { toast: Object.fromEntries(['success', 'warning', 'error'].map(kind => [kind, message => messages.push({ kind, message })])) } };
   const { ExcelImportModal } = compile('app/dashboard/events/components/ExcelImportModal.tsx', name => dependencies[name] || unexpected(name), {
     setInterval: () => 0, clearInterval() {}, setTimeout: callback => queueMicrotask(callback),
   });
-  const props = { isOpen: true, eventDestination: 'participant', eventId: 17, activeTab: 'request', importParticipantsFile: null,
+  const props = { isOpen: true, eventDestination: destination, eventId: 17, activeTab: 'request', importParticipantsFile: null,
     setImportParticipantsFile(value) { props.importParticipantsFile = value; }, isImportingParticipants: false, importParticipantsProgress: 0,
     onClose() { closed++; }, onImport() { applied++; }, onDownloadTemplate() {} };
   function render() { cursor = 0; changed = false; tree = ExcelImportModal(props); while (effects.length) effects.shift()(); }
@@ -72,6 +72,15 @@ async function mount(rows, deferPreview = false) {
 }
 const row = extra => ({ rowNumber: 2, status: 'valid', firstName: 'Uji Kontak', issues: [], ...extra });
 async function modalFlow() {
+  const initial = await mount([]);
+  assert(initial.content().includes('satu sel Mobile Phone, dipisah koma'));
+  assert(initial.content().includes('081200001111, 081300002222'));
+  assert(initial.content().includes('Satu orang cukup satu baris'));
+  assert(initial.content().includes('tanpa email yang cocok perlu ditinjau'));
+  assert(initial.content().includes('dua nama yang sudah terisi tetapi berbeda'));
+  assert(initial.content().includes('Edit Kontak'));
+  assert(initial.content().includes('Nama dan kolom lainnya boleh dilengkapi setelah import'));
+
   const phone = await mount([row({ mobilePhone: '081200009601', companyEmail: '',
     missingFields: ['Nama Group Holding', 'Company Name', 'Company Email', 'Industry'], warnings: [] })]);
   await phone.preview(); assert.deepEqual(phone.calls[0], [17, file, 'participant', 'request']);
@@ -109,6 +118,40 @@ async function modalFlow() {
   const mixed = await mount([row({ missingFields: ['Company Email'] }), row({ rowNumber: 3, status: 'conflict', issues: ['Identitas ambigu'] })]);
   await mixed.preview(); assert.equal(mixed.button('Mulai Import').props.disabled, true, 'Identity conflicts still block the whole batch');
 
+  // The backend remains the identity authority; preserve and block its actual conflict rows.
+  for (const destination of ['company', 'participant']) {
+    for (const issue of [
+      'Nama dan perusahaan/instansi sama tetapi nomor HP berbeda tanpa email yang sama; tinjau profil lama melalui Edit kontak sebelum import.',
+      'Nomor HP yang sama dipakai nama berbeda; tinjau identitas melalui Edit kontak sebelum import.',
+    ]) {
+      const conflict = await mount([row({ status: 'error', firstName: 'Alex', lastName: 'Example',
+        companyName: 'Example Company', mobilePhone: '081200009601', existingDatabaseId: 9, issues: [issue] })], false, destination);
+      await conflict.preview();
+      assert.equal(conflict.button('Mulai Import').props.disabled, true, 'Identity review is blocking in either event destination');
+      assert(conflict.content().includes(issue), 'Backend reason is shown unchanged');
+      assert(conflict.content().includes('Cocokkan dengan kontak yang sudah tersimpan dan baris lain di file'));
+      assert(conflict.content().includes('Edit Kontak atau satukan nomor dalam satu sel'));
+      await conflict.search('009601'); assert(conflict.content().includes(issue), 'Phone search must retain identity-review row');
+      assert.equal(conflict.applied(), 0, 'No automatic merge or import when identity needs review');
+    }
+    const withinFile = await mount([
+      row({ status: 'error', firstName: 'Alex', lastName: 'Example', companyName: 'Example Company', mobilePhone: '081200009601', issues: ['Nama dan perusahaan/instansi sama tetapi nomor HP berbeda tanpa email yang sama; tinjau identitas, atau gabungkan nomor milik orang yang sama dalam satu sel Excel. Periksa baris 3.'] }),
+      row({ rowNumber: 3, status: 'error', firstName: 'Alex', lastName: 'Example', companyName: 'Example Company', mobilePhone: '081300009602', issues: ['Nama dan perusahaan/instansi sama tetapi nomor HP berbeda tanpa email yang sama; tinjau identitas, atau gabungkan nomor milik orang yang sama dalam satu sel Excel. Periksa baris 2.'] }),
+    ], false, destination);
+    await withinFile.preview();
+    assert.equal(withinFile.button('Mulai Import').props.disabled, true);
+    assert(withinFile.content().includes('Periksa baris 3.'));
+    assert(withinFile.content().includes('Periksa baris 2.'));
+    assert.equal(withinFile.applied(), 0, 'Within-file identity conflict cannot silently create two profiles');
+    const sameIdentity = await mount([row({ status: 'duplicate', firstName: 'Alex', lastName: 'Example',
+      companyName: 'Example Company', existingDatabaseId: 9, mobilePhone: '081200009601, 081300009602', issues: [] })], false, destination);
+    await sameIdentity.preview();
+    assert.equal(sameIdentity.button('Mulai Import').props.disabled, false, 'Backend-confirmed same person may reuse the profile');
+    assert(sameIdentity.content().includes('081200009601, 081300009602'), 'Both phone numbers stay visible as separate numbers');
+    assert(sameIdentity.content().includes('ditautkan ke event tanpa membuat profil baru'));
+    sameIdentity.button('Mulai Import').props.onClick(); assert.equal(sameIdentity.applied(), 1);
+  }
+
   const pending = await mount([row({ mobilePhone: '081200009601' })], true);
   const finish = await pending.beginPreview();
   assert.equal(pending.closeButton().props.disabled, true);
@@ -130,5 +173,5 @@ async function serviceFlow() {
     assert.equal(call.body.get('destination'), 'participant', 'Event destination must be forwarded explicitly');
   }
 }
-(async () => { await modalFlow(); await serviceFlow(); console.log('Event incomplete import passed: phone/email-only, soft corporate warnings, existing profiles, blocking issues, pending guards and event destination API. No network.'); })()
+(async () => { await modalFlow(); await serviceFlow(); console.log('Event incomplete import passed: phone/email-only, soft corporate warnings, existing profiles, identity-review conflicts, two-number guidance, pending guards and event destination API. No network.'); })()
   .catch(error => { console.error(error); process.exitCode = 1; });
