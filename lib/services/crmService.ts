@@ -348,6 +348,12 @@ export class CrmService extends ApiService {
     return this.post<DatabaseEmail>(`/api/databases/${databaseId}/emails`, email);
   }
 
+  async saveDatabaseEmails(databaseId: number, emails: Partial<DatabaseEmail>[]): Promise<{
+    createdCount: number; updatedCount: number; existingCount: number; emails: DatabaseEmail[];
+  }> {
+    return this.post(`/api/databases/${databaseId}/emails/batch`, { emails });
+  }
+
   async getDatabaseEmails(databaseId: number, signal?: AbortSignal): Promise<DatabaseEmail[]> {
     return this.get<DatabaseEmail[]>(`/api/databases/${databaseId}/emails`, { signal });
   }

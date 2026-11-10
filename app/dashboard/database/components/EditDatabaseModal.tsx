@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { normalizePhone, normalizePhoneList } from '../utils/phoneHelper';
 import { INDUSTRIES, REVENUE_SIZES, EMPLOYEE_SIZES } from '../../../../lib/constants';
 import { CompanyBranchSelect, useCompanyBranches } from './CompanyBranchSelect';
+import { getEmailInputError, prepareContactEmailEntries, splitContactEmails } from '../utils/emailInput';
 
 const participantOrganizationFields = [
   ['organizationGroupName', 'Holding Group', 255],
@@ -173,6 +174,9 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
   if (!isOpen) return null;
 
   const isPersonalProfile = destination === 'participant';
+  const companyEmailError = isPersonalProfile ? '' : getEmailInputError(databaseCompanyEmail, 'company', 'company');
+  const personalEmailError = getEmailInputError(databasePersonalEmail, 'personal', isPersonalProfile ? 'participant' : 'company')
+    || (!isPersonalProfile && splitContactEmails(databasePersonalEmail).some(address => splitContactEmails(databaseCompanyEmail).includes(address)) ? 'Email yang sama cukup diisi pada satu jenis email.' : '');
 
   const selectedCompany = companies.find((c) => c.id.toString() === selectedCompanyId)
     || companyOptions.find((c) => c.id.toString() === selectedCompanyId)
@@ -199,6 +203,10 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
     e.preventDefault();
     if (submitting) return;
     setSubmitAttempted(true);
+    if (companyEmailError || personalEmailError) {
+      toast.error(companyEmailError || personalEmailError);
+      return;
+    }
     if (!isPersonalProfile && !isCreatingNewCompany && !selectedCompanyId && (database.company?.id || companySearchQuery.trim())) {
       toast.error('Pilih perusahaan dari hasil pencarian sebelum menyimpan. Perusahaan dan cabang yang tersimpan belum diubah.');
       return;
@@ -269,67 +277,17 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
         !isPersonalProfile && !isCreatingNewCompany && selectedBranchId ? Number(selectedBranchId) : null
       );
 
-      // Handle Company Email
-      if (!isPersonalProfile && databaseCompanyEmail.trim()) {
-        if (databaseCompanyEmailId) {
-          try {
-            await crmService.updateDatabaseEmail(database.id, Number(databaseCompanyEmailId), {
-              email: databaseCompanyEmail.trim().toLowerCase()
-            });
-          } catch (emailErr: any) {
-            toast.warning(`Database updated, but failed to update company email: ${emailErr.message}`);
-          }
-        } else {
-          try {
-            await crmService.addDatabaseEmail(database.id, {
-              email: databaseCompanyEmail.trim().toLowerCase(),
-              emailType: isPersonalProfile ? 'personal' : 'company',
-              isPrimary: true,
-              isVerified: true,
-              isCorporate: !isPersonalProfile
-            });
-          } catch (emailErr: any) {
-            toast.warning(`Database updated, but failed to save company email: ${emailErr.message}`);
-          }
-        }
-      } else if (!isPersonalProfile && databaseCompanyEmailId) {
-        try {
-          await crmService.deleteDatabaseEmail(database.id, Number(databaseCompanyEmailId));
-        } catch (emailErr: any) {
-          toast.warning(`Database updated, but failed to clear company email: ${emailErr.message}`);
-        }
-      }
-
-      // Handle Personal Email
-      if (databasePersonalEmail.trim()) {
-        if (databasePersonalEmailId) {
-          try {
-            await crmService.updateDatabaseEmail(database.id, Number(databasePersonalEmailId), {
-              email: databasePersonalEmail.trim().toLowerCase()
-            });
-          } catch (emailErr: any) {
-            toast.warning(`Database updated, but failed to update personal email: ${emailErr.message}`);
-          }
-        } else {
-          try {
-            await crmService.addDatabaseEmail(database.id, {
-              email: databasePersonalEmail.trim().toLowerCase(),
-              emailType: 'personal',
-              isPrimary: !databaseCompanyEmail.trim(),
-              isVerified: true,
-              isCorporate: false
-            });
-          } catch (emailErr: any) {
-            toast.warning(`Database updated, but failed to save personal email: ${emailErr.message}`);
-          }
-        }
-      } else if (databasePersonalEmailId) {
-        try {
-          await crmService.deleteDatabaseEmail(database.id, Number(databasePersonalEmailId));
-        } catch (emailErr: any) {
-          toast.warning(`Database updated, but failed to clear personal email: ${emailErr.message}`);
-        }
-      }
+      const emailEntries = [
+        ...(!isPersonalProfile ? prepareContactEmailEntries(databaseCompanyEmail, {
+          ...(databaseCompanyEmailId ? { id: Number(databaseCompanyEmailId) } : { isPrimary: true, isVerified: true }),
+          emailType: 'company', isCorporate: true,
+        }, 'company') : []),
+        ...prepareContactEmailEntries(databasePersonalEmail, {
+          ...(databasePersonalEmailId ? { id: Number(databasePersonalEmailId) } : { isPrimary: !databaseCompanyEmail.trim(), isVerified: true }),
+          emailType: 'personal', isCorporate: false,
+        }, isPersonalProfile ? 'participant' : 'company'),
+      ];
+      if (emailEntries.length) await crmService.saveDatabaseEmails(database.id, emailEntries);
 
       toast.success('Database updated successfully!');
       onUpdated();
@@ -635,25 +593,33 @@ export const EditDatabaseModal: React.FC<EditDatabaseModalProps> = ({
             </div>
 
             {!isPersonalProfile && <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email</label>
+              <label htmlFor="edit-database-company-email" className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email</label>
               <input
-                type="email"
+                id="edit-database-company-email"
+                type="text"
+                inputMode="email"
                 placeholder="e.g. name@company.com"
                 value={databaseCompanyEmail}
                 onChange={(e) => setDatabaseCompanyEmail(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
+              {submitAttempted && companyEmailError && <p className="mt-1 text-xs font-semibold text-red-500">{companyEmailError}</p>}
+              <p className="mt-1 text-xs text-slate-500">Pisahkan alamat dengan koma, titik koma, atau spasi. Kolom kosong mempertahankan email yang tersimpan.</p>
             </div>}
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Personal Email <span className="text-slate-400 font-normal text-xs">(Optional)</span></label>
+              <label htmlFor="edit-database-personal-email" className="block text-sm font-semibold text-slate-700 mb-1.5">Personal Email <span className="text-slate-400 font-normal text-xs">(Optional)</span></label>
               <input
-                type="email"
+                id="edit-database-personal-email"
+                type="text"
+                inputMode="email"
                 placeholder="e.g. name@gmail.com"
                 value={databasePersonalEmail}
                 onChange={(e) => setDatabasePersonalEmail(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               />
+              {submitAttempted && personalEmailError && <p className="mt-1 text-xs font-semibold text-red-500">{personalEmailError}</p>}
+              <p className="mt-1 text-xs text-slate-500">Pisahkan alamat dengan koma, titik koma, atau spasi. Kolom kosong mempertahankan email yang tersimpan.</p>
             </div>
 
             {!isPersonalProfile && <div>

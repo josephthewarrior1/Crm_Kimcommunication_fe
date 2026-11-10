@@ -4,14 +4,14 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from
 import { createPortal } from 'react-dom';
 import { crmService } from '../../../lib/services/crmService';
 import { Database, DatabaseAnalytics, Company, DatabaseEmail, EventParticipant, FlaggedIdentity } from '../../../lib/types';
-import { Users, Search, Plus, ExternalLink, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, Search, Plus, ExternalLink, Building2, Download, Calendar, MoreVertical, ShieldAlert, AlertCircle, Edit2, Trash2, Upload, CheckCircle, Loader2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { normalizePhone } from './utils/phoneHelper';
 import { findPersonalEmailConflicts } from './utils/emailIdentity';
 import { getContactOffice, getContactOrganization } from '../../../lib/utils/companyBranch';
-import { checkDatabaseCompleteness } from './utils/validationHelper';
+import { checkDatabaseCompleteness, getDatabaseCompletenessTitle } from './utils/validationHelper';
 import { getOfficeEmail, getPersonalEmail } from '../events/utils/notesHelper';
 import indonesiaCities from './data/indonesia-cities.json';
 
@@ -179,6 +179,7 @@ export default function DatabasesPage() {
   const [selectedDatabase, setSelectedDatabase] = useState<Database | null>(null);
   const [databaseEmails, setDatabaseEmails] = useState<DatabaseEmail[]>([]);
   const [loadingDatabaseEmails, setLoadingEmails] = useState(false);
+  const emailRequest = useRef(0);
   const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const dropdownTriggerRef = useRef<HTMLElement | null>(null);
@@ -461,16 +462,19 @@ export default function DatabasesPage() {
   };
 
   const handleOpenEmailModal = async (database: Database) => {
+    if (!isAdmin && !isManager) return;
+    const request = ++emailRequest.current;
     setSelectedDatabase(database);
     setIsEmailModalOpen(true);
+    setDatabaseEmails([]);
     setLoadingEmails(true);
     try {
       const emails = await crmService.getDatabaseEmails(database.id);
-      setDatabaseEmails(emails);
+      if (request === emailRequest.current) setDatabaseEmails(emails);
     } catch (err) {
-      toast.error('Failed to load emails for this database');
+      if (request === emailRequest.current) toast.error('Failed to load emails for this database');
     } finally {
-      setLoadingEmails(false);
+      if (request === emailRequest.current) setLoadingEmails(false);
     }
   };
 
@@ -1265,6 +1269,21 @@ export default function DatabasesPage() {
                                     </button>
                                   )}
 
+                                  {(isAdmin || isManager) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveDropdownId(null);
+                                        setDropdownPos(null);
+                                        void handleOpenEmailModal(c);
+                                      }}
+                                      className="w-full px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
+                                    >
+                                      <Mail className="w-3.5 h-3.5 text-slate-400" />
+                                      Kelola Email
+                                    </button>
+                                  )}
+
                                   {!isUser && (
                                     <button
                                       onClick={() => {
@@ -1324,7 +1343,7 @@ export default function DatabasesPage() {
                         {checkDatabaseCompleteness(c, destination).isIncomplete && (
                           <span
                             className="inline-flex cursor-help text-amber-500 hover:text-amber-600 transition-colors"
-                            title={`Data belum lengkap.\n\nKolom kosong:\n• ${checkDatabaseCompleteness(c, destination).missingFields.join("\n• ")}`}
+                            title={getDatabaseCompletenessTitle(checkDatabaseCompleteness(c, destination))}
                           >
                             <AlertCircle className="w-4 h-4 shrink-0" />
                           </span>
@@ -1545,13 +1564,14 @@ export default function DatabasesPage() {
       {selectedDatabase && (
         <EmailModal
           isOpen={isEmailModalOpen}
-          onClose={() => setIsEmailModalOpen(false)}
+          onClose={() => { emailRequest.current++; setIsEmailModalOpen(false); setDatabaseEmails([]); }}
           database={selectedDatabase}
           emails={databaseEmails}
           loadingEmails={loadingDatabaseEmails}
           onEmailAdded={async () => {
             const emails = await crmService.getDatabaseEmails(selectedDatabase.id);
             setDatabaseEmails(emails);
+            await refreshDatabasePage();
           }}
         />
       )}

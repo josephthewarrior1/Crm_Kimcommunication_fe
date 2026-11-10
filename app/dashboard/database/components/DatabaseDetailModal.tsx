@@ -2,10 +2,10 @@ import React, { useRef, useState } from 'react';
 import { AlertCircle, ArrowUpRight, Briefcase, Building2, CalendarDays, CheckCircle2, ChevronDown, Clock, FileText, Loader2, Mail, MapPin, Phone, RefreshCw, User, Users } from 'lucide-react';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '../../../../components/ui/dialog';
 import { Database, DatabaseEmail, EventParticipant, Company } from '../../../../lib/types';
-import { checkDatabaseCompleteness } from '../utils/validationHelper';
+import { checkDatabaseCompleteness, getStoredEmailIssue } from '../utils/validationHelper';
+import { isValidContactEmail } from '../utils/emailCategory';
 import { getContactOffice, getContactOrganization } from '../../../../lib/utils/companyBranch';
 import { getStatusLabel } from '../../events/utils/statusHelper';
-import { isPublicPersonalEmail } from '../../events/utils/notesHelper';
 
 interface DatabaseDetailModalProps {
   viewDestination?: 'company' | 'participant';
@@ -116,7 +116,7 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
 
         <div ref={contentRef} role="tabpanel" id={`database-detail-${activeTab}-panel`} aria-labelledby={`database-detail-${activeTab}-tab`} tabIndex={0} className="min-h-0 flex-1 overflow-y-auto overscroll-contain break-words bg-slate-50 p-4 outline-offset-[-3px] focus-visible:outline-blue-600 sm:p-6">
           {activeTab === 'profile' && <div className="space-y-5">
-            {completeness?.isIncomplete ? <details className="group rounded-lg border border-amber-200 bg-amber-50 text-amber-900"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-xs font-medium [&::-webkit-details-marker]:hidden"><AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" /><span className="flex-1">{completeness.missingFields.length} kolom wajib belum lengkap</span><ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" /></summary><div className="flex flex-wrap gap-2 px-4 pb-4">{completeness.missingFields.map(field => <span key={field} className="rounded border border-amber-200 bg-white px-2 py-1 text-xs">{field}</span>)}</div></details>
+            {completeness?.isIncomplete ? <details className="group rounded-lg border border-amber-200 bg-amber-50 text-amber-900"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-xs font-medium [&::-webkit-details-marker]:hidden"><AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" /><span className="flex-1">{completeness.missingFields.length} kolom wajib perlu diperiksa</span><ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" /></summary><div className="flex flex-wrap gap-2 px-4 pb-4">{completeness.missingFields.map(field => <span key={field} className="rounded border border-amber-200 bg-white px-2 py-1 text-xs">{field}</span>)}</div>{Object.entries(completeness.fieldMessages).map(([field, message]) => <p key={field} className="px-4 pb-3 text-xs leading-5"><strong>{field}:</strong> {message}</p>)}</details>
               : completeness ? <p className="flex items-center gap-2 text-xs text-emerald-700"><CheckCircle2 aria-hidden="true" className="h-4 w-4" />Data wajib kontak sudah lengkap</p>
               : loadingEmails ? <p role="status" className="flex items-center gap-2 text-xs text-slate-500"><Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />Memeriksa kelengkapan kontak...</p> : null}
             <div className="grid items-start gap-5 md:grid-cols-[300px_minmax(0,1fr)]">
@@ -135,7 +135,8 @@ function DatabaseDetailContent({ isOpen, onClose, database, emails, loadingEmail
                     : <ul className="space-y-2.5">{emails.map(email => {
                       const corporate = email.isCorporate || email.emailType?.toLowerCase() === 'company';
                       const personal = email.emailType?.toLowerCase() === 'personal';
-                      return <li key={email.id} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3"><div className="mb-2 flex flex-wrap items-center gap-2 text-xs"><span className="text-slate-500">{corporate ? 'Email kantor' : personal ? 'Email personal' : 'Email lainnya'}</span>{email.isPrimary && <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">Utama</span>}</div><a href={`mailto:${encodeURIComponent(email.email)}`} className="break-all text-sm font-medium text-slate-800 hover:text-blue-700 hover:underline">{email.email}</a>{viewDestination !== 'participant' && database.databaseDestination !== 'participant' && !corporate && personal && !isPublicPersonalEmail(email.email) && <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-amber-700"><AlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />Domain kantor tercatat sebagai email personal.</p>}</li>;
+                      const emailIssue = getStoredEmailIssue(email, isParticipant ? 'participant' : 'company');
+                      return <li key={email.id} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3"><div className="mb-2 flex flex-wrap items-center gap-2 text-xs"><span className="text-slate-500">{corporate ? 'Email kantor' : personal ? 'Email personal' : 'Email lainnya'}</span>{email.isPrimary && <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">Utama</span>}</div>{isValidContactEmail(email.email) ? <a href={`mailto:${encodeURIComponent(email.email)}`} className="break-all text-sm font-medium text-slate-800 hover:text-blue-700 hover:underline">{email.email}</a> : <span className="break-all text-sm font-medium text-slate-800">{email.email || 'Belum diisi'}</span>}{emailIssue && <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-amber-700"><AlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />{emailIssue}</p>}</li>;
                     })}</ul>}
                 </div>
               </aside>

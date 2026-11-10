@@ -6,7 +6,8 @@ import { auditLogService } from '../../../../lib/services/auditLogService';
 import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
 import { normalizePhone, normalizePhoneList } from '../utils/phoneHelper';
-import { isPersonalContactEmail, isValidContactEmail, isValidContactPhone } from '../utils/emailCategory';
+import { isValidContactPhone } from '../utils/emailCategory';
+import { getEmailInputError, prepareContactEmailEntries, splitContactEmails } from '../utils/emailInput';
 import { CompanyBranchSelect, useCompanyBranches } from './CompanyBranchSelect';
 
 const participantOrganizationFields = [
@@ -118,12 +119,17 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     || companyOptions.find((c) => c.id.toString() === selectedCompanyId);
 
   const isPersonalProfile = destination === 'participant';
-  const hasCompanyEmail = isValidContactEmail(databaseCompanyEmail) && !isPersonalContactEmail(databaseCompanyEmail);
+  const companyEmailAddresses = splitContactEmails(databaseCompanyEmail);
+  const personalEmailAddresses = splitContactEmails(databasePersonalEmail);
+  const companyEmailError = isPersonalProfile ? '' : getEmailInputError(databaseCompanyEmail, 'company', destination);
+  const personalEmailError = getEmailInputError(databasePersonalEmail, 'personal', destination)
+    || (!isPersonalProfile && personalEmailAddresses.some(address => companyEmailAddresses.includes(address)) ? 'Email yang sama cukup diisi pada satu jenis email.' : '');
+  const hasCompanyEmail = companyEmailAddresses.length > 0 && !companyEmailError;
   const companySelectionMissing = !isPersonalProfile && (isCreatingNewCompany
     ? !newCompanyName.trim() : !selectedCompanyId);
   const missing: string[] = [];
   if (!isPersonalProfile && !firstName.trim()) missing.push('First Name');
-  if (isPersonalProfile && !isValidContactEmail(databasePersonalEmail) && !isValidContactPhone(mobilePhone)) missing.push('Email atau HP/WhatsApp valid');
+  if (isPersonalProfile && !(personalEmailAddresses.length && !personalEmailError) && !isValidContactPhone(mobilePhone)) missing.push('Email atau HP/WhatsApp valid');
   if (!isPersonalProfile) {
     if (!lastName.trim()) missing.push('Last Name');
     if (!salutation.trim()) missing.push('Salutation');
@@ -132,8 +138,8 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     if (!hasCompanyEmail) missing.push('Company Email perusahaan yang valid');
   }
   if (companySelectionMissing) missing.push(isCreatingNewCompany ? 'New Company Name' : 'Associated Company');
-  const invalidCompanyEmail = !isPersonalProfile && !!databaseCompanyEmail.trim() && !isValidContactEmail(databaseCompanyEmail);
-  const invalidPersonalEmail = !!databasePersonalEmail.trim() && !isValidContactEmail(databasePersonalEmail);
+  const invalidCompanyEmail = Boolean(companyEmailError);
+  const invalidPersonalEmail = Boolean(personalEmailError);
   const invalidMobilePhone = !!mobilePhone.trim() && (!isValidContactPhone(mobilePhone) || normalizePhoneList(mobilePhone).length > 50);
   const isFormIncomplete = missing.length > 0 || invalidCompanyEmail || invalidPersonalEmail || invalidMobilePhone;
 
@@ -169,15 +175,11 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     }
 
     if (invalidCompanyEmail || invalidPersonalEmail) {
-      toast.error('Periksa format email yang diisi sebelum menyimpan.');
+      toast.error(companyEmailError || personalEmailError);
       return;
     }
 
     if (missing.length > 0) {
-      if (!isPersonalProfile && isPersonalContactEmail(databaseCompanyEmail)) {
-        toast.error('Email pribadi masuk melalui Database Peserta. Pilih tujuan Peserta atau gunakan email institusi/perusahaan.');
-        return;
-      }
       toast.error(`Harap isi semua kolom wajib: ${missing.join(", ")}`);
       return;
     }
@@ -214,48 +216,18 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
           databaseType,
           source,
           isActive: true,
-          emails: isPersonalProfile ? [databasePersonalEmail]
-            .filter(address => address.trim()).map((address, index) => ({
-              email: address.trim().toLowerCase(), emailType: 'personal', isCorporate: false,
-              isPrimary: index === 0, isVerified: true,
-            })) : undefined,
+          emails: [
+            ...(!isPersonalProfile ? prepareContactEmailEntries(databaseCompanyEmail, {
+              emailType: 'company', isCorporate: true, isPrimary: true, isVerified: true,
+            }, destination) : []),
+            ...prepareContactEmailEntries(databasePersonalEmail, {
+              emailType: 'personal', isCorporate: false, isPrimary: isPersonalProfile || !companyEmailAddresses.length, isVerified: true,
+            }, destination),
+          ],
         },
         resolvedCompanyId,
         !isPersonalProfile && !isCreatingNewCompany && selectedBranchId ? Number(selectedBranchId) : null
       );
-      let emailSaveFailed = false;
-
-      // Save Company Email if filled
-      if (!isPersonalProfile && databaseCompanyEmail.trim()) {
-        try {
-          await crmService.addDatabaseEmail(createdDatabase.id, {
-            email: databaseCompanyEmail.trim().toLowerCase(),
-            emailType: 'company',
-            isPrimary: true,
-            isVerified: true,
-            isCorporate: true
-          });
-        } catch (emailErr: any) {
-          emailSaveFailed = true;
-          toast.warning(`Database created, but failed to save company email: ${emailErr.message}`);
-        }
-      }
-
-      // Save Personal Email if filled
-      if (!isPersonalProfile && databasePersonalEmail.trim()) {
-        try {
-          await crmService.addDatabaseEmail(createdDatabase.id, {
-            email: databasePersonalEmail.trim().toLowerCase(),
-            emailType: 'personal',
-            isPrimary: !databaseCompanyEmail.trim(),
-            isVerified: true,
-            isCorporate: false
-          });
-        } catch (emailErr: any) {
-          emailSaveFailed = true;
-          toast.warning(`Database created, but failed to save personal email: ${emailErr.message}`);
-        }
-      }
 
       // Record audit log
       if (user) {
@@ -272,7 +244,7 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
         });
       }
 
-      if (!emailSaveFailed) toast.success(isPersonalProfile ? 'Profil peserta berhasil disimpan.' : 'Database created successfully!');
+      toast.success(isPersonalProfile ? 'Profil peserta berhasil disimpan.' : 'Database created successfully!');
       onCreated();
       onClose();
     } catch (err: any) {
@@ -588,9 +560,11 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
             </div>
 
             {!isPersonalProfile && <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email <span className="text-red-500 font-bold">*</span></label>
+              <label htmlFor="create-database-company-email" className="block text-sm font-semibold text-slate-700 mb-1.5">Company Email <span className="text-red-500 font-bold">*</span></label>
               <input
-                type="email"
+                id="create-database-company-email"
+                type="text"
+                inputMode="email"
                 placeholder="e.g. name@company.com"
                 value={databaseCompanyEmail}
                 onChange={(e) => setDatabaseCompanyEmail(e.target.value)}
@@ -600,20 +574,24 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
                   }`}
               />
               {submitAttempted && (invalidCompanyEmail || (!isPersonalProfile && !hasCompanyEmail)) && (
-                <p className="text-red-500 text-[11px] mt-1 font-semibold">{invalidCompanyEmail ? 'Format Company Email tidak valid' : 'Isi email perusahaan yang valid untuk kontak korporat'}</p>
+                <p className="text-red-500 text-[11px] mt-1 font-semibold">{companyEmailError || 'Isi email perusahaan yang valid untuk kontak korporat'}</p>
               )}
+              <p className="mt-1 text-xs text-slate-500">Pisahkan beberapa alamat dengan koma, titik koma, atau spasi. Setiap alamat disimpan terpisah.</p>
             </div>}
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Personal Email {isPersonalProfile && !isValidContactPhone(mobilePhone) ? <span className="text-red-500 font-bold">*</span> : <span className="text-slate-400 font-normal text-xs">(Optional)</span>}</label>
+              <label htmlFor="create-database-personal-email" className="block text-sm font-semibold text-slate-700 mb-1.5">Personal Email {isPersonalProfile && !isValidContactPhone(mobilePhone) ? <span className="text-red-500 font-bold">*</span> : <span className="text-slate-400 font-normal text-xs">(Optional)</span>}</label>
               <input
-                type="email"
+                id="create-database-personal-email"
+                type="text"
+                inputMode="email"
                 placeholder="e.g. name@gmail.com"
                 value={databasePersonalEmail}
                 onChange={(e) => setDatabasePersonalEmail(e.target.value)}
                 className={`w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${submitAttempted && invalidPersonalEmail ? 'bg-red-50/30 border border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' : 'bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20'}`}
               />
-              {submitAttempted && invalidPersonalEmail && <p className="text-red-500 text-[11px] mt-1 font-semibold">Format Personal Email tidak valid</p>}
+              {submitAttempted && invalidPersonalEmail && <p className="text-red-500 text-[11px] mt-1 font-semibold">{personalEmailError}</p>}
+              <p className="mt-1 text-xs text-slate-500">Pisahkan beberapa alamat dengan koma, titik koma, atau spasi. Setiap alamat disimpan terpisah.</p>
             </div>
 
             {!isPersonalProfile && <div>
