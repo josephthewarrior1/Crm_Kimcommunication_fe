@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, RefreshCw } from 'lucide-react';
 import { EventParticipant, AppUser, EventParticipantFilterOptions } from '../../../../lib/types';
+import { REMARK_OPTIONS } from '../utils/statusHelper';
 
 interface ParticipantToolbarProps {
   participants: EventParticipant[];
@@ -15,6 +16,8 @@ interface ParticipantToolbarProps {
   setFilterIndustry: (val: string) => void;
   filterConfirmationStatus: string;
   setFilterConfirmationStatus: (val: string) => void;
+  filterRemarks: string;
+  setFilterRemarks: (val: string) => void;
   filterReminderHariH?: string;
   setFilterReminderHariH?: (val: string) => void;
   filterPic: string;
@@ -38,6 +41,8 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
   setFilterIndustry,
   filterConfirmationStatus,
   setFilterConfirmationStatus,
+  filterRemarks,
+  setFilterRemarks,
   filterReminderHariH = '',
   setFilterReminderHariH,
   filterPic,
@@ -53,6 +58,7 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
     filterPosition ||
     filterIndustry ||
     filterConfirmationStatus ||
+    (activeTab === 'pre_event' && filterRemarks) ||
     filterReminderHariH ||
     filterPic;
 
@@ -152,6 +158,21 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
               <option value="pending">Pending</option>
               <option value="approve">Approve</option>
               <option value="decline">Decline</option>
+            </select>
+          </div>
+        )}
+
+        {activeTab === 'pre_event' && (
+          <div>
+            <label htmlFor="participant-remarks-filter" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Remarks</label>
+            <select
+              id="participant-remarks-filter"
+              value={filterRemarks}
+              onChange={(e) => setFilterRemarks(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-slate-800 text-xs focus:outline-none transition-all cursor-pointer shadow-xs hover:border-slate-300"
+            >
+              <option value="">Semua Remarks</option>
+              {REMARK_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </div>
         )}

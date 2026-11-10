@@ -1,3 +1,21 @@
+export const REMARK_OPTIONS = [
+  { value: 'not_respon_yet', label: 'Not respond yet' },
+  ...Array.from({ length: 8 }, (_, index) => ({ value: `not_respond_${index + 2}x`, label: `Not respond ${index + 2}x` })),
+  { value: 'registered', label: 'Registered' },
+  { value: 'tentative', label: 'Tentative' },
+  { value: 'not_interest', label: 'Not Interest' },
+  { value: 'unable_to_attend', label: 'Unable Attend' },
+];
+
+export const getRemarksValue = (status?: string | null): string => {
+  const value = status?.trim().toLowerCase() || 'not_respon_yet';
+  const aliases: Record<string, string> = {
+    white: 'not_respon_yet', not_respond_yet: 'not_respon_yet',
+    yellow: 'tentative', green: 'registered', confirm: 'registered', red: 'not_interest',
+  };
+  return aliases[value] || value;
+};
+
 const BADGE_STYLES: Record<string, string> = {
   // Positive/Active states: Bold, high contrast, brand colors
   registered: 'text-indigo-950 bg-indigo-50 border-indigo-200 font-bold',

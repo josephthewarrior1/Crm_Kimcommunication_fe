@@ -21,11 +21,13 @@ export const extractPicFromNotes = (notes: string | null | undefined): { pic: st
 export const extractPreEventApprovalStatus = (notes: string | null | undefined): string => {
   const match = notes?.match(/\[PreEventApproval:\s*([^\]]+)\]/i);
   const status = match?.[1]?.trim().toLowerCase();
+  if (status === 'declined') return 'decline';
   return status === 'approve' || status === 'decline' ? status : 'pending';
 };
 
 export const getPreEventApprovalStatus = (participant: Pick<EventParticipant, 'notes' | 'preEventApprovalStatus'> | null | undefined): string => {
   const status = participant?.preEventApprovalStatus?.trim().toLowerCase();
+  if (status === 'declined') return 'decline';
   return status === 'approve' || status === 'decline' || status === 'pending'
     ? status
     : extractPreEventApprovalStatus(participant?.notes);

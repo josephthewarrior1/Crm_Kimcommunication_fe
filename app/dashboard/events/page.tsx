@@ -32,7 +32,6 @@ import { ManageUserColumnsModal } from '../users/components/ManageUserColumnsMod
 import { extractPicFromNotes, getPreEventApprovalStatus, setPreEventApprovalStatus } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
-import { exportParticipantsToExcel } from './utils/exportHelper';
 import { getEventColumnConfig } from './utils/columnConfigHelper';
 
 export default function EventsPage() {
@@ -66,6 +65,7 @@ export default function EventsPage() {
   const [participantFilterOptions, setParticipantFilterOptions] = useState<EventParticipantFilterOptions | null>(null);
   const [participantsTotal, setParticipantsTotal] = useState(0);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
+  const participantsRequest = React.useRef(0);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
   const [participantSearchQuery, setParticipantSearchQuery] = useState('');
@@ -73,6 +73,7 @@ export default function EventsPage() {
   const [filterPosition, setFilterPosition] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
   const [filterConfirmationStatus, setFilterConfirmationStatus] = useState('');
+  const [filterRemarks, setFilterRemarks] = useState('');
   const [filterReminderHariH, setFilterReminderHariH] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -249,6 +250,7 @@ export default function EventsPage() {
       position: filterPosition || undefined,
       industry: filterIndustry || undefined,
       confirmationStatus: filterConfirmationStatus || undefined,
+      remarks: (overrides?.tab || activeTab) === 'pre_event' ? filterRemarks || undefined : undefined,
       reminderHariH: filterReminderHariH || undefined,
       search: participantSearchQuery || undefined,
       page: overrides?.page ?? currentPage,
@@ -274,58 +276,7 @@ export default function EventsPage() {
 
   const adminUser = usersList.find(u => u.roles?.includes('ADMIN'));
   const adminName = adminUser ? (adminUser.fullName || adminUser.username) : 'Admin';
-  const isEmsParticipant = (p: EventParticipant) => {
-    const attStatus = p.attendanceStatus?.toLowerCase();
-    return p.notes?.includes('[Origin: EMS Sync]') ||
-      p.notes?.includes('[EMS]') ||
-      p.database?.source === 'event_registration' ||
-      attStatus === 'registered' ||
-      attStatus === 'attended';
-  };
-
-  const isPublicEmsOnlyParticipant = (p: EventParticipant) => {
-    const notes = p.notes || '';
-    const hasRequestOrigin = notes.includes('[Origin: Request]');
-    const hasEmsOrigin = notes.includes('[Origin: EMS Sync]') || notes.includes('[EMS]');
-    return !hasRequestOrigin && (hasEmsOrigin || p.database?.source === 'event_registration');
-  };
-
-  const getEffectiveConfirmationStatus = (p: EventParticipant) => {
-    const confStatus = p.confirmationStatus?.toLowerCase() || 'pending';
-    const attStatus = p.attendanceStatus?.toLowerCase();
-    const notes = p.notes?.toLowerCase() || '';
-    const participantStatus = p.participantStatus?.toLowerCase();
-    const isExplicitlyDeclined = attStatus === 'cancelled' ||
-      attStatus === 'canceled' ||
-      attStatus === 'no_show' ||
-      notes.includes('[ems declined]') ||
-      notes.includes('declined_at');
-    const isActiveEms = isEmsParticipant(p) && !isExplicitlyDeclined && (
-      attStatus === 'registered' ||
-      attStatus === 'attended' ||
-      participantStatus === 'registered' ||
-      participantStatus === 'green' ||
-      participantStatus === 'confirm' ||
-      participantStatus === 'confirmed' ||
-      p.reminderHariH === 'on_location'
-    );
-
-    if (isActiveEms && (confStatus === 'decline' || confStatus === 'declined')) {
-      return 'approve';
-    }
-    return confStatus;
-  };
-
-  const isRegisteredParticipant = (p: EventParticipant) => {
-    const ps = p.participantStatus?.toLowerCase();
-    const att = p.attendanceStatus?.toLowerCase();
-    return ps === 'registered' ||
-      ps === 'green' ||
-      ps === 'confirm' ||
-      ps === 'confirmed' ||
-      att === 'registered' ||
-      att === 'attended';
-  };
+  const getConfirmationStatus = (p: EventParticipant) => p.confirmationStatus?.trim().toLowerCase() || 'pending';
 
   useEffect(() => {
     if (authLoading) return;
@@ -683,6 +634,8 @@ export default function EventsPage() {
   };
 
   const loadParticipantsForEvent = async (event: Event, targetTab?: 'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday') => {
+    const request = ++participantsRequest.current;
+    if (selectedEvent?.id !== event.id) setFilterRemarks('');
     setSelectedEvent(event);
     setLoadingParticipants(true);
     setSelectedParticipantIds([]); // reset selection
@@ -691,8 +644,9 @@ export default function EventsPage() {
       setActiveTab(targetTab);
     }
     try {
-      const tableQuery = getParticipantQueryParams({ tab: effectiveTab });
-      const statsQuery = getParticipantQueryParams({ tab: effectiveTab, page: 1, size: 5000 });
+      const remarks = effectiveTab === 'pre_event' && selectedEvent?.id === event.id ? filterRemarks || undefined : undefined;
+      const tableQuery = { ...getParticipantQueryParams({ tab: effectiveTab }), remarks };
+      const statsQuery = { ...tableQuery, page: 1, size: 5000 };
       const statisticsQuery = {
         tab: effectiveTab,
         pic: isAdmin ? filterPic || undefined : undefined,
@@ -700,13 +654,14 @@ export default function EventsPage() {
         position: filterPosition || undefined,
         industry: filterIndustry || undefined,
         confirmationStatus: filterConfirmationStatus || undefined,
+        remarks,
         reminderHariH: filterReminderHariH || undefined,
         search: participantSearchQuery || undefined
       };
-      const allStatsQuery = getParticipantQueryParams(
+      const allStatsQuery = { ...getParticipantQueryParams(
         { tab: effectiveTab, page: 1, size: 5000 },
         { includeImplicitPicFilter: false }
-      );
+      ), remarks };
 
       const [tableResponse, statsResponse, summaryResponse, allStatsResponse, allSummaryResponse, statisticsResponse, filterOptionsResponse] = await Promise.all([
         crmService.getEventParticipantsByEvent(event.id, tableQuery),
@@ -717,6 +672,7 @@ export default function EventsPage() {
         crmService.getEventStatistics(event.id, statisticsQuery),
         crmService.getEventParticipantFilterOptions(event.id, statisticsQuery)
       ]);
+      if (request !== participantsRequest.current) return;
 
       const tableParticipants = tableResponse?.items || [];
       const filteredStatsParticipants = statsResponse?.items || [];
@@ -731,9 +687,9 @@ export default function EventsPage() {
       setParticipantFilterOptions(filterOptionsResponse || null);
       setParticipantsTotal(tableResponse?.total || 0);
     } catch (err) {
-      toast.error('Failed to fetch participants for this event');
+      if (request === participantsRequest.current) toast.error('Failed to fetch participants for this event');
     } finally {
-      setLoadingParticipants(false);
+      if (request === participantsRequest.current) setLoadingParticipants(false);
     }
   };
 
@@ -743,13 +699,21 @@ export default function EventsPage() {
     await loadParticipantsForEvent(event);
   };
 
-  const handleExportParticipants = () => {
+  const handleExportParticipants = async () => {
     if (!selectedEvent || statsParticipants.length === 0) {
       toast.error("Tidak ada data lead untuk di-export.");
       return;
     }
     try {
-      exportParticipantsToExcel(selectedEvent, statsParticipants, activeTab, adminName);
+      const result = await crmService.exportEventParticipants(selectedEvent.id, getParticipantQueryParams());
+      if (!result.rows.length) {
+        toast.error('Tidak ada data lead untuk di-export.');
+        return;
+      }
+      const worksheet = XLSX.utils.json_to_sheet(result.rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, result.sheetName);
+      XLSX.writeFile(workbook, result.fileName);
       toast.success('Daftar participants berhasil di-export ke Excel!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to export participants');
@@ -915,6 +879,7 @@ export default function EventsPage() {
     setFilterPosition('');
     setFilterIndustry('');
     setFilterConfirmationStatus('');
+    setFilterRemarks('');
     setFilterReminderHariH('');
     setFilterPic('');
   };
@@ -1395,24 +1360,6 @@ export default function EventsPage() {
 
   const filteredEvents = events;
 
-  const displayStatsParticipants = statsParticipants.map((p) => {
-    const effectiveStatus = getEffectiveConfirmationStatus(p);
-    if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
-    return { ...p, confirmationStatus: effectiveStatus };
-  });
-
-  const displayAllStatsParticipants = allStatsParticipants.map((p) => {
-    const effectiveStatus = getEffectiveConfirmationStatus(p);
-    if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
-    return { ...p, confirmationStatus: effectiveStatus };
-  });
-
-  const displayParticipants = participants.map((p) => {
-    const effectiveStatus = getEffectiveConfirmationStatus(p);
-    if (effectiveStatus === p.confirmationStatus?.toLowerCase()) return p;
-    return { ...p, confirmationStatus: effectiveStatus };
-  });
-
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -1423,6 +1370,7 @@ export default function EventsPage() {
     filterPosition,
     filterIndustry,
     filterConfirmationStatus,
+    filterRemarks,
     filterReminderHariH,
     filterPic
   ]);
@@ -1439,6 +1387,7 @@ export default function EventsPage() {
     filterPosition,
     filterIndustry,
     filterConfirmationStatus,
+    filterRemarks,
     filterReminderHariH,
     filterPic,
     currentPage,
@@ -1448,7 +1397,7 @@ export default function EventsPage() {
   const totalPages = Math.ceil(participantsTotal / pageSize) || 1;
   const indexOfLastItem = Math.min(currentPage * pageSize, participantsTotal);
   const indexOfFirstItem = participantsTotal === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
-  const paginatedParticipants = displayParticipants;
+  const paginatedParticipants = participants;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 text-slate-900">
@@ -1803,12 +1752,12 @@ export default function EventsPage() {
               >
                 <span>Declined</span>
                 {statsParticipants.filter(p => {
-                  const status = getEffectiveConfirmationStatus(p);
+                  const status = getConfirmationStatus(p);
                   return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                 }).length > 0 && (
                   <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-200 text-slate-600 rounded-full">
                     {statsParticipants.filter(p => {
-                      const status = getEffectiveConfirmationStatus(p);
+                      const status = getConfirmationStatus(p);
                       return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                     }).length}
                   </span>
@@ -1867,8 +1816,8 @@ export default function EventsPage() {
 
           <EventStatistics
             activeTab={activeTab}
-            participants={displayStatsParticipants}
-            allParticipants={displayAllStatsParticipants}
+            participants={statsParticipants}
+            allParticipants={allStatsParticipants}
             statistics={eventStatistics}
             usersList={eligiblePicUsers}
             isAdmin={isAdmin}
@@ -1929,6 +1878,7 @@ export default function EventsPage() {
               position: filterPosition || undefined,
               industry: filterIndustry || undefined,
               confirmationStatus: filterConfirmationStatus || undefined,
+              remarks: activeTab === 'pre_event' ? filterRemarks || undefined : undefined,
               reminderHariH: filterReminderHariH || undefined,
               search: participantSearchQuery || undefined
             }}
@@ -1966,6 +1916,8 @@ export default function EventsPage() {
               setFilterIndustry={setFilterIndustry}
               filterConfirmationStatus={filterConfirmationStatus}
               setFilterConfirmationStatus={setFilterConfirmationStatus}
+              filterRemarks={filterRemarks}
+              setFilterRemarks={setFilterRemarks}
               filterReminderHariH={filterReminderHariH}
               setFilterReminderHariH={setFilterReminderHariH}
               filterPic={filterPic}
@@ -1986,12 +1938,12 @@ export default function EventsPage() {
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
               <Eye className="w-8 h-8 text-slate-400 mb-2" />
               <p className="text-sm font-semibold text-slate-500">
-                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterReminderHariH || filterPic
+                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterRemarks || filterReminderHariH || filterPic
                   ? 'No matching participants found'
                   : 'No participants registered for this event'}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterReminderHariH || filterPic
+                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterRemarks || filterReminderHariH || filterPic
                   ? 'Try adjusting your search terms.'
                   : 'Start by clicking "Add Lead" to register a database.'}
               </p>

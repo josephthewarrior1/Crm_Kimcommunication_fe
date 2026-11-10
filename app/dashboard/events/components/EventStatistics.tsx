@@ -39,6 +39,7 @@ interface EventStatisticsProps {
     position?: string;
     industry?: string;
     confirmationStatus?: string;
+    remarks?: string;
     reminderHariH?: string;
     search?: string;
   };
@@ -206,6 +207,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
         position: participantFilters?.position,
         industry: participantFilters?.industry,
         confirmationStatus: participantFilters?.confirmationStatus,
+        remarks: participantFilters?.remarks,
         reminderHariH: participantFilters?.reminderHariH,
         search: participantFilters?.search
       });
@@ -233,6 +235,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     participantFilters?.position,
     participantFilters?.industry,
     participantFilters?.confirmationStatus,
+    participantFilters?.remarks,
     participantFilters?.reminderHariH,
     participantFilters?.search
   ]);

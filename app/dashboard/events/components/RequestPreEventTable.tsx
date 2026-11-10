@@ -4,6 +4,7 @@ import { getContactOffice } from '../../../../lib/utils/companyBranch';
 import { AlertCircle, Phone, Mail, Edit2, Trash2, History, MoreVertical } from 'lucide-react';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
 import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
+import { getRemarksValue, REMARK_OPTIONS } from '../utils/statusHelper';
 
 const formatRegDate = (dateStr?: string | null) => {
   if (!dateStr) return { date: '-', time: '' };
@@ -338,16 +339,12 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   <td className="py-2.5 px-3">
                     <select
                       disabled={isUser}
-                      value={p.participantStatus === 'confirm' ? 'registered' : (p.participantStatus || 'not_respon_yet')}
+                      aria-label={`Remarks untuk ${`${p.database.firstName || ''} ${p.database.lastName || ''}`.trim() || 'peserta'}`}
+                      value={getRemarksValue(p.participantStatus)}
                       onChange={(e) => handleDirectUpdateParticipant(p, 'remarks', e.target.value)}
                       className={`text-sm font-medium border rounded-md px-2.5 py-1.5 focus:outline-none cursor-pointer transition-all ${getStatusBadgeStyle(p.participantStatus)}`}
                     >
-                      <option value="not_respon_yet" className="text-slate-700 bg-white font-normal">Not respond yet</option>
-                      <option value="not_respond_2x" className="text-slate-700 bg-white font-medium">Not respond 2x</option>
-                      <option value="registered" className="text-indigo-700 bg-white font-semibold">Registered</option>
-                      <option value="tentative" className="text-amber-700 bg-white font-semibold">Tentative</option>
-                      <option value="not_interest" className="text-slate-500 bg-white font-semibold">Not Interest</option>
-                      <option value="unable_to_attend" className="text-rose-600 bg-white font-semibold">Unable Attend</option>
+                      {REMARK_OPTIONS.map(option => <option key={option.value} value={option.value} className="text-slate-700 bg-white">{option.label}</option>)}
                     </select>
                   </td>
                 )}
