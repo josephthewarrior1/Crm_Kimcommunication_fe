@@ -127,17 +127,25 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [importResult, setImportResult] = useState<DatabaseImportResult | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [refreshError, setRefreshError] = useState('');
+  const [refreshingDatabase, setRefreshingDatabase] = useState(false);
+  const importPending = useRef(false);
+  const refreshRequest = useRef(0);
+  const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cleanCount = (importPreview?.newCount || 0) + (importPreview?.duplicateCount || 0);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
   const resetState = () => {
+    refreshRequest.current++;
+    if (refreshTimeout.current !== null) clearTimeout(refreshTimeout.current);
+    refreshTimeout.current = null;
     setSelectedImportFile(null);
     setImportPreview(null);
     setImportResult(null);
     setUploadError('');
     setRefreshError('');
+    setRefreshingDatabase(false);
     setImportingExcel(false);
     setImportProgress(0);
     setImportPhase('');
@@ -155,6 +163,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       setDestination(initialDestination || '');
     }
   }, [isOpen, initialDestination]);
+
+  useEffect(() => () => {
+    refreshRequest.current++;
+    if (refreshTimeout.current !== null) clearTimeout(refreshTimeout.current);
+  }, []);
 
   const handlePreviewExcel = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,42 +289,19 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       return;
     }
 
-    if (!destination || !importPreview || importingExcel || importResult) return;
+    if (!destination || !importPreview || importPending.current || importingExcel || importResult) return;
 
     if (cleanCount === 0) {
       toast.error('Tidak ada baris yang siap diimport. Perbaiki file Excel terlebih dahulu.');
       return;
     }
 
+    importPending.current = true;
     setImportingExcel(true);
     setUploadError('');
-    setImportProgress(0);
-    setImportPhase('Mengirim data ke server...');
-
-    const phases = [
-      { pct: 10, label: 'Mengirim file ke server...' },
-      { pct: 25, label: 'Membaca baris Excel...' },
-      { pct: 40, label: 'Memvalidasi data kontak...' },
-      { pct: 55, label: 'Menyinkronkan group & perusahaan...' },
-      { pct: 70, label: 'Menyimpan kontak baru...' },
-      { pct: 85, label: 'Memeriksa duplikasi data...' },
-      { pct: 95, label: 'Hampir selesai...' },
-    ];
-    let phaseIdx = 0;
-    const ticker = setInterval(() => {
-      if (phaseIdx < phases.length) {
-        setImportProgress(phases[phaseIdx].pct);
-        setImportPhase(phases[phaseIdx].label);
-        phaseIdx++;
-      }
-    }, 600);
 
     try {
       const res = databaseImportResult(await crmService.importDatabasesExcel(selectedImportFile, destination));
-      clearInterval(ticker);
-      setImportProgress(100);
-      setImportPhase('Import selesai!');
-      await new Promise(r => setTimeout(r, 600));
       setImportResult(res);
       if (res.count > 0) {
         toast.success('Upload Excel berhasil', {
@@ -335,16 +325,30 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         }).catch(() => {});
       }
 
-      try {
-        await onImportSuccess();
-      } catch {
+      // Saving is complete; refreshing the list must not lock the confirmed result.
+      const request = ++refreshRequest.current;
+      setRefreshingDatabase(true);
+      const refreshFailed = () => {
+        if (request !== refreshRequest.current) return;
+        setRefreshingDatabase(false);
         setRefreshError('Upload sudah selesai, tetapi daftar Database belum berhasil diperbarui. Tutup ringkasan lalu muat ulang halaman; tidak perlu mengupload file yang sama lagi.');
-      }
+      };
+      refreshTimeout.current = setTimeout(refreshFailed, 15000);
+      void Promise.resolve().then(onImportSuccess).then(() => {
+        if (request === refreshRequest.current) setRefreshError('');
+      }, refreshFailed).finally(() => {
+        if (request !== refreshRequest.current) return;
+        if (refreshTimeout.current !== null) clearTimeout(refreshTimeout.current);
+        refreshTimeout.current = null;
+        setRefreshingDatabase(false);
+      });
     } catch (err: any) {
-      clearInterval(ticker);
       setImportProgress(0);
-      setUploadError(err.message || 'Gagal mengimpor data Excel');
+      setUploadError(err instanceof TypeError
+        ? 'Koneksi terputus sebelum hasil import diterima. Data mungkin sudah tersimpan; periksa daftar Database sebelum mengupload file yang sama lagi.'
+        : err.message || 'Hasil import belum dapat dikonfirmasi. Periksa daftar Database sebelum mengupload file yang sama lagi.');
     } finally {
+      importPending.current = false;
       setImportingExcel(false);
       setImportProgress(0);
       setImportPhase('');
@@ -352,7 +356,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   };
 
   const handleClose = () => {
-    if (importingExcel || loadingPreview) return;
+    if (importPending.current || importingExcel || loadingPreview) return;
     resetState();
     onClose();
   };
@@ -441,11 +445,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <div><dt className="text-xs text-slate-500">Diperbarui</dt><dd className="mt-1 text-xl font-bold text-blue-700">{importResult.updatedCount}</dd></div>
                 <div><dt className="text-xs text-slate-500">Dilewati</dt><dd className="mt-1 text-xl font-bold text-amber-700">{importResult.skippedCount}</dd></div>
               </dl>
+              {refreshingDatabase && <p role="status" className="flex items-center gap-2 text-sm text-blue-700"><Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />Memperbarui daftar Database... Upload sudah selesai; ringkasan ini boleh ditutup.</p>}
               {refreshError && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{refreshError}</p>}
               {importResult.skippedCount > importResult.skippedRows.length && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Sebagian rincian baris yang dilewati tidak tersedia dari server. Periksa daftar Database sebelum mengupload ulang.</p>}
               {uploadError && (
                 <div role="alert" className="p-4 rounded-md border border-red-300 bg-red-50 text-red-900">
-                  <p className="font-semibold text-sm mb-2">Upload belum berhasil</p>
+                  <p className="font-semibold text-sm mb-2">Hasil upload perlu diperiksa</p>
                   <p className="text-sm leading-6 whitespace-pre-wrap break-words">{uploadError}</p>
                 </div>
               )}
@@ -507,7 +512,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <div className="ms-modal-body space-y-4">
               {uploadError && (
                 <div role="alert" className="p-4 rounded-md border border-red-300 bg-red-50 text-red-900">
-                  <p className="font-semibold text-sm mb-2">Upload belum berhasil</p>
+                  <p className="font-semibold text-sm mb-2">Hasil upload perlu diperiksa</p>
                   <p className="text-sm leading-6 whitespace-pre-wrap break-words">{uploadError}</p>
                 </div>
               )}
@@ -608,7 +613,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <div className="ms-modal-body space-y-4">
               {uploadError && (
                 <div role="alert" className="p-4 rounded-md border border-red-300 bg-red-50 text-red-900">
-                  <p className="font-semibold text-sm mb-2">Upload belum berhasil</p>
+                  <p className="font-semibold text-sm mb-2">Hasil upload perlu diperiksa</p>
                   <p className="text-sm leading-6 whitespace-pre-wrap break-words">{uploadError}</p>
                 </div>
               )}
@@ -914,28 +919,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </div>
             </div>
 
-            {/* Progress Bar - Import */}
             {importingExcel && (
-              <div className="space-y-2 p-4 bg-blue-50 border border-blue-100 rounded-xl shrink-0">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold text-blue-700">{importPhase}</span>
-                  <span className="text-xs font-bold text-blue-600 tabular-nums">{importProgress}%</span>
-                </div>
-                <div className="w-full h-3 bg-blue-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500 ease-out"
-                    style={{
-                      width: `${importProgress}%`,
-                      background: importProgress === 100
-                        ? 'linear-gradient(90deg, #10b981, #34d399)'
-                        : 'linear-gradient(90deg, #2563eb, #60a5fa)'
-                    }}
-                  />
-                </div>
+              <div role="status" className="space-y-2 p-4 bg-blue-50 border border-blue-100 rounded-xl shrink-0">
+                <p className="flex items-center gap-2 text-xs font-semibold text-blue-700"><Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />Menunggu konfirmasi hasil import dari server...</p>
                 <p className="text-xs text-blue-500 font-medium">
-                  {importProgress < 100
-                    ? 'Jangan tutup jendela ini sampai import selesai.'
-                    : '✓ Data berhasil diimport!'}
+                  File berisi banyak data bisa memerlukan waktu lebih lama. Jangan tutup jendela atau upload ulang sampai hasilnya muncul.
                 </p>
               </div>
             )}
