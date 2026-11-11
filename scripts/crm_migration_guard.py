@@ -11,12 +11,14 @@ import subprocess
 import sys
 
 
-CHANGESETS = (
+DESTINATION_CHANGESETS = (
     "crm-explicit-database-destinations",
     "crm-pms-event-binding-20261109",
     "crm-strict-database-destinations-20261109",
     "crm-participant-organization-fields-20261109",
 )
+APPROVAL_CHANGESET = "crm-ems-approval-source-20261111"
+CHANGESETS = (*DESTINATION_CHANGESETS, APPROVAL_CHANGESET)
 ORGANIZATION = {
     "organization_group_name": "character varying(255)",
     "organization_brand_name": "character varying(255)",
@@ -38,6 +40,7 @@ FEATURE_COLUMNS = {
     "databases": {"database_destination", "institution_name", "participant_category", *ORGANIZATION},
     "events": {"sync_destination", "pms_event_id"},
     "database_emails": {"database_destination"},
+    "event_participants": {"ems_approval_status"},
 }
 
 
@@ -132,15 +135,16 @@ SELECT jsonb_build_object(
         touched = any(set(FEATURE_COLUMNS[table]) & {c["name"] for c in state["tables"][table]} for table in FEATURE_COLUMNS)
         if not state["changes"] and not touched and "database_destination_splits" not in state["tables"]:
             return "original-main", state
-        require(len(state["changes"]) == len(CHANGESETS), "Prototype or partial destination migration detected; deployment stopped.")
-        self.check_schema(state)
+        self.check_schema(state, require_approval=False)
         return "current-strict", state
 
-    def check_schema(self, state=None):
+    def check_schema(self, state=None, require_approval=True):
         state = state or self.state()
         require(not state["locked"], "Liquibase is still locked.")
         changes = state["changes"]
-        require(len(changes) == len(CHANGESETS) and [c["id"] for c in changes] == list(CHANGESETS), "Required CRM migrations are missing, duplicated, or out of order.")
+        ids = [c["id"] for c in changes]
+        permitted = [list(CHANGESETS)] if require_approval else [list(DESTINATION_CHANGESETS), list(CHANGESETS)]
+        require(ids in permitted, "Required CRM migrations are missing, duplicated, or out of order.")
         require(all(c["author"] == "codex" and c["execution"] in {"EXECUTED", "RERAN"} and c["checksum"] for c in changes), "CRM migration bookkeeping is invalid.")
         columns = {t: {c["name"]: c for c in cols} for t, cols in state["tables"].items()}
         expected = {
@@ -154,6 +158,13 @@ SELECT jsonb_build_object(
             for field, (sql_type, notnull) in fields.items():
                 column = columns.get(table, {}).get(field, {})
                 require(column.get("type") == sql_type and column.get("notnull") == notnull, "CRM migration column definition is invalid.")
+        approval = columns["event_participants"].get("ems_approval_status")
+        if APPROVAL_CHANGESET in ids:
+            require(approval is not None and approval.get("type") == "character varying(20)"
+                    and approval.get("notnull") is False and approval.get("default") is None,
+                    "EMS approval history must remain nullable without a default.")
+        else:
+            require(approval is None, "Partial EMS approval migration detected; deployment stopped.")
         require("COMPANY" in (columns["databases"]["database_destination"]["default"] or ""), "Company default is missing.")
         require(all(columns["databases"][field]["default"] is None for field in ORGANIZATION), "Participant fields must remain optional without defaults.")
         constraints = {(c["table"], c["name"]): c for c in state["constraints"]}
@@ -256,6 +267,9 @@ SELECT jsonb_build_object(
             total += after["count"]
         if baseline["mode"] == "original-main":
             require(self.sql("SELECT (SELECT COUNT(*) FROM databases WHERE database_destination<>'COMPANY') + (SELECT COUNT(*) FROM database_destination_splits) + (SELECT COUNT(*) FROM events WHERE sync_destination IS NOT NULL OR pms_event_id IS NOT NULL);") == "0", "Legacy CRM classification changed unexpectedly.")
+        if "ems_approval_status" not in baseline["tables"]["event_participants"]["columns"]:
+            require(self.sql("SELECT COUNT(*) FROM event_participants WHERE ems_approval_status IS NOT NULL;") == "0",
+                    "EMS approval history was unexpectedly backfilled; keep application services stopped.")
         print("PASS: original CRM rows preserved (" + str(total) + " rows).")
 
 

@@ -219,7 +219,7 @@ for area in frontend backend; do
 import subprocess,sys
 repo,target=sys.argv[1:]
 paths=subprocess.check_output(['git','-C',repo,'diff','--name-only','HEAD',target,'--','src/main/resources'],text=True).splitlines()
-allowed={'src/main/resources/db/changelog/db.changelog-master.yaml',*(f'src/main/resources/db/changelog/changes/changelog-crm-{n}.yml' for n in ('database-destinations','pms-event-binding','strict-database-destinations','participant-organization-fields'))}
+allowed={'src/main/resources/db/changelog/db.changelog-master.yaml',*(f'src/main/resources/db/changelog/changes/changelog-crm-{n}.yml' for n in ('database-destinations','pms-event-binding','strict-database-destinations','participant-organization-fields','ems-approval-source'))}
 assert set(paths)<=allowed,'Schema/config lain memerlukan release terpisah'
 RESOURCE
   fi
@@ -359,4 +359,4 @@ python3 "$work/migration_guard.py" schema "$work"
 complete=1
 printf 'COMPLETE\n' > "$work/status"
 printf '0\n' > "$work/exit-code"
-printf 'DEPLOY SELESAI. FE %s; BE %s.\nBackup final: %s/backup-final.tar.gz\nChecksum: %s/backup-final.sha256\nEvent lama perlu dipilih jenis Perusahaan atau Peserta sebelum import/sync berikutnya.\n' "$fe_target" "$be_target" "$work" "$work"
+printf 'DEPLOY SELESAI. FE %s; BE %s.\nBackup final: %s/backup-final.tar.gz\nChecksum: %s/backup-final.sha256\nTidak ada sync EMS otomatis saat deploy. Approval manual akan mengikuti EMS pada sync berikutnya.\n' "$fe_target" "$be_target" "$work" "$work"
