@@ -46,9 +46,32 @@ async function checkService() {
   }
 }
 
-async function checkPage() {
+async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   const hooks = [], effects = [], calls = [], writes = [];
-  let cursor = 0, changed = false, tree, eventId = '17';
+  let cursor = 0, changed = false, tree;
+  let currentUrl = new URL('http://local/dashboard/events' + initialQuery);
+  let currentSearchParams = new URLSearchParams(currentUrl.search);
+  const historyEntries = [currentUrl.href];
+  let historyIndex = 0;
+  const updateUrl = url => {
+    currentUrl = new URL(url, currentUrl);
+    currentSearchParams = new URLSearchParams(currentUrl.search);
+    changed = true; // Next's native History integration updates useSearchParams.
+  };
+  const nativeHistory = {
+    pushState(_state, _title, url) {
+      historyEntries.splice(++historyIndex);
+      updateUrl(url);
+      historyEntries.push(currentUrl.href);
+    },
+    replaceState(_state, _title, url) {
+      updateUrl(url);
+      historyEntries[historyIndex] = currentUrl.href;
+    },
+    back() { if (historyIndex > 0) updateUrl(historyEntries[--historyIndex]); },
+    forward() { if (historyIndex < historyEntries.length - 1) updateUrl(historyEntries[++historyIndex]); },
+  };
+  const browserWindow = { history: nativeHistory, get location() { return currentUrl; } };
   const React = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useState(initial) {
@@ -101,10 +124,10 @@ async function checkPage() {
   }]));
   const components = {};
   const component = name => components[name] ||= Object.defineProperty(() => null, 'name', { value: name });
-  const router = { push() {} };
+  const router = { push(url) { nativeHistory.pushState(null, '', url); } };
   const dependency = name => {
     if (name === 'react') return React;
-    if (name === 'next/navigation') return { useRouter: () => router, useSearchParams: () => ({ get: key => key === 'eventId' ? eventId : null }) };
+    if (name === 'next/navigation') return { useRouter: () => router, useSearchParams: () => currentSearchParams };
     if (name.endsWith('/services/crmService')) return { crmService: service };
     if (name.endsWith('/context/AuthContext')) return { useAuth: () => ({ isAdmin: true, isManager: false, isUser: false, user: admin, token: 'local', isLoading: false }) };
     if (name === 'lucide-react') return {};
@@ -117,7 +140,9 @@ async function checkPage() {
     if (name.includes('/components/')) return new Proxy({}, { get: (_, key) => component(key) });
     return unexpected(name);
   };
-  const Page = compile('app/dashboard/events/page.tsx', dependency).default;
+  const Page = compile('app/dashboard/events/page.tsx', dependency, {
+    URL, window: browserWindow, localStorage: { getItem: key => key === 'session' ? 'local' : null, setItem() {} },
+  }).default;
   const toolbarComponent = compile('app/dashboard/events/components/ParticipantToolbar.tsx', name => name === 'react' ? React :
     name === 'lucide-react' ? {} : name.endsWith('/statusHelper') ? status : unexpected(name)).ParticipantToolbar;
   const find = name => nodes(tree).find(node => node.type === components[name]);
@@ -135,6 +160,50 @@ async function checkPage() {
   const toolbar = () => toolbarComponent(find('ParticipantToolbar').props);
   const remarksSelect = () => nodes(toolbar()).find(node => node.type === 'select' && node.props.id === 'participant-remarks-filter');
   render(); await settle();
+  if (expectedInitialTab !== undefined) {
+    const initialEventId = Number(currentUrl.searchParams.get('eventId') || currentUrl.searchParams.get('id'));
+    const participantRequests = () => calls.filter(call => call.name === 'getEventParticipantsByEvent' && call.args[0] === initialEventId);
+    assert(participantRequests().length > 0, 'Initial deep link loads participants');
+    assert(participantRequests().every(call => call.args[1].tab === expectedInitialTab), 'The initial participant requests use the URL tab, without a transient Data List request');
+    assert.equal(find('EventStatistics').props.activeTab, expectedInitialTab, 'Visible active tab matches the deep link');
+    const originalUrl = new URL(currentUrl);
+    const switchTo = expectedInitialTab === 'reminder' ? 'pre_event' : 'reminder';
+    button(switchTo === 'reminder' ? 'Reminder' : 'Pre-Event').props.onClick(); await settle();
+    assert.equal(currentUrl.searchParams.get('tab'), switchTo, 'Clicking an event tab updates its URL');
+    assert.equal(currentUrl.searchParams.get('eventId'), originalUrl.searchParams.get('eventId'));
+    assert.equal(currentUrl.searchParams.get('id'), originalUrl.searchParams.get('id'));
+    assert.equal(currentUrl.searchParams.get('view'), originalUrl.searchParams.get('view'), 'Tab changes preserve unrelated query parameters');
+    assert.equal(currentUrl.hash, originalUrl.hash, 'Tab changes preserve the URL fragment');
+    assert.equal(find('EventStatistics').props.activeTab, switchTo);
+    assert.equal(participantRequests().at(-1).args[1].tab, switchTo);
+    nativeHistory.back(); await settle();
+    assert.equal(currentUrl.href, originalUrl.href);
+    assert.equal(find('EventStatistics').props.activeTab, expectedInitialTab, 'Back restores the prior tab from the URL');
+    assert.equal(participantRequests().at(-1).args[1].tab, expectedInitialTab);
+    nativeHistory.forward(); await settle();
+    assert.equal(find('EventStatistics').props.activeTab, switchTo, 'Forward restores the next URL tab');
+    assert.equal(participantRequests().at(-1).args[1].tab, switchTo);
+    const beforeChangingEvent = calls.length;
+    router.push('/dashboard/events?eventId=18'); await settle();
+    assert.equal(find('EventStatistics').props.activeTab, 'request', 'A URL for another event without tab defaults to Data List');
+    const changedEventRequests = calls.slice(beforeChangingEvent).filter(call => call.name === 'getEventParticipantsByEvent');
+    assert(changedEventRequests.length > 0 && changedEventRequests.every(call => call.args[0] === 18 && call.args[1].tab === 'request'), 'Changing event URLs does not fetch the previous event with a new tab');
+    nativeHistory.back(); await settle();
+    assert.equal(find('EventStatistics').props.activeTab, switchTo, 'Back restores the former event and its tab together');
+    button('Back to Events List').props.onClick(); await settle();
+    const card = nodes(tree).find(node => node.type === 'div' && node.props.onClick
+      && nodes(node).some(child => child.type === 'h4' && text(child) === event.name));
+    assert(card, 'Event list remains available after leaving a tab');
+    const beforeOpeningEvent = calls.length;
+    await card.props.onClick(); await settle();
+    assert.equal(currentUrl.searchParams.get('eventId'), String(event.id));
+    assert.equal(currentUrl.searchParams.get('tab'), null, 'Opening another event starts with its default tab');
+    assert.equal(find('EventStatistics').props.activeTab, 'request');
+    const newEventRequests = calls.slice(beforeOpeningEvent).filter(call => call.name === 'getEventParticipantsByEvent');
+    assert(newEventRequests.length > 0 && newEventRequests.every(call => call.args[0] === event.id && call.args[1].tab === 'request'), 'The first request for a new event never inherits another event\'s tab');
+    assert.equal(calls.filter(call => ['updateParticipantStatus', 'updatePreEventApprovalStatus', 'bulkUpdateEventParticipants'].includes(call.name)).length, 0, 'Tab navigation does not write business data');
+    return;
+  }
   assert.equal(find('RequestPreEventTable').props.filteredParticipants[0].confirmationStatus, 'decline', 'registered EMS must not display a saved Decline as Approve');
   assert.equal(remarksSelect(), undefined, 'Data List has no Remarks filter');
   button('Pre-Event').props.onClick(); await settle();
@@ -160,7 +229,7 @@ async function checkPage() {
   button('Pre-Event').props.onClick(); await settle();
   assert.equal(remarksSelect().props.value, '', 'changing tabs clears Remarks');
   remarksSelect().props.onChange({ target: { value: 'tentative' } }); await settle();
-  eventId = '18'; render(); await settle();
+  updateUrl('/dashboard/events?eventId=18&tab=pre_event'); await settle();
   assert.equal(remarksSelect().props.value, '', 'changing events clears Remarks');
   assert.equal(calls.filter(call => call.name === 'getEventParticipantsByEvent' && call.args[0] === 18).at(-1).args[1].remarks, undefined);
   const mutationCount = () => calls.filter(call => ['updateParticipantStatus', 'updatePreEventApprovalStatus', 'bulkUpdateEventParticipants'].includes(call.name)).length;
@@ -418,5 +487,12 @@ async function checkApprovalControls() {
 
 (async () => {
   await checkService(); await checkPage(); await checkApprovalControls();
+  for (const tab of ['request', 'pre_event', 'declined', 'reminder', 'reminder_dday']) {
+    await checkPage('?eventId=40&tab=' + tab + '&view=keep#participants', tab);
+  }
+  await checkPage('?eventId=40&tab=invalid&view=keep#participants', 'request');
+  await checkPage('?eventId=40&view=keep#participants', 'request');
+  await checkPage('?id=40&tab=reminder_dday&view=keep#participants', 'reminder_dday');
   console.log('PASS: editable manual approval in table/edit/batch/engagement/page, current choice before next sync, fresh sync overwrite, no source badge/banner, Registered without approval, preserved Client Decline, Remarks scope and complete export.');
+  console.log('PASS: all event-tab deep links, default/invalid tabs, preserved URL parameters, Back/Forward and a fresh event without a stale tab; navigation writes no business data.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

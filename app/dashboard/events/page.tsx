@@ -34,10 +34,15 @@ import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/st
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { getEventColumnConfig } from './utils/columnConfigHelper';
 
+const EVENT_TABS = ['request', 'pre_event', 'declined', 'reminder', 'reminder_dday'] as const;
+type EventTab = typeof EVENT_TABS[number];
+
 export default function EventsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventIdParam = searchParams.get('eventId') || searchParams.get('id');
+  const tabParam = searchParams.get('tab');
+  const activeTab: EventTab = EVENT_TABS.includes(tabParam as EventTab) ? tabParam as EventTab : 'request';
 
   const { isAdmin, isManager, isUser, user, token, isLoading: authLoading, refreshUser } = useAuth();
   const isViewer = isUser || (!isAdmin && !isManager);
@@ -176,7 +181,6 @@ export default function EventsPage() {
   // Form states for adding/updating participants
   const [submittingParticipant, setSubmittingParticipant] = useState(false);
   const [activeParticipant, setActiveParticipant] = useState<EventParticipant | null>(null);
-  const [activeTab, setActiveTab] = useState<'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday'>('request');
   const [usersList, setUsersList] = useState<AppUser[]>([]);
   const [eligibleManagers, setEligibleManagers] = useState<AppUser[]>([]);
   const [eligibleManagersLoad, setEligibleManagersLoad] = useState<{ eventId: number; status: 'loading' | 'ready' | 'error' } | null>(null);
@@ -628,22 +632,23 @@ export default function EventsPage() {
     }
   };
 
-  const handleSwitchTab = (tab: 'request' | 'pre_event' | 'reminder' | 'reminder_dday' | 'declined') => {
-    setActiveTab(tab);
+  const handleSwitchTab = (tab: EventTab) => {
+    if (tab !== activeTab) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', tab);
+      window.history.pushState(null, '', `?${params.toString()}${window.location.hash}`);
+    }
     setSelectedParticipantIds([]);
     handleResetFilters();
   };
 
-  const loadParticipantsForEvent = async (event: Event, targetTab?: 'request' | 'pre_event' | 'declined' | 'reminder' | 'reminder_dday') => {
+  const loadParticipantsForEvent = async (event: Event, targetTab?: EventTab) => {
     const request = ++participantsRequest.current;
     if (selectedEvent?.id !== event.id) setFilterRemarks('');
     setSelectedEvent(event);
     setLoadingParticipants(true);
     setSelectedParticipantIds([]); // reset selection
     const effectiveTab = targetTab || activeTab;
-    if (targetTab) {
-      setActiveTab(targetTab);
-    }
     try {
       const remarks = effectiveTab === 'pre_event' && selectedEvent?.id === event.id ? filterRemarks || undefined : undefined;
       const tableQuery = { ...getParticipantQueryParams({ tab: effectiveTab }), remarks };
@@ -697,7 +702,7 @@ export default function EventsPage() {
   const handleSelectEvent = async (event: Event) => {
     router.push(`/dashboard/events?eventId=${event.id}`);
     await loadEligibleManagers(event.id);
-    await loadParticipantsForEvent(event);
+    await loadParticipantsForEvent(event, 'request');
   };
 
   const handleExportParticipants = async () => {
@@ -1377,11 +1382,12 @@ export default function EventsPage() {
   ]);
 
   useEffect(() => {
-    if (selectedEvent) {
+    if (selectedEvent && String(selectedEvent.id) === eventIdParam) {
       loadParticipantsForEvent(selectedEvent, activeTab);
     }
   }, [
     selectedEvent?.id,
+    eventIdParam,
     activeTab,
     participantSearchQuery,
     filterCompany,
