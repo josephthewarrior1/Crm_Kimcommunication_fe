@@ -4,23 +4,26 @@ import { EventParticipant, EventParticipantActivity } from '../../../../lib/type
 import { crmService } from '../../../../lib/services/crmService';
 import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
-import { getPreEventApprovalStatus, setPreEventApprovalStatus } from '../utils/notesHelper';
+import { getPreEventApprovalStatus, setPreEventApprovalStatus, isEmsApprovalManaged, EMS_APPROVAL_HELP } from '../utils/notesHelper';
 
 interface EngagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   participant: EventParticipant | null;
   onActivityLogged?: () => void;
+  emsApprovalManaged?: boolean;
 }
 
 export const EngagementModal: React.FC<EngagementModalProps> = ({
   isOpen,
   onClose,
   participant,
-  onActivityLogged
+  onActivityLogged,
+  emsApprovalManaged = false
 }) => {
   const { isAdmin, isManager, isUser } = useAuth();
   const isViewer = isUser || (!isAdmin && !isManager);
+  const emsManaged = emsApprovalManaged || isEmsApprovalManaged(participant);
 
   const [activities, setActivities] = useState<EventParticipantActivity[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +35,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
   const [outcomeStatus, setOutcomeStatus] = useState<string>('confirm');
 
   const getStageStatus = (stage: string, p: EventParticipant) => {
-    if (stage === 'preEventApproval') return getPreEventApprovalStatus(p);
+    if (stage === 'preEventApproval') return getPreEventApprovalStatus(p, emsManaged);
     if (stage === 'reminderH7') return p.reminderH7 || '';
     if (stage === 'reminderH3') return p.reminderH3 || '';
     if (stage === 'reminderH1') return p.reminderH1 || '';
@@ -62,8 +65,10 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
       loadActivities();
 
       // Auto-select stage: pick next uncompleted stage or default to Pre Event
-      let initialStage: TargetStage = 'preEventApproval';
-      if (getPreEventApprovalStatus(participant) !== 'approve') {
+      let initialStage: TargetStage = emsManaged ? 'none' : 'preEventApproval';
+      if (emsManaged && getPreEventApprovalStatus(participant, true) !== 'approve') {
+        initialStage = 'none';
+      } else if (!emsManaged && getPreEventApprovalStatus(participant) !== 'approve') {
         initialStage = 'preEventApproval';
       } else if (!participant.reminderH7) {
         initialStage = 'reminderH7';
@@ -81,9 +86,10 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
       setActivities(null);
       setNotes('');
     }
-  }, [isOpen, participant]);
+  }, [isOpen, participant, emsManaged]);
 
   const handleStageSelect = (stage: TargetStage) => {
+    if (emsManaged && stage === 'preEventApproval') return;
     setTargetStage(stage);
     if (participant && stage !== 'none') {
       setOutcomeStatus(getStageDefaultOutcome(stage, participant));
@@ -283,10 +289,11 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                 <UserCheck className="h-4 w-4 text-[#0C66E4]" aria-hidden="true" />
                 Status follow-up
               </h4>
+              {emsManaged && <p className="mb-3 text-xs leading-5 text-slate-600">{EMS_APPROVAL_HELP}</p>}
               {/* Status Chips */}
               <div className="mb-4 flex flex-wrap items-center gap-1.5">
                 {[
-                  { id: 'preEventApproval', label: 'Pre', val: getPreEventApprovalStatus(participant) },
+                  { id: 'preEventApproval', label: emsManaged ? 'Pre (EMS)' : 'Pre', val: getPreEventApprovalStatus(participant, emsManaged) },
                   { id: 'reminderH7', label: 'H-7', val: participant.reminderH7 },
                   { id: 'reminderH3', label: 'H-3', val: participant.reminderH3 },
                   { id: 'reminderH1', label: 'H-1', val: participant.reminderH1 },
@@ -298,6 +305,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                     <button
                       key={chip.id}
                       type="button"
+                      disabled={emsManaged && chip.id === 'preEventApproval'}
                       onClick={() => handleStageSelect(chip.id as TargetStage)}
                       aria-pressed={isSelected}
                       className={`border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C66E4] ${
@@ -323,7 +331,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                     onChange={(e) => handleStageSelect(e.target.value as TargetStage)}
                     className="w-full cursor-pointer px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0C66E4]/20"
                   >
-                    <option value="preEventApproval">Pre Event</option>
+                    {!emsManaged && <option value="preEventApproval">Pre Event</option>}
                     <option value="reminderH7">Reminder H-7</option>
                     <option value="reminderH3">Reminder H-3</option>
                     <option value="reminderH1">Reminder H-1</option>
@@ -335,7 +343,7 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                   <span className="mb-1.5 block">Hasil</span>
                   <select
                     value={outcomeStatus}
-                    disabled={targetStage === 'none'}
+                    disabled={targetStage === 'none' || (emsManaged && targetStage === 'preEventApproval')}
                     onChange={(e) => setOutcomeStatus(e.target.value)}
                     className="w-full cursor-pointer px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0C66E4]/20 disabled:opacity-50"
                   >
@@ -365,13 +373,13 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
                 </label>
                 <button
                   type="button"
-                  disabled={submitting || targetStage === 'none'}
+                  disabled={submitting || targetStage === 'none' || (emsManaged && targetStage === 'preEventApproval')}
                   onClick={async () => {
-                    if (!participant || targetStage === 'none') return;
+                    if (!participant || targetStage === 'none' || (emsManaged && targetStage === 'preEventApproval')) return;
                     setSubmitting(true);
                     try {
                       const isReminderStage = targetStage.startsWith('reminder');
-                      const autoApproveConf = (isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
+                      const autoApproveConf = (!emsManaged && isReminderStage && participant.confirmationStatus !== 'approve' && participant.confirmationStatus !== 'confirmed')
                         ? 'approve'
                         : undefined;
                       const nextNotes = targetStage === 'preEventApproval'

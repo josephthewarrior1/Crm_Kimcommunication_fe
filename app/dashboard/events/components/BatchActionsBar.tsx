@@ -25,6 +25,7 @@ interface BatchActionsBarProps {
   handleBatchUpdateReminderHariH: (status: string) => void;
   handleBatchDeleteParticipants: () => void;
   isBatchUpdating?: boolean;
+  emsApprovalManaged?: boolean;
 }
 
 export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
@@ -39,6 +40,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
   handleBatchUpdateReminderHariH,
   handleBatchDeleteParticipants,
   isBatchUpdating = false,
+  emsApprovalManaged = false,
 }) => {
   if (selectedParticipantIds.length === 0) return null;
 
@@ -93,7 +95,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
+            {!emsApprovalManaged && <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pre Event Approval</span>
               <select
                 onChange={(e) => {
@@ -109,7 +111,7 @@ export const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
                 <option value="approve">Approve</option>
                 <option value="decline">Decline</option>
               </select>
-            </div>
+            </div>}
 
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Assign PIC</span>

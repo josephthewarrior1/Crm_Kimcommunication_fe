@@ -1,4 +1,12 @@
-import type { EventParticipant } from '../../../../lib/types';
+import type { Event, EventParticipant } from '../../../../lib/types';
+
+export const isEmsApprovalEvent = (event: Pick<Event, 'emsEventId'> | null | undefined): boolean =>
+  Number(event?.emsEventId) > 0;
+
+export const isEmsApprovalManaged = (participant: { approvalSource?: string; event?: Pick<Event, 'emsEventId'> } | null | undefined): boolean =>
+  participant?.approvalSource === 'ems' || isEmsApprovalEvent(participant?.event);
+
+export const EMS_APPROVAL_HELP = 'Approval mengikuti EMS setelah Preview & Konfirmasi Sync. Registered berarti sudah daftar, belum tentu disetujui. Client Decline di CRM tetap menghalangi Reminder.';
 
 export const extractPicFromNotes = (notes: string | null | undefined): { pic: string; cleanNotes: string } => {
   if (!notes) return { pic: 'Admin', cleanNotes: '-' };
@@ -25,7 +33,12 @@ export const extractPreEventApprovalStatus = (notes: string | null | undefined):
   return status === 'approve' || status === 'decline' ? status : 'pending';
 };
 
-export const getPreEventApprovalStatus = (participant: Pick<EventParticipant, 'notes' | 'preEventApprovalStatus'> | null | undefined): string => {
+export const getPreEventApprovalStatus = (participant: (Pick<EventParticipant, 'notes' | 'preEventApprovalStatus' | 'emsApprovalStatus' | 'approvalSource'> & { event?: Pick<Event, 'emsEventId'> }) | null | undefined, emsManaged = false): string => {
+  if (emsManaged || isEmsApprovalManaged(participant)) {
+    const snapshot = participant?.emsApprovalStatus?.trim().toLowerCase();
+    if (snapshot === 'declined') return 'decline';
+    return snapshot === 'approve' || snapshot === 'decline' ? snapshot : 'pending';
+  }
   const status = participant?.preEventApprovalStatus?.trim().toLowerCase();
   if (status === 'declined') return 'decline';
   return status === 'approve' || status === 'decline' || status === 'pending'

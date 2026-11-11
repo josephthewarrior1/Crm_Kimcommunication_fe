@@ -355,6 +355,8 @@ export interface EventParticipant {
   reminderHariH?: string;
   confirmationStatus?: string; // pending | approve | decline
   preEventApprovalStatus?: string; // pending | approve | decline
+  emsApprovalStatus?: string | null; // read-only EMS snapshot: pending | approve | decline
+  approvalSource?: 'ems' | 'crm';
   createdAt?: string;
   updatedAt?: string;
 }

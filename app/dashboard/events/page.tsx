@@ -29,7 +29,7 @@ import { EventPicPanel } from './components/EventPicPanel';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
 import { ManageUserColumnsModal } from '../users/components/ManageUserColumnsModal';
-import { extractPicFromNotes, getPreEventApprovalStatus, setPreEventApprovalStatus } from './utils/notesHelper';
+import { extractPicFromNotes, getPreEventApprovalStatus, setPreEventApprovalStatus, isEmsApprovalEvent, isEmsApprovalManaged, EMS_APPROVAL_HELP } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { getEventColumnConfig } from './utils/columnConfigHelper';
@@ -54,6 +54,7 @@ export default function EventsPage() {
 
   // Selected Event & Participants state
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const emsApprovalManaged = isEmsApprovalEvent(selectedEvent);
   const checkEventDatabaseCompleteness = (contact: Database) =>
     checkDatabaseCompleteness(contact, selectedEvent?.syncDestination || undefined);
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
@@ -797,6 +798,10 @@ export default function EventsPage() {
 
   const handleBatchUpdatePreEventApprovalStatus = async (status: string) => {
     if (selectedParticipantIds.length === 0) return;
+    if (emsApprovalManaged) {
+      toast.warning('Pre-Event Approval mengikuti EMS. Gunakan Preview & Konfirmasi Sync.');
+      return;
+    }
     setIsBatchUpdating(true);
     try {
       const result = await crmService.bulkUpdateEventParticipants({
@@ -898,7 +903,7 @@ export default function EventsPage() {
         participantStatus: 'white',
         attendanceStatus: 'invited',
         confirmationStatus: 'pending',
-        preEventApprovalStatus: 'pending',
+        preEventApprovalStatus: emsApprovalManaged ? undefined : 'pending',
         notes: activeTab === 'request'
           ? `[Origin: Request] ${notes.trim()}`.trim()
           : notes.trim() || undefined
@@ -1038,7 +1043,7 @@ export default function EventsPage() {
     reminderH1: string;
     reminderHariH: string;
     confirmationStatus: string;
-    preEventApprovalStatus: string;
+    preEventApprovalStatus?: string;
   }) => {
     if (!selectedEvent || !activeParticipant) return;
 
@@ -1050,8 +1055,8 @@ export default function EventsPage() {
 
     setSubmittingParticipantUpdate(true);
     try {
-      const nextNotes = activeTab === 'pre_event'
-        ? setPreEventApprovalStatus(data.notes, data.preEventApprovalStatus)
+      const nextNotes = activeTab === 'pre_event' && !emsApprovalManaged
+        ? setPreEventApprovalStatus(data.notes, data.preEventApprovalStatus || 'pending')
         : data.notes;
 
       await crmService.updateParticipantStatus(
@@ -1072,7 +1077,7 @@ export default function EventsPage() {
         data.reminderH1 || undefined,
         data.reminderHariH || undefined,
         data.confirmationStatus || undefined,
-        activeTab === 'pre_event' ? data.preEventApprovalStatus : undefined
+        activeTab === 'pre_event' && !emsApprovalManaged ? data.preEventApprovalStatus : undefined
       );
 
       // Log activity in history
@@ -1155,6 +1160,10 @@ export default function EventsPage() {
     field: 'remarks' | 'attendance' | 'confirmationStatus' | 'preEventApprovalStatus' | 'reminderH7' | 'reminderH3' | 'reminderH1' | 'reminderHariH',
     value: string
   ) => {
+    if (field === 'preEventApprovalStatus' && (emsApprovalManaged || isEmsApprovalManaged(lead))) {
+      toast.warning('Pre-Event Approval mengikuti EMS. Gunakan Preview & Konfirmasi Sync.');
+      return;
+    }
     let participantStatus = lead.participantStatus;
     let attendanceStatus = lead.attendanceStatus;
     let confirmationStatus = lead.confirmationStatus;
@@ -1814,6 +1823,8 @@ export default function EventsPage() {
             </div>
           </div>
 
+          {emsApprovalManaged && activeTab === 'pre_event' && <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">{EMS_APPROVAL_HELP}</p>}
+
           <EventStatistics
             activeTab={activeTab}
             participants={statsParticipants}
@@ -1887,6 +1898,7 @@ export default function EventsPage() {
           {/* Batch Actions Status Bar */}
           {!isViewer && (
             <BatchActionsBar
+              emsApprovalManaged={emsApprovalManaged}
               selectedParticipantIds={selectedParticipantIds}
               setSelectedParticipantIds={setSelectedParticipantIds}
               activeTab={activeTab}
@@ -1950,6 +1962,7 @@ export default function EventsPage() {
             </div>
           ) : activeTab === 'request' || activeTab === 'pre_event' || activeTab === 'declined' ? (
             <RequestPreEventTable
+              emsApprovalManaged={emsApprovalManaged}
               filteredParticipants={paginatedParticipants}
               selectedParticipantIds={selectedParticipantIds}
               setSelectedParticipantIds={setSelectedParticipantIds}
@@ -2173,6 +2186,7 @@ export default function EventsPage() {
 
       {activeParticipant && (
         <UpdateParticipantModal
+          emsApprovalManaged={emsApprovalManaged}
           isOpen={isUpdateParticipantModalOpen}
           onClose={() => {
             setIsUpdateParticipantModalOpen(false);
@@ -2244,6 +2258,7 @@ export default function EventsPage() {
 
       {/* Engagement History Modal */}
       <EngagementModal
+        emsApprovalManaged={emsApprovalManaged}
         isOpen={isEngagementModalOpen}
         onClose={() => {
           setIsEngagementModalOpen(false);

@@ -6,6 +6,7 @@ import type { Event, EmsSyncPreview } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../components/ui/dialog';
 import { toast } from 'sonner';
+import { EMS_APPROVAL_HELP } from '../utils/notesHelper';
 
 type Destination = 'company' | 'participant';
 const label = (destination: Destination) => destination === 'company' ? 'Database Perusahaan' : 'Database Peserta';
@@ -72,6 +73,7 @@ function SyncContent({ event, onClose, onConfigureEvent, onSynced }: Props & { e
             </div>
           )}
           <p className="mt-2 text-xs leading-5 text-slate-500">Tujuan mengikuti jenis event sejak dibuat. Email kampus atau kantor tetap masuk Peserta pada event Peserta / Publik.</p>
+          <p className="mt-2 rounded-lg bg-blue-50 p-3 text-xs leading-5 text-blue-900">{EMS_APPROVAL_HELP} EMS ACCEPTED menjadi Approve dan masuk Reminder; PENDING tetap Pending, sedangkan DECLINED dikeluarkan dari tahap lanjut.</p>
         </div>
         <button type="button" disabled={!destination || loading || syncing} onClick={loadPreview} className="ms-modal-secondary inline-flex items-center gap-2 disabled:opacity-50">
           {loading && <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />}

@@ -3,7 +3,7 @@ import { EventParticipant } from '../../../../lib/types';
 import { getContactOffice } from '../../../../lib/utils/companyBranch';
 import { AlertCircle, Phone, Mail, Edit2, Trash2, History, MoreVertical } from 'lucide-react';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
-import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
+import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail, isEmsApprovalManaged } from '../utils/notesHelper';
 import { getRemarksValue, REMARK_OPTIONS } from '../utils/statusHelper';
 
 const formatRegDate = (dateStr?: string | null) => {
@@ -49,6 +49,7 @@ interface RequestPreEventTableProps {
   getConfirmationStatusBadgeStyle: (status: string) => string;
   onOpenEngagementModal?: (participant: EventParticipant) => void;
   columnConfig?: EventColumnConfig;
+  emsApprovalManaged?: boolean;
 }
 
 export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
@@ -68,7 +69,8 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   getStatusBadgeStyle,
   getConfirmationStatusBadgeStyle,
   onOpenEngagementModal,
-  columnConfig = DEFAULT_COLUMN_CONFIG
+  columnConfig = DEFAULT_COLUMN_CONFIG,
+  emsApprovalManaged = false
 }) => {
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -159,6 +161,8 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {filteredParticipants.map((p) => {
+            const emsManaged = emsApprovalManaged || isEmsApprovalManaged(p);
+            const preApproval = getPreEventApprovalStatus(p, emsManaged);
             const officePhone = getContactOffice(p.database)?.officePhone;
             const { pic, cleanNotes } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
@@ -350,23 +354,27 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 )}
                 {columnConfig.approvalStatus !== false && showApprovalColumn && (
                   <td className="py-2.5 px-3">
-                    <div className="flex justify-center">
+                    <div className="flex flex-col items-center gap-1">
                       {activeTab === 'pre_event' ? (
+                        <>
                         <select
-                          disabled={isUser}
-                          value={getPreEventApprovalStatus(p)}
-                          onChange={(e) => handleDirectUpdateParticipant(p, 'preEventApprovalStatus', e.target.value)}
-                          className={`text-sm font-medium border rounded-md px-2.5 py-1.5 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(getPreEventApprovalStatus(p))}`}
+                          disabled={isUser || emsManaged}
+                          aria-label={`Pre Event Approval untuk ${`${p.database.firstName || ''} ${p.database.lastName || ''}`.trim() || 'peserta'}`}
+                          value={preApproval}
+                          onChange={(e) => { if (!emsManaged) handleDirectUpdateParticipant(p, 'preEventApprovalStatus', e.target.value); }}
+                          className={`text-sm font-medium border rounded-md px-2.5 py-1.5 focus:outline-none disabled:cursor-default transition-all ${getConfirmationStatusBadgeStyle(preApproval)}`}
                         >
                           <option value="pending" className="text-amber-700 bg-white font-medium">Pending</option>
                           <option value="approve" className="text-emerald-700 bg-white font-medium">Approve</option>
                           <option value="decline" className="text-rose-700 bg-white font-medium">Decline</option>
                         </select>
+                        {emsManaged && <span className="text-[10px] font-medium text-slate-500">Dari EMS</span>}
+                        </>
                       ) : (
                         <select
                           disabled={!canEditConfirmation}
                           value={
-                            getPreEventApprovalStatus(p) === 'decline'
+                            !emsManaged && preApproval === 'decline'
                               ? 'decline'
                               : p.confirmationStatus === 'confirmed' || p.confirmationStatus === 'approve'
                               ? 'approve'
@@ -377,12 +385,12 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                           onChange={(e) => {
                             const newVal = e.target.value;
                             handleDirectUpdateParticipant(p, 'confirmationStatus', newVal);
-                            if (getPreEventApprovalStatus(p) === 'decline') {
+                            if (!emsManaged && preApproval === 'decline') {
                               handleDirectUpdateParticipant(p, 'preEventApprovalStatus', newVal);
                             }
                           }}
                           className={`text-sm font-medium border rounded-md px-2.5 py-1.5 focus:outline-none cursor-pointer transition-all ${getConfirmationStatusBadgeStyle(
-                            getPreEventApprovalStatus(p) === 'decline'
+                            !emsManaged && preApproval === 'decline'
                               ? 'decline'
                               : p.confirmationStatus === 'confirmed' || p.confirmationStatus === 'approve'
                               ? 'approve'
