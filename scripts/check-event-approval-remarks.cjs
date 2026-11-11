@@ -226,7 +226,7 @@ async function mountApprovalComponent(name, initialProps, responses = {}) {
     if (module.endsWith('/utils/columnConfigHelper')) return compile('app/dashboard/events/utils/columnConfigHelper.ts', unexpected);
     if (module.endsWith('/utils/phoneHelper')) return compile('app/dashboard/database/utils/phoneHelper.ts', unexpected);
     if (module.endsWith('/utils/companyBranch')) return compile('lib/utils/companyBranch.ts', unexpected);
-    if (module === './EmsCompanyReviewNotice') return compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', dependency => dependency === 'react' ? React : unexpected(dependency));
+    if (module === './EmsCompanyReviewNotice') return compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', dependencies);
     if (module.includes('/components/ui/')) return new Proxy({}, { get: (_, key) => key });
     return unexpected(module);
   };
@@ -357,7 +357,11 @@ async function checkApprovalControls() {
     emsIdentityReviewMessage: 'Ada profil lama dengan HP sama; keputusan client perlu dicek.', emsClientDeclineReviewRequired: true };
   const React = require('react');
   const { renderToStaticMarkup } = require('react-dom/server');
-  const Notice = compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', module => module === 'react' ? React : unexpected(module)).EmsCompanyReviewNotice;
+  const realDialog = compile('components/ui/dialog.tsx', module => module === './utils'
+    ? compile('components/ui/utils.ts', require)
+    : require(module));
+  const Notice = compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', module => module === 'react' ? React
+    : module.endsWith('/components/ui/dialog') ? realDialog : unexpected(module)).EmsCompanyReviewNotice;
   for (const [component, tab] of [['RequestPreEventTable', 'request'], ['RequestPreEventTable', 'pre_event'], ['ReminderTable', 'reminder'], ['ReminderDdayTable', 'reminder_dday']]) {
     const mounted = await mountApprovalComponent(component, tableProps(reviewParticipant, tab));
     const notice = mounted.find(node => node.type?.name === 'EmsCompanyReviewNotice');
@@ -366,15 +370,30 @@ async function checkApprovalControls() {
     assert.equal(notice.props.identityReviewMessage, reviewParticipant.emsIdentityReviewMessage);
     assert.equal(notice.props.clientDeclineReviewRequired, true);
     const html = renderToStaticMarkup(React.createElement(Notice, notice.props));
-    assert(html.includes('Perusahaan perlu dicek') && html.includes('CRM: Example') && html.includes('Registrasi: Registration company'), component + ' shows both companies for review');
-    assert(html.includes('Tertahan untuk review keputusan client') && html.includes('Peserta belum masuk Reminder.'), component + ' explains the alias-decline veto independently of current approval');
+    assert(html.includes('Tertahan') && html.includes('aria-label="Lihat detail peringatan"'), component + ' exposes a compact warning button');
+    assert(html.includes('aria-haspopup="dialog"') && html.includes('aria-expanded="false"'), component + ' uses the real dialog trigger and starts closed');
+    assert(!html.includes('Example') && !html.includes('Registration company') && !html.includes(reviewParticipant.emsIdentityReviewMessage), component + ' keeps full warning details out of the table row');
+    assert(!html.includes('role="dialog"'), component + ' does not open a modal automatically');
     assert(!html.includes('Dari EMS') && !html.includes('Registrasi EMS:'));
   }
   assert.equal(renderToStaticMarkup(React.createElement(Notice, { companyReviewRequired: false })), '');
   assert.equal(renderToStaticMarkup(React.createElement(Notice, {})), '', 'Legacy rows need no notice');
   const identityOnlyHtml = renderToStaticMarkup(React.createElement(Notice, { identityReviewMessage: 'Nama lama berbeda.' }));
-  assert(identityOnlyHtml.includes('Identitas perlu dicek') && identityOnlyHtml.includes('Nama lama berbeda.'));
-  assert(!identityOnlyHtml.includes('Perusahaan perlu dicek'), 'Identity review does not imply a company conflict');
+  assert(identityOnlyHtml.includes('Perlu review') && !identityOnlyHtml.includes('Nama lama berbeda.'), 'Identity review starts as a compact button with hidden details');
+  const companyOnlyHtml = renderToStaticMarkup(React.createElement(Notice, { companyReviewRequired: true, crmCompanyName: 'Original company', emsCompanyName: 'New company' }));
+  assert(companyOnlyHtml.includes('Perlu review') && !companyOnlyHtml.includes('Original company') && !companyOnlyHtml.includes('New company'), 'Company review also keeps details inside the closed dialog');
+  const mountedNotice = await mountApprovalComponent('EmsCompanyReviewNotice', {
+    companyReviewRequired: true, crmCompanyName: 'Example', emsCompanyName: 'Registration company',
+    identityReviewMessage: reviewParticipant.emsIdentityReviewMessage, clientDeclineReviewRequired: true,
+  });
+  assert.equal(mountedNotice.find(node => node.type === 'button').props.type, 'button', 'Warning trigger never submits an enclosing form');
+  assert(mountedNotice.has(node => node.type === 'DialogTrigger' && node.props.asChild), 'Warning uses the existing accessible dialog primitive');
+  assert(mountedNotice.has(node => node.type === 'DialogTitle' && text(node) === 'Detail peringatan'), 'Opened dialog has a descriptive title');
+  assert(mountedNotice.content.includes('Example') && mountedNotice.content.includes('Registration company')
+    && mountedNotice.content.includes(reviewParticipant.emsIdentityReviewMessage), 'Dialog content retains the complete company and identity review details');
+  assert(mountedNotice.content.includes('Review keputusan client') && mountedNotice.content.includes('Client Decline tetap berlaku.')
+    && mountedNotice.content.includes('Pre-Event dan Reminder'), 'Dialog content explains the alias-decline veto');
+  assert.equal(mountedNotice.calls.length, 0, 'Reading a warning never updates contacts or client decisions');
   const vetoedClient = { ...reviewParticipant, confirmationStatus: 'pending' };
   const vetoedDataList = await mountApprovalComponent('RequestPreEventTable', tableProps(vetoedClient, 'request'));
   assert.equal(vetoedDataList.find(node => node.type === 'select').props.value, 'pending', 'An alias Decline does not replace this profile\'s client decision');
