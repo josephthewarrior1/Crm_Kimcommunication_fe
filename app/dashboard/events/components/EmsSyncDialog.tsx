@@ -58,6 +58,7 @@ function SyncContent({ event, onClose, onConfigureEvent, onSynced }: Props & { e
   };
 
   const accepted = preview ? preview.newCount + preview.existingCount : 0;
+  const clientDeclineReviews = preview?.rows.filter(row => row.clientDeclineReviewRequired).length || 0;
   return <Dialog open onOpenChange={open => { if (!open && !loading && !syncing) onClose(); }}>
     <DialogContent className="max-w-3xl" aria-describedby="ems-sync-description">
       <DialogHeader>
@@ -89,10 +90,11 @@ function SyncContent({ event, onClose, onConfigureEvent, onSynced }: Props & { e
             <p className="rounded-lg bg-amber-50 p-3">Ditolak <strong className="block text-lg">{preview.rejectedCount}</strong></p>
             <p className="rounded-lg bg-amber-50 p-3">Perusahaan perlu dicek <strong className="block text-lg">{preview.companyReviewCount || 0}</strong></p>
           </div>
+          {clientDeclineReviews > 0 && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{clientDeclineReviews} registrasi tetap tertahan dari Reminder untuk review keputusan client. Status registrasi diperbarui; keputusan Client Decline pada profil terkait tetap dipertahankan.</p>}
           <p className="text-xs leading-5 text-slate-500">Profil yang sudah ada dipakai kembali dan riwayat event tetap disimpan. Perbedaan perusahaan ditandai untuk dicek; data utama perusahaan dan kontak tetap dipertahankan. Baris ditolak tidak dipindahkan ke tujuan lain.</p>
           {preview.rows.length > 0 && <div className="max-h-60 overflow-auto rounded-lg border border-slate-200">
             <table className="w-full text-left text-xs"><thead className="sticky top-0 bg-slate-50"><tr><th className="p-2">Nama / email</th><th className="p-2">Hasil</th><th className="p-2">Keterangan</th></tr></thead>
-              <tbody>{preview.rows.slice(0, 100).map(row => <tr key={row.rowNum} className="border-t border-slate-100"><td className="p-2"><span className="block font-medium">{row.name || 'Nama belum tersedia'}</span><span className="break-all text-slate-500">{row.email}</span></td><td className="p-2">{row.status === 'NEW' ? 'Baru' : row.status === 'EXISTING' ? 'Sudah ada' : 'Ditolak'}</td><td className="p-2">{row.message}<EmsCompanyReviewNotice companyReviewRequired={row.companyReviewRequired} crmCompanyName={row.crmCompanyName} emsCompanyName={row.emsCompanyName} /></td></tr>)}</tbody>
+              <tbody>{preview.rows.slice(0, 100).map(row => <tr key={row.rowNum} className="border-t border-slate-100"><td className="p-2"><span className="block font-medium">{row.name || 'Nama belum tersedia'}</span><span className="break-all text-slate-500">{row.email}</span></td><td className="p-2">{row.status === 'NEW' ? 'Baru' : row.status === 'EXISTING' ? 'Sudah ada' : 'Ditolak'}</td><td className="p-2">{row.message}<EmsCompanyReviewNotice companyReviewRequired={row.companyReviewRequired} crmCompanyName={row.crmCompanyName} emsCompanyName={row.emsCompanyName} identityReviewMessage={row.identityReviewMessage} clientDeclineReviewRequired={row.clientDeclineReviewRequired} /></td></tr>)}</tbody>
             </table>
           </div>}
           {preview.rows.length > 100 && <p className="text-xs text-slate-500">Menampilkan 100 dari {preview.totalRows} baris. Seluruh baris tetap divalidasi.</p>}

@@ -247,7 +247,7 @@ export interface EmsSyncPreview {
   rejectedCount: number;
   companyReviewCount?: number;
   previewToken: string;
-  rows: Array<{ rowNum: number; name: string; email: string; status: 'NEW' | 'EXISTING' | 'REJECTED'; existingDatabaseId?: number; message: string; companyReviewRequired?: boolean; crmCompanyName?: string | null; emsCompanyName?: string | null }>;
+  rows: Array<{ rowNum: number; name: string; email: string; status: 'NEW' | 'EXISTING' | 'REJECTED'; existingDatabaseId?: number; message: string; companyReviewRequired?: boolean; crmCompanyName?: string | null; emsCompanyName?: string | null; identityReviewMessage?: string | null; clientDeclineReviewRequired?: boolean | null }>;
 }
 
 export interface EmsSyncResult extends EmsSyncPreview {
@@ -359,6 +359,8 @@ export interface EventParticipant {
   emsApprovalStatus?: string | null; // last sync snapshot; current manual choice is preEventApprovalStatus
   emsCompanyName?: string | null;
   emsCompanyReviewRequired?: boolean | null;
+  emsIdentityReviewMessage?: string | null;
+  emsClientDeclineReviewRequired?: boolean | null;
   approvalSource?: 'ems' | 'crm';
   createdAt?: string;
   updatedAt?: string;

@@ -353,7 +353,8 @@ async function checkApprovalControls() {
   assert(sync.content.includes('Sinkronisasi berikutnya menimpa approval') && sync.content.includes('Client Decline'));
 
   const reviewParticipant = { ...participant, preEventApprovalStatus: 'approve',
-    emsCompanyName: 'Registration company', emsCompanyReviewRequired: true };
+    emsCompanyName: 'Registration company', emsCompanyReviewRequired: true,
+    emsIdentityReviewMessage: 'Ada profil lama dengan HP sama; keputusan client perlu dicek.', emsClientDeclineReviewRequired: true };
   const React = require('react');
   const { renderToStaticMarkup } = require('react-dom/server');
   const Notice = compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', module => module === 'react' ? React : unexpected(module)).EmsCompanyReviewNotice;
@@ -362,21 +363,34 @@ async function checkApprovalControls() {
     const notice = mounted.find(node => node.type?.name === 'EmsCompanyReviewNotice');
     assert.equal(notice.props.crmCompanyName, 'Example', component + ' retains the CRM company');
     assert.equal(notice.props.emsCompanyName, 'Registration company');
+    assert.equal(notice.props.identityReviewMessage, reviewParticipant.emsIdentityReviewMessage);
+    assert.equal(notice.props.clientDeclineReviewRequired, true);
     const html = renderToStaticMarkup(React.createElement(Notice, notice.props));
     assert(html.includes('Perusahaan perlu dicek') && html.includes('CRM: Example') && html.includes('Registrasi: Registration company'), component + ' shows both companies for review');
+    assert(html.includes('Tertahan untuk review keputusan client') && html.includes('Peserta belum masuk Reminder.'), component + ' explains the alias-decline veto independently of current approval');
     assert(!html.includes('Dari EMS') && !html.includes('Registrasi EMS:'));
   }
   assert.equal(renderToStaticMarkup(React.createElement(Notice, { companyReviewRequired: false })), '');
   assert.equal(renderToStaticMarkup(React.createElement(Notice, {})), '', 'Legacy rows need no notice');
+  const identityOnlyHtml = renderToStaticMarkup(React.createElement(Notice, { identityReviewMessage: 'Nama lama berbeda.' }));
+  assert(identityOnlyHtml.includes('Identitas perlu dicek') && identityOnlyHtml.includes('Nama lama berbeda.'));
+  assert(!identityOnlyHtml.includes('Perusahaan perlu dicek'), 'Identity review does not imply a company conflict');
+  const vetoedClient = { ...reviewParticipant, confirmationStatus: 'pending' };
+  const vetoedDataList = await mountApprovalComponent('RequestPreEventTable', tableProps(vetoedClient, 'request'));
+  assert.equal(vetoedDataList.find(node => node.type === 'select').props.value, 'pending', 'An alias Decline does not replace this profile\'s client decision');
   const reviewPreview = { destination: 'company', newCount: 0, existingCount: 1, rejectedCount: 0, companyReviewCount: 1, totalRows: 1,
     previewToken: 'local-review', rows: [{ rowNum: 1, name: 'Anonymous Fixture', email: 'local@example.test', status: 'EXISTING',
-      message: 'Profil dipakai kembali.', companyReviewRequired: true, crmCompanyName: 'Example', emsCompanyName: 'Registration company' }] };
+      message: 'Profil dipakai kembali.', companyReviewRequired: true, crmCompanyName: 'Example', emsCompanyName: 'Registration company',
+      identityReviewMessage: 'Profil lama punya Client Decline.', clientDeclineReviewRequired: true }] };
   const previewDialog = await mountApprovalComponent('EmsSyncDialog', { isOpen: true, event, onClose() {}, onSynced: async () => {} }, { previewEmsParticipants: reviewPreview });
   await previewDialog.act(previewDialog.find(node => node.type === 'button' && text(node).includes('Muat ulang preview')).props.onClick);
   assert(previewDialog.content.includes('Perusahaan perlu dicek 1') || previewDialog.content.includes('Perusahaan perlu dicek1'));
   const previewNotice = previewDialog.find(node => node.type?.name === 'EmsCompanyReviewNotice');
   assert.equal(previewNotice.props.crmCompanyName, 'Example');
   assert.equal(previewNotice.props.emsCompanyName, 'Registration company');
+  assert.equal(previewNotice.props.identityReviewMessage, 'Profil lama punya Client Decline.');
+  assert.equal(previewNotice.props.clientDeclineReviewRequired, true);
+  assert(previewDialog.content.includes('1 registrasi tetap tertahan dari Reminder untuk review keputusan client.'), 'Preview separates successful registration sync from Reminder eligibility');
   assert.equal(Boolean(previewDialog.find(node => node.type === 'button' && text(node) === 'Konfirmasi sync 1 registrasi').props.disabled), false, 'Company review does not block eligible sync');
   assert.equal(previewDialog.calls.filter(call => call.name === 'syncEmsParticipants').length, 0, 'Opening and loading preview never applies sync');
   assert.equal(reviewParticipant.database.company.name, 'Example');

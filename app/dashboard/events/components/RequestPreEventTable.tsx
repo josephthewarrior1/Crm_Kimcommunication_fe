@@ -251,7 +251,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 {columnConfig.companyName !== false && (
                   <td className="py-2.5 px-3 font-medium text-slate-700">
                     {p.database.company?.name || <span className="text-slate-400">-</span>}
-                    <EmsCompanyReviewNotice companyReviewRequired={p.emsCompanyReviewRequired} crmCompanyName={p.database.company?.name} emsCompanyName={p.emsCompanyName} />
+                    <EmsCompanyReviewNotice companyReviewRequired={p.emsCompanyReviewRequired} crmCompanyName={p.database.company?.name} emsCompanyName={p.emsCompanyName} identityReviewMessage={p.emsIdentityReviewMessage} clientDeclineReviewRequired={p.emsClientDeclineReviewRequired} />
                   </td>
                 )}
                 {columnConfig.salutation !== false && (

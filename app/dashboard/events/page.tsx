@@ -1754,12 +1754,12 @@ export default function EventsPage() {
                 <span>Declined</span>
                 {statsParticipants.filter(p => {
                   const status = getConfirmationStatus(p);
-                  return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
+                  return p.emsClientDeclineReviewRequired === true || status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                 }).length > 0 && (
                   <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-200 text-slate-600 rounded-full">
                     {statsParticipants.filter(p => {
                       const status = getConfirmationStatus(p);
-                      return status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
+                      return p.emsClientDeclineReviewRequired === true || status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
                     }).length}
                   </span>
                 )}

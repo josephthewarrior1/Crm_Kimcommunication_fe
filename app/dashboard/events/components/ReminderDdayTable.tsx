@@ -129,7 +129,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
             const officePhone = getContactOffice(p.database)?.officePhone;
             const isTakeout = Boolean(p.notes?.includes('[TAKEOUT]') || p.notes?.includes('[Opt-Out]') || p.notes?.toLowerCase().includes('takeout') || (p.database as any)?.isRemovalRequested);
             const isTikus = Boolean(!isTakeout && (!p.database?.isActive || (p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus') || p.participantStatus === 'red'));
-            const isDeclined = p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
+            const isDeclined = p.emsClientDeclineReviewRequired === true || p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
 
             return (
               <tr
@@ -251,7 +251,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
                         </span>
                       ) : null}
                     </div>
-                    <EmsCompanyReviewNotice companyReviewRequired={p.emsCompanyReviewRequired} crmCompanyName={p.database.company?.name} emsCompanyName={p.emsCompanyName} />
+                    <EmsCompanyReviewNotice companyReviewRequired={p.emsCompanyReviewRequired} crmCompanyName={p.database.company?.name} emsCompanyName={p.emsCompanyName} identityReviewMessage={p.emsIdentityReviewMessage} clientDeclineReviewRequired={p.emsClientDeclineReviewRequired} />
                   </td>
                 )}
                 {columnConfig.salutation !== false && (
