@@ -25,10 +25,10 @@ for (const [raw, canonical] of [[undefined, 'not_respon_yet'], ['white', 'not_re
 assert.equal(notes.getPreEventApprovalStatus({ preEventApprovalStatus: 'pending', notes: '[PreEventApproval: decline]' }), 'pending');
 assert.equal(notes.getPreEventApprovalStatus({ preEventApprovalStatus: 'declined', notes: '[PreEventApproval: approve]' }), 'decline');
 assert.equal(notes.getPreEventApprovalStatus({ preEventApprovalStatus: '', notes: '[PreEventApproval: declined]' }), 'decline');
-assert.equal(notes.getPreEventApprovalStatus({ approvalSource: 'ems', preEventApprovalStatus: 'approve', notes: '[PreEventApproval: approve]' }), 'pending', 'Legacy manual approval is not an EMS approval snapshot');
-assert.equal(notes.getPreEventApprovalStatus({ approvalSource: 'ems', emsApprovalStatus: 'approve', preEventApprovalStatus: 'decline' }), 'approve');
-assert.equal(notes.getPreEventApprovalStatus({ approvalSource: 'ems', emsApprovalStatus: 'decline', preEventApprovalStatus: 'approve' }), 'decline');
-assert.equal(notes.getPreEventApprovalStatus({ event: { emsEventId: 9 }, preEventApprovalStatus: 'approve' }), 'pending');
+assert.equal(notes.getPreEventApprovalStatus({ approvalSource: 'ems', preEventApprovalStatus: 'approve', notes: '[PreEventApproval: approve]' }), 'approve', 'Current manual approval remains effective until sync');
+assert.equal(notes.getPreEventApprovalStatus({ approvalSource: 'ems', emsApprovalStatus: 'approve', preEventApprovalStatus: 'decline' }), 'decline');
+assert.equal(notes.getPreEventApprovalStatus({ approvalSource: 'ems', emsApprovalStatus: 'decline', preEventApprovalStatus: 'approve' }), 'approve');
+assert.equal(notes.getPreEventApprovalStatus({ event: { emsEventId: 9 }, preEventApprovalStatus: 'approve' }), 'approve');
 
 async function checkService() {
   const urls = [];
@@ -168,7 +168,10 @@ async function checkPage() {
   await find('RequestPreEventTable').props.handleDirectUpdateParticipant(rows[1], 'preEventApprovalStatus', 'approve');
   find('RequestPreEventTable').props.setSelectedParticipantIds([rows[1].id]); await settle();
   await find('BatchActionsBar').props.handleBatchUpdatePreEventApprovalStatus('approve');
-  assert.equal(mutationCount(), beforeApproval, 'Direct and batch page callbacks cannot override EMS approval');
+  assert.equal(mutationCount(), beforeApproval + 2, 'Direct and batch page callbacks permit manual approval');
+  assert.equal(calls.filter(call => call.name === 'updatePreEventApprovalStatus').at(-1).args[2], 'approve');
+  assert.equal(calls.filter(call => call.name === 'bulkUpdateEventParticipants').at(-1).args[0].preEventApprovalStatus, 'approve');
+  assert(!text(tree).includes(notes.SYNC_APPROVAL_HELP), 'No approval-source banner is added to Pre-Event');
   await find('RequestPreEventTable').props.handleDirectUpdateParticipant(rows[1], 'remarks', 'registered');
   const remarkWrite = calls.filter(call => call.name === 'updateParticipantStatus').at(-1);
   assert.equal(remarkWrite.args[1], 'registered');
@@ -180,8 +183,8 @@ async function checkPage() {
     confirmationStatus: 'decline', preEventApprovalStatus: 'approve',
   });
   const editWrite = calls.filter(call => call.name === 'updateParticipantStatus').at(-1);
-  assert.equal(editWrite.args[17], undefined, 'Page edit does not forward a forged EMS Pre-Event approval');
-  assert(!editWrite.args[3].includes('PreEventApproval:'), 'Page edit does not forge a legacy approval tag');
+  assert.equal(editWrite.args[17], 'approve', 'Page edit forwards the manual Pre-Event choice');
+  assert(editWrite.args[3].includes('[PreEventApproval: approve]'), 'Manual approval and its legacy tag stay consistent');
   assert.equal(editWrite.args[16], 'decline', 'Explicit CRM Client Decline remains the CRM decision');
 }
 
@@ -245,15 +248,16 @@ async function mountApprovalComponent(name, initialProps) {
   return { calls, messages, find, settle, get content() { return text(tree); },
     has: predicate => nodes(tree).some(predicate),
     async act(handler, value) { await handler(value); await settle(); },
+    async updateProps(next) { Object.assign(initialProps, next); render(); await settle(); },
   };
 }
 
 async function checkApprovalControls() {
   const event = { id: 17, emsEventId: 9, emsSource: 'V2', syncDestination: 'company', name: 'Anonymous EMS fixture' };
-  const participant = { id: 7, event, approvalSource: 'ems', emsApprovalStatus: null,
+  const participant = { id: 7, event, approvalSource: 'ems', emsApprovalStatus: 'approve',
     database: { id: 7, firstName: 'Anonymous', lastName: 'Fixture', company: { name: 'Example' }, emails: [], isActive: true },
     participantStatus: 'registered', attendanceStatus: 'registered', confirmationStatus: 'decline',
-    preEventApprovalStatus: 'approve', notes: '[PreEventApproval: approve] [Origin: EMS Sync]' };
+    preEventApprovalStatus: 'pending', notes: '[PreEventApproval: pending] [Origin: EMS Sync]' };
   const writes = [];
   const tableProps = (p, activeTab = 'pre_event') => ({
     filteredParticipants: [p], selectedParticipantIds: [], setSelectedParticipantIds() {}, activeTab,
@@ -264,20 +268,28 @@ async function checkApprovalControls() {
   });
   const managed = await mountApprovalComponent('RequestPreEventTable', tableProps(participant));
   const preSelect = managed.find(node => node.type === 'select' && node.props['aria-label']?.startsWith('Pre Event Approval'));
-  assert.equal(preSelect.props.disabled, true); assert.equal(preSelect.props.value, 'pending');
-  assert(managed.content.includes('Dari EMS'));
+  assert.equal(preSelect.props.disabled, false); assert.equal(preSelect.props.value, 'pending');
+  assert(!managed.content.includes('Dari EMS'));
   await managed.act(preSelect.props.onChange, { target: { value: 'approve' } });
-  assert.equal(writes.length, 0, 'Readonly control cannot emit a Pre-Event write');
+  assert.equal(writes.length, 1, 'Manual Pre-Event editor emits its approval choice');
+  assert.deepEqual(writes[0].slice(1), ['preEventApprovalStatus', 'approve']);
+  await managed.updateProps({ filteredParticipants: [{ ...participant, emsApprovalStatus: 'pending', preEventApprovalStatus: 'approve' }] });
+  assert.equal(managed.find(node => node.type === 'select' && node.props['aria-label']?.startsWith('Pre Event Approval')).props.value, 'approve', 'Current manual choice wins over last-sync snapshot');
+  await managed.updateProps({ filteredParticipants: [{ ...participant, emsApprovalStatus: 'pending', preEventApprovalStatus: 'pending' }] });
+  assert.equal(managed.find(node => node.type === 'select' && node.props['aria-label']?.startsWith('Pre Event Approval')).props.value, 'pending', 'Fresh sync response replaces the earlier manual choice');
   const partialApiRow = { ...participant, event: undefined, approvalSource: undefined };
   const eventScoped = await mountApprovalComponent('RequestPreEventTable', { ...tableProps(partialApiRow), emsApprovalManaged: true });
   const eventScopedSelect = eventScoped.find(node => node.type === 'select' && node.props['aria-label']?.startsWith('Pre Event Approval'));
-  assert.equal(eventScopedSelect.props.disabled, true); assert.equal(eventScopedSelect.props.value, 'pending', 'Event scope protects incomplete legacy API rows');
+  assert.equal(eventScopedSelect.props.disabled, false); assert.equal(eventScopedSelect.props.value, 'pending');
+  const viewer = await mountApprovalComponent('RequestPreEventTable', { ...tableProps(participant), isUser: true, isAdmin: false });
+  assert(viewer.find(node => node.type === 'select' && node.props['aria-label']?.startsWith('Pre Event Approval')).props.disabled, 'Existing viewer permissions remain unchanged');
   const declined = { ...participant, emsApprovalStatus: 'decline', preEventApprovalStatus: 'decline', confirmationStatus: 'approve' };
   const client = await mountApprovalComponent('RequestPreEventTable', tableProps(declined, 'request'));
   const clientSelect = client.find(node => node.type === 'select');
   assert.equal(clientSelect.props.value, 'approve', 'EMS decline does not masquerade as CRM Client Decline');
+  const beforeClientEdit = writes.length;
   await client.act(clientSelect.props.onChange, { target: { value: 'pending' } });
-  assert.equal(writes.length, 1); assert.equal(writes[0][1], 'confirmationStatus', 'Client edit never resets EMS approval');
+  assert.equal(writes.length, beforeClientEdit + 1); assert.equal(writes.at(-1)[1], 'confirmationStatus', 'Client edit never resets Pre-Event approval');
 
   const manual = { ...participant, event: { id: 18 }, approvalSource: 'crm', preEventApprovalStatus: 'pending' };
   const manualTable = await mountApprovalComponent('RequestPreEventTable', tableProps(manual));
@@ -286,36 +298,43 @@ async function checkApprovalControls() {
   await manualTable.act(manualSelect.props.onChange, { target: { value: 'approve' } });
   assert.equal(writes.at(-1)[1], 'preEventApprovalStatus', 'Manual event still permits Pre-Event edits');
 
-  const batchProps = { selectedParticipantIds: [7], activeTab: 'pre_event', usersList: [] };
-  const batch = await mountApprovalComponent('BatchActionsBar', { ...batchProps, emsApprovalManaged: true });
-  assert(!batch.has(node => node.type === 'option' && node.props.value === 'approve'), 'EMS batch approval editor is absent');
-  const manualBatch = await mountApprovalComponent('BatchActionsBar', batchProps);
-  assert(manualBatch.has(node => node.type === 'option' && node.props.value === 'approve'));
+  const batchWrites = [];
+  const batchProps = { selectedParticipantIds: [7], activeTab: 'pre_event', usersList: [], handleBatchUpdatePreEventApprovalStatus: value => batchWrites.push(value) };
+  const batch = await mountApprovalComponent('BatchActionsBar', batchProps);
+  const batchSelect = batch.find(node => node.type === 'select' && nodes(node).some(option => option.type === 'option' && option.props.value === 'approve'));
+  await batch.act(batchSelect.props.onChange, { target: { value: 'decline' } });
+  assert.deepEqual(batchWrites, ['decline'], 'Batch manual approval remains available');
 
   const submitted = [];
   const edit = await mountApprovalComponent('UpdateParticipantModal', {
     isOpen: true, activeParticipant: participant, activeTab: 'pre_event', usersList: [],
     onClose() {}, onSubmit: payload => submitted.push(payload), submittingParticipantUpdate: false,
   });
-  assert.equal(edit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval').props.disabled, true);
+  const editApproval = edit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval');
+  assert.equal(Boolean(editApproval.props.disabled), false);
+  assert(!edit.content.includes('(EMS)'));
+  await edit.act(editApproval.props.onChange, { target: { value: 'decline' } });
   await edit.act(edit.find(node => node.type === 'form').props.onSubmit, { preventDefault() {} });
-  assert.equal(Object.hasOwn(submitted[0], 'preEventApprovalStatus'), false);
+  assert.equal(submitted[0].preEventApprovalStatus, 'decline');
   assert.equal(submitted[0].confirmationStatus, 'decline', 'Edit preserves the CRM decision');
+  await edit.updateProps({ activeParticipant: { ...participant, preEventApprovalStatus: 'approve', emsApprovalStatus: 'approve' } });
+  assert.equal(edit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval').props.value, 'approve', 'Reopened server state reflects sync overwrite');
   const manualEdit = await mountApprovalComponent('UpdateParticipantModal', {
     isOpen: true, activeParticipant: manual, activeTab: 'pre_event', usersList: [], onClose() {},
     onSubmit: payload => submitted.push(payload), submittingParticipantUpdate: false,
   });
-  assert.equal(manualEdit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval').props.disabled, false);
+  assert.equal(Boolean(manualEdit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval').props.disabled), false);
   await manualEdit.act(manualEdit.find(node => node.type === 'form').props.onSubmit, { preventDefault() {} });
   assert.equal(submitted.at(-1).preEventApprovalStatus, 'pending');
 
   const engagement = await mountApprovalComponent('EngagementModal', { isOpen: true, participant: { ...participant }, onClose() {} });
-  assert(!engagement.has(node => node.type === 'option' && node.props.value === 'preEventApproval'));
-  assert(engagement.find(node => node.type === 'button' && text(node).includes('Pre (EMS)')).props.disabled);
-  const stageSelect = engagement.find(node => node.type === 'select' && node.props.value === 'none');
-  await engagement.act(stageSelect.props.onChange, { target: { value: 'preEventApproval' } });
-  assert(engagement.find(node => node.type === 'button' && text(node).includes('Simpan status')).props.disabled);
-  assert.equal(engagement.calls.some(call => call.name === 'updatePreEventApprovalStatus'), false);
+  assert(engagement.has(node => node.type === 'option' && node.props.value === 'preEventApproval'));
+  assert(!engagement.content.includes('Pre (EMS)') && !engagement.content.includes(notes.SYNC_APPROVAL_HELP));
+  assert(!engagement.find(node => node.type === 'button' && text(node).startsWith('Pre:')).props.disabled);
+  const outcomeSelect = engagement.find(node => node.type === 'select' && node.props.value === 'pending');
+  await engagement.act(outcomeSelect.props.onChange, { target: { value: 'approve' } });
+  await engagement.act(engagement.find(node => node.type === 'button' && text(node).includes('Simpan status')).props.onClick);
+  assert.equal(engagement.calls.find(call => call.name === 'updatePreEventApprovalStatus').args[2], 'approve');
   const acceptedParticipant = { ...participant, emsApprovalStatus: 'approve', preEventApprovalStatus: 'approve' };
   const reminder = await mountApprovalComponent('EngagementModal', { isOpen: true, participant: acceptedParticipant, onClose() {} });
   await reminder.act(reminder.find(node => node.type === 'button' && text(node).includes('Simpan status')).props.onClick);
@@ -329,10 +348,10 @@ async function checkApprovalControls() {
 
   const sync = await mountApprovalComponent('EmsSyncDialog', { isOpen: true, event, onClose() {}, onSynced: async () => {} });
   assert(sync.content.includes('Registered berarti sudah daftar, belum tentu disetujui'));
-  assert(sync.content.includes('PENDING tetap Pending') && sync.content.includes('Client Decline'));
+  assert(sync.content.includes('Sinkronisasi berikutnya menimpa approval') && sync.content.includes('Client Decline'));
 }
 
 (async () => {
   await checkService(); await checkPage(); await checkApprovalControls();
-  console.log('PASS: EMS approval snapshots and read-only table/edit/batch/engagement, guarded page writes, Registered without approval, preserved Client Decline, manual-event controls, Remarks scope and complete export.');
+  console.log('PASS: editable manual approval in table/edit/batch/engagement/page, current choice before next sync, fresh sync overwrite, no source badge/banner, Registered without approval, preserved Client Decline, Remarks scope and complete export.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -162,7 +162,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
         <tbody className="divide-y divide-slate-100">
           {filteredParticipants.map((p) => {
             const emsManaged = emsApprovalManaged || isEmsApprovalManaged(p);
-            const preApproval = getPreEventApprovalStatus(p, emsManaged);
+            const preApproval = getPreEventApprovalStatus(p);
             const officePhone = getContactOffice(p.database)?.officePhone;
             const { pic, cleanNotes } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
@@ -358,17 +358,16 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                       {activeTab === 'pre_event' ? (
                         <>
                         <select
-                          disabled={isUser || emsManaged}
+                          disabled={isUser}
                           aria-label={`Pre Event Approval untuk ${`${p.database.firstName || ''} ${p.database.lastName || ''}`.trim() || 'peserta'}`}
                           value={preApproval}
-                          onChange={(e) => { if (!emsManaged) handleDirectUpdateParticipant(p, 'preEventApprovalStatus', e.target.value); }}
+                          onChange={(e) => handleDirectUpdateParticipant(p, 'preEventApprovalStatus', e.target.value)}
                           className={`text-sm font-medium border rounded-md px-2.5 py-1.5 focus:outline-none disabled:cursor-default transition-all ${getConfirmationStatusBadgeStyle(preApproval)}`}
                         >
                           <option value="pending" className="text-amber-700 bg-white font-medium">Pending</option>
                           <option value="approve" className="text-emerald-700 bg-white font-medium">Approve</option>
                           <option value="decline" className="text-rose-700 bg-white font-medium">Decline</option>
                         </select>
-                        {emsManaged && <span className="text-[10px] font-medium text-slate-500">Dari EMS</span>}
                         </>
                       ) : (
                         <select

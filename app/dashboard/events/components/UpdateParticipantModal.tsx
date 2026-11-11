@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2, Users, ShieldAlert, UserX } from 'lucide-react';
 import { EventParticipant, AppUser, Database } from '../../../../lib/types';
-import { extractPicFromNotes, getPreEventApprovalStatus, isEmsApprovalManaged } from '../utils/notesHelper';
+import { extractPicFromNotes, getPreEventApprovalStatus } from '../utils/notesHelper';
 
 interface UpdateParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeParticipant: EventParticipant;
   activeTab?: string;
-  emsApprovalManaged?: boolean;
   usersList: AppUser[];
   onSubmit: (data: {
     participantStatus: string;
@@ -34,14 +33,12 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   onClose,
   activeParticipant,
   activeTab,
-  emsApprovalManaged = false,
   usersList,
   onSubmit,
   submittingParticipantUpdate,
   onFlagAsTikus,
   onRequestTakeout
 }) => {
-  const emsManaged = emsApprovalManaged || isEmsApprovalManaged(activeParticipant);
   const [updateParticipantStatusStr, setUpdateParticipantStatusStr] = useState('white');
   const [updateConfirmationStatusStr, setUpdateConfirmationStatusStr] = useState('pending');
   const [updatePreEventApprovalStatusStr, setUpdatePreEventApprovalStatusStr] = useState('pending');
@@ -61,7 +58,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       setShowFlagConfirm(false);
       setUpdateParticipantStatusStr(activeParticipant.participantStatus);
       setUpdateConfirmationStatusStr(activeParticipant.confirmationStatus || 'pending');
-      setUpdatePreEventApprovalStatusStr(getPreEventApprovalStatus(activeParticipant, emsManaged));
+      setUpdatePreEventApprovalStatusStr(getPreEventApprovalStatus(activeParticipant));
       setUpdateReminderH7(activeParticipant.reminderH7 || '');
       setUpdateReminderH3(activeParticipant.reminderH3 || '');
       setUpdateReminderH1(activeParticipant.reminderH1 || '');
@@ -73,7 +70,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       setUpdatePic(pic);
       setUpdateParticipantNotes(cleanNotes === '-' ? '' : cleanNotes);
     }
-  }, [activeParticipant, emsManaged]);
+  }, [activeParticipant]);
 
   if (!isOpen) return null;
   const showClientApproval = activeTab === 'request' || activeTab === 'declined';
@@ -102,7 +99,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       reminderH1: updateReminderH1,
       reminderHariH: updateReminderHariH,
       confirmationStatus: updateConfirmationStatusStr,
-      ...(!emsManaged ? { preEventApprovalStatus: updatePreEventApprovalStatusStr } : {})
+      preEventApprovalStatus: updatePreEventApprovalStatusStr
     });
   };
 
@@ -201,20 +198,18 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
                 <div>
                   <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
                     <CheckCircle className="w-3 h-3 text-[#5b5fc7]" />
-                    Pre Event Approval{emsManaged ? ' (EMS)' : ''}
+                    Pre Event Approval
                   </label>
                   <select
                     aria-label="Pre Event Approval"
-                    disabled={emsManaged}
                     value={updatePreEventApprovalStatusStr}
-                    onChange={(e) => { if (!emsManaged) setUpdatePreEventApprovalStatusStr(e.target.value); }}
+                    onChange={(e) => setUpdatePreEventApprovalStatusStr(e.target.value)}
                     className="w-full px-2 py-1 bg-slate-55 border border-slate-200 focus:border-[#5b5fc7] rounded-lg text-slate-900 text-xs focus:outline-none"
                   >
                     <option value="pending">Pending</option>
                     <option value="approve">Approve</option>
                     <option value="decline">Decline</option>
                   </select>
-                  {emsManaged && <p className="mt-1 text-[11px] leading-5 text-slate-500">Diperbarui melalui sync EMS. Remarks Registered hanya berarti sudah daftar.</p>}
                 </div>
               )}
 
