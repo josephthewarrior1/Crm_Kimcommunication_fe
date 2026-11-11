@@ -5,6 +5,7 @@ import { AlertCircle, Phone, Mail, Edit2, Trash2, History, MoreVertical } from '
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
 import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail, isEmsApprovalManaged } from '../utils/notesHelper';
 import { getRemarksValue, REMARK_OPTIONS } from '../utils/statusHelper';
+import { EmsCompanyReviewNotice } from './EmsCompanyReviewNotice';
 
 const formatRegDate = (dateStr?: string | null) => {
   if (!dateStr) return { date: '-', time: '' };
@@ -250,6 +251,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 {columnConfig.companyName !== false && (
                   <td className="py-2.5 px-3 font-medium text-slate-700">
                     {p.database.company?.name || <span className="text-slate-400">-</span>}
+                    <EmsCompanyReviewNotice companyReviewRequired={p.emsCompanyReviewRequired} crmCompanyName={p.database.company?.name} emsCompanyName={p.emsCompanyName} />
                   </td>
                 )}
                 {columnConfig.salutation !== false && (

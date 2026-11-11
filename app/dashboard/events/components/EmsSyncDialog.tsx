@@ -7,6 +7,7 @@ import { crmService } from '../../../../lib/services/crmService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../components/ui/dialog';
 import { toast } from 'sonner';
 import { SYNC_APPROVAL_HELP } from '../utils/notesHelper';
+import { EmsCompanyReviewNotice } from './EmsCompanyReviewNotice';
 
 type Destination = 'company' | 'participant';
 const label = (destination: Destination) => destination === 'company' ? 'Database Perusahaan' : 'Database Peserta';
@@ -82,15 +83,16 @@ function SyncContent({ event, onClose, onConfigureEvent, onSynced }: Props & { e
         {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {preview && <section aria-label="Ringkasan sync" className="space-y-3">
           <p className="text-sm font-semibold text-slate-800">Tujuan sync: {label(preview.destination)}</p>
-          <div className="grid grid-cols-3 gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
             <p className="rounded-lg bg-blue-50 p-3">Baru <strong className="block text-lg">{preview.newCount}</strong></p>
             <p className="rounded-lg bg-emerald-50 p-3">Sudah ada <strong className="block text-lg">{preview.existingCount}</strong></p>
             <p className="rounded-lg bg-amber-50 p-3">Ditolak <strong className="block text-lg">{preview.rejectedCount}</strong></p>
+            <p className="rounded-lg bg-amber-50 p-3">Perusahaan perlu dicek <strong className="block text-lg">{preview.companyReviewCount || 0}</strong></p>
           </div>
-          <p className="text-xs leading-5 text-slate-500">Profil yang sudah ada dipakai kembali dan riwayat event tetap disimpan. Baris ditolak tidak dipindahkan ke tujuan lain.</p>
+          <p className="text-xs leading-5 text-slate-500">Profil yang sudah ada dipakai kembali dan riwayat event tetap disimpan. Perbedaan perusahaan ditandai untuk dicek; data utama perusahaan dan kontak tetap dipertahankan. Baris ditolak tidak dipindahkan ke tujuan lain.</p>
           {preview.rows.length > 0 && <div className="max-h-60 overflow-auto rounded-lg border border-slate-200">
             <table className="w-full text-left text-xs"><thead className="sticky top-0 bg-slate-50"><tr><th className="p-2">Nama / email</th><th className="p-2">Hasil</th><th className="p-2">Keterangan</th></tr></thead>
-              <tbody>{preview.rows.slice(0, 100).map(row => <tr key={row.rowNum} className="border-t border-slate-100"><td className="p-2"><span className="block font-medium">{row.name || 'Nama belum tersedia'}</span><span className="break-all text-slate-500">{row.email}</span></td><td className="p-2">{row.status === 'NEW' ? 'Baru' : row.status === 'EXISTING' ? 'Sudah ada' : 'Ditolak'}</td><td className="p-2">{row.message}</td></tr>)}</tbody>
+              <tbody>{preview.rows.slice(0, 100).map(row => <tr key={row.rowNum} className="border-t border-slate-100"><td className="p-2"><span className="block font-medium">{row.name || 'Nama belum tersedia'}</span><span className="break-all text-slate-500">{row.email}</span></td><td className="p-2">{row.status === 'NEW' ? 'Baru' : row.status === 'EXISTING' ? 'Sudah ada' : 'Ditolak'}</td><td className="p-2">{row.message}<EmsCompanyReviewNotice companyReviewRequired={row.companyReviewRequired} crmCompanyName={row.crmCompanyName} emsCompanyName={row.emsCompanyName} /></td></tr>)}</tbody>
             </table>
           </div>}
           {preview.rows.length > 100 && <p className="text-xs text-slate-500">Menampilkan 100 dari {preview.totalRows} baris. Seluruh baris tetap divalidasi.</p>}

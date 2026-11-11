@@ -188,7 +188,7 @@ async function checkPage() {
   assert.equal(editWrite.args[16], 'decline', 'Explicit CRM Client Decline remains the CRM decision');
 }
 
-async function mountApprovalComponent(name, initialProps) {
+async function mountApprovalComponent(name, initialProps, responses = {}) {
   const hooks = [], effects = [], calls = [], messages = [];
   let cursor = 0, changed = false, tree;
   const React = {
@@ -211,6 +211,7 @@ async function mountApprovalComponent(name, initialProps) {
   React.useLayoutEffect = React.useEffect;
   const services = new Proxy({}, { get: (_, key) => async (...args) => {
     calls.push({ name: key, args });
+    if (Object.hasOwn(responses, key)) return responses[key];
     if (key === 'getEventParticipantActivities') return [];
     return {};
   } });
@@ -225,6 +226,7 @@ async function mountApprovalComponent(name, initialProps) {
     if (module.endsWith('/utils/columnConfigHelper')) return compile('app/dashboard/events/utils/columnConfigHelper.ts', unexpected);
     if (module.endsWith('/utils/phoneHelper')) return compile('app/dashboard/database/utils/phoneHelper.ts', unexpected);
     if (module.endsWith('/utils/companyBranch')) return compile('lib/utils/companyBranch.ts', unexpected);
+    if (module === './EmsCompanyReviewNotice') return compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', dependency => dependency === 'react' ? React : unexpected(dependency));
     if (module.includes('/components/ui/')) return new Proxy({}, { get: (_, key) => key });
     return unexpected(module);
   };
@@ -349,6 +351,36 @@ async function checkApprovalControls() {
   const sync = await mountApprovalComponent('EmsSyncDialog', { isOpen: true, event, onClose() {}, onSynced: async () => {} });
   assert(sync.content.includes('Registered berarti sudah daftar, belum tentu disetujui'));
   assert(sync.content.includes('Sinkronisasi berikutnya menimpa approval') && sync.content.includes('Client Decline'));
+
+  const reviewParticipant = { ...participant, preEventApprovalStatus: 'approve',
+    emsCompanyName: 'Registration company', emsCompanyReviewRequired: true };
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const Notice = compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', module => module === 'react' ? React : unexpected(module)).EmsCompanyReviewNotice;
+  for (const [component, tab] of [['RequestPreEventTable', 'request'], ['RequestPreEventTable', 'pre_event'], ['ReminderTable', 'reminder'], ['ReminderDdayTable', 'reminder_dday']]) {
+    const mounted = await mountApprovalComponent(component, tableProps(reviewParticipant, tab));
+    const notice = mounted.find(node => node.type?.name === 'EmsCompanyReviewNotice');
+    assert.equal(notice.props.crmCompanyName, 'Example', component + ' retains the CRM company');
+    assert.equal(notice.props.emsCompanyName, 'Registration company');
+    const html = renderToStaticMarkup(React.createElement(Notice, notice.props));
+    assert(html.includes('Perusahaan perlu dicek') && html.includes('CRM: Example') && html.includes('Registrasi: Registration company'), component + ' shows both companies for review');
+    assert(!html.includes('Dari EMS') && !html.includes('Registrasi EMS:'));
+  }
+  assert.equal(renderToStaticMarkup(React.createElement(Notice, { companyReviewRequired: false })), '');
+  assert.equal(renderToStaticMarkup(React.createElement(Notice, {})), '', 'Legacy rows need no notice');
+  const reviewPreview = { destination: 'company', newCount: 0, existingCount: 1, rejectedCount: 0, companyReviewCount: 1, totalRows: 1,
+    previewToken: 'local-review', rows: [{ rowNum: 1, name: 'Anonymous Fixture', email: 'local@example.test', status: 'EXISTING',
+      message: 'Profil dipakai kembali.', companyReviewRequired: true, crmCompanyName: 'Example', emsCompanyName: 'Registration company' }] };
+  const previewDialog = await mountApprovalComponent('EmsSyncDialog', { isOpen: true, event, onClose() {}, onSynced: async () => {} }, { previewEmsParticipants: reviewPreview });
+  await previewDialog.act(previewDialog.find(node => node.type === 'button' && text(node).includes('Muat ulang preview')).props.onClick);
+  assert(previewDialog.content.includes('Perusahaan perlu dicek 1') || previewDialog.content.includes('Perusahaan perlu dicek1'));
+  const previewNotice = previewDialog.find(node => node.type?.name === 'EmsCompanyReviewNotice');
+  assert.equal(previewNotice.props.crmCompanyName, 'Example');
+  assert.equal(previewNotice.props.emsCompanyName, 'Registration company');
+  assert.equal(Boolean(previewDialog.find(node => node.type === 'button' && text(node) === 'Konfirmasi sync 1 registrasi').props.disabled), false, 'Company review does not block eligible sync');
+  assert.equal(previewDialog.calls.filter(call => call.name === 'syncEmsParticipants').length, 0, 'Opening and loading preview never applies sync');
+  assert.equal(reviewParticipant.database.company.name, 'Example');
+  assert.equal(reviewParticipant.confirmationStatus, 'decline', 'Company review never changes Client Approval');
 }
 
 (async () => {

@@ -6,6 +6,7 @@ import { extractPicFromNotes, getOfficeEmail, getPersonalEmail } from '../utils/
 
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
 import { normalizePhone } from '../../database/utils/phoneHelper';
+import { EmsCompanyReviewNotice } from './EmsCompanyReviewNotice';
 
 interface ReminderDdayTableProps {
   filteredParticipants: EventParticipant[];
@@ -250,6 +251,7 @@ export const ReminderDdayTable: React.FC<ReminderDdayTableProps> = ({
                         </span>
                       ) : null}
                     </div>
+                    <EmsCompanyReviewNotice companyReviewRequired={p.emsCompanyReviewRequired} crmCompanyName={p.database.company?.name} emsCompanyName={p.emsCompanyName} />
                   </td>
                 )}
                 {columnConfig.salutation !== false && (

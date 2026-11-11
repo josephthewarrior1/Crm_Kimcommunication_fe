@@ -4,6 +4,7 @@ import { getContactOffice } from '../../../../lib/utils/companyBranch';
 import { AlertCircle, Edit2, Trash2, History, ShieldAlert, UserX, MoreVertical } from 'lucide-react';
 import { extractPicFromNotes, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
+import { EmsCompanyReviewNotice } from './EmsCompanyReviewNotice';
 
 import { normalizePhone } from '../../database/utils/phoneHelper';
 
@@ -256,6 +257,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                         </span>
                       ) : null}
                     </div>
+                    <EmsCompanyReviewNotice companyReviewRequired={p.emsCompanyReviewRequired} crmCompanyName={p.database.company?.name} emsCompanyName={p.emsCompanyName} />
                   </td>
                 )}
                 {columnConfig.salutation !== false && (
