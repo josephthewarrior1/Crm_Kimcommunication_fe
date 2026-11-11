@@ -1,7 +1,10 @@
 """Offline Bash/Git regression for the CRM schema release; never contacts a server."""
 import os
 import copy
+import contextlib
+import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import re
@@ -485,7 +488,8 @@ targets_start = SOURCE.index('for area in frontend backend; do')
 targets_end = SOURCE.index('\ndone\n', targets_start) + len('\ndone\n')
 targets_block = SOURCE[targets_start:targets_end]
 allowed_schema = 'src/main/resources/db/changelog/changes/changelog-crm-participant-organization-fields.yml'
-for case_number, case in enumerate(('allowed-schema', 'allowed-approval-schema', 'frontend-dependency', 'backend-config', 'backend-dependency',
+allowed_targets = ('allowed-schema', 'allowed-approval-schema', 'allowed-company-review-schema', 'allowed-identity-review-schema')
+for case_number, case in enumerate((*allowed_targets, 'frontend-dependency', 'backend-config', 'backend-dependency',
                                    'tagtog-path', 'tagtog-content', 'eo-path', 'unrelated-schema', 'diverged-main', 'off-main-target')):
     directory = git_fixture('t' + str(case_number))
     work = directory / 'work'
@@ -503,6 +507,10 @@ for case_number, case in enumerate(('allowed-schema', 'allowed-approval-schema',
                 approval_schema = 'src/main/resources/db/changelog/changes/changelog-crm-ems-approval-source.yml'
                 write(live / approval_schema, 'databaseChangeLog: []\n')
                 paths.append(approval_schema)
+            if case in ('allowed-company-review-schema', 'allowed-identity-review-schema'):
+                review_schema = 'src/main/resources/db/changelog/changes/changelog-crm-ems-' + ('company' if case == 'allowed-company-review-schema' else 'identity') + '-review.yml'
+                write(live / review_schema, 'databaseChangeLog: []\n')
+                paths.append(review_schema)
         unsafe = None
         if area == 'frontend':
             if case == 'frontend-dependency':
@@ -556,16 +564,18 @@ be_target={records['backend'][1]}
 source_state save
 ''' + targets_block + '\nsource_state check\n'
     result = shell(directory, body, 'target-guards')
-    assert (result.returncode == 0) == (case in ('allowed-schema', 'allowed-approval-schema')), (case, result.stderr)
+    assert (result.returncode == 0) == (case in allowed_targets), (case, result.stderr)
     for area in ('frontend', 'backend'):
         assert git(directory / area, 'rev-parse', 'HEAD') == records[area][0], case
         config = 'package-lock.json' if area == 'frontend' else '.env'
         assert (directory / area / config).read_text() == 'private retained config ' + area + '\n', case
-    if case in ('allowed-schema', 'allowed-approval-schema'):
+    if case in allowed_targets:
         assert (work / 'frontend/app/contact.tsx').read_text() == 'new reviewed application\n'
         assert (work / 'backend' / allowed_schema).exists()
         if case == 'allowed-approval-schema':
             assert (work / 'backend' / approval_schema).exists()
+        if case in ('allowed-company-review-schema', 'allowed-identity-review-schema'):
+            assert (work / 'backend' / review_schema).exists()
 print('PASS: local-only fetch/pinned-main ancestry, allowed schema staging, and dependency/config/TAGTOG/EO/unrelated-schema/divergence rejection before live changes.')
 
 spec = importlib.util.spec_from_file_location('migration_guard', REPO / 'scripts/crm_migration_guard.py')
@@ -582,7 +592,7 @@ state['tables'].update({
     'database_emails': [column('database_destination', 'character varying(16)', True)],
     'events': [column('sync_destination', 'character varying(16)'), column('pms_event_id', 'bigint')],
     'database_destination_splits': [column('company_database_id', 'bigint', True), column('participant_database_id', 'bigint', True)],
-    'event_participants': [column('ems_approval_status', 'character varying(20)')],
+    'event_participants': [column(name, kind) for name, kind in guard_module.NULLABLE_PARTICIPANT_COLUMNS.items()],
 })
 for table, name, kind, definition in (
     ('databases', 'chk_database_destination_exact', 'c', 'database_destination COMPANY PARTICIPANT'),
@@ -597,27 +607,85 @@ for table, name, kind, function in (
 ): state['triggers'].append(dict(table=table, name=name, type=kind, enabled='O', function=function))
 state['indexes'].append(dict(name='unique_personal_email_destination_lower', unique=True, valid=True, ready=True,
                              keys=2, first='database_destination', second='lower(email)', predicate='personal'))
+def schema_fixture(review_columns=4, approval=True):
+    result = copy.deepcopy(state)
+    count = len(guard_module.DESTINATION_CHANGESETS) + int(approval) + review_columns // 2
+    result['changes'] = result['changes'][:count]
+    fields = list(guard_module.NULLABLE_PARTICIPANT_COLUMNS)[:int(approval) + review_columns]
+    result['tables']['event_participants'] = [c for c in result['tables']['event_participants'] if c['name'] in fields]
+    return result
+
+
 checker = object.__new__(guard_module.Guard)
 checker.sql = lambda query: json.dumps(dict(violations=0))
-for case in ('current-before', 'current-after', 'require-new-migration', 'missing-column', 'missing-marker',
-             'wrong-type', 'not-null', 'default', 'duplicate', 'out-of-order'):
-    fixture_state = copy.deepcopy(state)
-    if case in ('current-before', 'require-new-migration', 'missing-marker'):
-        fixture_state['changes'].pop()
-    if case in ('current-before', 'require-new-migration', 'missing-column'):
-        fixture_state['tables']['event_participants'] = []
-    if case == 'wrong-type': fixture_state['tables']['event_participants'][0]['type'] = 'text'
-    if case == 'not-null': fixture_state['tables']['event_participants'][0]['notnull'] = True
-    if case == 'default': fixture_state['tables']['event_participants'][0]['default'] = "'pending'"
-    if case == 'duplicate': fixture_state['changes'].append(copy.deepcopy(fixture_state['changes'][-1]))
-    if case == 'out-of-order': fixture_state['changes'].reverse()
+schema_cases = [(f'baseline-{count}-review-columns', schema_fixture(count), True, True) for count in (0, 2, 4)]
+schema_cases += [('baseline-before-approval', schema_fixture(0, False), True, True),
+                 ('full-after-migration', schema_fixture(), False, True),
+                 ('missing-latest-migration', schema_fixture(2), False, False)]
+for field in guard_module.NULLABLE_PARTICIPANT_COLUMNS:
+    for defect in ('missing-column', 'wrong-type', 'not-null', 'default'):
+        candidate = schema_fixture()
+        target = next(c for c in candidate['tables']['event_participants'] if c['name'] == field)
+        if defect == 'missing-column': candidate['tables']['event_participants'].remove(target)
+        if defect == 'wrong-type': target['type'] = 'bigint'
+        if defect == 'not-null': target['notnull'] = True
+        if defect == 'default': target['default'] = "'backfill'"
+        schema_cases.append((field + '-' + defect, candidate, True, False))
+for defect in ('missing-marker', 'identity-before-company', 'partial-unmarked-column', 'duplicate', 'out-of-order'):
+    candidate = schema_fixture()
+    if defect == 'missing-marker': candidate['changes'].pop()
+    if defect == 'identity-before-company': candidate['changes'][-2:] = reversed(candidate['changes'][-2:])
+    if defect == 'partial-unmarked-column':
+        candidate = schema_fixture(0)
+        candidate['tables']['event_participants'].append(column('ems_company_name', 'text'))
+    if defect == 'duplicate': candidate['changes'].append(copy.deepcopy(candidate['changes'][-1]))
+    if defect == 'out-of-order': candidate['changes'].reverse()
+    schema_cases.append((defect, candidate, True, False))
+for case, fixture_state, compatible, expected in schema_cases:
     checker.state = lambda: fixture_state
     try:
-        if case in ('current-before', 'missing-marker'): checker.compatible()
-        else: checker.check_schema()
+        checker.compatible() if compatible else checker.check_schema()
         passed = True
     except guard_module.GuardError:
         passed = False
-    assert passed == (case in ('current-before', 'current-after')), case
-print('PASS: schema guard accepts the previous main baseline, requires the new migration after cutover, and rejects partial/duplicate/reordered/default/non-null approval history schemas.')
+    assert passed == expected, case
+print('PASS: schema accepts 0/2/4 review-column baselines and requires all nullable approval/review fields after migration; partial markers/columns, invalid types/defaults/nullability and reordered migrations fail.')
+
+# Exercise the real capture/verify flow with deterministic private snapshot output.
+for case in ('preserved-0', 'preserved-2', 'preserved-4', 'client-decline-changed', 'company-changed',
+             'contact-email-changed', 'row-added', 'unrelated-column', 'original-column-definition', 'review-backfill', 'approval-backfill'):
+    check = object.__new__(guard_module.Guard)
+    check.work = ROOT / ('snapshot-' + case)
+    check.work.mkdir()
+    before = schema_fixture(int(case[-1]) if case.startswith('preserved-') else 0, case != 'approval-backfill')
+    before['tables']['companies'] = [column('name', 'text')]
+    current = copy.deepcopy(before)
+    changed_table = None
+    check.state = lambda: current
+    check.sql = lambda query: ('1' if 'COUNT(*) FROM event_participants WHERE' in query and case in ('review-backfill', 'approval-backfill')
+                               else '0' if query.startswith('SELECT COUNT(*)') else json.dumps(dict(violations=0)))
+
+    def snapshot(table, columns, path):
+        content = ('1|' + hashlib.md5((table + (' changed' if table == changed_table else ' original')).encode()).hexdigest() + '\n')
+        if case == 'row-added' and table == changed_table: content += '2|' + 'a' * 32 + '\n'
+        path.write_bytes(content.encode())
+        return {'count': len(content.splitlines()), 'sha256': hashlib.sha256(content.encode()).hexdigest()}
+
+    check.snapshot = snapshot
+    with contextlib.redirect_stdout(io.StringIO()):
+        check.capture()
+    current = schema_fixture()
+    current['tables']['companies'] = [column('name', 'text')]
+    changed_table = {'client-decline-changed': 'event_participants', 'company-changed': 'companies',
+                     'contact-email-changed': 'database_emails', 'row-added': 'event_participants'}.get(case)
+    if case == 'unrelated-column': current['tables']['companies'].append(column('unreviewed', 'text'))
+    if case == 'original-column-definition': current['tables']['companies'][0]['type'] = 'character varying(255)'
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            check.verify()
+        passed = True
+    except guard_module.GuardError:
+        passed = False
+    assert passed == case.startswith('preserved-'), case
+print('PASS: capture/verify preserves every original row and column definition; rejects changed Client Decline/company/email, added rows, unrelated schema and approval/review backfill.')
 print('Offline artifacts:', ROOT)

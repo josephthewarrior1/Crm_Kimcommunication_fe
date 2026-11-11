@@ -219,7 +219,7 @@ for area in frontend backend; do
 import subprocess,sys
 repo,target=sys.argv[1:]
 paths=subprocess.check_output(['git','-C',repo,'diff','--name-only','HEAD',target,'--','src/main/resources'],text=True).splitlines()
-allowed={'src/main/resources/db/changelog/db.changelog-master.yaml',*(f'src/main/resources/db/changelog/changes/changelog-crm-{n}.yml' for n in ('database-destinations','pms-event-binding','strict-database-destinations','participant-organization-fields','ems-approval-source'))}
+allowed={'src/main/resources/db/changelog/db.changelog-master.yaml',*(f'src/main/resources/db/changelog/changes/changelog-crm-{n}.yml' for n in ('database-destinations','pms-event-binding','strict-database-destinations','participant-organization-fields','ems-approval-source','ems-company-review','ems-identity-review'))}
 assert set(paths)<=allowed,'Schema/config lain memerlukan release terpisah'
 RESOURCE
   fi

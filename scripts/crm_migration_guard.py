@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private, read-only checks for the paired CRM destination-schema release."""
+"""Private, read-only checks for the paired CRM schema release."""
 
 import argparse
 import hashlib
@@ -18,7 +18,13 @@ DESTINATION_CHANGESETS = (
     "crm-participant-organization-fields-20261109",
 )
 APPROVAL_CHANGESET = "crm-ems-approval-source-20261111"
-CHANGESETS = (*DESTINATION_CHANGESETS, APPROVAL_CHANGESET)
+REVIEW_COLUMNS = {
+    "crm-ems-company-review-20261111": {"ems_company_name": "text", "ems_company_review_required": "boolean"},
+    "crm-ems-identity-review-20261111": {"ems_identity_review_message": "text", "ems_client_decline_review_required": "boolean"},
+}
+CHANGESETS = (*DESTINATION_CHANGESETS, APPROVAL_CHANGESET, *REVIEW_COLUMNS)
+NULLABLE_PARTICIPANT_COLUMNS = {"ems_approval_status": "character varying(20)",
+                                **{name: kind for fields in REVIEW_COLUMNS.values() for name, kind in fields.items()}}
 ORGANIZATION = {
     "organization_group_name": "character varying(255)",
     "organization_brand_name": "character varying(255)",
@@ -40,7 +46,7 @@ FEATURE_COLUMNS = {
     "databases": {"database_destination", "institution_name", "participant_category", *ORGANIZATION},
     "events": {"sync_destination", "pms_event_id"},
     "database_emails": {"database_destination"},
-    "event_participants": {"ems_approval_status"},
+    "event_participants": set(NULLABLE_PARTICIPANT_COLUMNS),
 }
 
 
@@ -143,7 +149,7 @@ SELECT jsonb_build_object(
         require(not state["locked"], "Liquibase is still locked.")
         changes = state["changes"]
         ids = [c["id"] for c in changes]
-        permitted = [list(CHANGESETS)] if require_approval else [list(DESTINATION_CHANGESETS), list(CHANGESETS)]
+        permitted = [list(CHANGESETS)] if require_approval else [list(CHANGESETS[:count]) for count in range(len(DESTINATION_CHANGESETS), len(CHANGESETS) + 1)]
         require(ids in permitted, "Required CRM migrations are missing, duplicated, or out of order.")
         require(all(c["author"] == "codex" and c["execution"] in {"EXECUTED", "RERAN"} and c["checksum"] for c in changes), "CRM migration bookkeeping is invalid.")
         columns = {t: {c["name"]: c for c in cols} for t, cols in state["tables"].items()}
@@ -165,6 +171,15 @@ SELECT jsonb_build_object(
                     "EMS approval history must remain nullable without a default.")
         else:
             require(approval is None, "Partial EMS approval migration detected; deployment stopped.")
+        for changeset, fields in REVIEW_COLUMNS.items():
+            for field, kind in fields.items():
+                column = columns["event_participants"].get(field)
+                if changeset in ids:
+                    require(column is not None and column.get("type") == kind
+                            and column.get("notnull") is False and column.get("default") is None,
+                            "EMS review fields must remain nullable without defaults.")
+                else:
+                    require(column is None, "Partial EMS review migration detected; deployment stopped.")
         require("COMPANY" in (columns["databases"]["database_destination"]["default"] or ""), "Company default is missing.")
         require(all(columns["databases"][field]["default"] is None for field in ORGANIZATION), "Participant fields must remain optional without defaults.")
         constraints = {(c["table"], c["name"]): c for c in state["constraints"]}
@@ -235,7 +250,7 @@ SELECT jsonb_build_object(
             columns = [c["name"] for c in metadata]
             # Catalog table names can contain path separators: use a nonsemantic safe filename.
             filename = "guard-table-" + hashlib.sha256(table.encode("utf-8")).hexdigest() + ".before"
-            tables[table] = {"columns": columns, "filename": filename,
+            tables[table] = {"columns": columns, "metadata": metadata, "filename": filename,
                              **self.snapshot(table, columns, self.work / filename)}
         temporary = target.with_suffix(".partial")
         temporary.write_text(json.dumps({"version": 1, "mode": mode, "identity": state["identity"], "tables": tables}, indent=2), encoding="utf-8")
@@ -254,6 +269,11 @@ SELECT jsonb_build_object(
         total = 0
         for table, before in sorted(baseline["tables"].items()):
             require(table in state["tables"] and set(before["columns"]) <= {c["name"] for c in state["tables"][table]}, "An original CRM table or column disappeared.")
+            current_columns = {c["name"]: c for c in state["tables"][table]}
+            require(set(current_columns) - set(before["columns"]) <= FEATURE_COLUMNS.get(table, set()),
+                    "Unrelated CRM columns appeared during migration.")
+            require(before.get("metadata") == [current_columns[name] for name in before["columns"]],
+                    "An original CRM column definition changed.")
             prefix = "guard-table-" + hashlib.sha256(table.encode("utf-8")).hexdigest()
             original = self.work / (prefix + ".before")
             require(before["filename"] == original.name and original.is_file() and not original.is_symlink(), "A private baseline table snapshot is missing.")
@@ -267,9 +287,10 @@ SELECT jsonb_build_object(
             total += after["count"]
         if baseline["mode"] == "original-main":
             require(self.sql("SELECT (SELECT COUNT(*) FROM databases WHERE database_destination<>'COMPANY') + (SELECT COUNT(*) FROM database_destination_splits) + (SELECT COUNT(*) FROM events WHERE sync_destination IS NOT NULL OR pms_event_id IS NOT NULL);") == "0", "Legacy CRM classification changed unexpectedly.")
-        if "ems_approval_status" not in baseline["tables"]["event_participants"]["columns"]:
-            require(self.sql("SELECT COUNT(*) FROM event_participants WHERE ems_approval_status IS NOT NULL;") == "0",
-                    "EMS approval history was unexpectedly backfilled; keep application services stopped.")
+        for field in NULLABLE_PARTICIPANT_COLUMNS:
+            if field not in baseline["tables"]["event_participants"]["columns"]:
+                require(self.sql("SELECT COUNT(*) FROM event_participants WHERE " + identifier(field) + " IS NOT NULL;") == "0",
+                        "EMS approval/review metadata was unexpectedly backfilled; keep application services stopped.")
         print("PASS: original CRM rows preserved (" + str(total) + " rows).")
 
 
