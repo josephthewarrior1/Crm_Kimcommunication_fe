@@ -43,6 +43,20 @@ async function checkService() {
     assert.equal(query.get('company'), 'Company & Branch', method);
     await service[method](17, { tab: 'request', remarks: 'registered' });
     assert.equal(new URL('http://local' + urls.at(-1)).searchParams.has('remarks'), false, method + ' scopes Remarks to Pre-Event');
+    const reminderFilters = { reminderH7: 'confirm', reminderH3: 'not_respond_2x', reminderH1: '__empty__' };
+    await service[method](17, { tab: 'reminder', ...reminderFilters, company: 'Company & Branch', pic: 'Local Test' });
+    const reminderQuery = new URL('http://local' + urls.at(-1)).searchParams;
+    for (const [key, value] of Object.entries(reminderFilters)) assert.equal(reminderQuery.get(key), value, method + ' preserves ' + key);
+    assert.equal(reminderQuery.get('company'), 'Company & Branch');
+    assert.equal(reminderQuery.get('pic'), 'Local Test');
+    for (const tab of ['request', 'pre_event', 'declined', 'reminder_dday', undefined]) {
+      await service[method](17, { tab, ...reminderFilters });
+      const scopedQuery = new URL('http://local' + urls.at(-1)).searchParams;
+      for (const key of Object.keys(reminderFilters)) assert.equal(scopedQuery.has(key), false, method + ' ignores ' + key + ' outside Reminder');
+    }
+    await service[method](17, { tab: 'reminder', reminderH7: '', reminderH3: '', reminderH1: '' });
+    const emptyQuery = new URL('http://local' + urls.at(-1)).searchParams;
+    for (const key of Object.keys(reminderFilters)) assert.equal(emptyQuery.has(key), false, method + ' omits empty ' + key);
   }
 }
 
@@ -94,13 +108,17 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   const make = (id, participantStatus, expectedRemark, confirmationStatus = 'approve') => ({
     id, event, database: { id, firstName: 'Anonymous ' + id, lastName: 'Test', company: { name: 'Fixture' }, emails: [] },
     participantStatus, expectedRemark, attendanceStatus: 'registered', confirmationStatus, preEventApprovalStatus: 'pending',
+    reminderH7: id % 2 === 0 ? 'confirm' : 'not_respon_yet',
+    reminderH3: id % 3 === 0 ? 'tentative' : 'confirm', reminderH1: id % 5 === 0 ? 'not_respond_2x' : undefined,
     notes: '[Origin: Request] [Origin: EMS Sync]',
   });
   const rows = [make(1, 'registered', 'registered', 'decline'),
     ...Array.from({ length: 601 }, (_, index) => make(index + 2, 'registered', 'registered')),
     make(603, 'white', 'not_respon_yet'), make(604, 'yellow', 'tentative'), make(605, 'not_respond_2x', 'not_respond_2x')];
   const filtered = params => rows.filter(row => (params.tab !== 'pre_event' || row.confirmationStatus !== 'decline') &&
-    (!params.remarks || row.expectedRemark === params.remarks));
+    (!params.remarks || row.expectedRemark === params.remarks) &&
+    ['reminderH7', 'reminderH3', 'reminderH1'].every(key => params.tab !== 'reminder' || !params[key]
+      || (params[key] === '__empty__' ? !row[key] : row[key] === params[key])));
   const methods = {
     async updateParticipantStatus() { return {}; }, async updatePreEventApprovalStatus() { return {}; },
     async bulkUpdateEventParticipants() { return { updatedCount: 1 }; }, async addEventParticipantActivity() { return {}; },
@@ -255,6 +273,66 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   assert.equal(editWrite.args[17], 'approve', 'Page edit forwards the manual Pre-Event choice');
   assert(editWrite.args[3].includes('[PreEventApproval: approve]'), 'Manual approval and its legacy tag stay consistent');
   assert.equal(editWrite.args[16], 'decline', 'Explicit CRM Client Decline remains the CRM decision');
+
+  const beforeReminderFilters = mutationCount();
+  const reminderSelect = stage => nodes(toolbar()).find(node => node.type === 'select' && node.props.id === 'participant-reminder-' + stage + '-filter');
+  assert.equal(reminderSelect('h7'), undefined, 'Pre-Event has no H-7/H-3/H-1 filters');
+  button('Reminder').props.onClick(); await settle();
+  for (const stage of ['h7', 'h3', 'h1']) {
+    const select = reminderSelect(stage);
+    assert(select, 'Reminder renders the ' + stage + ' status filter');
+    assert.equal(select.props.value, '');
+    assert(nodes(toolbar()).some(node => node.type === 'label' && node.props.htmlFor === select.props.id), 'Reminder filter has an associated label');
+    assert.deepEqual(nodes(select).filter(node => node.type === 'option').map(node => node.props.value),
+      ['', '__empty__', 'not_respon_yet', 'not_respond_2x', 'tentative', 'confirm', 'unable_to_attend']);
+  }
+  reminderSelect('h7').props.onChange({ target: { value: 'confirm' } }); await settle();
+  reminderSelect('h3').props.onChange({ target: { value: 'tentative' } }); await settle();
+  button('Next').props.onClick(); await settle();
+  const tableQuery = () => calls.filter(call => call.name === 'getEventParticipantsByEvent' && call.args[1].size === 25).at(-1).args[1];
+  assert.equal(tableQuery().page, 2, 'Reminder can navigate the filtered result pages');
+  reminderSelect('h1').props.onChange({ target: { value: '__empty__' } }); await settle();
+  const selectedFilters = { reminderH7: 'confirm', reminderH3: 'tentative', reminderH1: '__empty__' };
+  for (const name of ['getEventParticipantsByEvent', 'getEventParticipantsSummary', 'getEventStatistics', 'getEventParticipantFilterOptions']) {
+    const query = calls.filter(call => call.name === name).at(-1).args[1];
+    for (const [key, value] of Object.entries(selectedFilters)) assert.equal(query[key], value, name + ' receives ' + key);
+  }
+  assert.equal(tableQuery().page, 1, 'Changing a Reminder status filter returns to page 1');
+  const expectedReminderRows = filtered({ tab: 'reminder', ...selectedFilters });
+  assert(expectedReminderRows.length > 25, 'Reminder fixture spans several pages');
+  assert.equal(find('ReminderTable').props.filteredParticipants.length, 25, 'Reminder table is paginated by the server response');
+  assert.deepEqual(Array.from(find('ReminderTable').props.filteredParticipants, row => row.id), expectedReminderRows.slice(0, 25).map(row => row.id));
+  assert(text(toolbar()).includes('Reset Filters'), 'Reminder status selection makes reset available');
+  await button('Export Excel').props.onClick();
+  const exportQuery = calls.filter(call => call.name === 'exportEventParticipants').at(-1).args[1];
+  for (const [key, value] of Object.entries(selectedFilters)) assert.equal(exportQuery[key], value, 'Excel receives ' + key);
+  assert.equal(writes.at(-1).sheet.rows.length, expectedReminderRows.length, 'Reminder export includes all matching rows, beyond the current page');
+  assert.deepEqual(Array.from(writes.at(-1).sheet.rows, row => row.No), expectedReminderRows.map(row => row.id));
+
+  const pic = await mountApprovalComponent('EventStatistics', { ...find('EventStatistics').props }, {
+    getEventParticipantsSummaryByPic: { items: [], totalParticipants: expectedReminderRows.length, totalAssigned: 0, unassignedCount: expectedReminderRows.length },
+  });
+  await pic.act(pic.find(node => node.type === 'Dialog' && typeof node.props.onOpenChange === 'function').props.onOpenChange, true);
+  const picQuery = pic.calls.filter(call => call.name === 'getEventParticipantsSummaryByPic').at(-1).args[1];
+  for (const [key, value] of Object.entries(selectedFilters)) assert.equal(picQuery[key], value, 'PIC summary receives the page ' + key);
+  const picQueryCount = pic.calls.length;
+  await pic.updateProps({ participantFilters: { ...picQuery, reminderH3: 'confirm' } });
+  assert(pic.calls.length > picQueryCount, 'An open PIC summary reloads when a Reminder filter changes');
+  assert.equal(pic.calls.at(-1).args[1].reminderH3, 'confirm');
+
+  find('ParticipantToolbar').props.handleResetFilters(); await settle();
+  for (const stage of ['h7', 'h3', 'h1']) assert.equal(reminderSelect(stage).props.value, '', 'Reset clears ' + stage);
+  reminderSelect('h7').props.onChange({ target: { value: 'not_respon_yet' } }); await settle();
+  button('Pre-Event').props.onClick(); await settle();
+  for (const stage of ['h7', 'h3', 'h1']) assert.equal(reminderSelect(stage), undefined, 'Reminder controls are hidden on Pre-Event');
+  for (const key of Object.keys(selectedFilters)) assert.equal(calls.filter(call => call.name === 'getEventParticipantsByEvent').at(-1).args[1][key], undefined, 'Changing tabs clears ' + key);
+  button('Reminder').props.onClick(); await settle();
+  for (const stage of ['h7', 'h3', 'h1']) assert.equal(reminderSelect(stage).props.value, '', 'Returning to Reminder does not revive stale filters');
+  reminderSelect('h1').props.onChange({ target: { value: 'not_respond_2x' } }); await settle();
+  updateUrl('/dashboard/events?eventId=17&tab=reminder'); await settle();
+  for (const stage of ['h7', 'h3', 'h1']) assert.equal(reminderSelect(stage).props.value, '', 'Changing events clears ' + stage);
+  assert.equal(mutationCount(), beforeReminderFilters, 'Reading, filtering, pagination, export, reset and PIC summary never write participant status');
+  assert.equal(pic.calls.filter(call => !call.name.startsWith('get')).length, 0, 'PIC filtering sends no writes');
 }
 
 async function mountApprovalComponent(name, initialProps, responses = {}) {
@@ -278,6 +356,8 @@ async function mountApprovalComponent(name, initialProps, responses = {}) {
     useRef(initial) { const index = cursor++; return hooks[index] ||= { current: initial }; },
   };
   React.useLayoutEffect = React.useEffect;
+  React.useMemo = factory => factory();
+  React.useCallback = callback => callback;
   const services = new Proxy({}, { get: (_, key) => async (...args) => {
     calls.push({ name: key, args });
     if (Object.hasOwn(responses, key)) return responses[key];
@@ -301,6 +381,8 @@ async function mountApprovalComponent(name, initialProps, responses = {}) {
     if (module.endsWith('/utils/companyBranch')) return compile('lib/utils/companyBranch.ts', unexpected);
     if (module === './EmsCompanyReviewNotice') return compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', dependencies);
     if (module === './EventContactEditor') return { EventContactEditor: 'EventContactEditor' };
+    if (module === './PicDailyReport') return { PicDailyReport: 'PicDailyReport' };
+    if (module === './PicParticipantsPanel') return { PicParticipantsPanel: 'PicParticipantsPanel' };
     if (module.includes('/components/ui/')) return new Proxy({}, { get: (_, key) => key });
     return unexpected(module);
   };
@@ -455,8 +537,7 @@ async function checkApprovalControls() {
   assert.equal(manualEngagement.calls.filter(call => call.name === 'updatePreEventApprovalStatus').length, 1);
 
   const sync = await mountApprovalComponent('EmsSyncDialog', { isOpen: true, event, onClose() {}, onSynced: async () => {} });
-  assert(sync.content.includes('Registered berarti sudah daftar, belum tentu disetujui'));
-  assert(sync.content.includes('Sinkronisasi berikutnya menimpa approval') && sync.content.includes('Client Decline'));
+  assert(sync.content.includes('Muat preview'), 'Sync starts with an explicit read-only preview step');
 
   const reviewParticipant = { ...participant, preEventApprovalStatus: 'approve',
     emsCompanyName: 'Registration company', emsCompanyReviewRequired: true,
@@ -509,13 +590,15 @@ async function checkApprovalControls() {
       identityReviewMessage: 'Profil lama punya Client Decline.', clientDeclineReviewRequired: true }] };
   const previewDialog = await mountApprovalComponent('EmsSyncDialog', { isOpen: true, event, onClose() {}, onSynced: async () => {} }, { previewEmsParticipants: reviewPreview });
   await previewDialog.act(previewDialog.find(node => node.type === 'button' && text(node).includes('Muat ulang preview')).props.onClick);
-  assert(previewDialog.content.includes('Perusahaan perlu dicek 1') || previewDialog.content.includes('Perusahaan perlu dicek1'));
+  assert(previewDialog.content.includes('Perlu review'), 'Review filter exposes company and identity warnings');
+  assert(previewDialog.content.includes('Registered berarti sudah daftar, belum tentu disetujui'), 'Loaded preview explains registration versus approval');
+  assert(previewDialog.content.includes('Sinkronisasi berikutnya menimpa approval') && previewDialog.content.includes('Client Decline'));
   const previewNotice = previewDialog.find(node => node.type?.name === 'EmsCompanyReviewNotice');
   assert.equal(previewNotice.props.crmCompanyName, 'Example');
   assert.equal(previewNotice.props.emsCompanyName, 'Registration company');
   assert.equal(previewNotice.props.identityReviewMessage, 'Profil lama punya Client Decline.');
   assert.equal(previewNotice.props.clientDeclineReviewRequired, true);
-  assert(previewDialog.content.includes('1 registrasi tetap tertahan dari Reminder untuk review keputusan client.'), 'Preview separates successful registration sync from Reminder eligibility');
+  assert(previewDialog.content.includes('1 registrasi bisa disync tetapi tetap tertahan dari Pre-Event dan Reminder'), 'Preview separates successful registration sync from Reminder eligibility');
   assert.equal(Boolean(previewDialog.find(node => node.type === 'button' && text(node) === 'Konfirmasi sync 1 registrasi').props.disabled), false, 'Company review does not block eligible sync');
   assert.equal(previewDialog.calls.filter(call => call.name === 'syncEmsParticipants').length, 0, 'Opening and loading preview never applies sync');
   assert.equal(reviewParticipant.database.company.name, 'Example');
@@ -532,4 +615,5 @@ async function checkApprovalControls() {
   await checkPage('?id=40&tab=reminder_dday&view=keep#participants', 'reminder_dday');
   console.log('PASS: editable manual approval in table/edit/batch/engagement/page, current choice before next sync, fresh sync overwrite, no source badge/banner, Registered without approval, preserved Client Decline, Remarks scope and complete export.');
   console.log('PASS: all event-tab deep links, default/invalid tabs, preserved URL parameters, Back/Forward and a fresh event without a stale tab; navigation writes no business data.');
+  console.log('PASS: Reminder H-7/H-3/H-1 controls, all six read/export query scopes, combined paginated filters, full export, live PIC summary refresh, reset and tab/event isolation without writes.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

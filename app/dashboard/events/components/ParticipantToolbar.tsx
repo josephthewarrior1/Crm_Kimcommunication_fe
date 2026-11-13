@@ -20,6 +20,12 @@ interface ParticipantToolbarProps {
   setFilterRemarks: (val: string) => void;
   filterReminderHariH?: string;
   setFilterReminderHariH?: (val: string) => void;
+  filterReminderH7?: string;
+  setFilterReminderH7?: (val: string) => void;
+  filterReminderH3?: string;
+  setFilterReminderH3?: (val: string) => void;
+  filterReminderH1?: string;
+  setFilterReminderH1?: (val: string) => void;
   filterPic: string;
   setFilterPic: (val: string) => void;
   filterOptions?: EventParticipantFilterOptions | null;
@@ -45,6 +51,9 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
   setFilterRemarks,
   filterReminderHariH = '',
   setFilterReminderHariH,
+  filterReminderH7 = '', setFilterReminderH7,
+  filterReminderH3 = '', setFilterReminderH3,
+  filterReminderH1 = '', setFilterReminderH1,
   filterPic,
   setFilterPic,
   filterOptions,
@@ -59,6 +68,7 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
     filterIndustry ||
     filterConfirmationStatus ||
     (activeTab === 'pre_event' && filterRemarks) ||
+    (activeTab === 'reminder' && (filterReminderH7 || filterReminderH3 || filterReminderH1)) ||
     filterReminderHariH ||
     filterPic;
 
@@ -176,6 +186,22 @@ export const ParticipantToolbar: React.FC<ParticipantToolbarProps> = ({
             </select>
           </div>
         )}
+
+        {activeTab === 'reminder' && [
+          { key: 'h7', label: 'H-7', value: filterReminderH7, onChange: setFilterReminderH7 },
+          { key: 'h3', label: 'H-3', value: filterReminderH3, onChange: setFilterReminderH3 },
+          { key: 'h1', label: 'H-1', value: filterReminderH1, onChange: setFilterReminderH1 },
+        ].map(filter => filter.onChange && <div key={filter.key}>
+          <label htmlFor={`participant-reminder-${filter.key}-filter`} className="block text-xs font-medium text-slate-600 mb-1.5">Status {filter.label}</label>
+          <select id={`participant-reminder-${filter.key}-filter`} value={filter.value}
+            onChange={event => filter.onChange?.(event.target.value)}
+            className="w-full px-3 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 rounded-md text-slate-800 text-xs focus:outline-none">
+            <option value="">Semua status</option><option value="__empty__">Belum diisi (- None)</option>
+            <option value="not_respon_yet">Not respond yet</option><option value="not_respond_2x">Not respond 2x</option>
+            <option value="tentative">Tentative</option><option value="confirm">Confirm</option>
+            <option value="unable_to_attend">Unable to attend</option>
+          </select>
+        </div>)}
 
         {activeTab === 'reminder_dday' && setFilterReminderHariH && (
           <div>

@@ -41,6 +41,9 @@ interface EventStatisticsProps {
     confirmationStatus?: string;
     remarks?: string;
     reminderHariH?: string;
+    reminderH7?: string;
+    reminderH3?: string;
+    reminderH1?: string;
     search?: string;
   };
 }
@@ -209,6 +212,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
         confirmationStatus: participantFilters?.confirmationStatus,
         remarks: participantFilters?.remarks,
         reminderHariH: participantFilters?.reminderHariH,
+        reminderH7: participantFilters?.reminderH7,
+        reminderH3: participantFilters?.reminderH3,
+        reminderH1: participantFilters?.reminderH1,
         search: participantFilters?.search
       });
       setPicSummary(summary || null);
@@ -237,6 +243,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     participantFilters?.confirmationStatus,
     participantFilters?.remarks,
     participantFilters?.reminderHariH,
+    participantFilters?.reminderH7,
+    participantFilters?.reminderH3,
+    participantFilters?.reminderH1,
     participantFilters?.search
   ]);
 

@@ -246,8 +246,20 @@ export interface EmsSyncPreview {
   existingCount: number;
   rejectedCount: number;
   companyReviewCount?: number;
+  uniqueContactCount?: number;
+  contactUpdateCount?: number;
   previewToken: string;
-  rows: Array<{ rowNum: number; name: string; email: string; status: 'NEW' | 'EXISTING' | 'REJECTED'; existingDatabaseId?: number; message: string; companyReviewRequired?: boolean; crmCompanyName?: string | null; emsCompanyName?: string | null; identityReviewMessage?: string | null; clientDeclineReviewRequired?: boolean | null }>;
+  rows: Array<{
+    rowNum: number; name: string; email: string; phone?: string;
+    emsStatus?: string; emsApprovalStatus?: string;
+    status: 'NEW' | 'EXISTING' | 'REJECTED'; existingDatabaseId?: number; message: string;
+    companyReviewRequired?: boolean; crmCompanyName?: string | null; emsCompanyName?: string | null;
+    identityReviewMessage?: string | null; clientDeclineReviewRequired?: boolean | null;
+    crmPreEventApprovalStatus?: string; crmClientApprovalStatus?: string;
+    crmMatches?: Array<{ databaseId: number; name: string; mobilePhone: string; companyName: string; matchedBy: string[] }>;
+    approvalConflictRows?: number[]; approvalConflictStatuses?: string[];
+    contactUpdates?: Array<{ field: string; before: string; after: string }>;
+  }>;
 }
 
 export interface EmsSyncResult extends EmsSyncPreview {

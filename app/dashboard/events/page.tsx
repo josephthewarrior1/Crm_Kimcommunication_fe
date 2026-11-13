@@ -81,6 +81,9 @@ export default function EventsPage() {
   const [filterConfirmationStatus, setFilterConfirmationStatus] = useState('');
   const [filterRemarks, setFilterRemarks] = useState('');
   const [filterReminderHariH, setFilterReminderHariH] = useState('');
+  const [filterReminderH7, setFilterReminderH7] = useState('');
+  const [filterReminderH3, setFilterReminderH3] = useState('');
+  const [filterReminderH1, setFilterReminderH1] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
@@ -256,6 +259,9 @@ export default function EventsPage() {
       industry: filterIndustry || undefined,
       confirmationStatus: filterConfirmationStatus || undefined,
       remarks: (overrides?.tab || activeTab) === 'pre_event' ? filterRemarks || undefined : undefined,
+      reminderH7: (overrides?.tab || activeTab) === 'reminder' ? filterReminderH7 || undefined : undefined,
+      reminderH3: (overrides?.tab || activeTab) === 'reminder' ? filterReminderH3 || undefined : undefined,
+      reminderH1: (overrides?.tab || activeTab) === 'reminder' ? filterReminderH1 || undefined : undefined,
       reminderHariH: filterReminderHariH || undefined,
       search: participantSearchQuery || undefined,
       page: overrides?.page ?? currentPage,
@@ -644,14 +650,21 @@ export default function EventsPage() {
 
   const loadParticipantsForEvent = async (event: Event, targetTab?: EventTab) => {
     const request = ++participantsRequest.current;
-    if (selectedEvent?.id !== event.id) setFilterRemarks('');
+    if (selectedEvent?.id !== event.id) {
+      setFilterRemarks(''); setFilterReminderH7(''); setFilterReminderH3(''); setFilterReminderH1('');
+    }
     setSelectedEvent(event);
     setLoadingParticipants(true);
     setSelectedParticipantIds([]); // reset selection
     const effectiveTab = targetTab || activeTab;
     try {
       const remarks = effectiveTab === 'pre_event' && selectedEvent?.id === event.id ? filterRemarks || undefined : undefined;
-      const tableQuery = { ...getParticipantQueryParams({ tab: effectiveTab }), remarks };
+      const reminderFilters = {
+        reminderH7: effectiveTab === 'reminder' && selectedEvent?.id === event.id ? filterReminderH7 || undefined : undefined,
+        reminderH3: effectiveTab === 'reminder' && selectedEvent?.id === event.id ? filterReminderH3 || undefined : undefined,
+        reminderH1: effectiveTab === 'reminder' && selectedEvent?.id === event.id ? filterReminderH1 || undefined : undefined,
+      };
+      const tableQuery = { ...getParticipantQueryParams({ tab: effectiveTab }), remarks, ...reminderFilters };
       const statsQuery = { ...tableQuery, page: 1, size: 5000 };
       const statisticsQuery = {
         tab: effectiveTab,
@@ -661,13 +674,14 @@ export default function EventsPage() {
         industry: filterIndustry || undefined,
         confirmationStatus: filterConfirmationStatus || undefined,
         remarks,
+        ...reminderFilters,
         reminderHariH: filterReminderHariH || undefined,
         search: participantSearchQuery || undefined
       };
       const allStatsQuery = { ...getParticipantQueryParams(
         { tab: effectiveTab, page: 1, size: 5000 },
         { includeImplicitPicFilter: false }
-      ), remarks };
+      ), remarks, ...reminderFilters };
 
       const [tableResponse, statsResponse, summaryResponse, allStatsResponse, allSummaryResponse, statisticsResponse, filterOptionsResponse] = await Promise.all([
         crmService.getEventParticipantsByEvent(event.id, tableQuery),
@@ -887,6 +901,7 @@ export default function EventsPage() {
     setFilterConfirmationStatus('');
     setFilterRemarks('');
     setFilterReminderHariH('');
+    setFilterReminderH7(''); setFilterReminderH3(''); setFilterReminderH1('');
     setFilterPic('');
   };
 
@@ -1378,6 +1393,7 @@ export default function EventsPage() {
     filterConfirmationStatus,
     filterRemarks,
     filterReminderHariH,
+    filterReminderH7, filterReminderH3, filterReminderH1,
     filterPic
   ]);
 
@@ -1396,6 +1412,7 @@ export default function EventsPage() {
     filterConfirmationStatus,
     filterRemarks,
     filterReminderHariH,
+    filterReminderH7, filterReminderH3, filterReminderH1,
     filterPic,
     currentPage,
     pageSize
@@ -1887,6 +1904,9 @@ export default function EventsPage() {
               industry: filterIndustry || undefined,
               confirmationStatus: filterConfirmationStatus || undefined,
               remarks: activeTab === 'pre_event' ? filterRemarks || undefined : undefined,
+              reminderH7: activeTab === 'reminder' ? filterReminderH7 || undefined : undefined,
+              reminderH3: activeTab === 'reminder' ? filterReminderH3 || undefined : undefined,
+              reminderH1: activeTab === 'reminder' ? filterReminderH1 || undefined : undefined,
               reminderHariH: filterReminderHariH || undefined,
               search: participantSearchQuery || undefined
             }}
@@ -1928,6 +1948,9 @@ export default function EventsPage() {
               setFilterRemarks={setFilterRemarks}
               filterReminderHariH={filterReminderHariH}
               setFilterReminderHariH={setFilterReminderHariH}
+              filterReminderH7={filterReminderH7} setFilterReminderH7={setFilterReminderH7}
+              filterReminderH3={filterReminderH3} setFilterReminderH3={setFilterReminderH3}
+              filterReminderH1={filterReminderH1} setFilterReminderH1={setFilterReminderH1}
               filterPic={filterPic}
               setFilterPic={setFilterPic}
               filterOptions={participantFilterOptions}
@@ -1946,12 +1969,12 @@ export default function EventsPage() {
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
               <Eye className="w-8 h-8 text-slate-400 mb-2" />
               <p className="text-sm font-semibold text-slate-500">
-                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterRemarks || filterReminderHariH || filterPic
+                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterRemarks || filterReminderHariH || filterReminderH7 || filterReminderH3 || filterReminderH1 || filterPic
                   ? 'No matching participants found'
                   : 'No participants registered for this event'}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterRemarks || filterReminderHariH || filterPic
+                {participantSearchQuery || filterCompany || filterPosition || filterIndustry || filterConfirmationStatus || filterRemarks || filterReminderHariH || filterReminderH7 || filterReminderH3 || filterReminderH1 || filterPic
                   ? 'Try adjusting your search terms.'
                   : 'Start by clicking "Add Lead" to register a database.'}
               </p>

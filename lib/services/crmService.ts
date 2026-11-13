@@ -441,6 +441,9 @@ export class CrmService extends ApiService {
       industry?: string;
       confirmationStatus?: string;
       remarks?: string;
+      reminderH7?: string;
+      reminderH3?: string;
+      reminderH1?: string;
       reminderHariH?: string;
       search?: string;
       page?: number;
@@ -455,6 +458,11 @@ export class CrmService extends ApiService {
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
     if (params?.remarks && params.tab === 'pre_event') searchParams.set('remarks', params.remarks);
+    if (params?.tab === 'reminder') {
+      if (params.reminderH7) searchParams.set('reminderH7', params.reminderH7);
+      if (params.reminderH3) searchParams.set('reminderH3', params.reminderH3);
+      if (params.reminderH1) searchParams.set('reminderH1', params.reminderH1);
+    }
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     if (params?.page) searchParams.set('page', String(params.page));
@@ -475,6 +483,9 @@ export class CrmService extends ApiService {
       industry?: string;
       confirmationStatus?: string;
       remarks?: string;
+      reminderH7?: string;
+      reminderH3?: string;
+      reminderH1?: string;
       reminderHariH?: string;
       search?: string;
     }
@@ -487,6 +498,11 @@ export class CrmService extends ApiService {
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
     if (params?.remarks && params.tab === 'pre_event') searchParams.set('remarks', params.remarks);
+    if (params?.tab === 'reminder') {
+      if (params.reminderH7) searchParams.set('reminderH7', params.reminderH7);
+      if (params.reminderH3) searchParams.set('reminderH3', params.reminderH3);
+      if (params.reminderH1) searchParams.set('reminderH1', params.reminderH1);
+    }
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
@@ -503,6 +519,9 @@ export class CrmService extends ApiService {
       industry?: string;
       confirmationStatus?: string;
       remarks?: string;
+      reminderH7?: string;
+      reminderH3?: string;
+      reminderH1?: string;
       reminderHariH?: string;
       search?: string;
     }
@@ -515,6 +534,11 @@ export class CrmService extends ApiService {
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
     if (params?.remarks && params.tab === 'pre_event') searchParams.set('remarks', params.remarks);
+    if (params?.tab === 'reminder') {
+      if (params.reminderH7) searchParams.set('reminderH7', params.reminderH7);
+      if (params.reminderH3) searchParams.set('reminderH3', params.reminderH3);
+      if (params.reminderH1) searchParams.set('reminderH1', params.reminderH1);
+    }
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
@@ -575,6 +599,9 @@ export class CrmService extends ApiService {
       industry?: string;
       confirmationStatus?: string;
       remarks?: string;
+      reminderH7?: string;
+      reminderH3?: string;
+      reminderH1?: string;
       reminderHariH?: string;
       search?: string;
     }
@@ -587,6 +614,11 @@ export class CrmService extends ApiService {
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
     if (params?.remarks && params.tab === 'pre_event') searchParams.set('remarks', params.remarks);
+    if (params?.tab === 'reminder') {
+      if (params.reminderH7) searchParams.set('reminderH7', params.reminderH7);
+      if (params.reminderH3) searchParams.set('reminderH3', params.reminderH3);
+      if (params.reminderH1) searchParams.set('reminderH1', params.reminderH1);
+    }
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
@@ -603,6 +635,9 @@ export class CrmService extends ApiService {
       industry?: string;
       confirmationStatus?: string;
       remarks?: string;
+      reminderH7?: string;
+      reminderH3?: string;
+      reminderH1?: string;
       reminderHariH?: string;
       search?: string;
     }
@@ -615,6 +650,11 @@ export class CrmService extends ApiService {
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
     if (params?.remarks && params.tab === 'pre_event') searchParams.set('remarks', params.remarks);
+    if (params?.tab === 'reminder') {
+      if (params.reminderH7) searchParams.set('reminderH7', params.reminderH7);
+      if (params.reminderH3) searchParams.set('reminderH3', params.reminderH3);
+      if (params.reminderH1) searchParams.set('reminderH1', params.reminderH1);
+    }
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
@@ -631,6 +671,9 @@ export class CrmService extends ApiService {
       industry?: string;
       confirmationStatus?: string;
       remarks?: string;
+      reminderH7?: string;
+      reminderH3?: string;
+      reminderH1?: string;
       reminderHariH?: string;
       search?: string;
     }
@@ -643,6 +686,11 @@ export class CrmService extends ApiService {
     if (params?.industry) searchParams.set('industry', params.industry);
     if (params?.confirmationStatus) searchParams.set('confirmationStatus', params.confirmationStatus);
     if (params?.remarks && params.tab === 'pre_event') searchParams.set('remarks', params.remarks);
+    if (params?.tab === 'reminder') {
+      if (params.reminderH7) searchParams.set('reminderH7', params.reminderH7);
+      if (params.reminderH3) searchParams.set('reminderH3', params.reminderH3);
+      if (params.reminderH1) searchParams.set('reminderH1', params.reminderH1);
+    }
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
