@@ -115,7 +115,9 @@ function mount({ savedDestination = null, failPreview = false, failSync = false,
     emsCompanyName: 'Incoming Company', status: 'EXISTING', emsStatus: 'ACCEPTED', emsApprovalStatus: 'approve',
     message: 'Existing contact may sync.', existingDatabaseId: index + 1000,
   }));
-  Object.assign(rows[0], { status: 'REJECTED', name: 'Incoming Conflict Name', message: 'Email belongs to Stored CRM Name.',
+  const fullRejectedReason = 'Email belongs to Stored CRM Name. ' + 'Periksa pemilik email dan nomor HP di CRM serta EMS. '.repeat(12)
+    + 'Lengkapi identitas yang benar, lalu muat ulang preview tanpa mengubah profil lain.';
+  Object.assign(rows[0], { status: 'REJECTED', name: 'Incoming Conflict Name', message: fullRejectedReason,
     crmMatches: [{ databaseId: 88, name: 'Stored CRM Name', mobilePhone: '081244440001', companyName: 'Original Company', matchedBy: ['email'] }] });
   Object.assign(rows[1], { status: 'REJECTED', name: 'Approval Conflict', message: 'Registrations have different approval.',
     approvalConflictRows: [2, 3], approvalConflictStatuses: ['approve', 'pending'] });
@@ -127,21 +129,33 @@ function mount({ savedDestination = null, failPreview = false, failSync = false,
     newCount: 0, existingCount: 119, rejectedCount: 2, companyReviewCount: 1, uniqueContactCount: 118,
     previewToken: 'large-preview-token', rows } });
   await large.click('Muat ulang preview');
+  const rowViewport = () => large.find(node => node.props?.role === 'region' && node.props['aria-label'] === 'Rincian hasil sync');
+  const rejectedViewKey = rowViewport().key;
+  const rejectedRow = large.find(node => node.type === 'tr' && text(node).includes('Incoming Conflict Name'));
+  assert(text(rejectedRow).includes(fullRejectedReason), 'A long rejected reason retains its complete beginning and repair instructions');
+  assert(!nodes(rejectedRow).some(node => node.type === 'details' && text(node).includes(fullRejectedReason)), 'Rejected reasons are inline rather than hidden in a disclosure');
   assert(large.find(node => node.props?.className?.includes('max-w-[1440px]') && node.props.className.includes('h-[92dvh]')), 'Preview uses a large readable modal');
   for (const value of ['Incoming Conflict Name', 'Stored CRM Name', '081244440001', 'Original Company', 'ACCEPTED', 'Email belongs to Stored CRM Name.', 'Bandingkan baris', '#2', '#3', 'Approve', 'Pending']) assert(large.html.includes(value), 'Rejected row keeps complete comparison: ' + value);
   assert(!large.button('Konfirmasi sync 119').props.disabled, 'Rejected-row filter does not change whole-preview eligibility');
   assert.match(large.html, /118 profil kontak/, 'Registration count and unique contact count are distinguished');
   assert.equal(large.calls.filter(call => call.name === 'apply').length, 0, 'Preview/filter reads never apply sync');
   await large.click('Semua');
+  assert.notEqual(rowViewport().key, rejectedViewKey, 'Changing the status filter resets the scrollable row view');
+  const firstPageViewKey = rowViewport().key;
   assert.match(large.html, /Halaman 1 \/ 3/);
   assert(!large.html.includes('Synthetic Contact 51</p>'), 'First page contains at most fifty registration rows');
   await large.click('Next'); assert.match(large.html, /Halaman 2 \/ 3/);
+  assert.notEqual(rowViewport().key, firstPageViewKey, 'Changing pages resets the row view to its beginning');
   await large.click('Next'); assert(large.html.includes('Beyond One Hundred'), 'Rows beyond the former hundred-row cap remain accessible');
+  const lastPageViewKey = rowViewport().key;
   await large.search('  LAST STORED PERSON  ');
+  assert.notEqual(rowViewport().key, lastPageViewKey, 'Searching resets the row view to the first matching participant');
   assert(large.html.includes('Beyond One Hundred') && large.html.includes('441234567890'), 'Search finds a CRM candidate on a row beyond one hundred');
   assert(large.html.includes('DECLINED') && large.html.includes('Siap disync'), 'Organizer Declined remains distinct from a sync rejection');
   assert(!large.html.includes('Incoming Conflict Name'), 'Search filters only visible rows');
+  const nameSearchViewKey = rowViewport().key;
   await large.search('Searchable Saved Company'); assert(large.html.includes('Beyond One Hundred'));
+  assert.notEqual(rowViewport().key, nameSearchViewKey, 'Changing the search also resets the view when both results occupy page one');
   await large.search('441234567890'); assert(large.html.includes('Beyond One Hundred'));
   await large.search('Own Client Decline');
   assert(large.html.includes('ACCEPTED') && large.html.includes('Client Approval:') && large.html.includes('Decline'), 'EMS Accepted and current Client Decline remain separate decisions');
