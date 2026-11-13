@@ -204,6 +204,20 @@ function mount({ savedDestination = null, failPreview = false, failSync = false,
   await staleOverwrite.click('Muat ulang preview'); await staleOverwrite.click('Konfirmasi sync 2');
   assert(staleOverwrite.button('Konfirmasi sync').props.disabled && staleOverwrite.closed === 0, 'A stale contact overwrite requires a new preview and keeps the dialog open');
   assert(!staleOverwrite.html.includes('kolom kontak akan diperbarui'), 'Rejected stale confirmation clears its old contact-change disclosure');
+  const duplicatePending = mount({ savedDestination: 'company', previewOverride: {
+    destination: 'company', totalRows: 2, newCount: 0, existingCount: 2, rejectedCount: 0,
+    uniqueContactCount: 1, previewToken: 'accepted-duplicate-token', rows: [
+      { rowNum: 1, name: 'Same Person', email: 'accepted@example.invalid', status: 'EXISTING', emsStatus: 'ACCEPTED', emsApprovalStatus: 'approve', preEventApprovalAfterSync: 'approve', message: 'Accepted menjadi acuan.' },
+      { rowNum: 2, name: 'Same Person', email: 'pending@example.invalid', status: 'EXISTING', emsStatus: 'PENDING', emsApprovalStatus: 'pending', preEventApprovalAfterSync: 'approve', message: 'Pending duplikat; CRM mengikuti Accepted.' },
+    ],
+  } });
+  await duplicatePending.click('Muat ulang preview');
+  const pendingStatusCell = duplicatePending.find(node => node.type === 'td' && text(node).includes('PENDING'));
+  assert(text(pendingStatusCell).includes('Pre-Event setelah sync: Approve'), 'A duplicate keeps its raw Pending EMS status while disclosing the effective CRM approval');
+  assert.equal(duplicatePending.calls.filter(call => call.name === 'apply').length, 0, 'Reviewing a duplicate does not change EMS or CRM');
+  assert.match(duplicatePending.html, /1 profil kontak/);
+  await duplicatePending.click('Konfirmasi sync 2');
+  assert.deepEqual(plain(duplicatePending.calls.find(call => call.name === 'apply')), { name: 'apply', id: 7, body: { previewToken: 'accepted-duplicate-token' } }, 'Duplicate resolution uses the reviewed server plan');
   const stats = fs.readFileSync('app/dashboard/events/components/EventStatistics.tsx', 'utf8');
   assert(!stats.includes('syncEmsParticipants'), 'PIC assignment must not implicitly import EMS data');
   console.log('EMS destination UI checks passed: large preview, current contact changes, unique-profile counts, no implicit writes, confirmation token and stale/error recovery. No network.');

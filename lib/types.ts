@@ -251,7 +251,7 @@ export interface EmsSyncPreview {
   previewToken: string;
   rows: Array<{
     rowNum: number; name: string; email: string; phone?: string;
-    emsStatus?: string; emsApprovalStatus?: string;
+    emsStatus?: string; emsApprovalStatus?: string; preEventApprovalAfterSync?: string;
     status: 'NEW' | 'EXISTING' | 'REJECTED'; existingDatabaseId?: number; message: string;
     companyReviewRequired?: boolean; crmCompanyName?: string | null; emsCompanyName?: string | null;
     identityReviewMessage?: string | null; clientDeclineReviewRequired?: boolean | null;

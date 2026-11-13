@@ -23,7 +23,7 @@ const contactFieldLabel: Record<string, string> = {
   phone: 'HP / WhatsApp', mobilePhone: 'HP / WhatsApp', email: 'Email', emails: 'Email',
 };
 const rowMatches = (row: PreviewRow, query: string) => [row.name, row.email, row.phone, row.message,
-  row.emsCompanyName, row.crmCompanyName, row.emsStatus, row.emsApprovalStatus,
+  row.emsCompanyName, row.crmCompanyName, row.emsStatus, row.emsApprovalStatus, row.preEventApprovalAfterSync,
   row.identityReviewMessage, String(row.rowNum), ...(row.contactUpdates || []).flatMap(update => [update.before, update.after]), ...(row.crmMatches || []).flatMap(profile =>
     [profile.name, profile.mobilePhone, profile.companyName, String(profile.databaseId)]),
 ].some(value => value?.toLowerCase().includes(query));
@@ -144,7 +144,7 @@ function SyncContent({ event, onClose, onConfigureEvent, onSynced }: Props & { e
               <tbody className="block lg:table-row-group">{pageRows.map(row => <tr key={row.rowNum} className={`block border-t border-slate-200 align-top [&>td]:block lg:table-row lg:[&>td]:table-cell ${row.status === 'REJECTED' ? 'bg-red-50/40' : ''}`}>
                 <td className="p-3 text-xs text-slate-500">#{row.rowNum}</td>
                 <td className="space-y-1 p-3 [overflow-wrap:anywhere]"><p className="font-semibold text-slate-900">{row.name || 'Nama belum tersedia'}</p><p className="text-xs text-slate-600">{row.emsCompanyName || 'Perusahaan belum diisi'}</p><p className="text-xs text-slate-600">{row.email || 'Email belum diisi'}</p><p className="text-xs text-slate-600">HP: {row.phone || 'Belum tersedia'}</p></td>
-                <td className="p-3 [overflow-wrap:anywhere]"><span className="mb-1 block text-xs text-slate-500 lg:hidden">Status EMS</span><p className="font-semibold">{sourceLabel(row)}</p>{row.status !== 'REJECTED' && row.emsApprovalStatus && <p className="mt-2 text-xs text-slate-500">Pre-Event setelah sync: <strong>{approvalLabel(row.emsApprovalStatus)}</strong></p>}</td>
+                <td className="p-3 [overflow-wrap:anywhere]"><span className="mb-1 block text-xs text-slate-500 lg:hidden">Status EMS</span><p className="font-semibold">{sourceLabel(row)}</p>{row.status !== 'REJECTED' && (row.preEventApprovalAfterSync || row.emsApprovalStatus) && <p className="mt-2 text-xs text-slate-500">Pre-Event setelah sync: <strong>{approvalLabel(row.preEventApprovalAfterSync || row.emsApprovalStatus)}</strong></p>}</td>
                 <td className="space-y-3 p-3 [overflow-wrap:anywhere]"><span className="block text-xs text-slate-500 lg:hidden">Profil CRM yang cocok</span>{row.crmMatches?.length ? row.crmMatches.map(profile => <div key={profile.databaseId}>
                   <p className="font-medium text-slate-800">{profile.name || 'Nama belum diisi'}</p>{row.status !== 'REJECTED' && profile.databaseId === row.existingDatabaseId && <p className="text-xs font-semibold text-emerald-700">Profil dipakai</p>}<p className="text-xs text-slate-500">Profil #{profile.databaseId} · {profile.companyName || 'Perusahaan belum diisi'}</p><p className="text-xs text-slate-600">HP: {profile.mobilePhone || 'Belum diisi'}</p><p className="text-xs text-slate-500">Cocok via {profile.matchedBy.map(value => value === 'phone' ? 'HP' : 'email').join(' + ') || 'identitas'}</p>
                 </div>) : <p className="text-xs text-slate-500">{row.status === 'NEW' ? 'Profil baru akan dibuat' : row.existingDatabaseId ? `Profil #${row.existingDatabaseId}` : 'Rincian profil belum tersedia'}{row.crmCompanyName && <span className="mt-1 block">{row.crmCompanyName}</span>}</p>}
