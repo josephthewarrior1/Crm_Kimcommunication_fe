@@ -344,6 +344,15 @@ export class CrmService extends ApiService {
     notifyDatabaseTargetChange();
   }
 
+  async updateDatabaseContact(id: number, contact: Pick<Partial<Database>,
+    'salutation' | 'firstName' | 'lastName' | 'positionLevel' | 'specialityDivision' | 'jobTitle' | 'mobilePhone'> & {
+      emails: Partial<DatabaseEmail>[];
+    }): Promise<Database> {
+    const updated = await this.put<Database>(`/api/databases/${id}/contact`, contact);
+    notifyDatabaseTargetChange();
+    return updated;
+  }
+
   async addDatabaseEmail(databaseId: number, email: Partial<DatabaseEmail>): Promise<DatabaseEmail> {
     return this.post<DatabaseEmail>(`/api/databases/${databaseId}/emails`, email);
   }

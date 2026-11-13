@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Calendar, Phone, MessageSquare, Mail, Loader2, Users, ShieldAlert, UserX } from 'lucide-react';
 import { EventParticipant, AppUser, Database } from '../../../../lib/types';
 import { extractPicFromNotes, getPreEventApprovalStatus } from '../utils/notesHelper';
+import { EventContactEditor } from './EventContactEditor';
 
 interface UpdateParticipantModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ interface UpdateParticipantModalProps {
   submittingParticipantUpdate: boolean;
   onFlagAsTikus?: (participant: EventParticipant) => void;
   onRequestTakeout?: (database: Database) => void;
+  canEditContact?: boolean;
+  onContactUpdated?: (database: Database) => void;
 }
 
 export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
@@ -37,7 +40,9 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   onSubmit,
   submittingParticipantUpdate,
   onFlagAsTikus,
-  onRequestTakeout
+  onRequestTakeout,
+  canEditContact = false,
+  onContactUpdated
 }) => {
   const [updateParticipantStatusStr, setUpdateParticipantStatusStr] = useState('white');
   const [updateConfirmationStatusStr, setUpdateConfirmationStatusStr] = useState('pending');
@@ -52,10 +57,13 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   const [updateParticipantNotes, setUpdateParticipantNotes] = useState('');
   const [updatePic, setUpdatePic] = useState('Admin');
   const [showFlagConfirm, setShowFlagConfirm] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+  const [editingContact, setEditingContact] = useState(false);
 
   useEffect(() => {
     if (activeParticipant) {
       setShowFlagConfirm(false);
+      setEditingContact(false);
       setUpdateParticipantStatusStr(activeParticipant.participantStatus);
       setUpdateConfirmationStatusStr(activeParticipant.confirmationStatus || 'pending');
       setUpdatePreEventApprovalStatusStr(getPreEventApprovalStatus(activeParticipant));
@@ -70,7 +78,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       setUpdatePic(pic);
       setUpdateParticipantNotes(cleanNotes === '-' ? '' : cleanNotes);
     }
-  }, [activeParticipant]);
+  }, [activeParticipant.id, isOpen]);
 
   if (!isOpen) return null;
   const showClientApproval = activeTab === 'request' || activeTab === 'declined';
@@ -109,6 +117,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
         <div className="ms-modal-header">
         <button
           onClick={onClose}
+          disabled={savingContact}
           className="ms-modal-close"
           type="button"
         >
@@ -123,8 +132,11 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
         </div>
 
         </div>
-        <form onSubmit={handleSubmit} className="ms-modal-form">
+        <div className="ms-modal-form">
         <div className="ms-modal-body space-y-4">
+          {canEditContact && onContactUpdated && <EventContactEditor key={activeParticipant.database.id}
+            database={activeParticipant.database} onSaved={onContactUpdated} onSavingChange={setSavingContact} onEditingChange={setEditingContact} />}
+          <form id="participant-qualification-form" onSubmit={handleSubmit} hidden={editingContact}>
           {/* Profile Info */}
           <div className="bg-slate-50 p-3 rounded-md border border-slate-200 text-xs grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2 [&>div]:min-w-0">
             <div>
@@ -338,8 +350,9 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
             </div>
 
             </div>
+          </form>
         </div>
-            <div className="ms-modal-footer items-center">
+            {!editingContact && <div className="ms-modal-footer items-center">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 {onRequestTakeout && (
                   <button
@@ -396,14 +409,15 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
 
               <button
                 type="submit"
-                disabled={submittingParticipantUpdate}
+                form="participant-qualification-form"
+                disabled={submittingParticipantUpdate || savingContact}
                 className="ms-modal-primary px-4 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-bold rounded-md flex items-center gap-1.5 transition-all disabled:opacity-50 shadow-sm cursor-pointer"
               >
                 {submittingParticipantUpdate ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                 Save Qualification Info
               </button>
-            </div>
-        </form>
+            </div>}
+        </div>
       </div>
     </div>
   );

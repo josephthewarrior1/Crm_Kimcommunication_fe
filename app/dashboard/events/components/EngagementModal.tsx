@@ -5,6 +5,8 @@ import { crmService } from '../../../../lib/services/crmService';
 import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
 import { getPreEventApprovalStatus, setPreEventApprovalStatus, isEmsApprovalManaged } from '../utils/notesHelper';
+import { getContactOrganization } from '../../../../lib/utils/companyBranch';
+import { splitContactEmails } from '../../database/utils/emailInput';
 
 interface EngagementModalProps {
   isOpen: boolean;
@@ -148,7 +150,10 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
   if (!isOpen || !participant) return null;
 
   const fullName = `${participant.database.firstName || ''} ${participant.database.lastName || ''}`.trim() || 'Participant';
-  const companyName = participant.database.company?.name || 'No Company';
+  const organization = getContactOrganization(participant.database);
+  const mobilePhone = participant.database.mobilePhone?.trim();
+  const officePhone = organization.officePhone?.trim();
+  const emails = Array.from(new Set((participant.database.emails || []).flatMap(({ email }) => splitContactEmails(email || ''))));
 
   // Calculate counts and last timestamps per activity type
   const callLogs = (activities || []).filter(a => a.activityType?.toUpperCase() === 'CALL');
@@ -217,7 +222,32 @@ export const EngagementModal: React.FC<EngagementModalProps> = ({
               Aktivitas peserta
             </p>
             <h3 className="ms-modal-title break-words">{fullName}</h3>
-            <p className="ms-modal-description mt-1 break-words">{companyName} &middot; {participant.database.jobTitle || 'No Title'}</p>
+            <dl className="mt-3 grid max-h-[32dvh] grid-cols-1 gap-x-5 gap-y-3 overflow-y-auto rounded-md border border-[#DFE1E6] bg-[#FAFBFC] p-3 text-sm sm:grid-cols-2">
+              <div className="min-w-0">
+                <dt className="text-xs text-[#626F86]">Perusahaan / institusi</dt>
+                <dd className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{organization.companyName || 'Belum diisi'}</dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-xs text-[#626F86]">Job title</dt>
+                <dd className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{participant.database.jobTitle || 'Belum diisi'}</dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-xs text-[#626F86]">HP / WhatsApp</dt>
+                <dd className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{mobilePhone || 'Belum diisi'}</dd>
+              </div>
+              {officePhone && (
+                <div className="min-w-0">
+                  <dt className="text-xs text-[#626F86]">Telepon kantor</dt>
+                  <dd className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">{officePhone}</dd>
+                </div>
+              )}
+              <div className="min-w-0 sm:col-span-2">
+                <dt className="text-xs text-[#626F86]">Email</dt>
+                <dd className="mt-1 [overflow-wrap:anywhere]">
+                  {emails.length ? <ul className="space-y-1">{emails.map(email => <li key={email}>{email}</li>)}</ul> : 'Belum diisi'}
+                </dd>
+              </div>
+            </dl>
           </div>
           <button
             type="button"

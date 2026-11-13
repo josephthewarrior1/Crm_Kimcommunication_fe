@@ -294,8 +294,13 @@ async function mountApprovalComponent(name, initialProps, responses = {}) {
     if (module.endsWith('/utils/statusHelper')) return status;
     if (module.endsWith('/utils/columnConfigHelper')) return compile('app/dashboard/events/utils/columnConfigHelper.ts', unexpected);
     if (module.endsWith('/utils/phoneHelper')) return compile('app/dashboard/database/utils/phoneHelper.ts', unexpected);
+    if (module.endsWith('/utils/emailInput')) return compile('app/dashboard/database/utils/emailInput.ts', name => {
+      assert.equal(name, './emailCategory');
+      return compile('app/dashboard/database/utils/emailCategory.ts', name => { assert.equal(name, '../../events/utils/notesHelper'); return notes; });
+    });
     if (module.endsWith('/utils/companyBranch')) return compile('lib/utils/companyBranch.ts', unexpected);
     if (module === './EmsCompanyReviewNotice') return compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', dependencies);
+    if (module === './EventContactEditor') return { EventContactEditor: 'EventContactEditor' };
     if (module.includes('/components/ui/')) return new Proxy({}, { get: (_, key) => key });
     return unexpected(module);
   };
@@ -380,6 +385,7 @@ async function checkApprovalControls() {
   const edit = await mountApprovalComponent('UpdateParticipantModal', {
     isOpen: true, activeParticipant: participant, activeTab: 'pre_event', usersList: [],
     onClose() {}, onSubmit: payload => submitted.push(payload), submittingParticipantUpdate: false,
+    canEditContact: true, onContactUpdated() {},
   });
   const editApproval = edit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval');
   assert.equal(Boolean(editApproval.props.disabled), false);
@@ -388,12 +394,28 @@ async function checkApprovalControls() {
   await edit.act(edit.find(node => node.type === 'form').props.onSubmit, { preventDefault() {} });
   assert.equal(submitted[0].preEventApprovalStatus, 'decline');
   assert.equal(submitted[0].confirmationStatus, 'decline', 'Edit preserves the CRM decision');
+  assert(edit.has(node => node.type === 'EventContactEditor'), 'Authorized editors can edit contact data separately');
+  const modeEditor = edit.find(node => node.type === 'EventContactEditor');
+  await edit.act(modeEditor.props.onEditingChange, true);
+  assert.equal(edit.find(node => node.type === 'form' && node.props.id === 'participant-qualification-form').props.hidden, true, 'Qualification inputs are hidden while editing contact data');
+  assert(!edit.has(node => node.type === 'button' && node.props.form === 'participant-qualification-form'), 'Qualification footer cannot distract from contact save');
+  await edit.act(modeEditor.props.onEditingChange, false);
+  assert.equal(edit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval').props.value, 'decline', 'Returning from contact editing preserves the qualification draft');
+  await edit.updateProps({ activeParticipant: { ...participant, database: { ...participant.database, mobilePhone: '+6281200001111' } } });
+  assert.equal(edit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval').props.value, 'decline', 'Saving contact data must not erase an unsaved qualification edit');
+  const contactEditor = edit.find(node => node.type === 'EventContactEditor');
+  await edit.act(contactEditor.props.onSavingChange, true);
+  assert(edit.find(node => node.type === 'button' && node.props.form === 'participant-qualification-form').props.disabled, 'Contact writes cannot overlap qualification submit');
+  await edit.act(contactEditor.props.onSavingChange, false);
+  await edit.updateProps({ isOpen: false });
   await edit.updateProps({ activeParticipant: { ...participant, preEventApprovalStatus: 'approve', emsApprovalStatus: 'approve' } });
+  await edit.updateProps({ isOpen: true });
   assert.equal(edit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval').props.value, 'approve', 'Reopened server state reflects sync overwrite');
   const manualEdit = await mountApprovalComponent('UpdateParticipantModal', {
     isOpen: true, activeParticipant: manual, activeTab: 'pre_event', usersList: [], onClose() {},
     onSubmit: payload => submitted.push(payload), submittingParticipantUpdate: false,
   });
+  assert(!manualEdit.has(node => node.type === 'EventContactEditor'), 'Contact editing is hidden unless explicitly permitted');
   assert.equal(Boolean(manualEdit.find(node => node.type === 'select' && node.props['aria-label'] === 'Pre Event Approval').props.disabled), false);
   await manualEdit.act(manualEdit.find(node => node.type === 'form').props.onSubmit, { preventDefault() {} });
   assert.equal(submitted.at(-1).preEventApprovalStatus, 'pending');
@@ -402,6 +424,21 @@ async function checkApprovalControls() {
   assert(engagement.has(node => node.type === 'option' && node.props.value === 'preEventApproval'));
   assert(!engagement.content.includes('Pre (EMS)') && !engagement.content.includes(notes.SYNC_APPROVAL_HELP));
   assert(!engagement.find(node => node.type === 'button' && text(node).startsWith('Pre:')).props.disabled);
+  const contactCard = await mountApprovalComponent('EngagementModal', { isOpen: true, participant: { ...participant, database: {
+    ...participant.database, firstName: 'Complete', lastName: 'Contact Name', jobTitle: 'Long job title for calling without horizontal scrolling',
+    mobilePhone: '441234567890, 081234567890', company: { id: 17, name: 'Full Synthetic Company Name', officePhone: '0215555000' },
+    branch: { id: 18, companyId: 17, name: 'Branch', officePhone: '0215555111' },
+    emails: [{ email: 'complete-contact@example.invalid' }, { email: 'second-contact@example.invalid, third-contact@campus.ac.id' }],
+  } }, onClose() {} });
+  for (const value of ['Complete Contact Name', 'Full Synthetic Company Name', 'Long job title for calling without horizontal scrolling', '441234567890, 081234567890', '0215555111', 'complete-contact@example.invalid', 'second-contact@example.invalid', 'third-contact@campus.ac.id']) assert(contactCard.content.includes(value), 'Activity contact card displays full ' + value);
+  assert(!contactCard.content.includes('0215555000'), 'Assigned branch phone takes precedence over another company office');
+  assert(!contactCard.has(node => node.type === 'dd' && /truncate|line-clamp|overflow-hidden/.test(node.props.className || '')), 'Contact values remain readable and are not clipped');
+  const participantCard = await mountApprovalComponent('EngagementModal', { isOpen: true, participant: { ...participant, database: {
+    ...participant.database, databaseDestination: 'participant', institutionName: 'Own Participant Campus', organizationOfficePhone: '0217777000',
+    company: { id: 99, name: 'Stale Company Must Not Display' },
+  } }, onClose() {} });
+  assert(participantCard.content.includes('Own Participant Campus') && participantCard.content.includes('0217777000'));
+  assert(!participantCard.content.includes('Stale Company Must Not Display'), 'Participant card uses its own institution fields');
   const outcomeSelect = engagement.find(node => node.type === 'select' && node.props.value === 'pending');
   await engagement.act(outcomeSelect.props.onChange, { target: { value: 'approve' } });
   await engagement.act(engagement.find(node => node.type === 'button' && text(node).includes('Simpan status')).props.onClick);

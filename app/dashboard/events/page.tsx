@@ -2188,6 +2188,12 @@ export default function EventsPage() {
             setActiveParticipant(null);
           }}
           activeParticipant={activeParticipant}
+          canEditContact={(isAdmin || isManager) && !isUser}
+          onContactUpdated={(database) => {
+            setActiveParticipant(current => current ? { ...current, database } : current);
+            setSelectedEngagementParticipant(current => current?.database.id === database.id ? { ...current, database } : current);
+            if (selectedEvent) void loadParticipantsForEvent(selectedEvent, activeTab);
+          }}
           activeTab={activeTab}
           usersList={eligiblePicUsers}
           onSubmit={handleUpdateParticipantStatus}
