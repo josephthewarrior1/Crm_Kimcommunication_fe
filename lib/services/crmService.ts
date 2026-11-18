@@ -1067,7 +1067,7 @@ export class CrmService extends ApiService {
     return response.json();
   }
 
-  async importDatabasesExcel(file: File, destination: 'company' | 'participant'): Promise<DatabaseImportResult> {
+  async importDatabasesExcel(file: File, destination: 'company' | 'participant', signal: AbortSignal): Promise<DatabaseImportResult> {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -1077,18 +1077,16 @@ export class CrmService extends ApiService {
     const response = await fetch(`${this.baseUrl}/api/databases/import?destination=${destination}`, {
       method: 'POST',
       headers,
-      body: formData
+      body: formData,
+      signal,
     });
 
     if (!response.ok) {
-      let message = `HTTP ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          message = errorData.message;
-        }
-      } catch {}
-      throw new Error(message);
+      const errorData = await response.json().catch(() => null);
+      const message = typeof errorData?.message === 'string' && errorData.message
+        ? errorData.message
+        : `HTTP ${response.status}: ${response.statusText}`;
+      throw Object.assign(new Error(message), { status: response.status });
     }
 
     const result = await response.json();

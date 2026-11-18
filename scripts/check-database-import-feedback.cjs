@@ -11,7 +11,7 @@ const XLSX = require('xlsx');
 
 const project = path.resolve(__dirname, '..');
 function compile(file, requireModule, globals = {}) {
-  const sandbox = { exports: {}, require: requireModule, console, ...globals };
+  const sandbox = { exports: {}, require: requireModule, console, Error, ...globals };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(project, file), 'utf8'), {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
   }).outputText, sandbox, { filename: file });
@@ -64,18 +64,29 @@ function parentRefresh(failingEndpoint) {
   return sandbox.exports.callbacks;
 }
 
-async function mount(response, { rejectImport = false, rejectRefresh = false, importWait, refreshWait, refreshCallback, destination = 'company', inputFile = file, previewRows } = {}) {
-  const hooks = [], effects = [], calls = [], messages = [];
+async function mount(response, { importError, rejectRefresh = false, importWait, refreshWait, refreshCallback, destination = 'company', inputFile = file, previewRows, previewError, previewDurationMs = 0 } = {}) {
+  const hooks = [], effects = [], calls = [], messages = [], timings = [], auditEntries = [];
   let cursor = 0, changed = false, tree, closed = 0, refreshed = 0;
   let clock = 0, timeoutId = 0;
   const timeouts = new Map();
   const fakeTimeout = (callback, delay = 0) => {
     const id = ++timeoutId;
-    timeouts.set(id, { callback, due: clock + delay });
+    const due = clock + delay;
+    timeouts.set(id, { callback, due });
     if (delay < 1000) queueMicrotask(() => {
-      if (timeouts.delete(id)) callback();
+      if (timeouts.delete(id)) {
+        clock = Math.max(clock, due);
+        callback();
+      }
     });
     return id;
+  };
+  const fakeAbortSignal = {
+    timeout(delay) {
+      const controller = new AbortController();
+      fakeTimeout(() => controller.abort(new DOMException('Timeout', 'TimeoutError')), delay);
+      return controller.signal;
+    },
   };
   const hookReact = {
     ...React,
@@ -105,12 +116,17 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, im
   const service = {
     previewDatabasesExcel: async (selected, target) => {
       assert.equal(selected, inputFile); assert.equal(target, destination); calls.push('preview');
+      clock += previewDurationMs;
+      if (previewError) throw previewError;
       return { destination, rows: previewRows || [{ rowNum: 2, status: 'NEW' }, { rowNum: 3, status: 'DUPLICATE' }, { rowNum: 4, status: 'INCOMPLETE', message: 'Missing position' }] };
     },
-    importDatabasesExcel: async (selected, target) => {
+    importDatabasesExcel: async (selected, target, signal) => {
       assert.equal(selected, inputFile); assert.equal(target, destination); calls.push('import');
-      if (importWait) await importWait;
-      if (rejectImport) throw new Error('Server menolak fixture');
+      assert(signal instanceof AbortSignal, 'Upload must pass its deadline signal to the service');
+      if (importWait) await Promise.race([importWait, new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+      })]);
+      if (importError) throw importError;
       return response;
     },
   };
@@ -119,14 +135,19 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, im
     'lucide-react': Object.fromEntries(['X', 'Loader2', 'Upload', 'Download', 'AlertCircle', 'RefreshCw', 'AlertTriangle', 'CheckCircle2', 'Search', 'Filter'].map(name => [name, () => null])),
     '../../../../lib/services/crmService': { crmService: service },
     '../../../../lib/utils/databaseImportResult': resultHelper,
-    '../../../../lib/services/auditLogService': { auditLogService: { recordLog: async () => calls.push('audit') } },
+    '../../../../lib/services/auditLogService': { auditLogService: { recordLog: async entry => auditEntries.push(entry) } },
     '../../../../lib/context/AuthContext': { useAuth: () => ({ user: { id: 1, username: 'fixture', fullName: 'Anonymous fixture', roles: ['ADMIN'] } }) },
     sonner: { toast: Object.fromEntries(['error', 'warning', 'success'].map(kind => [kind, (message, options) => messages.push({ kind, message, options })])) },
     './DatabaseImportGuide': { DatabaseImportGuide: () => null },
   };
   const { ExcelImportModal } = compile('app/dashboard/database/components/ExcelImportModal.tsx', name => {
     assert(name in modules, 'Unexpected component dependency: ' + name); return modules[name];
-  }, { setInterval: () => 1, clearInterval() {}, setTimeout: fakeTimeout, clearTimeout: id => timeouts.delete(id) });
+  }, {
+    AbortSignal: fakeAbortSignal,
+    performance: { now: () => clock },
+    console: { ...console, info: (label, entry) => { if (label === '[CRM Import Excel]') timings.push(entry); } },
+    setInterval: () => 1, clearInterval() {}, setTimeout: fakeTimeout, clearTimeout: id => timeouts.delete(id),
+  });
   function render() {
     cursor = 0; changed = false;
     tree = ExcelImportModal({ isOpen: true, initialDestination: destination, onClose: () => closed++, onImportSuccess: async () => {
@@ -151,13 +172,13 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, im
     render(); await settle();
     await find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
     await settle();
-    assert(text(tree).includes('Hasil Analisis & Preview Excel'));
+    assert(text(tree).includes(previewError?.message || 'Hasil Analisis & Preview Excel'));
   }
   render(); await settle(); await preview();
   messages.length = 0;
   const startImport = () => find(node => node.type === 'button' && /^Import \d+ (?:Data Bersih|Peserta)$/.test(text(node))).props.onClick({ preventDefault() {} });
   return {
-    calls, messages, find, settle, startImport, preview,
+    calls, messages, timings, auditEntries, find, settle, startImport, preview,
     has: predicate => nodes(tree).some(predicate),
     get closed() { return closed; }, get refreshed() { return refreshed; },
     get content() { return text(tree); },
@@ -179,6 +200,14 @@ async function mount(response, { rejectImport = false, rejectRefresh = false, im
       render(); await settle();
     },
   };
+}
+
+function assertTiming(harness, stage, outcome, durationMs, rows) {
+  const entry = harness.timings.find(timing => timing.stage === stage && timing.outcome === outcome);
+  assert(entry, `Expected ${stage} timing with outcome ${outcome}`);
+  assert.equal(entry.durationMs, durationMs);
+  assert.equal(entry.destination, 'company');
+  if (rows !== undefined) assert.equal(entry.rows, rows);
 }
 
 function deferred() {
@@ -218,6 +247,9 @@ function deferred() {
   assert(!changedTarget.content.includes('Hasil Analisis & Preview Excel'), 'Changing destination invalidates the previous preview');
   assert(!changedTarget.has(node => node.type === 'button' && /^Import \d+ (?:Data Bersih|Peserta)$/.test(text(node))));
   assert.equal(changedTarget.calls.filter(call => call === 'import').length, 0);
+  const failedPreview = await mount(valid, { previewError: new Error('Preview gagal'), previewDurationMs: 125 });
+  assertTiming(failedPreview, 'preview', 'error', 125);
+  assert.equal(failedPreview.auditEntries.length, 0);
   const success = await mount(valid);
   const modal = harness => harness.find(node => node.props?.className?.startsWith('ms-modal w-full'));
   assert(modal(success).props.className.includes('h-[92dvh]'), 'Preview keeps its table-sized layout');
@@ -240,28 +272,72 @@ function deferred() {
   assert(!pendingUpload.content.includes('Upload Excel Berhasil'), 'No success is shown before the server confirms the upload');
   assert(!pendingUpload.messages.some(message => message.kind === 'success'));
   assert.equal(pendingUpload.refreshed, 0);
+  const waitingStatus = pendingUpload.find(node => node.props?.role === 'status' && text(node).includes('Menunggu konfirmasi hasil import dari server'));
+  const previewBody = pendingUpload.find(node => node.props?.className?.includes('ms-modal-body'));
+  assert(!nodes(previewBody).includes(waitingStatus), 'Waiting status stays visible when the preview table scrolls');
+  await pendingUpload.advanceTimers(14999);
+  assert(!pendingUpload.content.includes('Import masih menunggu konfirmasi server'));
+  await pendingUpload.advanceTimers(1);
+  assert(pendingUpload.find(node => node.props?.role === 'status' && text(node).includes('Import masih menunggu konfirmasi server')));
+  assert(!pendingUpload.timings.some(timing => timing.stage === 'save'), 'A pending save has no finished timing');
   const pendingClose = pendingUpload.find(node => node.type === 'button' && node.props['aria-label'] === 'Tutup import Excel');
   pendingClose.props.onClick(); await pendingUpload.settle();
   assert.equal(pendingUpload.closed, 0, 'An active upload cannot be closed or mistaken for a finished one');
   pendingResponse.resolve(); await Promise.all([submitted, duplicateSubmit]); await pendingUpload.settle();
   assert(pendingUpload.content.includes('Upload Excel Berhasil'));
+  assert(!pendingUpload.content.includes('Import masih menunggu konfirmasi server'));
+  assertTiming(pendingUpload, 'save', 'success', 15000);
+
+  const lateResponse = deferred();
+  const uncertain = await mount(valid, { importWait: lateResponse.promise });
+  const timedUpload = uncertain.startImport();
+  await uncertain.settle();
+  await uncertain.advanceTimers(119999);
+  assert(uncertain.content.includes('Import masih menunggu konfirmasi server'));
+  assert(!uncertain.content.includes('Waktu tunggu konfirmasi import habis'));
+  await uncertain.advanceTimers(1);
+  await timedUpload;
+  assertTiming(uncertain, 'save', 'timeout', 120000);
+  assert.equal(uncertain.auditEntries.length, 0, 'An upload timeout is never audited as a confirmed import');
+  const uncertainAlert = uncertain.find(node => node.props?.role === 'alert' && text(node).includes('Periksa daftar Database'));
+  assert(text(uncertainAlert).includes('Waktu tunggu konfirmasi import habis'));
+  assert(!nodes(uncertain.find(node => node.props?.className?.includes('ms-modal-body'))).includes(uncertainAlert),
+    'An uncertain response is visible regardless of the preview scroll position');
+  assert(!uncertain.content.includes('Upload Excel Berhasil'));
+  assert(!uncertain.messages.some(message => message.kind === 'success'));
+  assert(!uncertain.has(node => node.type === 'button' && /^(?:Import \d+ Data Bersih|Ganti File \/ Upload Ulang)$/.test(text(node))),
+    'An uncertain result cannot accidentally resubmit the same file');
+  assert.equal(uncertain.calls.filter(call => call === 'import').length, 1);
+  lateResponse.resolve(); await uncertain.settle();
+  assert(!uncertain.content.includes('Upload Excel Berhasil') && uncertain.refreshed === 0, 'A late response does not override the timeout');
+  uncertain.find(node => node.type === 'button' && node.props['aria-label'] === 'Tutup import Excel').props.onClick();
+  await uncertain.settle();
+  assert.equal(uncertain.closed, 1, 'The dialog can close once the response becomes uncertain');
+  const gateway = await mount(valid, { importError: Object.assign(new Error('Gateway Timeout'), { status: 504 }) });
+  await gateway.import();
+  assert(gateway.find(node => node.props?.role === 'alert' && text(node).includes('Data mungkin sudah tersimpan')));
+  assert(!gateway.has(node => node.type === 'button' && /^Import \d+ Data Bersih$/.test(text(node))));
+  assertTiming(gateway, 'save', 'unconfirmed', 0);
 
   const bulkWorkbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(bulkWorkbook, XLSX.utils.aoa_to_sheet([headers,
-    ...Array.from({ length: 400 }, (_, index) => [index + 1, 'Example group', 'Example brand', 'Example company', 'Mr', 'Bulk', `Example ${index + 1}`]),
+    ...Array.from({ length: 430 }, (_, index) => [index + 1, 'Example group', 'Example brand', 'Example company', 'Mr', 'Bulk', `Example ${index + 1}`]),
   ]), 'Database');
-  const bulkFile = new File([XLSX.write(bulkWorkbook, { type: 'buffer', bookType: 'xlsx' })], 'anonymous-400-contacts.xlsx');
-  const bulkRows = Array.from({ length: 400 }, (_, index) => ({ rowNum: index + 2, status: 'NEW', firstName: 'Bulk', lastName: `Example ${index + 1}` }));
-  const bulkResult = { count: 400, newCount: 397, updatedCount: 3, skippedCount: 0, totalRows: 400 };
+  const bulkFile = new File([XLSX.write(bulkWorkbook, { type: 'buffer', bookType: 'xlsx' })], 'anonymous-430-contacts.xlsx');
+  const bulkRows = Array.from({ length: 430 }, (_, index) => ({ rowNum: index + 2, status: index < 427 ? 'NEW' : 'DUPLICATE', firstName: 'Bulk', lastName: `Example ${index + 1}` }));
+  const bulkResult = { count: 430, newCount: 427, updatedCount: 3, skippedCount: 0, totalRows: 430 };
   const neverRefresh = deferred();
-  const pendingRefresh = await mount(bulkResult, { refreshWait: neverRefresh.promise, inputFile: bulkFile, previewRows: bulkRows });
+  const pendingRefresh = await mount(bulkResult, { refreshWait: neverRefresh.promise, inputFile: bulkFile, previewRows: bulkRows, previewDurationMs: 750 });
+  assertTiming(pendingRefresh, 'preview', 'success', 750, 430);
   let importFinished = false;
   void pendingRefresh.startImport().then(() => { importFinished = true; });
   await pendingRefresh.settle();
   assert.equal(importFinished, true, 'The upload handler finishes even if the list refresh never resolves');
   assert.equal(pendingRefresh.refreshed, 1);
+  assertTiming(pendingRefresh, 'save', 'success', 0, 430);
+  assert.equal(pendingRefresh.auditEntries.length, 0, 'The audit duration summary waits for refresh or its deadline');
   assert(pendingRefresh.content.includes('Upload Excel Berhasil'));
-  assert(pendingRefresh.content.includes('400 baris berhasil diproses: 397 baru, 3 update.'), 'The confirmed 400-row summary stays visible');
+  assert(pendingRefresh.content.includes('430 baris berhasil diproses: 427 baru, 3 update.'), 'The confirmed 430-row summary stays visible');
   assert(pendingRefresh.content.includes('Memperbarui daftar Database'), 'Refresh has its own pending state after upload success');
   for (const label of ['Upload File Lain', 'Lihat Database']) {
     assert.equal(pendingRefresh.find(node => node.type === 'button' && text(node) === label).props.disabled, false, `${label} remains available during refresh`);
@@ -273,10 +349,19 @@ function deferred() {
   assert(!pendingRefresh.content.includes('tidak perlu mengupload file yang sama lagi'), 'Slow refresh warning waits for the soft timeout');
   await pendingRefresh.advanceTimers(1);
   assert(pendingRefresh.content.includes('Upload sudah selesai') && pendingRefresh.content.includes('tidak perlu mengupload file yang sama lagi'), 'A 15-second refresh timeout never claims the upload failed');
-  assert(pendingRefresh.content.includes('400 baris berhasil diproses: 397 baru, 3 update.'));
+  assert(pendingRefresh.content.includes('430 baris berhasil diproses: 427 baru, 3 update.'));
   assert(!pendingRefresh.messages.some(message => message.kind === 'error'));
   assert.equal(pendingRefresh.calls.filter(call => call === 'import').length, 1);
   assert.doesNotThrow(() => pendingRefresh.html);
+  assertTiming(pendingRefresh, 'refresh', 'timeout', 15000, 430);
+  assert.equal(pendingRefresh.auditEntries.length, 1);
+  const [bulkAudit] = pendingRefresh.auditEntries;
+  assert.equal(bulkAudit.actionType, 'IMPORT_EXCEL');
+  assert.match(bulkAudit.description, /preview 750 ms.*simpan 0 ms.*refresh 15000 ms \(belum selesai saat batas tunggu\)/i);
+  await pendingRefresh.advanceTimers(250);
+  neverRefresh.resolve(); await pendingRefresh.settle();
+  assertTiming(pendingRefresh, 'refresh', 'success', 15250, 430);
+  assert.equal(pendingRefresh.auditEntries.length, 1, 'Late refresh does not duplicate the import audit');
 
   const closedRefresh = deferred();
   const closedResult = await mount(valid, { refreshWait: closedRefresh.promise });
@@ -284,9 +369,12 @@ function deferred() {
   closedResult.find(node => node.type === 'button' && node.props['aria-label'] === 'Tutup import Excel').props.onClick();
   await closedResult.settle();
   assert.equal(closedResult.closed, 1, 'Closing is allowed once the server confirms the upload');
-  await closedResult.advanceTimers(15000);
+  await closedResult.advanceTimers(1200);
   closedRefresh.reject(new Error('Late failure from the closed result')); await closedResult.settle();
   assert(!closedResult.content.includes('Upload sudah selesai,'), 'A closed result does not receive a stale refresh warning');
+  assertTiming(closedResult, 'refresh', 'error', 1200);
+  assert.equal(closedResult.auditEntries.length, 1, 'Closing the modal does not drop the completed import audit');
+  assert.match(closedResult.auditEntries[0].description, /refresh 1200 ms \(gagal\)/);
 
   const oldRefresh = deferred(), currentRefresh = deferred();
   const newAttempt = await mount(valid, { refreshWait: attempt => attempt === 1 ? oldRefresh.promise : currentRefresh.promise });
@@ -298,7 +386,7 @@ function deferred() {
   await newAttempt.preview(); await newAttempt.import();
   assert.equal(newAttempt.refreshed, 2);
   await newAttempt.advanceTimers(10000);
-  assert(!newAttempt.content.includes('Upload sudah selesai,'), 'Reset cancels the previous refresh timeout');
+  assert(!newAttempt.content.includes('Upload sudah selesai,'), 'Reset prevents the previous refresh timeout from warning on a new import');
   oldRefresh.reject(new Error('Late failure from the previous attempt')); await newAttempt.settle();
   assert(!newAttempt.content.includes('Upload sudah selesai,'), 'An old refresh failure cannot add a warning to a newer import');
   assert(newAttempt.content.includes('Memperbarui daftar Database'), 'An old refresh completion cannot clear the newer refresh state');
@@ -354,10 +442,11 @@ function deferred() {
     assert.equal(integrated.calls.filter(call => call === 'import').length, 1);
   }
 
-  const rejected = await mount(valid, { rejectImport: true }); await rejected.import();
+  const rejected = await mount(valid, { importError: new Error('Server menolak fixture') }); await rejected.import();
   assert(rejected.content.includes('Hasil Analisis & Preview Excel') && rejected.content.includes('Server menolak fixture'));
   assert(!rejected.content.includes('Upload Excel Berhasil'));
   assert(!rejected.messages.some(message => message.kind === 'success'));
   assert.equal(rejected.refreshed, 0);
-  console.log('Database import feedback checks passed: 400-row success without waiting for refresh, no early success or duplicate POST, 15-second soft warning, stale refresh invalidation, skipped rows, malformed results and API rejection. No network.');
+  assertTiming(rejected, 'save', 'error', 0);
+  console.log('Database import feedback checks passed: 430-row success, stage timings and audit, visible slow or unconfirmed upload status, duplicate POST prevention, independent list refresh, skipped rows, malformed results and API rejection. No network.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

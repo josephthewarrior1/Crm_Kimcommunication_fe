@@ -1,17 +1,23 @@
 import type { DatabaseImportResult } from '../types';
 
+export class DatabaseImportUnconfirmedError extends Error {
+  constructor(message = 'Hasil import belum bisa dikonfirmasi.') {
+    super(`${message} Data mungkin sudah tersimpan. Periksa daftar Database sebelum mengupload file yang sama lagi.`);
+  }
+}
+
 export function databaseImportResult(value: unknown): DatabaseImportResult {
-  const uncertain = 'Server sudah merespons upload, tetapi ringkasan hasilnya tidak dapat dibaca. Periksa daftar Database sebelum mengupload file yang sama lagi.';
-  if (!value || typeof value !== 'object') throw new Error(uncertain);
+  const unconfirmed = () => new DatabaseImportUnconfirmedError('Ringkasan hasil import tidak dapat dibaca.');
+  if (!value || typeof value !== 'object') throw unconfirmed();
   const result = value as Record<string, unknown>;
   const keys = ['count', 'newCount', 'updatedCount', 'totalRows', 'skippedCount'] as const;
   for (const key of keys) {
-    if (!Number.isSafeInteger(result[key]) || (result[key] as number) < 0) throw new Error(uncertain);
+    if (!Number.isSafeInteger(result[key]) || (result[key] as number) < 0) throw unconfirmed();
   }
-  if ((result.newCount as number) + (result.updatedCount as number) !== result.count) throw new Error(uncertain);
+  if ((result.newCount as number) + (result.updatedCount as number) !== result.count) throw unconfirmed();
   const text = (field: unknown) => typeof field === 'string' ? field : '';
   const skippedRows = Array.isArray(result.skippedRows) ? result.skippedRows.map(row => {
-    if (!row || typeof row !== 'object' || !Number.isSafeInteger(row.rowNum) || row.rowNum < 1) throw new Error(uncertain);
+    if (!row || typeof row !== 'object' || !Number.isSafeInteger(row.rowNum) || row.rowNum < 1) throw unconfirmed();
     return {
       rowNum: row.rowNum,
       firstName: text(row.firstName),

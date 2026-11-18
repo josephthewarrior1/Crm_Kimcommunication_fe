@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { X, Loader2, Upload, Download, AlertCircle, RefreshCw, AlertTriangle, CheckCircle2, Search, Filter } from 'lucide-react';
 import { crmService } from '../../../../lib/services/crmService';
 import type { DatabaseImportResult } from '../../../../lib/types';
-import { databaseImportResult } from '../../../../lib/utils/databaseImportResult';
+import { DatabaseImportUnconfirmedError, databaseImportResult } from '../../../../lib/utils/databaseImportResult';
 import { auditLogService } from '../../../../lib/services/auditLogService';
 import { useAuth } from '../../../../lib/context/AuthContext';
 import { toast } from 'sonner';
@@ -38,6 +38,7 @@ export interface ProcessedRowPreview {
 
 export interface ProcessedImportPreview {
   totalRows: number;
+  durationMs: number;
   newCount: number;
   duplicateCount: number;
   incompleteCount: number;
@@ -47,6 +48,20 @@ export interface ProcessedImportPreview {
 }
 
 type TabType = 'ISSUES' | 'ALL' | 'INCOMPLETE' | 'CONFLICT' | 'DUPLICATE' | 'NEW';
+
+function reportImportTiming(
+  stage: 'preview' | 'save' | 'refresh',
+  startedAt: number,
+  details: {
+    destination: 'company' | 'participant';
+    outcome: 'success' | 'error' | 'timeout' | 'unconfirmed';
+    rows?: number;
+  }
+) {
+  const durationMs = Math.round(performance.now() - startedAt);
+  console.info('[CRM Import Excel]', { stage, durationMs, ...details });
+  return durationMs;
+}
 
 // Original columns; optional Cabang/Kantor may follow LinkedIn or be appended in older templates.
 const EXPECTED_HEADERS = [
@@ -121,16 +136,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
   const [importingExcel, setImportingExcel] = useState(false);
+  const [slowImport, setSlowImport] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importPhase, setImportPhase] = useState('');
   const [importPreview, setImportPreview] = useState<ProcessedImportPreview | null>(null);
   const [importResult, setImportResult] = useState<DatabaseImportResult | null>(null);
   const [uploadError, setUploadError] = useState('');
+  const [importUnconfirmed, setImportUnconfirmed] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [refreshingDatabase, setRefreshingDatabase] = useState(false);
   const importPending = useRef(false);
   const refreshRequest = useRef(0);
-  const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cleanCount = (importPreview?.newCount || 0) + (importPreview?.duplicateCount || 0);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('ALL');
@@ -138,12 +154,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
   const resetState = () => {
     refreshRequest.current++;
-    if (refreshTimeout.current !== null) clearTimeout(refreshTimeout.current);
-    refreshTimeout.current = null;
     setSelectedImportFile(null);
     setImportPreview(null);
     setImportResult(null);
     setUploadError('');
+    setImportUnconfirmed(false);
     setRefreshError('');
     setRefreshingDatabase(false);
     setImportingExcel(false);
@@ -166,8 +181,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
   useEffect(() => () => {
     refreshRequest.current++;
-    if (refreshTimeout.current !== null) clearTimeout(refreshTimeout.current);
   }, []);
+
+  useEffect(() => {
+    if (!importingExcel) return;
+    const timer = setTimeout(() => setSlowImport(true), 15_000);
+    return () => clearTimeout(timer);
+  }, [importingExcel]);
 
   const handlePreviewExcel = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,6 +202,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     setImportProgress(0);
     setImportPhase('Membaca file Excel...');
 
+    const startedAt = performance.now();
     const previewPhases = [
       { pct: 20, label: 'Membaca file Excel...' },
       { pct: 50, label: 'Mengurai baris data & memeriksa duplikasi internal...' },
@@ -201,10 +222,6 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       await validateDatabaseTemplateHeader(selectedImportFile, destination);
       const data = await crmService.previewDatabasesExcel(selectedImportFile, destination);
       if (data.destination !== destination) throw new Error('Tujuan pada preview tidak sesuai. Muat ulang dan periksa pilihan tujuan sebelum import.');
-      clearInterval(ticker);
-      setImportProgress(100);
-      setImportPhase('Preview siap!');
-      await new Promise(r => setTimeout(r, 300));
 
       // The backend validates typed emails and uses the same rules when importing.
       const rawRows = data.rows || [];
@@ -253,6 +270,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
       const processedData: ProcessedImportPreview = {
         totalRows: processedRows.length,
+        durationMs: reportImportTiming('preview', startedAt, { destination, rows: processedRows.length, outcome: 'success' }),
         newCount,
         duplicateCount,
         incompleteCount,
@@ -261,6 +279,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         rows: processedRows
       };
 
+      clearInterval(ticker);
+      setImportProgress(100);
+      setImportPhase('Preview siap!');
+      await new Promise(r => setTimeout(r, 300));
       setImportPreview(processedData);
       
       // Default to ISSUES tab if there are errors, otherwise ALL
@@ -272,6 +294,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         toast.success('File Excel valid! Silakan tinjau data sebelum import.');
       }
     } catch (err: any) {
+      reportImportTiming('preview', startedAt, { destination, outcome: 'error' });
       clearInterval(ticker);
       setImportProgress(0);
       setUploadError(err.message || 'Gagal memproses preview file Excel');
@@ -289,7 +312,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       return;
     }
 
-    if (!destination || !importPreview || importPending.current || importingExcel || importResult) return;
+    if (!destination || !importPreview || importPending.current || importingExcel || importResult || importUnconfirmed) return;
 
     if (cleanCount === 0) {
       toast.error('Tidak ada baris yang siap diimport. Perbaiki file Excel terlebih dahulu.');
@@ -300,8 +323,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     setImportingExcel(true);
     setUploadError('');
 
+    const signal = AbortSignal.timeout(120_000);
+    const saveStartedAt = performance.now();
     try {
-      const res = databaseImportResult(await crmService.importDatabasesExcel(selectedImportFile, destination));
+      const res = databaseImportResult(await crmService.importDatabasesExcel(selectedImportFile, destination, signal));
+      const saveMs = reportImportTiming('save', saveStartedAt, { destination, rows: res.totalRows, outcome: 'success' });
       setImportResult(res);
       if (res.count > 0) {
         toast.success('Upload Excel berhasil', {
@@ -311,45 +337,60 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       } else {
         toast.warning('Tidak ada data yang diproses. Periksa ringkasan import sebelum mencoba lagi.');
       }
-      
-      if (user) {
-        void auditLogService.recordLog({
-          userId: user.id,
-          username: user.username,
-          userFullName: user.fullName,
-          userRole: user.roles?.[0] || 'USER',
-          module: 'DATABASE',
-          actionType: 'IMPORT_EXCEL',
-          targetName: selectedImportFile.name,
-          description: `Import '${selectedImportFile.name}': ${res.count} baris diproses, ${res.skippedCount || 0} dilewati.`
-        }).catch(() => {});
-      }
 
       // Saving is complete; refreshing the list must not lock the confirmed result.
       const request = ++refreshRequest.current;
       setRefreshingDatabase(true);
-      const refreshFailed = () => {
+      const refreshStartedAt = performance.now();
+      let auditRecorded = false;
+      const finishRefresh = (outcome: 'success' | 'error' | 'timeout') => {
+        // Record the refresh even if the user has already closed the result.
+        const refreshMs = reportImportTiming('refresh', refreshStartedAt, { destination, rows: res.totalRows, outcome });
+        if (user && !auditRecorded) {
+          auditRecorded = true;
+          const refreshStatus = { success: 'selesai', timeout: 'belum selesai saat batas tunggu', error: 'gagal' }[outcome];
+          const summary = `Import '${selectedImportFile.name}': ${res.count} baris diproses, ${res.skippedCount} dilewati.`;
+          const timings = `Durasi browser untuk preview ${importPreview.durationMs} ms, simpan ${saveMs} ms, dan refresh ${refreshMs} ms (${refreshStatus}).`;
+          void auditLogService.recordLog({
+            userId: user.id,
+            username: user.username,
+            userFullName: user.fullName,
+            userRole: user.roles?.[0] || 'USER',
+            module: 'DATABASE',
+            actionType: 'IMPORT_EXCEL',
+            targetName: selectedImportFile.name,
+            description: `${summary} ${timings}`,
+          }).catch(() => {});
+        }
         if (request !== refreshRequest.current) return;
         setRefreshingDatabase(false);
-        setRefreshError('Upload sudah selesai, tetapi daftar Database belum berhasil diperbarui. Tutup ringkasan lalu muat ulang halaman; tidak perlu mengupload file yang sama lagi.');
+        setRefreshError(outcome === 'success' ? '' : 'Upload sudah selesai, tetapi daftar Database belum berhasil diperbarui. Tutup ringkasan lalu muat ulang halaman; tidak perlu mengupload file yang sama lagi.');
       };
-      refreshTimeout.current = setTimeout(refreshFailed, 15000);
-      void Promise.resolve().then(onImportSuccess).then(() => {
-        if (request === refreshRequest.current) setRefreshError('');
-      }, refreshFailed).finally(() => {
-        if (request !== refreshRequest.current) return;
-        if (refreshTimeout.current !== null) clearTimeout(refreshTimeout.current);
-        refreshTimeout.current = null;
-        setRefreshingDatabase(false);
+      const refreshTimer = setTimeout(() => finishRefresh('timeout'), 15_000);
+      void Promise.resolve().then(onImportSuccess).then(
+        () => finishRefresh('success'),
+        () => finishRefresh('error')
+      ).finally(() => clearTimeout(refreshTimer));
+    } catch (error) {
+      let issue = error instanceof Error ? error : new DatabaseImportUnconfirmedError();
+      const status = 'status' in issue && typeof issue.status === 'number' ? issue.status : 0;
+      if (signal.aborted) {
+        issue = new DatabaseImportUnconfirmedError('Waktu tunggu konfirmasi import habis.');
+      } else if (issue instanceof TypeError || issue instanceof SyntaxError || status === 408 || status >= 500) {
+        issue = new DatabaseImportUnconfirmedError();
+      }
+      const unconfirmed = issue instanceof DatabaseImportUnconfirmedError;
+      reportImportTiming('save', saveStartedAt, {
+        destination,
+        rows: importPreview.totalRows,
+        outcome: signal.aborted ? 'timeout' : unconfirmed ? 'unconfirmed' : 'error',
       });
-    } catch (err: any) {
-      setImportProgress(0);
-      setUploadError(err instanceof TypeError
-        ? 'Koneksi terputus sebelum hasil import diterima. Data mungkin sudah tersimpan; periksa daftar Database sebelum mengupload file yang sama lagi.'
-        : err.message || 'Hasil import belum dapat dikonfirmasi. Periksa daftar Database sebelum mengupload file yang sama lagi.');
+      setImportUnconfirmed(unconfirmed);
+      setUploadError(issue.message);
     } finally {
       importPending.current = false;
       setImportingExcel(false);
+      setSlowImport(false);
       setImportProgress(0);
       setImportPhase('');
     }
@@ -410,6 +451,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         <button
           aria-label="Tutup import Excel"
           onClick={handleClose}
+          disabled={importingExcel || loadingPreview}
           className="ms-modal-close z-20"
         >
           <X className="w-5 h-5" />
@@ -417,7 +459,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
         <div className="border-b border-slate-200 px-5 py-4 pr-14">
           <label htmlFor="database-import-destination" className="mb-1.5 block text-xs font-semibold text-slate-700">Tujuan import</label>
-          <select id="database-import-destination" value={destination} disabled={loadingPreview || importingExcel || !!importResult}
+          <select id="database-import-destination" value={destination} disabled={loadingPreview || importingExcel || !!importResult || importUnconfirmed}
             onChange={event => { resetState(); setDestination(event.target.value as 'company' | 'participant' | ''); }}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 disabled:bg-slate-50">
             <option value="">Pilih tujuan import</option>
@@ -611,12 +653,6 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             </div>
 
             <div className="ms-modal-body space-y-4">
-              {uploadError && (
-                <div role="alert" className="p-4 rounded-md border border-red-300 bg-red-50 text-red-900">
-                  <p className="font-semibold text-sm mb-2">Hasil upload perlu diperiksa</p>
-                  <p className="text-sm leading-6 whitespace-pre-wrap break-words">{uploadError}</p>
-                </div>
-              )}
             {/* Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div 
@@ -919,29 +955,25 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </div>
             </div>
 
+            </div>
             {importingExcel && (
-              <div role="status" className="space-y-2 p-4 bg-blue-50 border border-blue-100 rounded-xl shrink-0">
-                <p className="flex items-center gap-2 text-xs font-semibold text-blue-700"><Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />Menunggu konfirmasi hasil import dari server...</p>
-                <p className="text-xs text-blue-500 font-medium">
-                  File berisi banyak data bisa memerlukan waktu lebih lama. Jangan tutup jendela atau upload ulang sampai hasilnya muncul.
-                </p>
+              <div role="status" className="mx-4 mb-3 shrink-0 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900 sm:mx-6">
+                <p className="flex items-center gap-2 font-semibold"><Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin" />{slowImport ? 'Import masih menunggu konfirmasi server.' : 'Menunggu konfirmasi hasil import dari server...'}</p>
+                {slowImport && <p className="mt-1">File berisi banyak data bisa memerlukan waktu lebih lama. Tunggu hasilnya sebelum mengupload ulang.</p>}
               </div>
             )}
+            {uploadError && (
+              <p role="alert" className={`mx-4 mb-3 max-h-28 shrink-0 overflow-y-auto rounded-lg border p-3 text-sm leading-6 sm:mx-6 ${importUnconfirmed ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-red-300 bg-red-50 text-red-900'}`}>
+                {uploadError}
+              </p>
+            )}
 
-            </div>
-            {/* Footer Controls */}
             <div className="ms-modal-footer">
-              <button
-                type="button"
-                onClick={() => {
-                  resetState();
-                }}
-                className="ms-modal-secondary sm:mr-auto"
-                disabled={importingExcel}
-              >
-                Ganti File / Upload Ulang
-              </button>
-
+              {!importUnconfirmed && (
+                <button type="button" onClick={resetState} className="ms-modal-secondary sm:mr-auto" disabled={importingExcel}>
+                  Ganti File / Upload Ulang
+                </button>
+              )}
               <div className="flex flex-wrap justify-end gap-2">
                 <button
                   type="button"
@@ -951,23 +983,25 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 >
                   Tutup
                 </button>
-                <button
-                  type="button"
-                  onClick={handleImportExcel}
-                  disabled={importingExcel || cleanCount === 0}
-                  className={`ms-modal-primary ${
-                    cleanCount === 0
-                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300'
-                      : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-md shadow-blue-500/20 disabled:opacity-50'
-                  }`}
-                >
-                  {importingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  {importingExcel
-                    ? 'Mengimpor Data...'
-                    : cleanCount === 0
-                    ? 'Tidak Ada Data Siap Import'
-                    : `Import ${cleanCount} ${destination === 'participant' ? 'Peserta' : 'Data Bersih'}`}
-                </button>
+                {!importUnconfirmed && (
+                  <button
+                    type="button"
+                    onClick={handleImportExcel}
+                    disabled={importingExcel || cleanCount === 0}
+                    className={`ms-modal-primary ${
+                      cleanCount === 0
+                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300'
+                        : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-md shadow-blue-500/20 disabled:opacity-50'
+                    }`}
+                  >
+                    {importingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {importingExcel
+                      ? 'Mengimpor Data...'
+                      : cleanCount === 0
+                      ? 'Tidak Ada Data Siap Import'
+                      : `Import ${cleanCount} ${destination === 'participant' ? 'Peserta' : 'Data Bersih'}`}
+                  </button>
+                )}
               </div>
             </div>
           </div>
