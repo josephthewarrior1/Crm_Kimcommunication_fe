@@ -1,3 +1,4 @@
+import { crmApiBase, crmAuthHeaders, notifyCrmSessionEnded } from '../utils/tagtogAuth';
 /**
  * API Service
  * 
@@ -9,7 +10,7 @@
  */
 
 // API base configuration
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081';
+const API_BASE = crmApiBase;
 
 /**
  * Get authentication headers for API requests
@@ -17,13 +18,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081'
  * @param extra - Additional headers to include
  * @returns Headers object with authentication
  */
-export const getAuthHeaders = (extra?: Record<string, string>): HeadersInit => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
-  return {
-    ...(extra || {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-};
+export const getAuthHeaders = crmAuthHeaders;
 
 /**
  * Base API service class with common functionality
@@ -139,7 +134,6 @@ export class ApiService {
    */
   protected async put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
     try {
-      console.log("Sending payload:", data);
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: 'PUT',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -231,6 +225,7 @@ export class ApiService {
    * Handle error responses and format readable error messages.
    */
   private async handleErrorResponse(response: Response): Promise<never> {
+    notifyCrmSessionEnded(response.status);
     let message = `HTTP ${response.status}: ${response.statusText}`;
 
     try {

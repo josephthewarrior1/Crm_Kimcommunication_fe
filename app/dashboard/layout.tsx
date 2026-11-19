@@ -6,6 +6,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useAuth } from '../../lib/context/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import DatabaseTargetWarning from './components/DatabaseTargetWarning';
+import { tagtogSsoEnabled } from '../../lib/utils/tagtogAuth';
 import {
   LayoutDashboard,
   Building2,
@@ -59,10 +60,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ponytail: Viewer role is restricted to Events page only.
   useEffect(() => {
-    if (!isLoading && isViewer && pathname !== '/dashboard/events') {
+    if (!isLoading && user && isViewer && pathname !== '/dashboard/events') {
       router.replace('/dashboard/events');
     }
-  }, [isLoading, isViewer, pathname, router]);
+  }, [isLoading, user, isViewer, pathname, router]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -90,6 +91,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
     );
   }
+
+  if (!user) return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500" role="status">Opening sign-in…</div>;
 
   const menuItems = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
@@ -120,6 +123,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Management', items: menuItems.slice(5).filter((item) => filteredMenuItems.includes(item)) },
   ];
   const initial = user?.fullName?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U';
+
+  const renderTagtogLinks = () => tagtogSsoEnabled && (
+    <>
+      <a href="/api/tagtog/portal" className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        <LayoutDashboard aria-hidden="true" className="h-4 w-4 text-slate-500" />TAGTOG Workspace
+      </a>
+      <a href="/api/tagtog/portal?logout=1" className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+        <LogOut aria-hidden="true" className="h-4 w-4" />Keluar dari semua aplikasi
+      </a>
+    </>
+  );
 
   const renderNavigation = (compact = false) => (
     <nav aria-label={compact ? 'Main navigation' : 'Mobile navigation'} className="workspace-navigation min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
@@ -227,8 +241,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <UserPlus aria-hidden="true" className="h-4 w-4 text-slate-500" />Create User Account
                       </Link>
                     )}
+                    {renderTagtogLinks()}
                     <button type="button" onClick={() => { setDropdownOpen(false); logout(); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
-                      <LogOut aria-hidden="true" className="h-4 w-4" />Logout
+                      <LogOut aria-hidden="true" className="h-4 w-4" />{tagtogSsoEnabled ? 'Keluar dari CRM' : 'Logout'}
                     </button>
                   </div>
                 </div>
@@ -266,8 +281,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <p className="truncate text-[11px] text-slate-500">{user?.email}</p>
                 </div>
               </div>
+              {renderTagtogLinks()}
               <button type="button" onClick={() => { setMobileMenuOpen(false); logout(); }} className="mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[13px] font-medium text-slate-600 hover:bg-red-50 hover:text-red-600">
-                <LogOut aria-hidden="true" className="h-5 w-5" strokeWidth={1.7} />Logout
+                <LogOut aria-hidden="true" className="h-5 w-5" strokeWidth={1.7} />{tagtogSsoEnabled ? 'Keluar dari CRM' : 'Logout'}
               </button>
             </div>
           </Dialog.Content>

@@ -1,3 +1,4 @@
+import { tagtogSsoEnabled } from './tagtogAuth';
 import { AppUser } from '../types';
 
 // ponytail: Helper for checking if an event is allowed for a user/manager/viewer (DB first, localStorage fallback)
@@ -6,7 +7,7 @@ export function getUserAllowedEventIds(targetUser?: AppUser | null): number[] {
   if (targetUser.allowedEventIds && Array.isArray(targetUser.allowedEventIds)) {
     return targetUser.allowedEventIds;
   }
-  if (typeof window !== 'undefined') {
+  if (!tagtogSsoEnabled && typeof window !== 'undefined') {
     const saved = localStorage.getItem(`user_allowed_events_${targetUser.id}`) || localStorage.getItem(`viewer_allowed_events_${targetUser.id}`);
     if (saved) {
       try {
@@ -18,7 +19,7 @@ export function getUserAllowedEventIds(targetUser?: AppUser | null): number[] {
 }
 
 export function saveUserAllowedEventIds(userId: number, eventIds: number[]): void {
-  if (typeof window === 'undefined') return;
+  if (tagtogSsoEnabled || typeof window === 'undefined') return;
   localStorage.setItem(`user_allowed_events_${userId}`, JSON.stringify(eventIds));
   localStorage.setItem(`viewer_allowed_events_${userId}`, JSON.stringify(eventIds));
 }

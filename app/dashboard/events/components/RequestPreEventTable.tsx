@@ -6,15 +6,7 @@ import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigH
 import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail, isEmsApprovalManaged } from '../utils/notesHelper';
 import { getRemarksValue, REMARK_OPTIONS } from '../utils/statusHelper';
 import { EmsCompanyReviewNotice } from './EmsCompanyReviewNotice';
-
-const formatRegDate = (dateStr?: string | null) => {
-  if (!dateStr) return { date: '-', time: '' };
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return { date: dateStr.split('T')[0] || '-', time: '' };
-  const date = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-  const time = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-  return { date, time };
-};
+import { formatRegistrationDate } from '../../../../lib/utils/registrationDate';
 
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg 
@@ -164,6 +156,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
           {filteredParticipants.map((p) => {
             const emsManaged = emsApprovalManaged || isEmsApprovalManaged(p);
             const preApproval = getPreEventApprovalStatus(p);
+            const registrationDate = formatRegistrationDate(p);
             const officePhone = getContactOffice(p.database)?.officePhone;
             const { pic, cleanNotes } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
@@ -323,9 +316,9 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 )}
                 <td className="py-2.5 px-3 whitespace-nowrap">
                   <div className="flex flex-col">
-                    <span className="font-medium text-slate-700">{formatRegDate(p.requestedAt || p.createdAt).date}</span>
-                    {formatRegDate(p.requestedAt || p.createdAt).time && (
-                      <span className="text-xs text-slate-400">{formatRegDate(p.requestedAt || p.createdAt).time}</span>
+                    <span className="font-medium text-slate-700">{registrationDate.date}</span>
+                    {registrationDate.time && (
+                      <span className="text-xs text-slate-400">{registrationDate.time}</span>
                     )}
                   </div>
                 </td>

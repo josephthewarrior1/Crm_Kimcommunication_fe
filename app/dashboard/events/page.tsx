@@ -1,5 +1,8 @@
 'use client';
 
+import { tagtogSsoEnabled } from '../../../lib/utils/tagtogAuth';
+import { crmEventIdFromQuery, openTagtogDataSync } from '../../../lib/utils/tagtogDataSync';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { crmService } from '../../../lib/services/crmService';
@@ -24,6 +27,7 @@ import { UpdateParticipantModal } from './components/UpdateParticipantModal';
 import { TakeoutModal } from '../database/components/TakeoutModal';
 import { EngagementModal } from './components/EngagementModal';
 import { EventStatistics } from './components/EventStatistics';
+import { TagtogEventSyncPanel } from './components/TagtogEventSyncPanel';
 import { ManageEventPicsModal } from './components/ManageEventPicsModal';
 import { EventPicPanel } from './components/EventPicPanel';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
@@ -40,11 +44,11 @@ type EventTab = typeof EVENT_TABS[number];
 export default function EventsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const eventIdParam = searchParams.get('eventId') || searchParams.get('id');
+  const eventIdParam = crmEventIdFromQuery(searchParams);
   const tabParam = searchParams.get('tab');
   const activeTab: EventTab = EVENT_TABS.includes(tabParam as EventTab) ? tabParam as EventTab : 'request';
 
-  const { isAdmin, isManager, isUser, user, token, isLoading: authLoading, refreshUser } = useAuth();
+  const { isAdmin, isManager, isUser, user, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
   const isViewer = isUser || (!isAdmin && !isManager);
   const [events, setEvents] = useState<Event[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
@@ -291,7 +295,7 @@ export default function EventsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!token || !user) {
+    if (!isAuthenticated || !user) {
       setLoading(false);
       setEvents([]);
       setEventListTotal(0);
@@ -311,16 +315,16 @@ export default function EventsPage() {
       setEligibleManagers([]);
       return;
     }
-  }, [authLoading, token, user?.id]);
+  }, [authLoading, isAuthenticated, user?.id]);
 
   useEffect(() => {
-    if (authLoading || !token || !user) return;
+    if (authLoading || !isAuthenticated || !user) return;
     void loadData();
-  }, [authLoading, token, user?.id, searchQuery, eventListPage, isAdmin]);
+  }, [authLoading, isAuthenticated, user?.id, searchQuery, eventListPage, isAdmin]);
 
   useEffect(() => {
     const syncSelectedEvent = async () => {
-      if (authLoading || !token || !user) {
+      if (authLoading || !isAuthenticated || !user) {
         setSelectedEvent(null);
         setParticipants([]);
         setStatsParticipants([]);
@@ -336,11 +340,11 @@ export default function EventsPage() {
       if (events.length === 0 && !eventIdParam) return;
 
       if (eventIdParam) {
-        let matched = events.find((ev) => String(ev.id) === eventIdParam);
-        if (!matched && selectedEvent && String(selectedEvent.id) === eventIdParam) {
+        let matched = events.find((ev) => ev.id === eventIdParam);
+        if (!matched && selectedEvent && selectedEvent.id === eventIdParam) {
           return;
         }
-        if (!matched && /^\d+$/.test(eventIdParam)) {
+        if (!matched) {
           try {
             matched = await crmService.getEventById(Number(eventIdParam));
           } catch {}
@@ -387,14 +391,14 @@ export default function EventsPage() {
     };
 
     void syncSelectedEvent();
-  }, [authLoading, token, user?.id, eventIdParam, events, currentAllowedEventIds, router]);
+  }, [authLoading, isAuthenticated, user?.id, eventIdParam, events, currentAllowedEventIds, router]);
 
   useEffect(() => {
     setEventListPage(1);
   }, [searchQuery]);
 
   async function loadData() {
-    const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('session') : token;
+    const sessionToken = isAuthenticated;
     if (authLoading) return;
     if (!sessionToken || !user) {
       setLoading(false);
@@ -448,21 +452,23 @@ export default function EventsPage() {
         setCurrentAllowedEventIds(resolvedAllowed);
 
         try {
+          if (!tagtogSsoEnabled) {
           const saved = JSON.parse(localStorage.getItem('user') || '{}');
           saved.allowedEventIds = resolvedAllowed;
           localStorage.setItem('user', JSON.stringify(saved));
           localStorage.setItem(`user_allowed_events_${user.id}`, JSON.stringify(resolvedAllowed));
           localStorage.setItem(`viewer_allowed_events_${user.id}`, JSON.stringify(resolvedAllowed));
+          }
         } catch {}
       }
 
       // Check URL query parameters for eventId or id
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
-        const urlEventId = urlParams.get('eventId') || urlParams.get('id');
+        const urlEventId = crmEventIdFromQuery(urlParams);
         if (urlEventId) {
-          let matchedEvent = eventItems.find((ev) => String(ev.id) === urlEventId);
-          if (!matchedEvent && /^\d+$/.test(urlEventId)) {
+          let matchedEvent = eventItems.find((ev) => ev.id === urlEventId);
+          if (!matchedEvent) {
             try {
               matchedEvent = await crmService.getEventById(Number(urlEventId));
             } catch {}
@@ -490,7 +496,7 @@ export default function EventsPage() {
         }
       }
     } catch (err) {
-      const latestSessionToken = typeof window !== 'undefined' ? localStorage.getItem('session') : token;
+      const latestSessionToken = isAuthenticated;
       if (latestSessionToken) {
         toast.error('Failed to load events or databases');
       }
@@ -499,7 +505,10 @@ export default function EventsPage() {
     }
   }
 
-  const handleSyncPmsEvents = () => setIsPmsSyncOpen(true);
+  const handleSyncPmsEvents = () => {
+    if (tagtogSsoEnabled) { openTagtogDataSync(); return; }
+    setIsPmsSyncOpen(true);
+  };
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1398,7 +1407,7 @@ export default function EventsPage() {
   ]);
 
   useEffect(() => {
-    if (selectedEvent && String(selectedEvent.id) === eventIdParam) {
+    if (selectedEvent && selectedEvent.id === eventIdParam) {
       loadParticipantsForEvent(selectedEvent, activeTab);
     }
   }, [
@@ -1716,6 +1725,8 @@ export default function EventsPage() {
             )}
           </div>
 
+          {tagtogSsoEnabled && <TagtogEventSyncPanel eventId={selectedEvent.id} canManage={!isViewer} />}
+
           <EventPicPanel
             users={eligiblePicUsers}
             status={eligibleManagersLoad?.eventId === selectedEvent.id ? eligibleManagersLoad.status : 'loading'}
@@ -1797,12 +1808,12 @@ export default function EventsPage() {
               {!isViewer && !selectedEvent.syncDestination && <button type="button" onClick={() => openEditEventModal(selectedEvent)} className="text-sm font-semibold text-blue-700 underline">Atur jenis event</button>}
               {!isViewer && selectedEvent?.emsEventId && selectedEvent.emsEventId > 0 && (
                 <button
-                  onClick={() => setIsEmsSyncOpen(true)}
+                  onClick={() => { if (tagtogSsoEnabled) { openTagtogDataSync(selectedEvent.id); return; } setIsEmsSyncOpen(true); }}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-all"
-                  title={`Sinkronisasi data peserta dari ${selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}`}
+                  title={tagtogSsoEnabled ? 'Periksa dan sinkronkan hubungan proyek, event, dan peserta melalui TAGTOG' : `Sinkronisasi data peserta dari ${selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}`}
                 >
                   <Loader2 className={`w-4 h-4 ${loadingParticipants ? 'animate-spin' : ''}`} />
-                  Preview & Sync {selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}
+                  {tagtogSsoEnabled ? 'Sync melalui TAGTOG' : `Preview & Sync ${selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}`}
                 </button>
               )}
               {statsParticipants.length > 0 && (
@@ -2116,7 +2127,7 @@ export default function EventsPage() {
       />
 
       <EmsSyncDialog
-        isOpen={isEmsSyncOpen}
+        isOpen={isEmsSyncOpen && !tagtogSsoEnabled}
         event={selectedEvent}
         onClose={() => setIsEmsSyncOpen(false)}
         onConfigureEvent={() => {
@@ -2127,7 +2138,7 @@ export default function EventsPage() {
       />
 
       <PmsSyncDialog
-        isOpen={isPmsSyncOpen}
+        isOpen={isPmsSyncOpen && !tagtogSsoEnabled}
         onClose={() => setIsPmsSyncOpen(false)}
         onSynced={async () => { await loadData(); }}
       />

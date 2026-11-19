@@ -1,4 +1,6 @@
-import { ApiService } from './apiService';
+import { ApiService, getAuthHeaders } from './apiService';
+import { tagtogSsoEnabled, notifyCrmSessionEnded } from '../utils/tagtogAuth';
+import { positiveCrmEventId, readCrmTagtogEventContext, requireStandaloneSync, type CrmTagtogEventContext } from '../utils/tagtogDataSync';
 import {
   Group,
   GroupListResponse,
@@ -708,6 +710,7 @@ export class CrmService extends ApiService {
   }
 
   async previewPmsEvents(): Promise<PmsEventSyncPreview> {
+    requireStandaloneSync();
     const pmsUrl = process.env.NEXT_PUBLIC_PMS_URL || 'https://pms.kimcommunication.com/api/public/events';
     const response = await fetch(pmsUrl, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
     if (!response.ok) throw new Error(`PMS server returned status ${response.status}`);
@@ -737,6 +740,7 @@ export class CrmService extends ApiService {
   }
 
   async syncPmsEvents(preview: PmsEventSyncPreview, choices: Record<number, PmsDestination>): Promise<PmsEventSyncResult> {
+    requireStandaloneSync();
     const current = planPmsEvents(preview.rows, await this.getEvents());
     const missing = current.rows.find(row => row.status !== 'CONFLICT'
       && !pmsDestination(row.existingEvent?.syncDestination) && !pmsDestination(choices[row.pmsEventId]));
@@ -792,6 +796,7 @@ export class CrmService extends ApiService {
 
   // ponytail: fetch upcoming EMS events for dropdown mapping via backend proxy
   async getEmsEvents(source: EmsSource = 'LEGACY'): Promise<{ id: number; name: string }[]> {
+    requireStandaloneSync();
     const json: any = await this.get(`/api/events/ems-upcoming?source=${source}`);
     if (source === 'V2' && json?.source !== 'V2') throw new Error('Backend CRM belum mendukung EMS baru. Perbarui backend sebelum menghubungkan event.');
     const list = Array.isArray(json) ? json : json?.data;
@@ -807,6 +812,7 @@ export class CrmService extends ApiService {
 
   // ponytail: fetch participants for a specific EMS event
   async getEmsEventParticipants(emsEventId: number): Promise<any[]> {
+    requireStandaloneSync();
     try {
       const json: any = await this.get(`/api/events/ems-participants/${emsEventId}`);
       return Array.isArray(json) ? json : (json?.data || []);
@@ -816,8 +822,16 @@ export class CrmService extends ApiService {
     }
   }
 
+  async getTagtogEventContext(eventId: number, signal?: AbortSignal): Promise<CrmTagtogEventContext> {
+    const id = positiveCrmEventId(eventId);
+    if (id === null) throw new Error('Pilih event CRM yang valid.');
+    const value = await this.get<unknown>(`/api/integrations/tagtog/events/${id}/context`, { signal });
+    return readCrmTagtogEventContext(value, id);
+  }
+
   // ponytail: trigger EMS participant sync for a CRM event
   async previewEmsParticipants(eventId: number): Promise<EmsSyncPreview> {
+    requireStandaloneSync();
     return this.post<EmsSyncPreview>(`/api/events/${eventId}/sync-ems/preview`, {});
   }
 
@@ -826,6 +840,7 @@ export class CrmService extends ApiService {
   }
 
   async syncEmsParticipants(eventId: number, confirmation: { previewToken: string }): Promise<EmsSyncResult> {
+    requireStandaloneSync();
     return this.post<EmsSyncResult>(`/api/events/${eventId}/sync-ems`, confirmation);
   }
 
@@ -1044,8 +1059,7 @@ export class CrmService extends ApiService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = getAuthHeaders();
 
     const response = await fetch(`${this.baseUrl}/api/databases/import/preview?destination=${destination}`, {
       method: 'POST',
@@ -1054,6 +1068,7 @@ export class CrmService extends ApiService {
     });
 
     if (!response.ok) {
+      notifyCrmSessionEnded(response.status);
       let message = `HTTP ${response.status}: ${response.statusText}`;
       try {
         const errorData = await response.json();
@@ -1071,8 +1086,7 @@ export class CrmService extends ApiService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('session') : null;
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = getAuthHeaders();
 
     const response = await fetch(`${this.baseUrl}/api/databases/import?destination=${destination}`, {
       method: 'POST',
@@ -1082,6 +1096,7 @@ export class CrmService extends ApiService {
     });
 
     if (!response.ok) {
+      notifyCrmSessionEnded(response.status);
       const errorData = await response.json().catch(() => null);
       const message = typeof errorData?.message === 'string' && errorData.message
         ? errorData.message

@@ -1,5 +1,8 @@
 'use client';
 
+import { tagtogSsoEnabled } from '../../lib/utils/tagtogAuth';
+import TagtogRecovery from '../login/TagtogRecovery';
+
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -46,6 +49,8 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (tagtogSsoEnabled) return <TagtogRecovery reason="managed" returnTo="/dashboard" />;
 
   return (
     <div className="min-h-screen min-h-dvh flex items-center justify-center bg-slate-50 p-4 sm:p-8">

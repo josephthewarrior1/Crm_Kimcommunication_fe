@@ -5,6 +5,7 @@ import { RefreshCw } from 'lucide-react';
 import { crmService } from '../../../../lib/services/crmService';
 import type { EmsSource } from '../../../../lib/types';
 import { EmsEventSelector } from './EmsEventSelector';
+import { tagtogSsoEnabled } from '../../../../lib/utils/tagtogAuth';
 
 export function EmsMappingField({ source, onSourceChange, eventId, onEventIdChange }: {
   source: EmsSource; onSourceChange: (value: EmsSource) => void;
@@ -14,6 +15,7 @@ export function EmsMappingField({ source, onSourceChange, eventId, onEventIdChan
   const [revision, setRevision] = useState(0);
   const [list, setList] = useState<{ source: EmsSource; items: { id: number; name: string }[]; status: 'loading' | 'ready' | 'error'; error: string }>({ source, items: [], status: 'loading', error: '' });
   useEffect(() => {
+    if (tagtogSsoEnabled) return;
     let active = true;
     setList({ source, items: [], status: 'loading', error: '' });
     crmService.getEmsEvents(source).then(items => {
@@ -27,6 +29,11 @@ export function EmsMappingField({ source, onSourceChange, eventId, onEventIdChan
   const current = list.source === source;
   const ready = current && list.status === 'ready';
   const loading = !current || list.status === 'loading';
+  if (tagtogSsoEnabled) return <fieldset className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <legend className="px-1 text-sm font-semibold text-slate-700">Hubungan PMS dan EMS</legend>
+    <p className="text-xs leading-5 text-slate-600">Simpan event, lalu pilih <strong>Sync melalui TAGTOG</strong> pada detail event untuk meninjau proyek, jadwal, dan peserta kantor Anda.</p>
+    {eventId > 0 && <p className="text-xs text-slate-500">Referensi EMS tersimpan: #{eventId}. Hubungan yang sudah ada tetap dipertahankan.</p>}
+  </fieldset>;
   return <fieldset className="space-y-3 rounded-lg border border-slate-200 p-3">
     <legend className="px-1 text-sm font-semibold text-slate-700">Hubungkan ke EMS</legend>
     <div><label htmlFor={sourceId} className="mb-1.5 block text-xs font-medium text-slate-600">Sumber EMS</label>

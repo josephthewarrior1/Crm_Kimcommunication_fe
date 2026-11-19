@@ -350,6 +350,8 @@ export interface EventParticipant {
   event: Event;
   database: Database;
   participantStatus: string; // white | yellow | green | red
+  /** Original EMS registration instant from scoped TAGTOG provenance; never a legacy date rewrite. */
+  readonly sourceRegisteredAt?: string | null;
   requestedAt?: string;
   respondedAt?: string;
   attendanceStatus: string; // invited | registered | attended | no_show | cancelled
