@@ -13,6 +13,10 @@ function compile(file, requireModule, globals = {}) {
   return context.exports;
 }
 const unexpected = name => { throw Error('Unexpected dependency: ' + name); };
+const tagtogAuth = compile('lib/utils/tagtogAuth.ts', unexpected, { process: { env: {} } });
+const localAuthDependency = name => name === './tagtogAuth' ? tagtogAuth : unexpected(name);
+const tagtogDataSync = compile('lib/utils/tagtogDataSync.ts', localAuthDependency);
+const registrationDate = compile('lib/utils/registrationDate.ts', localAuthDependency);
 const children = node => [node?.props?.children].flat(Infinity);
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...children(node).flatMap(nodes)];
 const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : children(node).map(text).join('');
@@ -33,7 +37,12 @@ assert.equal(notes.getPreEventApprovalStatus({ event: { emsEventId: 9 }, preEven
 async function checkService() {
   const urls = [];
   class ApiService { async get(url) { urls.push(url); return {}; } }
-  const { CrmService } = compile('lib/services/crmService.ts', name => name === './apiService' ? { ApiService } : unexpected(name));
+  const { CrmService } = compile('lib/services/crmService.ts', name => {
+    if (name === './apiService') return { ApiService };
+    if (name === '../utils/tagtogAuth') return tagtogAuth;
+    if (name === '../utils/tagtogDataSync') return tagtogDataSync;
+    return unexpected(name);
+  });
   const service = new CrmService();
   for (const method of ['getEventParticipantsByEvent', 'getEventParticipantsSummary', 'getEventParticipantsSummaryByPic',
     'getEventStatistics', 'getEventParticipantFilterOptions', 'exportEventParticipants']) {
@@ -147,7 +156,9 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     if (name === 'react') return React;
     if (name === 'next/navigation') return { useRouter: () => router, useSearchParams: () => currentSearchParams };
     if (name.endsWith('/services/crmService')) return { crmService: service };
-    if (name.endsWith('/context/AuthContext')) return { useAuth: () => ({ isAdmin: true, isManager: false, isUser: false, user: admin, token: 'local', isLoading: false }) };
+    if (name.endsWith('/utils/tagtogAuth')) return tagtogAuth;
+    if (name.endsWith('/utils/tagtogDataSync')) return tagtogDataSync;
+    if (name.endsWith('/context/AuthContext')) return { useAuth: () => ({ isAdmin: true, isManager: false, isUser: false, user: admin, token: 'local', isAuthenticated: true, isLoading: false }) };
     if (name === 'lucide-react') return {};
     if (name === 'sonner') return { toast: { error(message) { throw Error(message); }, success() {}, warning() {} } };
     if (name === 'xlsx') return { utils: { json_to_sheet: rows => ({ rows }), book_new: () => ({}), book_append_sheet: (book, sheet) => { book.sheet = sheet; } }, writeFile: book => writes.push(book) };
@@ -372,6 +383,7 @@ async function mountApprovalComponent(name, initialProps, responses = {}) {
     if (module.endsWith('/services/crmService')) return { crmService: services };
     if (module.endsWith('/utils/notesHelper')) return notes;
     if (module.endsWith('/utils/statusHelper')) return status;
+    if (module.endsWith('/utils/registrationDate')) return registrationDate;
     if (module.endsWith('/utils/columnConfigHelper')) return compile('app/dashboard/events/utils/columnConfigHelper.ts', unexpected);
     if (module.endsWith('/utils/phoneHelper')) return compile('app/dashboard/database/utils/phoneHelper.ts', unexpected);
     if (module.endsWith('/utils/emailInput')) return compile('app/dashboard/database/utils/emailInput.ts', name => {
