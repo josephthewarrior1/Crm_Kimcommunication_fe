@@ -13,6 +13,7 @@ import {
 import { EventParticipantsImportValidationResponse } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
+import { splitContactEmails } from '../../database/utils/emailInput';
 
 interface ExcelImportModalProps {
   eventDestination?: 'company' | 'participant';
@@ -38,7 +39,8 @@ interface PreviewRow {
   firstName: string;
   lastName: string;
   jobTitle: string;
-  email: string;
+  companyEmail: string;
+  personalEmail: string;
   mobilePhone: string;
   status: RowStatus;
   message: string;
@@ -117,7 +119,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           row.lastName,
           row.companyName,
           row.jobTitle,
-          row.email,
+          row.companyEmail,
+          row.personalEmail,
           row.mobilePhone,
           row.message,
           ...row.warnings,
@@ -214,7 +217,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           firstName: row.firstName || '-',
           lastName: row.lastName || '-',
           jobTitle: row.jobTitle || '-',
-          email: row.companyEmail || row.personalEmail || '-',
+          companyEmail: destination === 'company' ? row.companyEmail || '' : '',
+          personalEmail: destination === 'participant'
+            ? splitContactEmails(`${row.companyEmail || ''};${row.personalEmail || ''}`).join(', ')
+            : row.personalEmail || '',
           mobilePhone: row.mobilePhone || '-',
           status,
           message,
@@ -266,10 +272,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   };
 
   const currentTabLabel = activeTab === 'pre_event' ? 'Pre-Event' : 'Request';
+  const isCompanyPreview = importPreview?.destination === 'company';
 
   return (
     <div className="ms-modal-overlay">
-      <div className={`ms-modal w-full ${importPreview ? 'max-w-4xl' : 'max-w-lg'}`}>
+      <div className={`ms-modal w-full ${isCompanyPreview ? 'max-w-6xl' : importPreview ? 'max-w-4xl' : 'max-w-lg'}`}>
         <button
           onClick={handleClose}
           className="ms-modal-close z-20"
@@ -290,9 +297,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           <p className="mt-2 text-xs leading-5 text-slate-500">
             Import ke {currentTabLabel} cukup minimal email valid atau nomor HP/WhatsApp. Nama dan kolom lainnya boleh dilengkapi setelah import. Dua nomor milik orang yang sama ditulis dalam satu sel Mobile Phone, dipisah koma (contoh: 081200001111, 081300002222).
             {destination === 'participant'
-              ? ' Database Peserta menerima email pribadi, kampus, atau kantor.'
+              ? ' Email pribadi, kampus, atau kantor disimpan di Personal Email untuk Database Peserta.'
               : destination === 'company'
-              ? ' Kontak tetap masuk Database Perusahaan; email pribadi tidak mengubah tujuan dan belum memenuhi syarat email perusahaan untuk Data Bersih.'
+              ? ' Isi Company Email Address dengan email kantor dan Personal Email Address dengan email pribadi. Kontak baru tanpa email kantor masuk Data Kotor di Database Perusahaan.'
               : ' Jenis event menentukan tujuan import dan sync.'}
           </p>
           <p className="mt-2 text-xs leading-5 text-slate-600">
@@ -538,7 +545,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
             <div className="border border-slate-200 rounded-md overflow-hidden min-w-0 bg-white">
               <div className="overflow-auto max-h-[40vh]">
-                <table className="w-full min-w-[860px] text-left border-collapse text-xs">
+                <table className={`w-full ${isCompanyPreview ? 'min-w-[1060px]' : 'min-w-[860px]'} text-left border-collapse text-xs`}>
                   <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
                     <tr className="text-slate-500 uppercase font-semibold">
                       <th className="py-3 px-3 w-14 text-center">No</th>
@@ -546,7 +553,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       <th className="py-3 px-3">Last Name</th>
                       <th className="py-3 px-3">Company</th>
                       <th className="py-3 px-3">Job Title</th>
-                      <th className="py-3 px-3">Email</th>
+                      {isCompanyPreview && <th className="py-3 px-3">Office Email</th>}
+                      <th className="py-3 px-3">Personal Email</th>
                       <th className="py-3 px-3">HP / WhatsApp</th>
                       <th className="py-3 px-3">Keterangan</th>
                       <th className="py-3 px-3 text-right">Status</th>
@@ -560,7 +568,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         <td className="py-3 px-3 font-bold text-slate-800">{row.lastName}</td>
                         <td className="py-3 px-3 text-slate-600 font-medium">{row.companyName}</td>
                         <td className="py-3 px-3 text-slate-600">{row.jobTitle}</td>
-                        <td className="py-3 px-3 text-slate-500 font-mono">{row.email}</td>
+                        {isCompanyPreview && <td className="py-3 px-3 text-slate-500 font-mono break-all">{row.companyEmail || '-'}</td>}
+                        <td className="py-3 px-3 text-slate-500 font-mono break-all">{row.personalEmail || '-'}</td>
                         <td className="py-3 px-3 text-slate-500 font-mono">{row.mobilePhone}</td>
                         <td className="py-3 px-3 text-slate-500">
                           <p>{row.message}</p>
@@ -591,7 +600,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     ))}
                     {filteredRows.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="py-10 px-4 text-center text-slate-500">
+                        <td colSpan={isCompanyPreview ? 10 : 9} className="py-10 px-4 text-center text-slate-500">
                           Tidak ada baris yang cocok dengan filter pencarian.
                         </td>
                       </tr>

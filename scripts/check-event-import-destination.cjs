@@ -18,6 +18,7 @@ const children = node => [node?.props?.children].flat(Infinity);
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...children(node).flatMap(nodes)];
 const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : children(node).map(text).join('');
 const file = new File(['anonymous workbook fixture'], 'anonymous-event.xlsx');
+const emailInput = compile('app/dashboard/database/utils/emailInput.ts', name => name === './emailCategory' ? {} : unexpected(name));
 
 async function mount({ initialDestination, mismatch = false, rows, deferPreview = false } = {}) {
   const hooks = [], effects = [], calls = [], messages = [], applied = [];
@@ -51,6 +52,7 @@ async function mount({ initialDestination, mismatch = false, rows, deferPreview 
   } };
   const dependencies = {
     react: React, 'lucide-react': {}, '../../../../lib/services/crmService': { crmService: service },
+    '../../database/utils/emailInput': emailInput,
     sonner: { toast: Object.fromEntries(['success', 'warning', 'error'].map(kind => [kind, message => messages.push({ kind, message })])) },
   };
   const { ExcelImportModal } = compile('app/dashboard/events/components/ExcelImportModal.tsx', name => dependencies[name] || unexpected(name), {

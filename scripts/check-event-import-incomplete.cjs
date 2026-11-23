@@ -18,6 +18,7 @@ const children = node => [node?.props?.children].flat(Infinity);
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...children(node).flatMap(nodes)];
 const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : children(node).map(text).join('');
 const file = new File(['anonymous fixture'], 'uji-event.xlsx');
+const emailInput = compile('app/dashboard/database/utils/emailInput.ts', name => name === './emailCategory' ? {} : unexpected(name));
 async function mount(rows, deferPreview = false, destination = 'participant') {
   const hooks = [], effects = [], calls = [], messages = [];
   let cursor = 0, changed = false, tree, applied = 0, closed = 0, releasePreview;
@@ -42,6 +43,7 @@ async function mount(rows, deferPreview = false, destination = 'participant') {
   };
   const service = { async validateEventParticipantsImport(...args) { calls.push(args); await gate; return { destination, summary: { totalRows: rows.length }, rows }; } };
   const dependencies = { react: React, 'lucide-react': {}, '../../../../lib/services/crmService': { crmService: service },
+    '../../database/utils/emailInput': emailInput,
     sonner: { toast: Object.fromEntries(['success', 'warning', 'error'].map(kind => [kind, message => messages.push({ kind, message })])) } };
   const { ExcelImportModal } = compile('app/dashboard/events/components/ExcelImportModal.tsx', name => dependencies[name] || unexpected(name), {
     setInterval: () => 0, clearInterval() {}, setTimeout: callback => queueMicrotask(callback),
@@ -59,6 +61,12 @@ async function mount(rows, deferPreview = false, destination = 'participant') {
     calls, messages, content: () => text(tree), applied: () => applied, closed: () => closed,
     button: label => nodes(tree).find(node => node.type === 'button' && text(node).includes(label)),
     closeButton: () => nodes(tree).find(node => node.props?.['aria-label'] === 'Tutup import peserta'),
+    emailColumns() {
+      const headers = nodes(tree).filter(node => node.type === 'th');
+      const cells = nodes(tree).filter(node => node.type === 'td');
+      return Object.fromEntries(headers.flatMap((header, index) =>
+        text(header).endsWith(' Email') ? [[text(header), text(cells[index])]] : []));
+    },
     async preview() { await nodes(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await settle(); },
     async beginPreview() {
       const work = nodes(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await settle();
@@ -97,7 +105,7 @@ async function modalFlow() {
   await email.preview(); assert.equal(email.button('Mulai Import').props.disabled, false);
   assert(email.content().includes('belum bisa ditelepon'));
   const gmail = await mount([row({ companyEmail: 'uji@gmail.com' })]);
-  await gmail.preview(); assert.equal(gmail.button('Mulai Import').props.disabled, false, 'No new domain policy in the original CRM');
+  await gmail.preview(); assert.equal(gmail.button('Mulai Import').props.disabled, false, 'Public email remains valid for Participant events');
   const unnamed = await mount([row({ firstName: '', lastName: '', companyEmail: 'uji@example.org',
     mobilePhone: '081200001111, 081300002222', missingFields: ['First Name', 'Last Name'] })]);
   await unnamed.preview(); assert.equal(unnamed.button('Mulai Import').props.disabled, false, 'Missing names are soft warnings for Event import');
@@ -161,6 +169,31 @@ async function modalFlow() {
   await finish(); assert.equal(pending.button('Mulai Import').props.disabled, false);
   assert.equal(pending.closeButton().props.disabled, false);
 }
+async function emailPreviewFlow() {
+  const companyEmail = 'kantor@example.org';
+  const personalEmail = 'pribadi@example.net';
+  const warning = 'Email kantor yang sudah ada akan dipindahkan ke Office Email.';
+  const corporate = await mount([
+    row({ companyEmail, personalEmail, existingDatabaseId: 9, warnings: [warning] }),
+    row({ rowNumber: 3, firstName: 'Kontak Lain', personalEmail: 'lain@example.net' }),
+  ], false, 'company');
+  await corporate.preview();
+  assert.deepEqual(corporate.emailColumns(), { 'Office Email': companyEmail, 'Personal Email': personalEmail });
+  assert(corporate.content().includes(warning));
+  assert(corporate.content().includes('Info Duplikasi'));
+  assert.equal(corporate.button('Mulai Import').props.disabled, false);
+  for (const email of [companyEmail, personalEmail]) {
+    await corporate.search(email);
+    assert(corporate.content().includes('Uji Kontak'));
+    assert(!corporate.content().includes('Kontak Lain'));
+  }
+
+  const participant = await mount([row({ companyEmail, personalEmail: `${personalEmail}; ${companyEmail.toUpperCase()}` })]);
+  await participant.preview();
+  assert.deepEqual(participant.emailColumns(), { 'Personal Email': `${companyEmail}, ${personalEmail}` });
+  await participant.search(personalEmail);
+  assert(participant.content().includes('Uji Kontak'));
+}
 async function serviceFlow() {
   const calls = [];
   class ApiService { postFormData(url, body) { calls.push({ url, body }); return Promise.resolve({}); } }
@@ -173,5 +206,5 @@ async function serviceFlow() {
     assert.equal(call.body.get('destination'), 'participant', 'Event destination must be forwarded explicitly');
   }
 }
-(async () => { await modalFlow(); await serviceFlow(); console.log('Event incomplete import passed: phone/email-only, soft corporate warnings, existing profiles, identity-review conflicts, two-number guidance, pending guards and event destination API. No network.'); })()
+(async () => { await modalFlow(); await emailPreviewFlow(); await serviceFlow(); console.log('Event incomplete import passed: phone/email-only, email categories and search, soft corporate warnings, existing profiles, identity-review conflicts, two-number guidance, pending guards and event destination API. No network.'); })()
   .catch(error => { console.error(error); process.exitCode = 1; });
