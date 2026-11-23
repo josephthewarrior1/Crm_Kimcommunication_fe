@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { EventParticipant } from '../../../../lib/types';
+import type { EventParticipant } from '../../../../lib/types';
 import { getContactOffice } from '../../../../lib/utils/companyBranch';
-import { AlertCircle, Phone, Mail, Edit2, Trash2, History, MoreVertical } from 'lucide-react';
+import { AlertCircle, Phone, Mail, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
-import { getPreEventApprovalStatus, getOfficeEmail, getPersonalEmail, isEmsApprovalManaged } from '../utils/notesHelper';
+import { getPreEventApprovalStatus, isEmsApprovalManaged, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 import { getRemarksValue, REMARK_OPTIONS } from '../utils/statusHelper';
 import { EmsCompanyReviewNotice } from './EmsCompanyReviewNotice';
 
@@ -27,6 +27,7 @@ const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
 );
 
 import { normalizePhone } from '../../database/utils/phoneHelper';
+import { getParticipantRowActions } from './participantRowActions';
 
 interface RequestPreEventTableProps {
   filteredParticipants: EventParticipant[];
@@ -78,6 +79,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   const tableRef = useRef<HTMLTableElement>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const openDetails = isUser ? undefined : onOpenEngagementModal;
   const canEditConfirmation = !isUser || activeTab === 'request';
   const showApprovalColumn = true;
 
@@ -148,7 +150,6 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             {columnConfig.personalEmail !== false && <th className="py-3 px-3">Personal Email</th>}
             {columnConfig.industry !== false && <th className="py-3 px-3">Industry</th>}
             <th className="py-3 px-3">Reg Date</th>
-            {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && <th className="py-3 px-3">Telemarketing Logs</th>}
             {columnConfig.remarks !== false && activeTab !== 'request' && <th className="py-3 px-3">Remarks</th>}
             {columnConfig.approvalStatus !== false && showApprovalColumn && (
               <th className="py-3 px-3 text-center">
@@ -165,19 +166,19 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
             const emsManaged = emsApprovalManaged || isEmsApprovalManaged(p);
             const preApproval = getPreEventApprovalStatus(p);
             const officePhone = getContactOffice(p.database)?.officePhone;
-            const { pic, cleanNotes } = extractPicFromNotes(p.notes);
+            const { pic } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
             const isTakeout = Boolean(p.notes?.includes('[TAKEOUT]') || p.notes?.includes('[Opt-Out]') || p.notes?.toLowerCase().includes('takeout') || (p.database as any)?.isRemovalRequested);
             const isTikus = Boolean(!isTakeout && (!p.database?.isActive || (p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus')));
 
+            const { onRowClick, buttonProps } = getParticipantRowActions(p, openDetails);
             return (
-              <tr key={p.id} className={`relative border-b border-slate-100 transition-colors ${isTikus ? 'bg-red-50/60 hover:bg-red-100/60' : isTakeout ? 'bg-amber-50/60 hover:bg-amber-100/60' : 'hover:bg-slate-50/50'}`}>
+              <tr key={p.id} onClick={onRowClick} className={`relative border-b border-slate-100 transition-colors ${openDetails ? 'cursor-pointer' : ''} ${isTikus ? 'bg-red-50/60 hover:bg-red-100/60' : isTakeout ? 'bg-amber-50/60 hover:bg-amber-100/60' : 'hover:bg-slate-50/50'}`}>
                 {!isUser && (
                   <td
-                    onClick={(e) => e.stopPropagation()}
                     className={`py-2.5 px-3 text-left sticky left-0 bg-white group-hover:bg-slate-50/50 ${openMenuId === p.id ? 'z-40' : 'z-[1]'}`}
                   >
-                    <div className="relative">
+                    <div className="relative inline-flex items-center gap-1.5 whitespace-nowrap" onClick={event => event.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => setOpenMenuId((current) => (current === p.id ? null : p.id))}
@@ -185,6 +186,11 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
+                      {openDetails && columnConfig.firstName === false && columnConfig.lastName === false && (
+                        <button {...buttonProps} className="sr-only focus:not-sr-only focus:rounded focus:px-2 focus:outline-2 focus:outline-blue-600">
+                          Detail
+                        </button>
+                      )}
                       {openMenuId === p.id && (
                         <>
                           <div
@@ -262,7 +268,11 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 {columnConfig.firstName !== false && (
                   <td className="py-2.5 px-3 font-semibold text-slate-900">
                     <div className="flex items-center gap-1.5">
-                      <span>{p.database.firstName}</span>
+                      {openDetails ? (
+                        <button {...buttonProps} className="rounded text-left focus-visible:outline-2 focus-visible:outline-blue-600">
+                          {p.database.firstName || '-'}
+                        </button>
+                      ) : p.database.firstName || '-'}
                       {isTikus ? (
                         <span
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-rose-50 text-rose-600 rounded-md shrink-0"
@@ -283,7 +293,11 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 )}
                 {columnConfig.lastName !== false && (
                   <td className="py-2.5 px-3 font-semibold text-slate-900">
-                    {p.database.lastName || '-'}
+                    {openDetails && columnConfig.firstName === false ? (
+                      <button {...buttonProps} className="rounded text-left focus-visible:outline-2 focus-visible:outline-blue-600">
+                        {p.database.lastName || '-'}
+                      </button>
+                    ) : p.database.lastName || '-'}
                   </td>
                 )}
                 {columnConfig.positionLevel !== false && (
@@ -329,18 +343,6 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     )}
                   </div>
                 </td>
-                {columnConfig.telemarketingLogs !== false && activeTab !== 'request' && onOpenEngagementModal && (
-                  <td className="py-2.5 px-3">
-                    <button
-                      onClick={() => onOpenEngagementModal(p)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-md border border-slate-200 transition-all focus:outline-none cursor-pointer"
-                      title="Buka Telemarketing Logs (Call, Email, WA)"
-                    >
-                      <History className="w-4 h-4 text-slate-500" />
-                      <span>View Logs</span>
-                    </button>
-                  </td>
-                )}
                 {columnConfig.remarks !== false && activeTab !== 'request' && (
                   <td className="py-2.5 px-3">
                     <select
@@ -414,14 +416,8 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                   </td>
                 )}
                 {columnConfig.notes !== false && (
-                  <td
-                    onClick={() => {
-                      if (!isUser) handleOpenUpdateParticipantModal(p);
-                    }}
-                    className={`py-2.5 px-3 text-slate-600 max-w-[140px] truncate transition-all ${isUser ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
-                    title={isUser ? cleanNotes || '-' : 'Click to edit notes & details'}
-                  >
-                    {cleanNotes || '-'}
+                  <td className="py-2.5 px-3 text-slate-600 max-w-[160px] [overflow-wrap:anywhere]">
+                    {extractPicFromNotes(p.notes).cleanNotes}
                   </td>
                 )}
                 <td className="hidden">

@@ -876,7 +876,7 @@ export class CrmService extends ApiService {
 
     appendParam('participantStatus', participantStatus);
     appendParam('attendanceStatus', attendanceStatus);
-    appendParam('notes', notes);
+    if (notes != null) params.append('notes', notes);
     appendParam('participantCategory', participantCategory);
     appendParam('callStatus', callStatus);
     appendParam('emailStatus', emailStatus);

@@ -16,6 +16,10 @@ const unexpected = name => { throw Error('Unexpected dependency: ' + name); };
 const children = node => [node?.props?.children].flat(Infinity);
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...children(node).flatMap(nodes)];
 const text = node => node == null || typeof node === 'boolean' ? '' : typeof node !== 'object' ? String(node) : children(node).map(text).join('');
+class ClickTarget {
+  constructor(...tags) { this.tags = tags; }
+  closest(selector) { return selector.split(',').some(candidate => this.tags.includes(candidate.trim())) ? this : null; }
+}
 const status = compile('app/dashboard/events/utils/statusHelper.ts', unexpected);
 const notes = compile('app/dashboard/events/utils/notesHelper.ts', unexpected);
 for (const [raw, canonical] of [[undefined, 'not_respon_yet'], ['white', 'not_respon_yet'], ['not_respond_yet', 'not_respon_yet'],
@@ -32,7 +36,10 @@ assert.equal(notes.getPreEventApprovalStatus({ event: { emsEventId: 9 }, preEven
 
 async function checkService() {
   const urls = [];
-  class ApiService { async get(url) { urls.push(url); return {}; } }
+  class ApiService {
+    async get(url) { urls.push(url); return {}; }
+    async put(url) { urls.push(url); return {}; }
+  }
   const { CrmService } = compile('lib/services/crmService.ts', name => name === './apiService' ? { ApiService } : unexpected(name));
   const service = new CrmService();
   for (const method of ['getEventParticipantsByEvent', 'getEventParticipantsSummary', 'getEventParticipantsSummaryByPic',
@@ -58,11 +65,15 @@ async function checkService() {
     const emptyQuery = new URL('http://local' + urls.at(-1)).searchParams;
     for (const key of Object.keys(reminderFilters)) assert.equal(emptyQuery.has(key), false, method + ' omits empty ' + key);
   }
+  await service.updateParticipantStatus(17, undefined, undefined, '');
+  assert.equal(new URL('http://local' + urls.at(-1)).searchParams.get('notes'), '', 'Clearing a Notes cell sends an explicit empty value');
+  await service.updateParticipantStatus(17, 'registered');
+  assert.equal(new URL('http://local' + urls.at(-1)).searchParams.has('notes'), false, 'An unrelated status update keeps notes untouched');
 }
 
 async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   const hooks = [], effects = [], calls = [], writes = [];
-  let cursor = 0, changed = false, tree;
+  let cursor = 0, changed = false, tree, pausedParticipantReads;
   let currentUrl = new URL('http://local/dashboard/events' + initialQuery);
   let currentSearchParams = new URLSearchParams(currentUrl.search);
   const historyEntries = [currentUrl.href];
@@ -126,6 +137,7 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     async getEventById(id) { return { ...event, id }; },
     async getDatabases() { return []; }, async getUsers() { return [admin]; }, async getEligibleManagersForEvent() { return [admin]; },
     async getEventParticipantsByEvent(id, params) {
+      if (pausedParticipantReads) await pausedParticipantReads;
       const result = filtered(params), size = Math.min(params.size || 25, 500), page = params.page || 1;
       return { items: result.slice((page - 1) * size, page * size), total: result.length, totalPages: Math.ceil(result.length / size) };
     },
@@ -223,6 +235,30 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     return;
   }
   assert.equal(find('RequestPreEventTable').props.filteredParticipants[0].confirmationStatus, 'decline', 'registered EMS must not display a saved Decline as Approve');
+  const originalTable = find('RequestPreEventTable').props;
+  const openedRow = originalTable.filteredParticipants[0];
+  originalTable.setSelectedParticipantIds([openedRow.id]);
+  originalTable.onOpenEngagementModal(openedRow); await settle();
+  assert.equal(find('EngagementModal').props.participant.id, openedRow.id, 'The table opens activity for the selected row');
+  assert.equal(find('EngagementModal').props.isOpen, true);
+  let releaseParticipantReads;
+  pausedParticipantReads = new Promise(resolve => { releaseParticipantReads = resolve; });
+  const beforeRefresh = calls.length;
+  find('EngagementModal').props.onActivityLogged();
+  await settle();
+  assert(find('RequestPreEventTable'), 'Refreshing after an activity keeps the scrollable table mounted');
+  assert.equal(calls.slice(beforeRefresh).find(call => call.name === 'getEventParticipantsByEvent').args[1].tab, 'request');
+  assert.equal(find('EngagementModal').props.participant.id, openedRow.id);
+  assert.equal(find('EngagementModal').props.isOpen, true, 'The same row can be edited again while its table refreshes');
+  find('EngagementModal').props.onNotesUpdated(openedRow.id, 'Latest note');
+  await settle();
+  assert.equal(find('EngagementModal').props.participant.notes, 'Latest note', 'Saving the note updates the open dialog immediately');
+  assert.equal(find('RequestPreEventTable').props.filteredParticipants[0].notes, 'Latest note', 'Saving the note updates the table while the refresh is pending');
+  releaseParticipantReads(); pausedParticipantReads = undefined;
+  await settle();
+  assert.equal(find('RequestPreEventTable').props.selectedParticipantIds[0], openedRow.id, 'Activity refresh preserves a valid table selection');
+  find('EngagementModal').props.onClose(); await settle();
+  assert(!find('EngagementModal'), 'Closing removes the inactive dialog');
   assert.equal(remarksSelect(), undefined, 'Data List has no Remarks filter');
   button('Pre-Event').props.onClick(); await settle();
   assert.equal(remarksSelect().props.value, '');
@@ -335,10 +371,11 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   assert.equal(pic.calls.filter(call => !call.name.startsWith('get')).length, 0, 'PIC filtering sends no writes');
 }
 
-async function mountApprovalComponent(name, initialProps, responses = {}) {
+async function mountApprovalComponent(name, initialProps, responses = {}, auth = { isAdmin: true, isManager: false, isUser: false }) {
   const hooks = [], effects = [], calls = [], messages = [];
   let cursor = 0, changed = false, tree;
   const React = {
+    Fragment: 'ReactFragment',
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useState(initial) {
       const index = cursor++;
@@ -354,13 +391,22 @@ async function mountApprovalComponent(name, initialProps, responses = {}) {
       hooks[index] = deps;
     },
     useRef(initial) { const index = cursor++; return hooks[index] ||= { current: initial }; },
+    useMemo(factory, deps) {
+      const index = cursor++, previous = hooks[index];
+      if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps[i]))) {
+        hooks[index] = { deps, value: factory() };
+      }
+      return hooks[index].value;
+    },
   };
   React.useLayoutEffect = React.useEffect;
-  React.useMemo = factory => factory();
-  React.useCallback = callback => callback;
+  React.useCallback = (callback, deps) => React.useMemo(() => callback, deps);
   const services = new Proxy({}, { get: (_, key) => async (...args) => {
     calls.push({ name: key, args });
-    if (Object.hasOwn(responses, key)) return responses[key];
+    if (Object.hasOwn(responses, key)) {
+      const response = responses[key];
+      return typeof response === 'function' ? response(...args) : response;
+    }
     if (key === 'getEventParticipantActivities') return [];
     return {};
   } });
@@ -368,28 +414,34 @@ async function mountApprovalComponent(name, initialProps, responses = {}) {
     if (module === 'react') return React;
     if (module === 'lucide-react') return {};
     if (module === 'sonner') return { toast: Object.fromEntries(['error', 'success', 'warning'].map(kind => [kind, message => messages.push({ kind, message })])) };
-    if (module.endsWith('/context/AuthContext')) return { useAuth: () => ({ isAdmin: true, isManager: false, isUser: false }) };
+    if (module === '@radix-ui/react-dialog') return Object.fromEntries(['Root', 'Portal', 'Overlay', 'Content', 'Title', 'Description', 'Close'].map(part => [part, 'RadixDialog' + part]));
+    if (module.endsWith('/context/AuthContext')) return { useAuth: () => auth };
     if (module.endsWith('/services/crmService')) return { crmService: services };
     if (module.endsWith('/utils/notesHelper')) return notes;
     if (module.endsWith('/utils/statusHelper')) return status;
     if (module.endsWith('/utils/columnConfigHelper')) return compile('app/dashboard/events/utils/columnConfigHelper.ts', unexpected);
     if (module.endsWith('/utils/phoneHelper')) return compile('app/dashboard/database/utils/phoneHelper.ts', unexpected);
-    if (module.endsWith('/utils/emailInput')) return compile('app/dashboard/database/utils/emailInput.ts', name => {
-      assert.equal(name, './emailCategory');
+    if (module.endsWith('/utils/emailInput')) return compile('app/dashboard/database/utils/emailInput.ts', dependencies);
+    if (module === './emailCategory' || module.endsWith('/utils/emailCategory')) {
       return compile('app/dashboard/database/utils/emailCategory.ts', name => { assert.equal(name, '../../events/utils/notesHelper'); return notes; });
-    });
+    }
     if (module.endsWith('/utils/companyBranch')) return compile('lib/utils/companyBranch.ts', unexpected);
     if (module === './EmsCompanyReviewNotice') return compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', dependencies);
+    if (module === './participantRowActions') return compile('app/dashboard/events/components/participantRowActions.ts', dependencies,
+      { Element: ClickTarget, HTMLElement: ClickTarget });
+    if (module === './ParticipantInlineEdit') return { ParticipantNotesCell: 'ParticipantNotesCell' };
+    if (module === './ParticipantLogCell') return { ParticipantLogCell: 'ParticipantLogCell' };
     if (module === './EventContactEditor') return { EventContactEditor: 'EventContactEditor' };
     if (module === './PicDailyReport') return { PicDailyReport: 'PicDailyReport' };
     if (module === './PicParticipantsPanel') return { PicParticipantsPanel: 'PicParticipantsPanel' };
     if (module.includes('/components/ui/')) return new Proxy({}, { get: (_, key) => key });
     return unexpected(module);
   };
-  const Component = compile('app/dashboard/events/components/' + name + '.tsx', dependencies)[name];
+  const fileName = name === 'ParticipantNotesCell' ? 'ParticipantInlineEdit' : name;
+  const Component = compile('app/dashboard/events/components/' + fileName + '.tsx', dependencies, { React, Error })[name];
   function render() {
     cursor = 0; changed = false; tree = Component(initialProps);
-    if (typeof tree?.type === 'function' && tree.type.name === 'SyncContent') tree = tree.type(tree.props);
+    if (typeof tree?.type === 'function' && ['SyncContent', 'EditableCell'].includes(tree.type.name)) tree = tree.type(tree.props);
     while (effects.length) effects.shift()();
   }
   async function settle() {
@@ -605,8 +657,266 @@ async function checkApprovalControls() {
   assert.equal(reviewParticipant.confirmationStatus, 'decline', 'Company review never changes Client Approval');
 }
 
+async function checkParticipantRowModal() {
+  const participant = { id: 71, database: { id: 81, firstName: 'Anonymous', lastName: 'Contact', isActive: true }, notes: '' };
+  const second = { id: 72, database: { ...participant.database, id: 82, firstName: 'Second' }, notes: '' };
+  const isRowEditor = node => ['ParticipantLogCell', 'ParticipantNotesCell', 'ParticipantRowDetails', 'EngagementModal'].includes(node.type);
+  const click = (target, detail = 1) => ({ button: 0, detail, defaultPrevented: false, target, stopPropagation() {} });
+  const tables = [
+    ['RequestPreEventTable', 'request'], ['RequestPreEventTable', 'pre_event'], ['RequestPreEventTable', 'declined'],
+    ['ReminderTable', 'reminder'], ['ReminderDdayTable', 'reminder_dday'],
+  ];
+  for (const [component, tab] of tables) {
+    const opened = [], selected = [];
+    const table = await mountApprovalComponent(component, {
+      activeTab: tab, isAdmin: true, isUser: false, filteredParticipants: [participant, second], selectedParticipantIds: [],
+      setSelectedParticipantIds: ids => selected.push(ids), onOpenEngagementModal: item => opened.push(item),
+      extractPicFromNotes: notes.extractPicFromNotes, getStatusBadgeStyle: () => '', getConfirmationStatusBadgeStyle: () => '',
+      checkDatabaseCompleteness: () => ({ isIncomplete: false, missingFields: [] }),
+      handleDirectUpdateParticipant() {}, handleOpenUpdateParticipantModal() {}, openDeleteParticipantConfirm() {},
+    });
+    const body = () => table.find(node => node.type === 'tbody');
+    const rows = () => nodes(body()).filter(node => node.type === 'tr');
+    const disclosure = row => nodes(row).find(node => node.type === 'button' && node.props['aria-label']?.startsWith('Detail peserta '));
+    assert.equal(rows().length, 2);
+    assert(!table.has(isRowEditor), tab + ' initially renders only row summaries');
+    const tableHeaders = nodes(table.find(node => node.type === 'thead')).filter(node => node.type === 'th').map(text);
+    assert(!tableHeaders.includes('Telemarketing Logs'), tab + ' keeps logging controls out of the list');
+    assert.equal(disclosure(rows()[0]).props['aria-label'], 'Detail peserta Anonymous Contact');
+    assert.equal(disclosure(rows()[0]).props['aria-haspopup'], 'dialog');
+
+    for (const target of [new ClickTarget('input'), new ClickTarget('button'), new ClickTarget('select'), new ClickTarget('span', 'button')]) {
+      await table.act(rows()[0].props.onClick, click(target));
+      assert.equal(opened.length, 0, tab + ' does not open a modal when an interactive control handles the click');
+    }
+    const textTarget = new ClickTarget('td');
+    await table.act(rows()[0].props.onClick, {
+      ...click(textTarget),
+      currentTarget: { ownerDocument: { getSelection: () => ({ isCollapsed: false, anchorNode: textTarget }) }, contains: target => target === textTarget },
+    });
+    assert.equal(opened.length, 0, tab + ' preserves the ability to select and copy row text');
+    const checkbox = nodes(rows()[0]).find(node => node.type === 'input' && node.props.type === 'checkbox');
+    await table.act(checkbox.props.onChange, { target: { checked: true } });
+    assert.equal(selected[0][0], participant.id);
+    assert.equal(opened.length, 0);
+
+    const focusCalls = [];
+    await table.act(rows()[0].props.onClick, {
+      ...click(new ClickTarget('td')),
+      currentTarget: {
+        ownerDocument: { getSelection: () => null },
+        querySelector: selector => {
+          assert.equal(selector, '[data-participant-details-trigger]');
+          return { focus: options => focusCalls.push(options.preventScroll) };
+        },
+      },
+    });
+    assert.deepEqual(opened, [participant], tab + ' opens the selected participant modal from a plain cell');
+    assert.deepEqual(focusCalls, [true], tab + ' sets an accessible return target without scrolling the table');
+    assert.equal(rows().length, 2, tab + ' does not insert a detail row after opening the dialog');
+    assert(!table.has(isRowEditor));
+
+    const secondDisclosure = disclosure(rows()[1]);
+    await table.act(secondDisclosure.props.onClick, click(new ClickTarget('button'), 0));
+    await table.act(rows()[1].props.onClick, click(new ClickTarget('button'), 0));
+    assert.deepEqual(opened, [participant, second], tab + ' keyboard activation opens only once');
+
+    await table.updateProps({ columnConfig: { firstName: false, lastName: false, telemarketingLogs: false } });
+    assert(disclosure(rows()[0]), tab + ' retains a keyboard entry point when name columns are hidden');
+    await table.act(disclosure(rows()[0]).props.onClick, click(new ClickTarget('button'), 0));
+    assert.deepEqual(opened, [participant, second, participant]);
+    await table.updateProps({ isUser: true, isAdmin: false, columnConfig: {} });
+    assert(!table.has(isRowEditor) && !disclosure(rows()[0]), tab + ' never shows editing controls to viewers');
+    if (rows()[0].props.onClick) await table.act(rows()[0].props.onClick, click(new ClickTarget('td')));
+    assert.equal(opened.length, 3, tab + ' viewers cannot open the edit details');
+  }
+}
+
+async function checkInlineCellSaves() {
+  const database = { id: 81, firstName: 'Anonymous', lastName: 'Contact', jobTitle: 'Analyst', isActive: true };
+  const participant = { id: 71, database, notes: '[PIC: Local Test] [Origin: Request] [PreEventApproval: approve] Old note' };
+  const fullName = 'Anonymous Contact';
+  const button = label => node => node.type === 'button' && node.props['aria-label'] === label;
+  const field = label => node => ['input', 'textarea'].includes(node.type) && node.props['aria-label'] === label;
+  const form = node => node.type === 'form';
+  const submitEvent = { preventDefault() {} };
+  const changeEvent = value => ({ target: { value } });
+  const savedNotes = [];
+  const note = await mountApprovalComponent('ParticipantNotesCell', {
+    participant, onSaved: (...args) => savedNotes.push(args),
+  });
+  await note.act(note.find(button('Edit Notes — ' + fullName)).props.onClick);
+  assert.equal(note.find(field('Notes')).props.value, 'Old note', 'System tags do not appear in the draft');
+  await note.act(note.find(field('Notes')).props.onChange, changeEvent(''));
+  await note.act(note.find(form).props.onSubmit, submitEvent);
+  const tags = '[PIC: Local Test] [Origin: Request] [PreEventApproval: approve]';
+  assert.deepEqual(note.calls, [{ name: 'updateParticipantStatus', args: [participant.id, undefined, undefined, tags] }]);
+  assert.deepEqual(savedNotes, [[participant.id, tags]], 'Clearing notes preserves all system tags');
+
+}
+
+async function checkInlineActivityLogging() {
+  const participant = { id: 71, database: { id: 81, firstName: 'Anonymous', lastName: 'Contact' } };
+  const saved = [];
+  let fail = false;
+  const activity = await mountApprovalComponent('ParticipantLogCell', {
+    participant, onLogged: () => saved.push(true),
+  }, { addEventParticipantActivity: () => { if (fail) throw new Error('Connection lost'); return {}; } });
+  const channelSelect = () => activity.find(node => node.type === 'select');
+  const form = () => activity.find(node => node.type === 'form');
+  const noteField = () => activity.find(node => node.type === 'textarea');
+  const submitEvent = { preventDefault() {} };
+  assert.equal(activity.calls.length, 0, 'Rendering the log cell neither fetches history nor writes activity');
+  assert.equal(form().props['aria-label'], 'Catat aktivitas Anonymous Contact');
+  assert.equal(channelSelect().props.value, 'CALL');
+  assert.deepEqual(nodes(channelSelect()).filter(node => node.type === 'option').map(node => node.props.value), ['CALL', 'EMAIL', 'WHATSAPP']);
+  for (const note of ['First call', 'Second call']) {
+    await activity.act(noteField().props.onChange, { target: { value: ' ' + note + ' ' } });
+    await activity.act(form().props.onSubmit, submitEvent);
+    const call = activity.calls.at(-1);
+    assert.equal(call.name, 'addEventParticipantActivity');
+    assert.equal(call.args[0], participant.id);
+    assert.equal(call.args[1].activityType, 'CALL');
+    assert.equal(call.args[1].notes, note);
+    assert.equal(noteField().props.value, '', 'A successful save clears the input and keeps the form open');
+    assert(activity.content.includes('Call Log tersimpan.'));
+  }
+  await activity.act(channelSelect().props.onChange, { target: { value: 'EMAIL' } });
+  await activity.act(form().props.onSubmit, submitEvent);
+  assert.equal(activity.calls.at(-1).args[1].activityType, 'EMAIL');
+  assert.equal(activity.calls.at(-1).args[1].status, 'COMPLETED');
+  assert(activity.calls.at(-1).args[1].notes, 'A log can be saved with the default note');
+  assert.equal(channelSelect().props.value, 'EMAIL', 'Saving preserves the chosen log channel');
+  await activity.act(channelSelect().props.onChange, { target: { value: 'WHATSAPP' } });
+  await activity.act(noteField().props.onChange, { target: { value: 'Retryable note' } });
+  fail = true;
+  await activity.act(form().props.onSubmit, submitEvent);
+  assert.equal(activity.calls.at(-1).args[1].activityType, 'WHATSAPP');
+  assert.equal(noteField().props.value, 'Retryable note');
+  assert(activity.has(node => node.props.role === 'alert' && text(node) === 'Connection lost'));
+  assert.equal(saved.length, 3, 'A failed log leaves the draft intact and does not trigger a refresh');
+}
+
+async function checkActivityHistoryDialog() {
+  const participant = { id: 71, database: {
+    id: 81, firstName: 'Anonymous', lastName: 'Contact', isActive: true,
+    mobilePhone: '081234567890, 081298765432', company: { name: 'Example', officePhone: '0215555000' },
+    emails: [{ email: 'secondary@example.invalid' }, { email: 'test+event@example.invalid', isPrimary: true }],
+  }, notes: '' };
+  const entries = [], profileChanges = [], noteChanges = [];
+  let activityChanges = 0, closed = 0;
+  const activityProps = {
+    isOpen: true, participant, onClose: () => { closed++; }, onActivityLogged: () => { activityChanges++; },
+    onContactUpdated: value => profileChanges.push(value),
+    onNotesUpdated: (...args) => noteChanges.push(args),
+  };
+  const modal = await mountApprovalComponent('EngagementModal', activityProps, {
+    getEventParticipantActivities: () => entries.slice(),
+  });
+  const root = () => modal.find(node => node.type === 'RadixDialogRoot');
+  assert.equal(root().props.open, true);
+  assert(modal.has(node => node.type === 'RadixDialogTitle' && text(node) === 'Anonymous Contact'));
+  assert.equal(modal.calls.filter(call => call.name === 'addEventParticipantActivity').length, 0, 'Opening a row does not record activity');
+
+  const composeName = 'Catat aktivitas';
+  const historyName = 'Riwayat aktivitas';
+  const tab = name => modal.find(node => node.props.role === 'tab' && node.props['aria-label'] === name);
+  const panel = name => modal.find(node => node.props.role === 'tabpanel' && node.props.id === tab(name).props['aria-controls']);
+  const contactLink = name => modal.find(node => node.type === 'a' && text(node).trim() === name);
+  const assertActiveTab = name => {
+    for (const label of [composeName, historyName]) {
+      assert.equal(tab(label).props['aria-selected'], label === name);
+      assert.equal(tab(label).props.tabIndex, label === name ? 0 : -1);
+      assert.equal(Boolean(panel(label).props.hidden), label !== name);
+      assert.equal(panel(label).props['aria-labelledby'], tab(label).props.id);
+    }
+  };
+  assert.equal(contactLink('Telepon').props.href, 'tel:+6281234567890');
+  assert.equal(contactLink('WhatsApp').props.href, 'https://wa.me/6281234567890');
+  assert.equal(contactLink('Email').props.href, 'mailto:' + encodeURIComponent('test+event@example.invalid'));
+  assertActiveTab(composeName);
+  const readsBeforeTabs = modal.calls.length;
+  await modal.act(tab(historyName).props.onClick);
+  assertActiveTab(historyName);
+  assert(nodes(panel(composeName)).some(node => node.type === 'ParticipantLogCell'), 'History hides the composer without discarding it');
+  await modal.act(tab(composeName).props.onClick);
+  assertActiveTab(composeName);
+  const tabKeyDown = modal.find(node => node.props.role === 'tablist').props.onKeyDown;
+  const focusedTabs = [];
+  let preventedTabKeys = 0;
+  const pressTabKey = key => modal.act(tabKeyDown, {
+    key, preventDefault: () => { preventedTabKeys++; },
+    currentTarget: { querySelector: selector => ({ focus: () => focusedTabs.push(selector) }) },
+  });
+  await pressTabKey('ArrowRight');
+  assertActiveTab(historyName);
+  await pressTabKey('Home');
+  assertActiveTab(composeName);
+  assert.equal(preventedTabKeys, 2);
+  assert.deepEqual(focusedTabs, ['[data-activity-tab="history"]', '[data-activity-tab="compose"]'], 'Keyboard selection focuses the active tab');
+  assert.equal(modal.calls.length, readsBeforeTabs, 'Switching tabs reuses loaded data and makes no writes');
+
+  const contactEditor = modal.find(node => node.type === 'EventContactEditor');
+  const updatedContact = { ...participant.database, firstName: 'Updated' };
+  await modal.act(contactEditor.props.onSaved, updatedContact);
+  assert.equal(profileChanges[0], updatedContact, 'Editing inside the activity dialog forwards the saved contact');
+  await modal.updateProps({ participant: { ...participant, database: updatedContact } });
+  assert(modal.has(node => node.type === 'RadixDialogTitle' && text(node) === 'Updated Contact'));
+
+  const noteEditor = modal.find(node => node.type === 'ParticipantNotesCell');
+  assert.equal(noteEditor.props.participant.id, participant.id);
+  await modal.act(() => noteEditor.props.onSaved(participant.id, 'Edited participant note'));
+  assert.deepEqual(noteChanges, [[participant.id, 'Edited participant note']]);
+
+  const logger = () => modal.find(node => node.type === 'ParticipantLogCell');
+  assert.equal(logger().props.participant.id, participant.id);
+  assert.equal(logger().props.onViewHistory, undefined, 'The form does not open a second modal');
+  await modal.act(logger().props.onSavingChange, true);
+  await modal.act(root().props.onOpenChange, false);
+  assert.equal(closed, 0, 'The dialog stays open while a log save is in flight');
+  await modal.act(logger().props.onSavingChange, false);
+  for (const activityType of ['CALL', 'EMAIL', 'WHATSAPP']) {
+    const note = activityType + ' fixture';
+    entries.push({ activityType, notes: note, id: entries.length + 1, createdBy: 'Local Test', timestamp: '2026-11-18T09:30:00Z' });
+    const before = modal.calls.filter(call => call.name === 'getEventParticipantActivities').length;
+    await modal.act(logger().props.onLogged);
+    const reads = modal.calls.filter(call => call.name === 'getEventParticipantActivities');
+    assert.equal(reads.length, before + 1, 'Saving in the embedded form refreshes history once');
+    assert.deepEqual(reads.at(-1).args, [participant.id]);
+    assert(modal.content.includes(note), 'The saved log appears in the history immediately');
+    assert.equal(root().props.open, true, 'The same activity dialog stays open after each log');
+  }
+  assert.equal(activityChanges, 3, 'Each saved activity notifies the table once');
+  await modal.act(tab(historyName).props.onClick);
+  assertActiveTab(historyName);
+  assert(text(panel(historyName)).includes('WHATSAPP fixture'), 'The history tab shows the latest saved activity');
+  await modal.act(tab(composeName).props.onClick);
+  assertActiveTab(composeName);
+  await modal.updateProps({ showLogForm: false });
+  assert(!modal.has(node => node.type === 'ParticipantLogCell'), 'The log preference controls the form');
+  assert(!modal.has(node => node.props.role === 'tab'), 'History remains visible without tabs when the composer is disabled');
+  assert(modal.has(node => node.type === 'EventContactEditor'), 'Hiding the log form does not remove contact access');
+  const readOnlyHistory = modal.find(node => node.props.id === `participant-activity-${participant.id}-history`);
+  assert(!readOnlyHistory.props.hidden && text(readOnlyHistory).includes('WHATSAPP fixture'), 'Activity history remains accessible when logging is disabled');
+  await modal.updateProps({ participant: { ...participant, database: {
+    ...participant.database, mobilePhone: '', emails: [{ email: 'invalid' }],
+  } } });
+  assert.equal(contactLink('Telepon').props.href, 'tel:+62215555000', 'Calling falls back to the listed office phone');
+  for (const label of ['WhatsApp', 'Email']) {
+    assert(modal.has(node => String(node.props['aria-disabled']) === 'true' && text(node).trim() === label), `${label} is unavailable without a usable destination`);
+    assert(!modal.has(node => node.type === 'a' && text(node).trim() === label));
+  }
+  await modal.act(root().props.onOpenChange, false);
+  assert.equal(closed, 1, 'Closing the controlled activity dialog notifies the page');
+
+  const viewer = await mountApprovalComponent('EngagementModal', activityProps, {}, { isAdmin: false, isManager: false, isUser: true });
+  assert(!viewer.has(node => node.type === 'EventContactEditor' || node.type === 'ParticipantLogCell'));
+  assert.equal(viewer.calls.filter(call => call.name === 'addEventParticipantActivity').length, 0);
+}
+
 (async () => {
-  await checkService(); await checkPage(); await checkApprovalControls();
+  await checkService(); await checkPage(); await checkApprovalControls(); await checkParticipantRowModal();
+  await checkInlineCellSaves(); await checkInlineActivityLogging(); await checkActivityHistoryDialog();
   for (const tab of ['request', 'pre_event', 'declined', 'reminder', 'reminder_dday']) {
     await checkPage('?eventId=40&tab=' + tab + '&view=keep#participants', tab);
   }
@@ -616,4 +926,5 @@ async function checkApprovalControls() {
   console.log('PASS: editable manual approval in table/edit/batch/engagement/page, current choice before next sync, fresh sync overwrite, no source badge/banner, Registered without approval, preserved Client Decline, Remarks scope and complete export.');
   console.log('PASS: all event-tab deep links, default/invalid tabs, preserved URL parameters, Back/Forward and a fresh event without a stale tab; navigation writes no business data.');
   console.log('PASS: Reminder H-7/H-3/H-1 controls, all six read/export query scopes, combined paginated filters, full export, live PIC summary refresh, reset and tab/event isolation without writes.');
+  console.log('PASS: click-to-open participant modal, keyboard access, isolated table actions, and repeated activity logging from one dialog.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

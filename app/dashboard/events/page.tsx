@@ -72,6 +72,7 @@ export default function EventsPage() {
   const [participantsTotal, setParticipantsTotal] = useState(0);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const participantsRequest = React.useRef(0);
+  const refreshCurrentParticipants = React.useRef<() => void>(() => {});
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
   const [participantSearchQuery, setParticipantSearchQuery] = useState('');
@@ -197,13 +198,11 @@ export default function EventsPage() {
   const [importParticipantsProgress, setImportParticipantsProgress] = useState(0);
   const [isImportingParticipants, setIsImportingParticipants] = useState(false);
 
-  const [isEngagementModalOpen, setIsEngagementModalOpen] = useState(false);
   const [selectedEngagementParticipant, setSelectedEngagementParticipant] = useState<EventParticipant | null>(null);
   const [isManagePicsModalOpen, setIsManagePicsModalOpen] = useState(false);
 
   const handleOpenEngagementModal = (participant: EventParticipant) => {
     setSelectedEngagementParticipant(participant);
-    setIsEngagementModalOpen(true);
   };
 
   const handleManagePicsSaved = async () => {
@@ -648,14 +647,16 @@ export default function EventsPage() {
     handleResetFilters();
   };
 
-  const loadParticipantsForEvent = async (event: Event, targetTab?: EventTab) => {
+  const loadParticipantsForEvent = async (event: Event, targetTab?: EventTab, showLoading = true) => {
     const request = ++participantsRequest.current;
-    if (selectedEvent?.id !== event.id) {
-      setFilterRemarks(''); setFilterReminderH7(''); setFilterReminderH3(''); setFilterReminderH1('');
+    if (showLoading) {
+      if (selectedEvent?.id !== event.id) {
+        setFilterRemarks(''); setFilterReminderH7(''); setFilterReminderH3(''); setFilterReminderH1('');
+      }
+      setSelectedEvent(event);
+      setLoadingParticipants(true);
+      setSelectedParticipantIds([]);
     }
-    setSelectedEvent(event);
-    setLoadingParticipants(true);
-    setSelectedParticipantIds([]); // reset selection
     const effectiveTab = targetTab || activeTab;
     try {
       const remarks = effectiveTab === 'pre_event' && selectedEvent?.id === event.id ? filterRemarks || undefined : undefined;
@@ -706,11 +707,40 @@ export default function EventsPage() {
       setEventStatistics(statisticsResponse || null);
       setParticipantFilterOptions(filterOptionsResponse || null);
       setParticipantsTotal(tableResponse?.total || 0);
+      if (!showLoading) {
+        const visibleIds = new Set(tableParticipants.map(participant => participant.id));
+        setSelectedParticipantIds(current => current.filter(id => visibleIds.has(id)));
+      }
     } catch (err) {
       if (request === participantsRequest.current) toast.error('Failed to fetch participants for this event');
     } finally {
       if (request === participantsRequest.current) setLoadingParticipants(false);
     }
+  };
+
+  useEffect(() => {
+    refreshCurrentParticipants.current = () => {
+      if (selectedEvent && String(selectedEvent.id) === eventIdParam) {
+        void loadParticipantsForEvent(selectedEvent, activeTab, false);
+      }
+    };
+  });
+
+  const handleEventActivityLogged = () => refreshCurrentParticipants.current();
+
+  const handleEventContactUpdated = (database: Database) => {
+    const updateContact = (participant: EventParticipant) => participant.database.id === database.id
+      ? { ...participant, database: { ...participant.database, ...database } } : participant;
+    setParticipants(current => current.map(updateContact));
+    setActiveParticipant(current => current && updateContact(current));
+    setSelectedEngagementParticipant(current => current && updateContact(current));
+    handleEventActivityLogged();
+  };
+
+  const handleEventNotesUpdated = (participantId: number, notes: string) => {
+    setParticipants(current => current.map(participant => participant.id === participantId ? { ...participant, notes } : participant));
+    setSelectedEngagementParticipant(current => current?.id === participantId ? { ...current, notes } : current);
+    handleEventActivityLogged();
   };
 
   const handleSelectEvent = async (event: Event) => {
@@ -2212,11 +2242,7 @@ export default function EventsPage() {
           }}
           activeParticipant={activeParticipant}
           canEditContact={(isAdmin || isManager) && !isUser}
-          onContactUpdated={(database) => {
-            setActiveParticipant(current => current ? { ...current, database } : current);
-            setSelectedEngagementParticipant(current => current?.database.id === database.id ? { ...current, database } : current);
-            if (selectedEvent) void loadParticipantsForEvent(selectedEvent, activeTab);
-          }}
+          onContactUpdated={handleEventContactUpdated}
           activeTab={activeTab}
           usersList={eligiblePicUsers}
           onSubmit={handleUpdateParticipantStatus}
@@ -2281,18 +2307,19 @@ export default function EventsPage() {
       />
 
       {/* Engagement History Modal */}
-      <EngagementModal
-        emsApprovalManaged={emsApprovalManaged}
-        isOpen={isEngagementModalOpen}
-        onClose={() => {
-          setIsEngagementModalOpen(false);
-          setSelectedEngagementParticipant(null);
-        }}
-        participant={selectedEngagementParticipant}
-        onActivityLogged={() => {
-          if (selectedEvent) loadParticipantsForEvent(selectedEvent);
-        }}
-      />
+      {selectedEngagementParticipant && (
+        <EngagementModal
+          key={selectedEngagementParticipant.id}
+          emsApprovalManaged={emsApprovalManaged}
+          isOpen
+          onClose={() => setSelectedEngagementParticipant(null)}
+          participant={selectedEngagementParticipant}
+          onContactUpdated={!isViewer ? handleEventContactUpdated : undefined}
+          onNotesUpdated={!isViewer ? handleEventNotesUpdated : undefined}
+          onActivityLogged={handleEventActivityLogged}
+          showLogForm={columnConfig.telemarketingLogs !== false}
+        />
+      )}
     </div>
   );
 }

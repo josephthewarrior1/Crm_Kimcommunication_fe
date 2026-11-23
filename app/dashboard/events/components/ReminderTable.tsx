@@ -1,12 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { EventParticipant } from '../../../../lib/types';
+import type { EventParticipant } from '../../../../lib/types';
 import { getContactOffice } from '../../../../lib/utils/companyBranch';
-import { AlertCircle, Edit2, Trash2, History, ShieldAlert, UserX, MoreVertical } from 'lucide-react';
+import { AlertCircle, Edit2, Trash2, ShieldAlert, UserX, MoreVertical } from 'lucide-react';
 import { extractPicFromNotes, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigHelper';
 import { EmsCompanyReviewNotice } from './EmsCompanyReviewNotice';
 
 import { normalizePhone } from '../../database/utils/phoneHelper';
+import { getParticipantRowActions } from './participantRowActions';
 
 interface ReminderTableProps {
   filteredParticipants: EventParticipant[];
@@ -46,6 +47,7 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
   const tableRef = useRef<HTMLTableElement>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const openDetails = isUser ? undefined : onOpenEngagementModal;
 
   useEffect(() => {
     if (tableRef.current) {
@@ -118,7 +120,6 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
             {columnConfig.officeEmail !== false && <th className="py-3 px-3">Office Email</th>}
             {columnConfig.personalEmail !== false && <th className="py-3 px-3">Personal Email</th>}
             {columnConfig.industry !== false && <th className="py-3 px-3">Industry</th>}
-            {columnConfig.telemarketingLogs !== false && onOpenEngagementModal && <th className="py-3 px-3">Telemarketing Logs</th>}
             {columnConfig.remarks !== false && (
               <>
                 <th className="py-3 px-3 text-center">H-7</th>
@@ -137,10 +138,11 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
             const isTikus = Boolean(!isTakeout && (!p.database?.isActive || (p.database as any)?.isSuspected || p.notes?.includes('[TIKUS]') || p.notes?.includes('Tikus') || p.participantStatus === 'red'));
             const isDeclined = p.emsClientDeclineReviewRequired === true || p.confirmationStatus === 'decline' || p.confirmationStatus === 'declined';
             
+            const { onRowClick, buttonProps } = getParticipantRowActions(p, openDetails);
             return (
               <tr
-                key={p.id}
-                className={`relative transition-colors border-b border-slate-100 ${
+                key={p.id} onClick={onRowClick}
+                className={`relative transition-colors border-b border-slate-100 ${openDetails ? 'cursor-pointer' : ''} ${
                   isTikus
                     ? 'bg-red-50/70 hover:bg-red-100/70'
                     : isTakeout
@@ -152,10 +154,9 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
               >
                 {!isUser && (
                   <td
-                    onClick={(e) => e.stopPropagation()}
                     className={`py-2.5 px-3 text-left sticky left-0 bg-white ${openMenuId === p.id ? 'z-40' : 'z-[1]'}`}
                   >
-                    <div className="relative">
+                    <div className="relative inline-flex items-center gap-1.5 whitespace-nowrap" onClick={event => event.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => setOpenMenuId((current) => (current === p.id ? null : p.id))}
@@ -163,6 +164,11 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
+                      {openDetails && columnConfig.firstName === false && columnConfig.lastName === false && (
+                        <button {...buttonProps} className="sr-only focus:not-sr-only focus:rounded focus:px-2 focus:outline-2 focus:outline-blue-600">
+                          Detail
+                        </button>
+                      )}
                       {openMenuId === p.id && (
                         <>
                           <div
@@ -267,12 +273,20 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 )}
                 {columnConfig.firstName !== false && (
                   <td className="py-2.5 px-3 font-semibold text-slate-900">
-                    {p.database.firstName}
+                    {openDetails ? (
+                      <button {...buttonProps} className="rounded text-left focus-visible:outline-2 focus-visible:outline-blue-600">
+                        {p.database.firstName || '-'}
+                      </button>
+                    ) : p.database.firstName || '-'}
                   </td>
                 )}
                 {columnConfig.lastName !== false && (
                   <td className="py-2.5 px-3 font-semibold text-slate-900">
-                    {p.database.lastName || '-'}
+                    {openDetails && columnConfig.firstName === false ? (
+                      <button {...buttonProps} className="rounded text-left focus-visible:outline-2 focus-visible:outline-blue-600">
+                        {p.database.lastName || '-'}
+                      </button>
+                    ) : p.database.lastName || '-'}
                   </td>
                 )}
                 {columnConfig.positionLevel !== false && (
@@ -308,18 +322,6 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                 {columnConfig.industry !== false && (
                   <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
                     {p.database.company?.industry || '-'}
-                  </td>
-                )}
-                {columnConfig.telemarketingLogs !== false && onOpenEngagementModal && (
-                  <td className="py-2.5 px-3">
-                    <button
-                      onClick={() => onOpenEngagementModal(p)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-md border border-slate-200 transition-all focus:outline-none cursor-pointer"
-                      title="Buka Telemarketing Logs (Call, Email, WA)"
-                    >
-                      <History className="w-4 h-4 text-slate-500" />
-                      <span>View Logs</span>
-                    </button>
                   </td>
                 )}
                 {columnConfig.remarks !== false && (
@@ -381,12 +383,8 @@ export const ReminderTable: React.FC<ReminderTableProps> = ({
                   </>
                 )}
                 {columnConfig.notes !== false && (
-                  <td
-                    onClick={() => handleOpenUpdateParticipantModal(p)}
-                    className="py-2.5 px-3 text-slate-600 max-w-[140px] truncate cursor-pointer hover:text-blue-600 hover:underline transition-all"
-                    title="Click to edit notes & details"
-                  >
-                    {extractPicFromNotes(p.notes).cleanNotes || '-'}
+                  <td className="py-2.5 px-3 text-slate-600 max-w-[160px] [overflow-wrap:anywhere]">
+                    {extractPicFromNotes(p.notes).cleanNotes}
                   </td>
                 )}
               <td className="hidden">
