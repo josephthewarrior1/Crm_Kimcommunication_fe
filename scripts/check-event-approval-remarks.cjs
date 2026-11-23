@@ -78,6 +78,9 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   let currentSearchParams = new URLSearchParams(currentUrl.search);
   const historyEntries = [currentUrl.href];
   let historyIndex = 0;
+  let timerId = 0;
+  const timers = new Map();
+  let pausedStatisticsReads;
   const updateUrl = url => {
     currentUrl = new URL(url, currentUrl);
     currentSearchParams = new URLSearchParams(currentUrl.search);
@@ -109,11 +112,20 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     },
     useEffect(effect, deps) {
       const index = cursor++, previous = hooks[index];
-      if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous[i]))) effects.push(effect);
-      hooks[index] = deps;
+      if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps[i]))) {
+        const next = { deps, cleanup: undefined };
+        hooks[index] = next;
+        effects.push(() => { previous?.cleanup?.(); next.cleanup = effect(); });
+      }
     },
     useRef(initial) { const index = cursor++; return hooks[index] ||= { current: initial }; },
+    useMemo(factory, deps) {
+      const index = cursor++, previous = hooks[index];
+      if (!previous || deps.some((value, i) => !Object.is(value, previous.deps[i]))) hooks[index] = { deps, value: factory() };
+      return hooks[index].value;
+    },
   };
+  React.useCallback = (callback, deps) => React.useMemo(() => callback, deps);
   const admin = { id: 1, username: 'admin', fullName: 'Local Test', roles: ['ADMIN'], allowedEventIds: [17, 18] };
   const event = { id: 17, name: 'Local fixture', syncDestination: 'company', emsSource: 'V2', emsEventId: 9 };
   const make = (id, participantStatus, expectedRemark, confirmationStatus = 'approve') => ({
@@ -127,6 +139,7 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     ...Array.from({ length: 601 }, (_, index) => make(index + 2, 'registered', 'registered')),
     make(603, 'white', 'not_respon_yet'), make(604, 'yellow', 'tentative'), make(605, 'not_respond_2x', 'not_respond_2x')];
   const filtered = params => rows.filter(row => (params.tab !== 'pre_event' || row.confirmationStatus !== 'decline') &&
+    (!params.search || row.database.firstName.toLowerCase().includes(params.search.toLowerCase())) &&
     (!params.remarks || row.expectedRemark === params.remarks) &&
     ['reminderH7', 'reminderH3', 'reminderH1'].every(key => params.tab !== 'reminder' || !params[key]
       || (params[key] === '__empty__' ? !row[key] : row[key] === params[key])));
@@ -142,7 +155,11 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
       return { items: result.slice((page - 1) * size, page * size), total: result.length, totalPages: Math.ceil(result.length / size) };
     },
     async getEventParticipantsSummary(id, params) { return { totalParticipants: filtered(params).length }; },
-    async getEventStatistics(id, params) { return { eventId: id, tab: params.tab, scopes: { all: {}, mine: {} } }; },
+    async getEventStatistics(id, params) {
+      if (pausedStatisticsReads) await pausedStatisticsReads;
+      const scope = { participantCount: filtered(params).length };
+      return { eventId: id, tab: params.tab, scopes: { all: scope, mine: scope } };
+    },
     async getEventParticipantFilterOptions() { return { companies: [], positions: [], industries: [], pics: [] }; },
     async exportEventParticipants(id, params) {
       const result = filtered(params);
@@ -154,7 +171,7 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   }]));
   const components = {};
   const component = name => components[name] ||= Object.defineProperty(() => null, 'name', { value: name });
-  const router = { push(url) { nativeHistory.pushState(null, '', url); } };
+  const router = { push(url) { nativeHistory.pushState(null, '', url); }, replace(url) { nativeHistory.replaceState(null, '', url); } };
   const dependency = name => {
     if (name === 'react') return React;
     if (name === 'next/navigation') return { useRouter: () => router, useSearchParams: () => currentSearchParams };
@@ -171,7 +188,9 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     return unexpected(name);
   };
   const Page = compile('app/dashboard/events/page.tsx', dependency, {
-    URL, window: browserWindow, localStorage: { getItem: key => key === 'session' ? 'local' : null, setItem() {} },
+    URL, AbortController, window: browserWindow,
+    setTimeout(callback, delay) { assert.equal(delay, 250); timers.set(++timerId, callback); return timerId; },
+    clearTimeout(id) { timers.delete(id); },
   }).default;
   const toolbarComponent = compile('app/dashboard/events/components/ParticipantToolbar.tsx', name => name === 'react' ? React :
     name === 'lucide-react' ? {} : name.endsWith('/statusHelper') ? status : unexpected(name)).ParticipantToolbar;
@@ -193,7 +212,9 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   if (expectedInitialTab !== undefined) {
     const initialEventId = Number(currentUrl.searchParams.get('eventId') || currentUrl.searchParams.get('id'));
     const participantRequests = () => calls.filter(call => call.name === 'getEventParticipantsByEvent' && call.args[0] === initialEventId);
-    assert(participantRequests().length > 0, 'Initial deep link loads participants');
+    assert.equal(participantRequests().length, 1, 'Initial deep link fetches one participant page');
+    assert.equal(calls.filter(call => call.name === 'getEventById').length, 1, 'Initial deep link fetches metadata once');
+    assert(!calls.some(call => ['getEventsList', 'getDatabases', 'getEventParticipantsSummary'].includes(call.name)), 'A deep link does not load the event index, full contacts, or duplicate summary');
     assert(participantRequests().every(call => call.args[1].tab === expectedInitialTab), 'The initial participant requests use the URL tab, without a transient Data List request');
     assert.equal(find('EventStatistics').props.activeTab, expectedInitialTab, 'Visible active tab matches the deep link');
     const originalUrl = new URL(currentUrl);
@@ -206,13 +227,14 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     assert.equal(currentUrl.hash, originalUrl.hash, 'Tab changes preserve the URL fragment');
     assert.equal(find('EventStatistics').props.activeTab, switchTo);
     assert.equal(participantRequests().at(-1).args[1].tab, switchTo);
+    const visitedReads = participantRequests().length;
     nativeHistory.back(); await settle();
     assert.equal(currentUrl.href, originalUrl.href);
     assert.equal(find('EventStatistics').props.activeTab, expectedInitialTab, 'Back restores the prior tab from the URL');
-    assert.equal(participantRequests().at(-1).args[1].tab, expectedInitialTab);
+    assert.equal(participantRequests().length, visitedReads, 'Back restores a recent tab from in-memory cache');
     nativeHistory.forward(); await settle();
     assert.equal(find('EventStatistics').props.activeTab, switchTo, 'Forward restores the next URL tab');
-    assert.equal(participantRequests().at(-1).args[1].tab, switchTo);
+    assert.equal(participantRequests().length, visitedReads, 'Forward restores a recent tab without issuing a duplicate page request');
     const beforeChangingEvent = calls.length;
     router.push('/dashboard/events?eventId=18'); await settle();
     assert.equal(find('EventStatistics').props.activeTab, 'request', 'A URL for another event without tab defaults to Data List');
@@ -234,6 +256,35 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     assert.equal(calls.filter(call => ['updateParticipantStatus', 'updatePreEventApprovalStatus', 'bulkUpdateEventParticipants'].includes(call.name)).length, 0, 'Tab navigation does not write business data');
     return;
   }
+  const readNames = ['getEventParticipantsByEvent', 'getEventStatistics', 'getEventParticipantFilterOptions'];
+  assert.equal(calls.filter(call => readNames.includes(call.name)).length, 3, 'Fresh Event loads only its table, statistics and filter options');
+  let releaseStatistics;
+  pausedStatisticsReads = new Promise(resolve => { releaseStatistics = resolve; });
+  const beforeTyping = calls.length;
+  for (const search of ['A', 'An', 'Ano', 'Anon', 'Anonymous']) {
+    find('ParticipantToolbar').props.setSearchQuery(search);
+    await settle();
+  }
+  assert.equal(calls.length, beforeTyping, 'Typing does not issue interim requests');
+  assert.equal(timers.size, 1, 'Each keystroke cancels the prior timer');
+  for (const callback of timers.values()) callback();
+  timers.clear();
+  await settle();
+  const searchReads = calls.slice(beforeTyping);
+  assert.equal(searchReads.length, 3, 'Five keystrokes produce one set of three GETs');
+  assert(searchReads.every(call => call.args[1].search === 'Anonymous'));
+  assert.equal(searchReads.find(call => call.name === 'getEventParticipantsByEvent').args[1].size, 25);
+  assert.equal(find('RequestPreEventTable').props.filteredParticipants.length, 25, 'The table is usable while statistics is still pending');
+  find('ParticipantToolbar').props.handleResetFilters();
+  await settle();
+  assert(searchReads.find(call => call.name === 'getEventStatistics').args[2].aborted, 'Leaving a query aborts outstanding statistics');
+  assert.equal(calls.length, beforeTyping + 3, 'Clearing search restores the cached table and metadata');
+  releaseStatistics(); pausedStatisticsReads = undefined;
+  await settle();
+  const beforeWorkspace = calls.length;
+  const workspace = await find('EventStatistics').props.loadWorkspaceParticipants(true, new AbortController().signal);
+  assert.equal(workspace.length, rows.length, 'PIC assignment loads every page only when requested');
+  assert.deepEqual(calls.slice(beforeWorkspace).map(call => call.args[1].page), [1, 2]);
   assert.equal(find('RequestPreEventTable').props.filteredParticipants[0].confirmationStatus, 'decline', 'registered EMS must not display a saved Decline as Approve');
   const originalTable = find('RequestPreEventTable').props;
   const openedRow = originalTable.filteredParticipants[0];
@@ -267,7 +318,7 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   assert.equal(remarksSelect().props.value, 'registered');
   assert.equal(find('RequestPreEventTable').props.filteredParticipants.length, 25, 'table uses requested page size');
   assert.ok(find('RequestPreEventTable').props.filteredParticipants.every(row => row.expectedRemark === 'registered'));
-  for (const name of ['getEventParticipantsByEvent', 'getEventParticipantsSummary', 'getEventStatistics', 'getEventParticipantFilterOptions']) {
+  for (const name of readNames) {
     assert.equal(calls.filter(call => call.name === name).at(-1).args[1].remarks, 'registered', name + ' receives Remarks');
   }
   await button('Export Excel').props.onClick();
@@ -277,9 +328,11 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   assert.equal(remarksSelect().props.value, '');
   remarksSelect().props.onChange({ target: { value: 'not_respond_2x' } }); await settle();
   assert.equal(find('RequestPreEventTable').props.filteredParticipants.length, 1);
+  const beforeRequestTab = calls.length;
   button('Data List').props.onClick(); await settle();
   assert.equal(remarksSelect(), undefined);
-  assert.equal(calls.filter(call => call.name === 'getEventParticipantsByEvent').at(-1).args[1].remarks, undefined);
+  assert.equal(find('RequestPreEventTable').props.filteredParticipants.length, 25, 'Data List restores its unfiltered page');
+  assert(calls.slice(beforeRequestTab).filter(call => call.name === 'getEventParticipantsByEvent').every(call => call.args[1].remarks === undefined));
   button('Pre-Event').props.onClick(); await settle();
   assert.equal(remarksSelect().props.value, '', 'changing tabs clears Remarks');
   remarksSelect().props.onChange({ target: { value: 'tentative' } }); await settle();
@@ -324,12 +377,14 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   }
   reminderSelect('h7').props.onChange({ target: { value: 'confirm' } }); await settle();
   reminderSelect('h3').props.onChange({ target: { value: 'tentative' } }); await settle();
+  const beforeNextPage = calls.length;
   button('Next').props.onClick(); await settle();
+  assert.deepEqual(calls.slice(beforeNextPage).map(call => call.name), ['getEventParticipantsByEvent'], 'Pagination fetches only the table page');
   const tableQuery = () => calls.filter(call => call.name === 'getEventParticipantsByEvent' && call.args[1].size === 25).at(-1).args[1];
   assert.equal(tableQuery().page, 2, 'Reminder can navigate the filtered result pages');
   reminderSelect('h1').props.onChange({ target: { value: '__empty__' } }); await settle();
   const selectedFilters = { reminderH7: 'confirm', reminderH3: 'tentative', reminderH1: '__empty__' };
-  for (const name of ['getEventParticipantsByEvent', 'getEventParticipantsSummary', 'getEventStatistics', 'getEventParticipantFilterOptions']) {
+  for (const name of readNames) {
     const query = calls.filter(call => call.name === name).at(-1).args[1];
     for (const [key, value] of Object.entries(selectedFilters)) assert.equal(query[key], value, name + ' receives ' + key);
   }
@@ -359,9 +414,12 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   find('ParticipantToolbar').props.handleResetFilters(); await settle();
   for (const stage of ['h7', 'h3', 'h1']) assert.equal(reminderSelect(stage).props.value, '', 'Reset clears ' + stage);
   reminderSelect('h7').props.onChange({ target: { value: 'not_respon_yet' } }); await settle();
+  const beforePreEventTab = calls.length;
   button('Pre-Event').props.onClick(); await settle();
   for (const stage of ['h7', 'h3', 'h1']) assert.equal(reminderSelect(stage), undefined, 'Reminder controls are hidden on Pre-Event');
-  for (const key of Object.keys(selectedFilters)) assert.equal(calls.filter(call => call.name === 'getEventParticipantsByEvent').at(-1).args[1][key], undefined, 'Changing tabs clears ' + key);
+  for (const request of calls.slice(beforePreEventTab).filter(call => call.name === 'getEventParticipantsByEvent')) {
+    for (const key of Object.keys(selectedFilters)) assert.equal(request.args[1][key], undefined, 'Changing tabs clears ' + key);
+  }
   button('Reminder').props.onClick(); await settle();
   for (const stage of ['h7', 'h3', 'h1']) assert.equal(reminderSelect(stage).props.value, '', 'Returning to Reminder does not revive stale filters');
   reminderSelect('h1').props.onChange({ target: { value: 'not_respond_2x' } }); await settle();
@@ -429,6 +487,7 @@ async function mountApprovalComponent(name, initialProps, responses = {}, auth =
     if (module === './EmsCompanyReviewNotice') return compile('app/dashboard/events/components/EmsCompanyReviewNotice.tsx', dependencies);
     if (module === './participantRowActions') return compile('app/dashboard/events/components/participantRowActions.ts', dependencies,
       { Element: ClickTarget, HTMLElement: ClickTarget });
+    if (module === './ParticipantEmailCell') return compile('app/dashboard/events/components/ParticipantEmailCell.tsx', dependencies, { React });
     if (module === './ParticipantInlineEdit') return { ParticipantNotesCell: 'ParticipantNotesCell' };
     if (module === './ParticipantLogCell') return { ParticipantLogCell: 'ParticipantLogCell' };
     if (module === './EventContactEditor') return { EventContactEditor: 'EventContactEditor' };
@@ -438,7 +497,7 @@ async function mountApprovalComponent(name, initialProps, responses = {}, auth =
     return unexpected(module);
   };
   const fileName = name === 'ParticipantNotesCell' ? 'ParticipantInlineEdit' : name;
-  const Component = compile('app/dashboard/events/components/' + fileName + '.tsx', dependencies, { React, Error })[name];
+  const Component = compile('app/dashboard/events/components/' + fileName + '.tsx', dependencies, { React, Error, AbortController })[name];
   function render() {
     cursor = 0; changed = false; tree = Component(initialProps);
     if (typeof tree?.type === 'function' && ['SyncContent', 'EditableCell'].includes(tree.type.name)) tree = tree.type(tree.props);
@@ -666,6 +725,13 @@ async function checkParticipantRowModal() {
     ['RequestPreEventTable', 'request'], ['RequestPreEventTable', 'pre_event'], ['RequestPreEventTable', 'declined'],
     ['ReminderTable', 'reminder'], ['ReminderDdayTable', 'reminder_dday'],
   ];
+  const compactHeaders = ['Company', 'Salutation', 'First Name', 'Last Name', 'Job Title', 'Mobile Phone', 'Email', 'Remarks'];
+  const tabControls = {
+    pre_event: ['PIC', 'Pre Event Approval'],
+    declined: ['Client Status'],
+    reminder: ['H-7', 'H-3', 'H-1'],
+    reminder_dday: ['Hari H'],
+  };
   for (const [component, tab] of tables) {
     const opened = [], selected = [];
     const table = await mountApprovalComponent(component, {
@@ -682,6 +748,17 @@ async function checkParticipantRowModal() {
     assert(!table.has(isRowEditor), tab + ' initially renders only row summaries');
     const tableHeaders = nodes(table.find(node => node.type === 'thead')).filter(node => node.type === 'th').map(text);
     assert(!tableHeaders.includes('Telemarketing Logs'), tab + ' keeps logging controls out of the list');
+    if (tab === 'request') {
+      for (const header of ['Company Name', 'Position', 'Office Phone', 'Office Email', 'Personal Email', 'Industry', 'Reg Date', 'Client Approval', 'Notes']) {
+        assert(tableHeaders.includes(header), 'Data List keeps ' + header);
+      }
+      assert(!tableHeaders.includes('Email'));
+    } else {
+      const first = tableHeaders.indexOf('Company');
+      assert.notEqual(first, -1);
+      assert.deepEqual(tableHeaders.slice(first, first + compactHeaders.length), compactHeaders, tab + ' shows the compact columns in order');
+      for (const header of tabControls[tab]) assert(tableHeaders.includes(header), tab + ' keeps ' + header);
+    }
     assert.equal(disclosure(rows()[0]).props['aria-label'], 'Detail peserta Anonymous Contact');
     assert.equal(disclosure(rows()[0]).props['aria-haspopup'], 'dialog');
 
@@ -730,6 +807,17 @@ async function checkParticipantRowModal() {
     if (rows()[0].props.onClick) await table.act(rows()[0].props.onClick, click(new ClickTarget('td')));
     assert.equal(opened.length, 3, tab + ' viewers cannot open the edit details');
   }
+
+  const office = { email: 'office@example.com', emailType: 'company' };
+  const personal = { email: 'personal@example.com', emailType: 'personal' };
+  const emailCell = await mountApprovalComponent('ParticipantEmailCell', { emails: [personal, office], columnConfig: {} });
+  assert.equal(emailCell.content, office.email, 'The compact table shows an office address first');
+  await emailCell.updateProps({ emails: [personal] });
+  assert.equal(emailCell.content, personal.email + 'Personal', 'Personal-only contacts display their category');
+  await emailCell.updateProps({ emails: [personal, office], columnConfig: { officeEmail: false } });
+  assert.equal(emailCell.content, personal.email + 'Personal', 'The shared cell respects the office column preference');
+  await emailCell.updateProps({ columnConfig: { officeEmail: false, personalEmail: false } });
+  assert.equal(emailCell.content, '', 'The shared cell respects both column preferences');
 }
 
 async function checkInlineCellSaves() {

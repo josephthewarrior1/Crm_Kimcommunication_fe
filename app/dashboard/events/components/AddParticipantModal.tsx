@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
-import { Event, EventAvailableDatabasesResponse, EventParticipant } from '../../../../lib/types';
+import { Event, EventAvailableDatabasesResponse } from '../../../../lib/types';
 import { crmService } from '../../../../lib/services/crmService';
 import { toast } from 'sonner';
 
@@ -8,7 +8,7 @@ interface AddParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedEvent: Event;
-  participants: EventParticipant[];
+  participantCount: number;
   onAddParticipant: (selectedIds: number[], notes: string) => Promise<void>;
   submittingParticipant: boolean;
 }
@@ -30,7 +30,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   isOpen,
   onClose,
   selectedEvent,
-  participants,
+  participantCount,
   onAddParticipant,
   submittingParticipant
 }) => {
@@ -48,27 +48,34 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    const controller = new AbortController();
+    const search = databaseSearch.trim();
+    setLoadingDatabases(true);
     const loadAvailableDatabases = async () => {
-      setLoadingDatabases(true);
       try {
         const result = await crmService.getAvailableDatabasesForEvent(selectedEvent.id, {
-          search: databaseSearch || undefined,
+          search: search || undefined,
           company: filterAddParticipantCompany || undefined,
           position: filterAddParticipantPosition || undefined,
           industry: filterAddParticipantIndustry || undefined,
           city: filterAddParticipantCity || undefined,
           invitedEventId: filterAddParticipantEventId || undefined
-        });
-        setResponse(result || emptyResponse);
+        }, controller.signal);
+        if (!controller.signal.aborted) setResponse(result || emptyResponse);
       } catch {
+        if (controller.signal.aborted) return;
         setResponse(emptyResponse);
         toast.error('Failed to load available databases');
       } finally {
-        setLoadingDatabases(false);
+        if (!controller.signal.aborted) setLoadingDatabases(false);
       }
     };
 
-    void loadAvailableDatabases();
+    const timer = setTimeout(() => void loadAvailableDatabases(), search ? 250 : 0);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [
     isOpen,
     selectedEvent.id,
@@ -106,7 +113,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedDatabaseIds.length === 0) return;
+    if (loadingDatabases || selectedDatabaseIds.length === 0) return;
     void onAddParticipant(selectedDatabaseIds, notes);
   };
 
@@ -317,9 +324,9 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
               <p className="text-[10px] text-slate-500 mt-2 px-1 font-bold">
                 {selectedDatabaseIds.length} database(s) selected to add
               </p>
-              {participants.length > 0 && (
+              {participantCount > 0 && (
                 <p className="text-[10px] text-slate-400 px-1">
-                  Current event already has {participants.length} participant(s).
+                  Current event already has {participantCount} participant(s).
                 </p>
               )}
             </div>
@@ -346,7 +353,7 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={submittingParticipant || selectedDatabaseIds.length === 0}
+              disabled={submittingParticipant || loadingDatabases || selectedDatabaseIds.length === 0}
               className="ms-modal-primary px-4 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] disabled:bg-blue-300 text-white text-sm font-bold rounded-md transition-all"
             >
               {submittingParticipant ? 'Adding...' : `Add ${selectedDatabaseIds.length || ''}`.trim()}

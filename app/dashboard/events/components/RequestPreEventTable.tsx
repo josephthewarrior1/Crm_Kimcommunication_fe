@@ -6,6 +6,7 @@ import { EventColumnConfig, DEFAULT_COLUMN_CONFIG } from '../utils/columnConfigH
 import { getPreEventApprovalStatus, isEmsApprovalManaged, getOfficeEmail, getPersonalEmail } from '../utils/notesHelper';
 import { getRemarksValue, REMARK_OPTIONS } from '../utils/statusHelper';
 import { EmsCompanyReviewNotice } from './EmsCompanyReviewNotice';
+import { ParticipantEmailCell } from './ParticipantEmailCell';
 
 const formatRegDate = (dateStr?: string | null) => {
   if (!dateStr) return { date: '-', time: '' };
@@ -79,6 +80,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
   const tableRef = useRef<HTMLTableElement>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const isDataList = activeTab === 'request';
   const openDetails = isUser ? undefined : onOpenEngagementModal;
   const canEditConfirmation = !isUser || activeTab === 'request';
   const showApprovalColumn = true;
@@ -105,7 +107,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
         }}
         className="overflow-x-auto border-b border-slate-100"
       >
-        <div style={{ width: tableScrollWidth ? `${tableScrollWidth}px` : '1850px', height: '10px' }} />
+        <div style={{ width: tableScrollWidth ? `${tableScrollWidth}px` : isDataList ? '1850px' : '1050px', height: '10px' }} />
       </div>
 
       <div
@@ -117,7 +119,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
         }}
         className="flex-1 max-h-[620px] overflow-auto"
       >
-        <table ref={tableRef} className="w-full min-w-[1850px] text-left border-collapse text-sm">
+        <table ref={tableRef} className={`w-full ${isDataList ? 'min-w-[1850px]' : 'min-w-[1050px] [&_td]:px-2 [&_th]:px-2'} text-left border-collapse text-sm`}>
         <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
           <tr className="text-slate-500 uppercase tracking-wider text-xs font-semibold whitespace-nowrap">
             {!isUser && <th className="py-3 px-3 text-left sticky left-0 bg-slate-50 z-10">Actions</th>}
@@ -137,27 +139,30 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
             </th>
-            {columnConfig.pic !== false && isAdmin && activeTab === 'pre_event' && <th className="py-2 px-3">PIC</th>}
-            {columnConfig.companyName !== false && <th className="py-3 px-3">Company Name</th>}
+            {columnConfig.companyName !== false && <th className="py-3 px-3">{isDataList ? 'Company Name' : 'Company'}</th>}
             {columnConfig.salutation !== false && <th className="py-3 px-3">Salutation</th>}
             {columnConfig.firstName !== false && <th className="py-3 px-3">First Name</th>}
             {columnConfig.lastName !== false && <th className="py-3 px-3">Last Name</th>}
-            {columnConfig.positionLevel !== false && <th className="py-3 px-3">Position</th>}
+            {isDataList && columnConfig.positionLevel !== false && <th className="py-3 px-3">Position</th>}
             {columnConfig.jobTitle !== false && <th className="py-3 px-3">Job Title</th>}
-            {columnConfig.officePhone !== false && <th className="py-3 px-3">Office Phone</th>}
+            {isDataList && columnConfig.officePhone !== false && <th className="py-3 px-3">Office Phone</th>}
             {columnConfig.mobilePhone !== false && <th className="py-3 px-3">Mobile Phone</th>}
-            {columnConfig.officeEmail !== false && <th className="py-3 px-3">Office Email</th>}
-            {columnConfig.personalEmail !== false && <th className="py-3 px-3">Personal Email</th>}
-            {columnConfig.industry !== false && <th className="py-3 px-3">Industry</th>}
-            <th className="py-3 px-3">Reg Date</th>
+            {isDataList ? (
+              <>
+                {columnConfig.officeEmail !== false && <th className="py-3 px-3">Office Email</th>}
+                {columnConfig.personalEmail !== false && <th className="py-3 px-3">Personal Email</th>}
+                {columnConfig.industry !== false && <th className="py-3 px-3">Industry</th>}
+                <th className="py-3 px-3">Reg Date</th>
+              </>
+            ) : (columnConfig.officeEmail !== false || columnConfig.personalEmail !== false) && <th className="py-3 px-3">Email</th>}
             {columnConfig.remarks !== false && activeTab !== 'request' && <th className="py-3 px-3">Remarks</th>}
             {columnConfig.approvalStatus !== false && showApprovalColumn && (
               <th className="py-3 px-3 text-center">
                 {activeTab === 'pre_event' ? 'Pre Event Approval' : activeTab === 'request' ? 'Client Approval' : 'Client Status'}
               </th>
             )}
-            {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && activeTab !== 'pre_event' && <th className="py-2 px-3">PIC</th>}
-            {columnConfig.notes !== false && <th className="py-2 px-3">Notes</th>}
+            {!isDataList && columnConfig.pic !== false && isAdmin && <th className="py-2 px-3">PIC</th>}
+            {isDataList && columnConfig.notes !== false && <th className="py-2 px-3">Notes</th>}
             {!isUser && <th className="hidden">Actions</th>}
           </tr>
         </thead>
@@ -165,7 +170,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
           {filteredParticipants.map((p) => {
             const emsManaged = emsApprovalManaged || isEmsApprovalManaged(p);
             const preApproval = getPreEventApprovalStatus(p);
-            const officePhone = getContactOffice(p.database)?.officePhone;
+            const officePhone = isDataList ? getContactOffice(p.database)?.officePhone : undefined;
             const { pic } = extractPicFromNotes(p.notes);
             const displayPic = pic.toLowerCase() === 'admin' ? (adminName || 'Admin') : pic;
             const isTakeout = Boolean(p.notes?.includes('[TAKEOUT]') || p.notes?.includes('[Opt-Out]') || p.notes?.toLowerCase().includes('takeout') || (p.database as any)?.isRemovalRequested);
@@ -249,11 +254,6 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
                   />
                 </td>
-                {columnConfig.pic !== false && isAdmin && activeTab === 'pre_event' && (
-                  <td className="py-2.5 px-3 font-medium text-slate-700">
-                    {displayPic}
-                  </td>
-                )}
                 {columnConfig.companyName !== false && (
                   <td className="py-2.5 px-3 font-medium text-slate-700">
                     {p.database.company?.name || <span className="text-slate-400">-</span>}
@@ -300,7 +300,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     ) : p.database.lastName || '-'}
                   </td>
                 )}
-                {columnConfig.positionLevel !== false && (
+                {isDataList && columnConfig.positionLevel !== false && (
                   <td className="py-2.5 px-3 text-slate-600">
                     {p.database.positionLevel || '-'}
                   </td>
@@ -310,7 +310,7 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     {p.database.jobTitle || '-'}
                   </td>
                 )}
-                {columnConfig.officePhone !== false && (
+                {isDataList && columnConfig.officePhone !== false && (
                   <td className="py-2.5 px-3 text-slate-600">
                     {officePhone ? normalizePhone(officePhone) : '-'}
                   </td>
@@ -320,29 +320,33 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     {p.database.mobilePhone ? normalizePhone(p.database.mobilePhone) : '-'}
                   </td>
                 )}
-                {columnConfig.officeEmail !== false && (
-                  <td className="py-2.5 px-3 text-slate-600">
-                    {getOfficeEmail(p.database.emails)}
-                  </td>
-                )}
-                {columnConfig.personalEmail !== false && (
-                  <td className="py-2.5 px-3 text-slate-600">
-                    {getPersonalEmail(p.database.emails)}
-                  </td>
-                )}
-                {columnConfig.industry !== false && (
-                  <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
-                    {p.database.company?.industry || '-'}
-                  </td>
-                )}
-                <td className="py-2.5 px-3 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span className="font-medium text-slate-700">{formatRegDate(p.requestedAt || p.createdAt).date}</span>
-                    {formatRegDate(p.requestedAt || p.createdAt).time && (
-                      <span className="text-xs text-slate-400">{formatRegDate(p.requestedAt || p.createdAt).time}</span>
+                {isDataList ? (
+                  <>
+                    {columnConfig.officeEmail !== false && (
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {getOfficeEmail(p.database.emails)}
+                      </td>
                     )}
-                  </div>
-                </td>
+                    {columnConfig.personalEmail !== false && (
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {getPersonalEmail(p.database.emails)}
+                      </td>
+                    )}
+                    {columnConfig.industry !== false && (
+                      <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
+                        {p.database.company?.industry || '-'}
+                      </td>
+                    )}
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-slate-700">{formatRegDate(p.requestedAt || p.createdAt).date}</span>
+                        {formatRegDate(p.requestedAt || p.createdAt).time && (
+                          <span className="text-xs text-slate-400">{formatRegDate(p.requestedAt || p.createdAt).time}</span>
+                        )}
+                      </div>
+                    </td>
+                  </>
+                ) : <ParticipantEmailCell emails={p.database.emails} columnConfig={columnConfig} />}
                 {columnConfig.remarks !== false && activeTab !== 'request' && (
                   <td className="py-2.5 px-3">
                     <select
@@ -410,12 +414,12 @@ export const RequestPreEventTable: React.FC<RequestPreEventTableProps> = ({
                     </div>
                   </td>
                 )}
-                {columnConfig.pic !== false && isAdmin && activeTab !== 'request' && activeTab !== 'pre_event' && (
+                {!isDataList && columnConfig.pic !== false && isAdmin && (
                   <td className="py-2.5 px-3 font-medium text-slate-700">
                     {displayPic}
                   </td>
                 )}
-                {columnConfig.notes !== false && (
+                {isDataList && columnConfig.notes !== false && (
                   <td className="py-2.5 px-3 text-slate-600 max-w-[160px] [overflow-wrap:anywhere]">
                     {extractPicFromNotes(p.notes).cleanNotes}
                   </td>
