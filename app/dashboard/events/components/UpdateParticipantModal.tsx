@@ -25,6 +25,7 @@ interface UpdateParticipantModalProps {
     preEventApprovalStatus?: string;
   }) => Promise<void>;
   submittingParticipantUpdate: boolean;
+  onReleasePic?: (participantId: number) => Promise<boolean>;
   onFlagAsTikus?: (participant: EventParticipant) => void;
   onRequestTakeout?: (database: Database) => void;
   canEditContact?: boolean;
@@ -39,6 +40,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   usersList,
   onSubmit,
   submittingParticipantUpdate,
+  onReleasePic,
   onFlagAsTikus,
   onRequestTakeout,
   canEditContact = false,
@@ -55,10 +57,14 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   const [updateWhatsappStatusStr, setUpdateWhatsappStatusStr] = useState('NOT_SENT');
   const [updateEmailStatusStr, setUpdateEmailStatusStr] = useState('NOT_SENT');
   const [updateParticipantNotes, setUpdateParticipantNotes] = useState('');
-  const [updatePic, setUpdatePic] = useState('Admin');
+  const [updatePic, setUpdatePic] = useState('');
+  const [releasingPic, setReleasingPic] = useState(false);
   const [showFlagConfirm, setShowFlagConfirm] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
   const [editingContact, setEditingContact] = useState(false);
+
+  const storedPic = activeParticipant.notes?.match(/\[PIC:\s*([^\]]*)\]/i)?.[1].trim() || '';
+  const assignedPic = storedPic.toLowerCase() === 'not set' ? '' : storedPic;
 
   useEffect(() => {
     if (activeParticipant) {
@@ -74,8 +80,8 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
       setUpdateCallStatusStr(activeParticipant.callStatus || 'NOT_CONTACTED');
       setUpdateWhatsappStatusStr(activeParticipant.whatsappStatus || 'NOT_SENT');
       setUpdateEmailStatusStr(activeParticipant.emailStatus || 'NOT_SENT');
-      const { pic, cleanNotes } = extractPicFromNotes(activeParticipant.notes);
-      setUpdatePic(pic);
+      const { cleanNotes } = extractPicFromNotes(activeParticipant.notes);
+      setUpdatePic(assignedPic);
       setUpdateParticipantNotes(cleanNotes === '-' ? '' : cleanNotes);
     }
   }, [activeParticipant.id, isOpen]);
@@ -84,17 +90,29 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
   const showClientApproval = activeTab === 'request' || activeTab === 'declined';
   const showPreEventApproval = activeTab === 'pre_event';
 
+  const handleReleasePic = async () => {
+    if (!onReleasePic || releasingPic) return;
+    setReleasingPic(true);
+    try {
+      if (await onReleasePic(activeParticipant.id)) onClose();
+    } finally {
+      setReleasingPic(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (releasingPic) return;
     const originTag = activeParticipant.notes?.includes('[Origin: EMS Sync]') ? '[Origin: EMS Sync]' : 
                       activeParticipant.notes?.includes('[Origin: Request]') ? '[Origin: Request]' : '';
     const preEventApprovalTag = activeParticipant.notes?.match(/\[PreEventApproval:\s*[^\]]+\]/i)?.[0] || '';
     const cleanUserText = updateParticipantNotes
       .replace(/\[Origin:\s*[^\]]+\]/gi, '')
-      .replace(/\[PIC:\s*[^\]]+\]/gi, '')
+      .replace(/\[PIC:\s*[^\]]*\]/gi, '')
       .replace(/\[PreEventApproval:\s*[^\]]+\]/gi, '')
       .trim();
-    const finalNotes = `[PIC: ${updatePic}] ${preEventApprovalTag} ${originTag} ${cleanUserText}`.replace(/\s+/g, ' ').trim();
+    const picTag = updatePic.trim() ? `[PIC: ${updatePic.trim()}]` : '';
+    const finalNotes = `${picTag} ${preEventApprovalTag} ${originTag} ${cleanUserText}`.replace(/\s+/g, ' ').trim();
     onSubmit({
       participantStatus: updateParticipantStatusStr,
       attendanceStatus: activeParticipant.attendanceStatus,
@@ -117,7 +135,7 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
         <div className="ms-modal-header">
         <button
           onClick={onClose}
-          disabled={savingContact}
+          disabled={savingContact || releasingPic}
           className="ms-modal-close"
           type="button"
         >
@@ -226,11 +244,20 @@ export const UpdateParticipantModal: React.FC<UpdateParticipantModalProps> = ({
               )}
 
               <div>
-                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-600 mb-1">
-                  <Users className="w-3 h-3 text-indigo-500" />
-                  Assign PIC
-                </label>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label htmlFor="edit-participant-pic" className="flex items-center gap-1 text-[10px] font-bold text-slate-600">
+                    <Users className="w-3 h-3 text-indigo-500" />
+                    Assign PIC
+                  </label>
+                  {onReleasePic && assignedPic && (
+                    <button type="button" onClick={() => void handleReleasePic()} disabled={releasingPic || savingContact || submittingParticipantUpdate}
+                      className="text-xs font-medium text-rose-700 hover:underline disabled:opacity-50">
+                      {releasingPic ? 'Melepas PIC…' : 'Lepas PIC'}
+                    </button>
+                  )}
+                </div>
                 <input
+                  id="edit-participant-pic"
                   type="text"
                   list="pic-list"
                   value={updatePic}

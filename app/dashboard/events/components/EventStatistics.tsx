@@ -30,6 +30,7 @@ interface EventStatisticsProps {
   adminName: string;
   eventId?: number;
   onAssignPic?: (participantIds: number[], picName: string) => Promise<void>;
+  onReleasePic?: (participantIds: number[]) => Promise<void>;
   onAutoSplit?: (payload: { mode: 'all' | 'unassigned'; managerNames: string[] }) => Promise<void>;
   onOpenEngagementModal?: (participant: EventParticipant) => void;
   currentUser?: AppUser | null;
@@ -62,6 +63,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   adminName,
   eventId,
   onAssignPic,
+  onReleasePic,
   onAutoSplit,
   onOpenEngagementModal,
   currentUser,
@@ -98,10 +100,11 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   const canCompareScopes = !isAdmin && !isViewer && (statistics?.scopes?.all?.participantCount ?? allParticipants.length) > 0;
   const allScope = canCompareScopes && statsViewMode === 'all';
   const [workspaceRetry, setWorkspaceRetry] = React.useState(0);
+  const needsWorkspaceRows = isAdmin || picViewTab === 'participants';
   const workspaceRequest = React.useMemo(() => {
-    if (!isWorkloadDialogOpen || !loadWorkspaceParticipants || !eventId || activeTab === 'request' || isViewer) return null;
+    if (!isWorkloadDialogOpen || !loadWorkspaceParticipants || !eventId || activeTab === 'request' || isViewer || !needsWorkspaceRows) return null;
     return { load: loadWorkspaceParticipants, all: allScope };
-  }, [isWorkloadDialogOpen, loadWorkspaceParticipants, eventId, activeTab, isViewer, allScope, workspaceRevision, workspaceRetry]);
+  }, [isWorkloadDialogOpen, loadWorkspaceParticipants, eventId, activeTab, isViewer, needsWorkspaceRows, allScope, workspaceRevision, workspaceRetry]);
   const [workspaceResult, setWorkspaceResult] = React.useState<{
     request: NonNullable<typeof workspaceRequest>;
     rows: EventParticipant[] | null;
@@ -777,6 +780,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       {/* Participant Assignment & Distribution Overview */}
       {activeTab !== 'request' && !isViewer && (() => {
         const myPicName = currentUser?.fullName || currentUser?.username || adminName;
+        const canManageParticipants = isAdmin || Boolean(onAssignPic || onReleasePic);
 
         return (
           <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -830,7 +834,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {isAdmin ? 'PIC Assignment & Distribution' : `Laporan Aktivitas Follow-Up — ${myPicName}`}
                   </DialogTitle>
                   <DialogDescription className="ms-modal-description mt-2">
-                    {isAdmin ? 'Pantau beban kerja, bagi peserta, dan lihat aktivitas tim dalam satu tempat.' : 'Riwayat aktivitas telepon, WhatsApp, dan email sesuai periode yang dipilih.'}
+                    {isAdmin ? 'Pantau beban kerja, bagi peserta, dan lihat aktivitas tim dalam satu tempat.' : canManageParticipants
+                      ? 'Lihat riwayat aktivitas dan kelola peserta yang kamu pegang.'
+                      : 'Riwayat aktivitas telepon, WhatsApp, dan email sesuai periode yang dipilih.'}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -852,14 +858,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         </div>
                       </div>
 
-                      {isAdmin && (
+                      {canManageParticipants && (
                         <div className="flex flex-wrap gap-1 border-b border-slate-200" aria-label="Tampilan PIC">
                           <button type="button" aria-pressed={picViewTab === 'report'} onClick={() => setPicViewTab('report')} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${picViewTab === 'report' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
                             <History aria-hidden="true" className="h-4 w-4" />Daily report
                           </button>
                           <button type="button" aria-pressed={picViewTab === 'participants'} onClick={() => setPicViewTab('participants')} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${picViewTab === 'participants' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
                             <Users aria-hidden="true" className="h-4 w-4" />Kelola peserta
-                            <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">{selectedPicSummaryItem?.totalAssigned ?? 0}</span>
+                            {isAdmin && <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">{selectedPicSummaryItem?.totalAssigned ?? 0}</span>}
                           </button>
                         </div>
                       )}
@@ -881,10 +887,16 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         <PicParticipantsPanel
                           participants={participants}
                           selectedPic={selectedPic}
+                          selectedPicAlias={isAdmin
+                            ? usersList.find(user => (user.fullName || user.username).trim().toLowerCase() === selectedPic.trim().toLowerCase())?.username
+                            : currentUser?.username}
                           adminName={adminName}
+                          usersList={usersList}
+                          canAssignOthers={isAdmin}
                           searchQuery={searchQuery}
                           onSearchChange={setSearchQuery}
                           onAssignPic={onAssignPic}
+                          onReleasePic={onReleasePic}
                           onOpenEngagementModal={onOpenEngagementModal}
                         />
                       )}

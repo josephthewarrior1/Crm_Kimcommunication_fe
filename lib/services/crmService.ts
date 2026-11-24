@@ -1159,6 +1159,7 @@ export class CrmService extends ApiService {
     timeline?: string;
     notes?: string;
     picName?: string;
+    releasePic?: boolean;
   }): Promise<{ updatedCount: number; skippedCount: number; items: EventParticipant[] }> {
     return this.patch<{ updatedCount: number; skippedCount: number; items: EventParticipant[] }>(
       '/api/event-participants/bulk',

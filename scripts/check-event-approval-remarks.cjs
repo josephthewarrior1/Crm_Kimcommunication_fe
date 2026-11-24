@@ -35,10 +35,11 @@ assert.equal(notes.getPreEventApprovalStatus({ approvalSource: 'ems', emsApprova
 assert.equal(notes.getPreEventApprovalStatus({ event: { emsEventId: 9 }, preEventApprovalStatus: 'approve' }), 'approve');
 
 async function checkService() {
-  const urls = [];
+  const urls = [], patches = [];
   class ApiService {
     async get(url) { urls.push(url); return {}; }
     async put(url) { urls.push(url); return {}; }
+    async patch(url, payload) { patches.push([url, payload]); return {}; }
   }
   const { CrmService } = compile('lib/services/crmService.ts', name => name === './apiService' ? { ApiService } : unexpected(name));
   const service = new CrmService();
@@ -69,10 +70,16 @@ async function checkService() {
   assert.equal(new URL('http://local' + urls.at(-1)).searchParams.get('notes'), '', 'Clearing a Notes cell sends an explicit empty value');
   await service.updateParticipantStatus(17, 'registered');
   assert.equal(new URL('http://local' + urls.at(-1)).searchParams.has('notes'), false, 'An unrelated status update keeps notes untouched');
+  await service.bulkUpdateEventParticipants({ participantIds: [17], releasePic: true });
+  await service.bulkUpdateEventParticipants({ participantIds: [18], picName: 'Demo Recipient' });
+  assert.deepEqual(patches, [
+    ['/api/event-participants/bulk', { participantIds: [17], releasePic: true }],
+    ['/api/event-participants/bulk', { participantIds: [18], picName: 'Demo Recipient' }],
+  ], 'Release and direct transfer have distinct bulk request bodies');
 }
 
-async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
-  const hooks = [], effects = [], calls = [], writes = [];
+async function checkPage(initialQuery = '?eventId=17', expectedInitialTab, checkPicActions = false) {
+  const hooks = [], effects = [], calls = [], writes = [], messages = [];
   let cursor = 0, changed = false, tree, pausedParticipantReads;
   let currentUrl = new URL('http://local/dashboard/events' + initialQuery);
   let currentSearchParams = new URLSearchParams(currentUrl.search);
@@ -127,6 +134,9 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   };
   React.useCallback = (callback, deps) => React.useMemo(() => callback, deps);
   const admin = { id: 1, username: 'admin', fullName: 'Local Test', roles: ['ADMIN'], allowedEventIds: [17, 18] };
+  const picOwner = { id: 2, username: 'demo-owner', fullName: 'Demo Owner', roles: ['MANAGER'], allowedEventIds: [17] };
+  const picRecipient = { id: 3, username: 'demo-recipient', fullName: 'Demo Recipient', roles: ['MANAGER'], allowedEventIds: [17] };
+  const auth = { isAdmin: !checkPicActions, isManager: checkPicActions, isUser: false, user: checkPicActions ? picOwner : admin, token: 'local', isLoading: false };
   const event = { id: 17, name: 'Local fixture', syncDestination: 'company', emsSource: 'V2', emsEventId: 9 };
   const make = (id, participantStatus, expectedRemark, confirmationStatus = 'approve') => ({
     id, event, database: { id, firstName: 'Anonymous ' + id, lastName: 'Test', company: { name: 'Fixture' }, emails: [] },
@@ -138,8 +148,14 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   const rows = [make(1, 'registered', 'registered', 'decline'),
     ...Array.from({ length: 601 }, (_, index) => make(index + 2, 'registered', 'registered')),
     make(603, 'white', 'not_respon_yet'), make(604, 'yellow', 'tentative'), make(605, 'not_respond_2x', 'not_respond_2x')];
+  if (checkPicActions) {
+    rows[1].notes = '[PIC: Demo Owner] Keep follow-up notes';
+    rows[2].notes = '[PIC: Demo Owner] Keep approval history';
+    rows[3].notes = '[PIC: Demo Recipient] Another manager’s participant';
+  }
   const filtered = params => rows.filter(row => (params.tab !== 'pre_event' || row.confirmationStatus !== 'decline') &&
     (!params.search || row.database.firstName.toLowerCase().includes(params.search.toLowerCase())) &&
+    (!params.pic || notes.extractPicFromNotes(row.notes).pic === params.pic) &&
     (!params.remarks || row.expectedRemark === params.remarks) &&
     ['reminderH7', 'reminderH3', 'reminderH1'].every(key => params.tab !== 'reminder' || !params[key]
       || (params[key] === '__empty__' ? !row[key] : row[key] === params[key])));
@@ -148,7 +164,8 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     async bulkUpdateEventParticipants() { return { updatedCount: 1 }; }, async addEventParticipantActivity() { return {}; },
     async getEventsList() { return { items: [event], total: 1, totalPages: 1 }; },
     async getEventById(id) { return { ...event, id }; },
-    async getDatabases() { return []; }, async getUsers() { return [admin]; }, async getEligibleManagersForEvent() { return [admin]; },
+    async getDatabases() { return []; }, async getUsers() { return [admin]; },
+    async getEligibleManagersForEvent() { return checkPicActions ? [picOwner, picRecipient] : [admin]; },
     async getEventParticipantsByEvent(id, params) {
       if (pausedParticipantReads) await pausedParticipantReads;
       const result = filtered(params), size = Math.min(params.size || 25, 500), page = params.page || 1;
@@ -176,9 +193,9 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
     if (name === 'react') return React;
     if (name === 'next/navigation') return { useRouter: () => router, useSearchParams: () => currentSearchParams };
     if (name.endsWith('/services/crmService')) return { crmService: service };
-    if (name.endsWith('/context/AuthContext')) return { useAuth: () => ({ isAdmin: true, isManager: false, isUser: false, user: admin, token: 'local', isLoading: false }) };
+    if (name.endsWith('/context/AuthContext')) return { useAuth: () => auth };
     if (name === 'lucide-react') return {};
-    if (name === 'sonner') return { toast: { error(message) { throw Error(message); }, success() {}, warning() {} } };
+    if (name === 'sonner') return { toast: { error(message) { if (!checkPicActions) throw Error(message); messages.push(message); }, success() {}, warning() {} } };
     if (name === 'xlsx') return { utils: { json_to_sheet: rows => ({ rows }), book_new: () => ({}), book_append_sheet: (book, sheet) => { book.sheet = sheet; } }, writeFile: book => writes.push(book) };
     if (name.endsWith('/utils/notesHelper')) return notes;
     if (name.endsWith('/utils/statusHelper')) return status;
@@ -209,6 +226,47 @@ async function checkPage(initialQuery = '?eventId=17', expectedInitialTab) {
   const toolbar = () => toolbarComponent(find('ParticipantToolbar').props);
   const remarksSelect = () => nodes(toolbar()).find(node => node.type === 'select' && node.props.id === 'participant-remarks-filter');
   render(); await settle();
+  if (checkPicActions) {
+    const workspace = () => find('EventStatistics').props;
+    assert.equal(workspace().isAdmin, false, 'The transfer fixture uses a manager, not an admin');
+    const workspaceView = await mountApprovalComponent('EventStatistics', workspace(), { getAllEventActivities: [] });
+    await workspaceView.act(workspaceView.find(node => node.type === 'Dialog' && typeof node.props.onOpenChange === 'function').props.onOpenChange, true);
+    await workspaceView.act(workspaceView.find(node => node.type === 'button' && text(node).startsWith('Kelola peserta')).props.onClick);
+    const panelProps = workspaceView.find(node => node.type === 'PicParticipantsPanel').props;
+    assert.equal(panelProps.canAssignOthers, false, 'The manager cannot access the admin assignment list');
+
+    const panel = await mountApprovalComponent('PicParticipantsPanel', { ...panelProps, participants: [...panelProps.participants, rows[3]] });
+    assert(!panel.has(node => node.type === 'h4' && text(node) === 'Tugaskan peserta'), 'Manager workspace omits the assign-others panel');
+    const transferSelect = panel.find(node => node.type === 'select' && node.props['aria-label'] === 'Oper Anonymous 3 Test ke PIC lain');
+    assert(nodes(transferSelect).some(node => node.type === 'option' && node.props.value === 'Demo Recipient'));
+    assert(!nodes(transferSelect).some(node => node.type === 'option' && node.props.value === 'Demo Owner'));
+    const selectedTarget = { value: 'Demo Recipient' };
+    await panel.act(transferSelect.props.onChange, { target: selectedTarget, currentTarget: selectedTarget });
+    await settle();
+    await panel.act(panel.find(node => node.type === 'button' && node.props['aria-label'] === 'Lepas Anonymous 2 Test dari PIC Demo Owner').props.onClick);
+    await settle();
+
+    const picWrites = () => calls.filter(call => call.name === 'bulkUpdateEventParticipants').map(call => JSON.parse(JSON.stringify(call.args[0])));
+    assert.deepEqual(picWrites(), [
+      { participantIds: [3], picName: 'Demo Recipient' },
+      { participantIds: [2], releasePic: true },
+    ], 'The workspace transfers directly and releases explicitly without sending notes or approval fields');
+    assert(!panel.has(node => node.props?.['aria-label'] === 'Oper Anonymous 4 Test ke PIC lain'), 'The manager cannot operate another PIC’s row');
+    assert.equal(messages.length, 0, 'Authorized transfer and release do not show an access error');
+    await workspace().onAssignPic([rows[1].id], 'Unavailable Manager');
+    assert.equal(picWrites().length, 2, 'An unavailable recipient is rejected before sending a request');
+    assert.equal(messages.length, 1);
+
+    find('RequestPreEventTable').props.handleOpenUpdateParticipantModal(rows[1]); await settle();
+    const edit = await mountApprovalComponent('UpdateParticipantModal', { ...find('UpdateParticipantModal').props });
+    const releaseButton = edit.find(node => node.type === 'button' && text(node) === 'Lepas PIC');
+    assert.equal(releaseButton.props.type, 'button', 'Release does not submit qualification edits');
+    await edit.act(releaseButton.props.onClick);
+    await settle();
+    assert.deepEqual(picWrites().at(-1), { participantIds: [rows[1].id], releasePic: true });
+    assert(!calls.some(call => call.name === 'updateParticipantStatus' || call.name === 'addEventParticipantActivity'));
+    return;
+  }
   if (expectedInitialTab !== undefined) {
     const initialEventId = Number(currentUrl.searchParams.get('eventId') || currentUrl.searchParams.get('id'));
     const participantRequests = () => calls.filter(call => call.name === 'getEventParticipantsByEvent' && call.args[0] === initialEventId);
@@ -1005,6 +1063,7 @@ async function checkActivityHistoryDialog() {
 (async () => {
   await checkService(); await checkPage(); await checkApprovalControls(); await checkParticipantRowModal();
   await checkInlineCellSaves(); await checkInlineActivityLogging(); await checkActivityHistoryDialog();
+  await checkPage('?eventId=17&tab=pre_event', undefined, true);
   for (const tab of ['request', 'pre_event', 'declined', 'reminder', 'reminder_dday']) {
     await checkPage('?eventId=40&tab=' + tab + '&view=keep#participants', tab);
   }
@@ -1015,4 +1074,5 @@ async function checkActivityHistoryDialog() {
   console.log('PASS: all event-tab deep links, default/invalid tabs, preserved URL parameters, Back/Forward and a fresh event without a stale tab; navigation writes no business data.');
   console.log('PASS: Reminder H-7/H-3/H-1 controls, all six read/export query scopes, combined paginated filters, full export, live PIC summary refresh, reset and tab/event isolation without writes.');
   console.log('PASS: click-to-open participant modal, keyboard access, isolated table actions, and repeated activity logging from one dialog.');
+  console.log('PASS: manager PIC workspace, direct transfer to an eligible PIC, and explicit release without an access error.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

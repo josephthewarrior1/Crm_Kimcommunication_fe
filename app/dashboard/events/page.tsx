@@ -272,7 +272,7 @@ export default function EventsPage() {
 
   const isAllowedPicName = (picName?: string | null) => {
     if (!picName) return false;
-    return eligiblePicNames.some((name) => name.toLowerCase() === picName.trim().toLowerCase());
+    return eligiblePicNames.some((name) => name.trim().toLowerCase() === picName.trim().toLowerCase());
   };
 
   const eventId = selectedEvent?.id;
@@ -894,32 +894,36 @@ export default function EventsPage() {
     }
   };
 
-  const handleBatchAssignPic = async (picName: string) => {
-    if (selectedParticipantIds.length === 0) return;
-    if (!isAllowedPicName(picName)) {
+  const changeParticipantPic = async (participantIds: number[], picName: string | null) => {
+    if (!selectedEvent || isViewer || participantIds.length === 0) return false;
+    if (picName !== null && !isAllowedPicName(picName)) {
       toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
-      return;
+      return false;
     }
     setIsBatchUpdating(true);
     try {
       const result = await crmService.bulkUpdateEventParticipants({
-        participantIds: selectedParticipantIds,
-        picName
+        participantIds,
+        ...(picName === null ? { releasePic: true } : { picName }),
       });
-
-      setSelectedParticipantIds([]);
-      if ((result?.skippedCount || 0) > 0) {
-        toast.warning(`Berhasil menugaskan ${result.updatedCount} participants ke ${picName}, gagal ${result.skippedCount} participants.`);
-      } else {
-        toast.success(`Berhasil menugaskan ${result.updatedCount} participants ke ${picName}!`);
-      }
-      if (selectedEvent) {
-        refreshParticipants();
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to assign PIC in bulk');
+      const updated = result?.updatedCount ?? 0;
+      const skipped = result?.skippedCount ?? 0;
+      const message = picName === null ? `PIC dilepas dari ${updated} peserta.` : `${updated} peserta dialihkan ke ${picName}.`;
+      if (skipped > 0) toast.warning(`${message} ${skipped} peserta dilewati.`);
+      else if (updated > 0) toast.success(message);
+      if (updated > 0 || skipped > 0) refreshParticipants();
+      return updated > 0;
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memperbarui PIC peserta.');
+      return false;
     } finally {
       setIsBatchUpdating(false);
+    }
+  };
+
+  const handleBatchAssignPic = async (picName: string) => {
+    if (await changeParticipantPic(selectedParticipantIds, picName)) {
+      setSelectedParticipantIds([]);
     }
   };
 
@@ -946,8 +950,13 @@ export default function EventsPage() {
   }) => {
     if (!selectedEvent || !activeParticipant) return;
 
-    const nextPicName = extractPicFromNotes(data.notes).pic;
-    if (!isAllowedPicName(nextPicName)) {
+    const currentPicName = activeParticipant.notes?.match(/\[PIC:\s*([^\]]*)\]/i)?.[1].trim().toLowerCase() || '';
+    const nextPicName = data.notes.match(/^\[PIC:\s*([^\]]*)\]/i)?.[1].trim() || '';
+    if (!nextPicName && currentPicName && currentPicName !== 'not set') {
+      toast.error('Gunakan tombol Lepas PIC untuk melepas penanggung jawab.');
+      return;
+    }
+    if (nextPicName && nextPicName.toLowerCase() !== currentPicName && !isAllowedPicName(nextPicName)) {
       toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
       return;
     }
@@ -962,7 +971,7 @@ export default function EventsPage() {
         activeParticipant.id,
         data.participantStatus,
         data.attendanceStatus,
-        nextNotes || undefined,
+        nextNotes,
         undefined, // participantCategory (removed)
         data.callStatus || undefined,
         data.emailStatus || undefined,
@@ -1717,26 +1726,8 @@ export default function EventsPage() {
                 setIsBatchUpdating(false);
               }
             } : undefined}
-            onAssignPic={!isViewer ? async (ids, picName) => {
-              if (!isAllowedPicName(picName)) {
-                toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
-                return;
-              }
-              setIsBatchUpdating(true);
-              try {
-                await crmService.bulkUpdateEventParticipants({
-                  participantIds: ids,
-                  picName
-                });
-                if (selectedEvent) {
-                  refreshParticipants();
-                }
-              } catch (err: any) {
-                toast.error(err.message || 'Failed to assign PIC');
-              } finally {
-                setIsBatchUpdating(false);
-              }
-            } : undefined}
+            onAssignPic={!isViewer ? async (ids, picName) => { await changeParticipantPic(ids, picName); } : undefined}
+            onReleasePic={!isViewer ? async ids => { await changeParticipantPic(ids, null); } : undefined}
             onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
             participantFilters={statisticsQuery}
           />
@@ -2046,6 +2037,7 @@ export default function EventsPage() {
           usersList={eligiblePicUsers}
           onSubmit={handleUpdateParticipantStatus}
           submittingParticipantUpdate={submittingParticipantUpdate}
+          onReleasePic={!isViewer ? participantId => changeParticipantPic([participantId], null) : undefined}
           onFlagAsTikus={handleFlagAsTikus}
           onRequestTakeout={handleOpenTakeoutModal}
         />
