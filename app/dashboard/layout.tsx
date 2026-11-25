@@ -56,6 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const accountButtonRef = React.useRef<HTMLButtonElement>(null);
+  const centralAccounts = tagtogSsoEnabled && process.env.NEXT_PUBLIC_TAGTOG_ROLE_MANAGEMENT_ENABLED === 'true';
   const isViewer = isUser || (!isAdmin && !isManager);
 
   // ponytail: Viewer role is restricted to Events page only.
@@ -105,7 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Activity Logs', path: '/dashboard/audit-logs', icon: History },
     { name: 'Data Cleaner', path: '/dashboard/data-cleaner', icon: Wand2 },
     { name: 'Target', path: '/dashboard/targets', icon: Target },
-    { name: 'User Management', path: '/dashboard/users', icon: User },
+    { name: centralAccounts ? 'Pengguna di TAGTOG' : 'User Management', path: '/dashboard/users', icon: User },
   ];
 
   const filteredMenuItems = menuItems.filter((item) => {
@@ -238,7 +239,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <div className="space-y-1 p-1.5">
                     {isAdmin && (
                       <Link href="/dashboard/users" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                        <UserPlus aria-hidden="true" className="h-4 w-4 text-slate-500" />Create User Account
+                        <UserPlus aria-hidden="true" className="h-4 w-4 text-slate-500" />{centralAccounts ? 'Kelola pengguna di TAGTOG' : 'Create User Account'}
                       </Link>
                     )}
                     {renderTagtogLinks()}
