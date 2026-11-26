@@ -23,11 +23,14 @@ interface EventStatisticsProps {
   participants: EventParticipant[];
   allParticipants?: EventParticipant[];
   statistics?: EventParticipantStatisticsResponse | null;
+  loadWorkspaceParticipants?: (all: boolean, signal: AbortSignal) => Promise<EventParticipant[]>;
+  workspaceRevision?: number;
   usersList: AppUser[];
   isAdmin: boolean;
   adminName: string;
   eventId?: number;
   onAssignPic?: (participantIds: number[], picName: string) => Promise<void>;
+  onReleasePic?: (participantIds: number[]) => Promise<void>;
   onAutoSplit?: (payload: { mode: 'all' | 'unassigned'; managerNames: string[] }) => Promise<void>;
   onOpenEngagementModal?: (participant: EventParticipant) => void;
   currentUser?: AppUser | null;
@@ -53,11 +56,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   participants: scopedParticipants,
   allParticipants = [],
   statistics,
+  loadWorkspaceParticipants,
+  workspaceRevision = 0,
   usersList,
   isAdmin,
   adminName,
   eventId,
   onAssignPic,
+  onReleasePic,
   onAutoSplit,
   onOpenEngagementModal,
   currentUser,
@@ -70,6 +76,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     title: string;
     description: string;
     onConfirm: () => void;
+    workspaceParticipants?: EventParticipant[];
   } | null>(null);
   const [statsViewMode, setStatsViewMode] = React.useState<'mine' | 'all'>('mine');
 
@@ -81,6 +88,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   const [activitiesReport, setActivitiesReport] = React.useState<any[]>([]);
   const [activitySummary, setActivitySummary] = React.useState<EventActivitySummaryResponse | null>(null);
   const [picSummary, setPicSummary] = React.useState<EventParticipantPicSummaryResponse | null>(null);
+  const picSummaryRequest = React.useRef(0);
   const [loadingReport, setLoadingReport] = React.useState(false);
   const [loadingPicSummary, setLoadingPicSummary] = React.useState(false);
   const [isWorkloadDialogOpen, setIsWorkloadDialogOpen] = React.useState(false);
@@ -89,8 +97,49 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   const [isSplitModalOpen, setIsSplitModalOpen] = React.useState(false);
   const [selectedSplitPics, setSelectedSplitPics] = React.useState<string[]>([]);
   const [splitMode, setSplitMode] = React.useState<'all' | 'unassigned'>('all');
-  const canCompareScopes = !isAdmin && !isViewer && allParticipants.length > 0;
-  const participants = canCompareScopes && statsViewMode === 'all' ? allParticipants : scopedParticipants;
+  const canCompareScopes = !isAdmin && !isViewer && (statistics?.scopes?.all?.participantCount ?? allParticipants.length) > 0;
+  const allScope = canCompareScopes && statsViewMode === 'all';
+  const [workspaceRetry, setWorkspaceRetry] = React.useState(0);
+  const needsWorkspaceRows = isAdmin || picViewTab === 'participants';
+  const workspaceRequest = React.useMemo(() => {
+    if (!isWorkloadDialogOpen || !loadWorkspaceParticipants || !eventId || activeTab === 'request' || isViewer || !needsWorkspaceRows) return null;
+    return { load: loadWorkspaceParticipants, all: allScope };
+  }, [isWorkloadDialogOpen, loadWorkspaceParticipants, eventId, activeTab, isViewer, needsWorkspaceRows, allScope, workspaceRevision, workspaceRetry]);
+  const [workspaceResult, setWorkspaceResult] = React.useState<{
+    request: NonNullable<typeof workspaceRequest>;
+    rows: EventParticipant[] | null;
+  } | null>(null);
+  const activeWorkspaceResult = workspaceResult?.request === workspaceRequest ? workspaceResult : null;
+  const workspaceRowsReady = !loadWorkspaceParticipants || Array.isArray(activeWorkspaceResult?.rows);
+  const participants = loadWorkspaceParticipants
+    ? activeWorkspaceResult?.rows ?? []
+    : allScope ? allParticipants : scopedParticipants;
+
+  React.useEffect(() => {
+    if (!workspaceRequest) return;
+    const controller = new AbortController();
+    const loadRows = async () => {
+      try {
+        const rows = await workspaceRequest.load(workspaceRequest.all, controller.signal);
+        if (!controller.signal.aborted) setWorkspaceResult({ request: workspaceRequest, rows });
+      } catch {
+        if (!controller.signal.aborted) setWorkspaceResult({ request: workspaceRequest, rows: null });
+      }
+    };
+    void loadRows();
+    return () => controller.abort();
+  }, [workspaceRequest]);
+
+  const workspaceRowsStatus = workspaceRowsReady ? null : activeWorkspaceResult ? (
+    <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      Peserta belum berhasil dimuat.
+      <button type="button" onClick={() => setWorkspaceRetry(retry => retry + 1)} className="ml-2 font-semibold underline">Coba lagi</button>
+    </div>
+  ) : (
+    <div role="status" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600">
+      <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin text-blue-600" />Memuat peserta untuk pembagian PIC...
+    </div>
+  );
   const currentStatistics = React.useMemo(() => {
     if (statistics?.scopes) {
       if (canCompareScopes) {
@@ -130,6 +179,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
   };
 
   const handleExecuteSplitSelected = async () => {
+    if (!workspaceRowsReady) return;
     if (selectedSplitPics.length === 0) {
       if (eligibleSplitUsers.length === 0) {
         showMissingPicAccessWarning();
@@ -201,6 +251,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
 
   const loadPicSummary = async () => {
     if (!eventId || !isAdmin) return;
+    const request = ++picSummaryRequest.current;
     setLoadingPicSummary(true);
     try {
       const summary = await crmService.getEventParticipantsSummaryByPic(eventId, {
@@ -217,18 +268,21 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
         reminderH1: participantFilters?.reminderH1,
         search: participantFilters?.search
       });
-      setPicSummary(summary || null);
+      if (request === picSummaryRequest.current) setPicSummary(Array.isArray(summary?.items) ? summary : null);
     } catch (err) {
-      console.error('Failed to load PIC summary:', err);
-      setPicSummary(null);
+      if (request === picSummaryRequest.current) {
+        console.error('Failed to load PIC summary:', err);
+        setPicSummary(null);
+      }
     } finally {
-      setLoadingPicSummary(false);
+      if (request === picSummaryRequest.current) setLoadingPicSummary(false);
     }
   };
 
   React.useEffect(() => {
     if (!isAdmin || !isWorkloadDialogOpen || selectedPic) return;
     void loadPicSummary();
+    return () => { picSummaryRequest.current += 1; };
   }, [
     isAdmin,
     isWorkloadDialogOpen,
@@ -246,7 +300,8 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
     participantFilters?.reminderH7,
     participantFilters?.reminderH3,
     participantFilters?.reminderH1,
-    participantFilters?.search
+    participantFilters?.search,
+    workspaceRevision
   ]);
 
   const handleSetPreset = (preset: 'today' | '7days' | '30days' | 'all') => {
@@ -725,6 +780,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       {/* Participant Assignment & Distribution Overview */}
       {activeTab !== 'request' && !isViewer && (() => {
         const myPicName = currentUser?.fullName || currentUser?.username || adminName;
+        const canManageParticipants = isAdmin || Boolean(onAssignPic || onReleasePic);
 
         return (
           <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -751,14 +807,13 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                   setSelectedPic(myPicName);
                   handleSetPreset('today');
                   setPicViewTab('report');
-                } else {
-                  void loadPicSummary();
                 }
               } else {
                 if (isAdmin) setSelectedPic(null);
                 setSearchQuery('');
                 setActivitySummary(null);
                 setPicSummary(null);
+                setWorkspaceResult(null);
               }
             }}>
               <DialogTrigger asChild>
@@ -779,7 +834,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                     {isAdmin ? 'PIC Assignment & Distribution' : `Laporan Aktivitas Follow-Up — ${myPicName}`}
                   </DialogTitle>
                   <DialogDescription className="ms-modal-description mt-2">
-                    {isAdmin ? 'Pantau beban kerja, bagi peserta, dan lihat aktivitas tim dalam satu tempat.' : 'Riwayat aktivitas telepon, WhatsApp, dan email sesuai periode yang dipilih.'}
+                    {isAdmin ? 'Pantau beban kerja, bagi peserta, dan lihat aktivitas tim dalam satu tempat.' : canManageParticipants
+                      ? 'Lihat riwayat aktivitas dan kelola peserta yang kamu pegang.'
+                      : 'Riwayat aktivitas telepon, WhatsApp, dan email sesuai periode yang dipilih.'}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -801,14 +858,14 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                         </div>
                       </div>
 
-                      {isAdmin && (
+                      {canManageParticipants && (
                         <div className="flex flex-wrap gap-1 border-b border-slate-200" aria-label="Tampilan PIC">
                           <button type="button" aria-pressed={picViewTab === 'report'} onClick={() => setPicViewTab('report')} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${picViewTab === 'report' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
                             <History aria-hidden="true" className="h-4 w-4" />Daily report
                           </button>
                           <button type="button" aria-pressed={picViewTab === 'participants'} onClick={() => setPicViewTab('participants')} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${picViewTab === 'participants' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
                             <Users aria-hidden="true" className="h-4 w-4" />Kelola peserta
-                            <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">{selectedPicSummaryItem?.totalAssigned ?? 0}</span>
+                            {isAdmin && <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">{selectedPicSummaryItem?.totalAssigned ?? 0}</span>}
                           </button>
                         </div>
                       )}
@@ -826,14 +883,20 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                           summary={activitySummary}
                           activities={filteredPicActivities}
                         />
-                      ) : (
+                      ) : workspaceRowsStatus || (
                         <PicParticipantsPanel
                           participants={participants}
                           selectedPic={selectedPic}
+                          selectedPicAlias={isAdmin
+                            ? usersList.find(user => (user.fullName || user.username).trim().toLowerCase() === selectedPic.trim().toLowerCase())?.username
+                            : currentUser?.username}
                           adminName={adminName}
+                          usersList={usersList}
+                          canAssignOthers={isAdmin}
                           searchQuery={searchQuery}
                           onSearchChange={setSearchQuery}
                           onAssignPic={onAssignPic}
+                          onReleasePic={onReleasePic}
                           onOpenEngagementModal={onOpenEngagementModal}
                         />
                       )}
@@ -852,10 +915,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             </p>
                           )}
                         </div>
+                        {workspaceRowsStatus && <div className="mt-3">{workspaceRowsStatus}</div>}
                         <div className="mt-4 flex flex-wrap items-center gap-2">
                           <button
-                            disabled={eligibleSplitUsers.length === 0}
+                            disabled={!workspaceRowsReady || eligibleSplitUsers.length === 0}
                             onClick={async () => {
+                              if (!workspaceRowsReady) return;
                               if (eligibleSplitUsers.length === 0) {
                                 showMissingPicAccessWarning();
                                 return;
@@ -881,6 +946,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                               setConfirmConfig({
                                 title: "Konfirmasi Bagi Rata Sisa",
                                 description: `Apakah Anda yakin ingin membagi ${unassigned.length} peserta sisa (belum ada PIC) ke seluruh PIC secara merata?`,
+                                workspaceParticipants: participants,
                                 onConfirm: async () => {
                                   const targetPics = eligibleSplitUsers;
                                   if (targetPics.length === 0) {
@@ -905,9 +971,9 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             <GitBranch aria-hidden="true" className="h-4 w-4" />Bagi sisa peserta
                           </button>
                           <button
-                            disabled={participants.length === 0 || eligibleSplitUsers.length === 0}
+                            disabled={!workspaceRowsReady || participants.length === 0 || eligibleSplitUsers.length === 0}
                             onClick={async () => {
-                              if (participants.length === 0) return;
+                              if (!workspaceRowsReady || participants.length === 0) return;
                               if (eligibleSplitUsers.length === 0) {
                                 showMissingPicAccessWarning();
                                 return;
@@ -916,6 +982,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                               setConfirmConfig({
                                 title: "Peringatan Bagi Ulang Semua",
                                 description: `PERINGATAN: Apakah Anda yakin ingin membagi ulang peserta secara merata? Tindakan ini akan mengocok ulang alokasi PIC.`,
+                                workspaceParticipants: participants,
                                 onConfirm: async () => {
                                   let targetAll = participants;
                                   if (activeTab === 'request') {
@@ -948,7 +1015,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                             <RotateCw aria-hidden="true" className="h-4 w-4" />Bagi ulang semua peserta
                           </button>
                           <button
-                            disabled={eligibleSplitUsers.length === 0}
+                            disabled={!workspaceRowsReady || eligibleSplitUsers.length === 0}
                             onClick={() => setIsSplitModalOpen(true)}
                             className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                           >
@@ -1041,8 +1108,8 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
                                 <div className="mt-4 flex flex-wrap items-center gap-2">
                                   <button type="button" onClick={() => { setSelectedPic(pic.name); setPicViewTab('report'); }} className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"><History aria-hidden="true" className="h-4 w-4" />Daily report</button>
                                   <button type="button" onClick={() => { setSelectedPic(pic.name); setPicViewTab('participants'); }} className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"><Users aria-hidden="true" className="h-4 w-4" />Kelola peserta</button>
-                                  {onAssignPic && unassignedIds.length > 0 && (
-                                    <button type="button" onClick={() => setConfirmConfig({ title: 'Konfirmasi penugasan peserta', description: `Tugaskan ${unassignedIds.length} peserta yang belum memiliki PIC ke ${pic.name}?`, onConfirm: async () => { await onAssignPic(unassignedIds, pic.name); } })} className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50 sm:ml-auto"><Plus aria-hidden="true" className="h-3.5 w-3.5" />Tugaskan {unassignedIds.length} sisa peserta</button>
+                                  {onAssignPic && workspaceRowsReady && unassignedIds.length > 0 && (
+                                    <button type="button" onClick={() => setConfirmConfig({ title: 'Konfirmasi penugasan peserta', description: `Tugaskan ${unassignedIds.length} peserta yang belum memiliki PIC ke ${pic.name}?`, workspaceParticipants: participants, onConfirm: async () => { await onAssignPic(unassignedIds, pic.name); } })} className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50 sm:ml-auto"><Plus aria-hidden="true" className="h-3.5 w-3.5" />Tugaskan {unassignedIds.length} sisa peserta</button>
                                   )}
                                 </div>
                               </article>
@@ -1079,9 +1146,12 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  confirmConfig.onConfirm();
+                  if (!loadWorkspaceParticipants || !confirmConfig.workspaceParticipants || confirmConfig.workspaceParticipants === participants) {
+                    confirmConfig.onConfirm();
+                  }
                   setConfirmConfig(null);
                 }}
+                disabled={!!loadWorkspaceParticipants && !!confirmConfig.workspaceParticipants && confirmConfig.workspaceParticipants !== participants}
                 className="ms-modal-primary"
               >
                 Konfirmasi
@@ -1201,7 +1271,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
               <button
                 type="button"
                 onClick={handleExecuteSplitSelected}
-                disabled={selectedSplitPics.length === 0}
+                disabled={!workspaceRowsReady || selectedSplitPics.length === 0}
                 className="ms-modal-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Shuffle aria-hidden="true" className="h-4 w-4" />Bagi ke {selectedSplitPics.length} PIC

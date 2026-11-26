@@ -6,7 +6,7 @@ import { crmEventIdFromQuery, openTagtogDataSync } from '../../../lib/utils/tagt
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { crmService } from '../../../lib/services/crmService';
-import { Event, EmsSource, EventParticipant, Database, AppUser, EventParticipantFilterOptions, EventParticipantStatisticsResponse } from '../../../lib/types';
+import { Event, EmsSource, EventParticipant, Database, AppUser } from '../../../lib/types';
 import { CalendarDays, Plus, Loader2, UserPlus, Users, Edit2, Trash2, Download, ArrowLeft, Search, Eye, CheckCircle, Upload, RefreshCw, Columns } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../lib/context/AuthContext';
@@ -33,7 +33,7 @@ import { EventPicPanel } from './components/EventPicPanel';
 import { ParticipantToolbar } from './components/ParticipantToolbar';
 import { BatchActionsBar } from './components/BatchActionsBar';
 import { ManageUserColumnsModal } from '../users/components/ManageUserColumnsModal';
-import { extractPicFromNotes, getPreEventApprovalStatus, setPreEventApprovalStatus, isEmsApprovalEvent } from './utils/notesHelper';
+import { extractPicFromNotes, setPreEventApprovalStatus, isEmsApprovalEvent } from './utils/notesHelper';
 import { getStatusBadgeStyle, getConfirmationStatusBadgeStyle } from './utils/statusHelper';
 import { checkDatabaseCompleteness } from '../database/utils/validationHelper';
 import { getEventColumnConfig } from './utils/columnConfigHelper';
@@ -41,44 +41,110 @@ import { getEventColumnConfig } from './utils/columnConfigHelper';
 const EVENT_TABS = ['request', 'pre_event', 'declined', 'reminder', 'reminder_dday'] as const;
 type EventTab = typeof EVENT_TABS[number];
 
+const EVENT_CACHE_TTL = 30_000;
+const EVENT_CACHE_LIMIT = 20;
+
+function useSearchAfterTyping(value: string) {
+  const search = value.trim();
+  const [settled, setSettled] = useState(search);
+  useEffect(() => {
+    if (search === settled) return;
+    if (!search) {
+      setSettled('');
+      return;
+    }
+    const timer = setTimeout(() => setSettled(search), 250);
+    return () => clearTimeout(timer);
+  }, [search, settled]);
+  return search ? settled : '';
+}
+
+function useEventLookup<T>(
+  session: string,
+  key: string | null,
+  revision: number,
+  load: (signal: AbortSignal) => Promise<T>,
+  errorMessage: string,
+) {
+  const cache = React.useRef(new Map<string, { data: T; expires: number }>());
+  const cacheScope = React.useRef({ session, revision });
+  const [result, setResult] = useState<{ session: string; key: string; data?: T }>();
+
+  useEffect(() => {
+    if (cacheScope.current.session !== session || cacheScope.current.revision !== revision) {
+      cache.current.clear();
+      cacheScope.current = { session, revision };
+    }
+    if (!session || !key) return;
+    const cached = cache.current.get(key);
+    if (cached && cached.expires > Date.now()) {
+      setResult({ session, key, data: cached.data });
+      return;
+    }
+
+    const controller = new AbortController();
+    void load(controller.signal).then(data => {
+      if (controller.signal.aborted) return;
+      cache.current.delete(key);
+      cache.current.set(key, { data, expires: Date.now() + EVENT_CACHE_TTL });
+      if (cache.current.size > EVENT_CACHE_LIMIT) {
+        const oldest = cache.current.keys().next().value;
+        if (oldest !== undefined) cache.current.delete(oldest);
+      }
+      setResult({ session, key, data });
+    }).catch(() => {
+      if (controller.signal.aborted) return;
+      setResult(current => ({ session, key, data: current?.session === session && current.key === key ? current.data : undefined }));
+      if (errorMessage) toast.error(errorMessage);
+    });
+    return () => controller.abort();
+    // The key includes all the query inputs used by load.
+  }, [session, key, revision]);
+
+  const current = result?.session === session && result.key === key ? result : undefined;
+  const data = current?.data;
+  return {
+    data,
+    loading: Boolean(session && key && !current),
+    update: (apply: (data: T) => T) => {
+      setResult(previous => previous?.session === session && previous.key === key && previous.data !== undefined
+        ? { ...previous, data: apply(previous.data) } : previous);
+    },
+  };
+}
+
 export default function EventsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const eventIdParam = crmEventIdFromQuery(searchParams);
+  const selectedEventId = crmEventIdFromQuery(searchParams);
+  const eventIdParam = selectedEventId === null ? null : String(selectedEventId);
   const tabParam = searchParams.get('tab');
   const activeTab: EventTab = EVENT_TABS.includes(tabParam as EventTab) ? tabParam as EventTab : 'request';
 
-  const { isAdmin, isManager, isUser, user, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
+  const { isAdmin, isManager, isUser, user, token, isAuthenticated, isLoading: authLoading } = useAuth();
   const isViewer = isUser || (!isAdmin && !isManager);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [databases, setDatabases] = useState<Database[]>([]);
-  const [loading, setLoading] = useState(true);
+  const session = !authLoading && isAuthenticated && user
+    ? `${user.id}:${isAdmin}:${isViewer}:${tagtogSsoEnabled ? 'tagtog' : token}`
+    : '';
   const [searchQuery, setSearchQuery] = useState('');
-  const [eventListPage, setEventListPage] = useState(1);
+  const eventSearch = useSearchAfterTyping(searchQuery);
+  const [eventPage, setEventPage] = useState({ search: '', page: 1 });
+  const eventListPage = eventPage.search === eventSearch ? eventPage.page : 1;
   const eventListPageSize = 12;
-  const [eventListTotal, setEventListTotal] = useState(0);
-  const [eventListTotalPages, setEventListTotalPages] = useState(1);
-  const [eventListSummary, setEventListSummary] = useState({ total: 0, upcoming: 0, ongoing: 0, past: 0 });
+  const [eventListRevision, setEventListRevision] = useState(0);
   const [isPmsSyncOpen, setIsPmsSyncOpen] = useState(false);
 
   // Selected Event & Participants state
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [loadedEvent, setLoadedEvent] = useState<{ session: string; event: Event } | null>(null);
+  const selectedEvent = loadedEvent?.session === session && String(loadedEvent.event.id) === eventIdParam ? loadedEvent.event : null;
   const emsApprovalManaged = isEmsApprovalEvent(selectedEvent);
   const checkEventDatabaseCompleteness = (contact: Database) =>
     checkDatabaseCompleteness(contact, selectedEvent?.syncDestination || undefined);
-  const [participants, setParticipants] = useState<EventParticipant[]>([]);
-  const [statsParticipants, setStatsParticipants] = useState<EventParticipant[]>([]);
-  const [participantsSummary, setParticipantsSummary] = useState<any>(null);
-  const [allStatsParticipants, setAllStatsParticipants] = useState<EventParticipant[]>([]);
-  const [allParticipantsSummary, setAllParticipantsSummary] = useState<any>(null);
-  const [eventStatistics, setEventStatistics] = useState<EventParticipantStatisticsResponse | null>(null);
-  const [participantFilterOptions, setParticipantFilterOptions] = useState<EventParticipantFilterOptions | null>(null);
-  const [participantsTotal, setParticipantsTotal] = useState(0);
-  const [loadingParticipants, setLoadingParticipants] = useState(false);
-  const participantsRequest = React.useRef(0);
+  const [participantRevision, setParticipantRevision] = useState(0);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
   const [participantSearchQuery, setParticipantSearchQuery] = useState('');
+  const participantSearch = useSearchAfterTyping(participantSearchQuery);
   const [filterCompany, setFilterCompany] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
   const [filterIndustry, setFilterIndustry] = useState('');
@@ -88,23 +154,8 @@ export default function EventsPage() {
   const [filterReminderH7, setFilterReminderH7] = useState('');
   const [filterReminderH3, setFilterReminderH3] = useState('');
   const [filterReminderH1, setFilterReminderH1] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [participantPage, setParticipantPage] = useState({ scope: '', page: 1 });
   const [pageSize, setPageSize] = useState(25);
-
-  const setParticipantsSorted = (participantsList: EventParticipant[]) => {
-    const sorted = [...participantsList].sort((a, b) => a.id - b.id);
-    setParticipants(sorted);
-  };
-
-  const setStatsParticipantsSorted = (participantsList: EventParticipant[]) => {
-    const sorted = [...participantsList].sort((a, b) => a.id - b.id);
-    setStatsParticipants(sorted);
-  };
-
-  const setAllStatsParticipantsSorted = (participantsList: EventParticipant[]) => {
-    const sorted = [...participantsList].sort((a, b) => a.id - b.id);
-    setAllStatsParticipants(sorted);
-  };
 
   const getEventStatus = (startDateStr: string | null | undefined, endDateStr: string | null | undefined) => {
     if (!startDateStr) return null;
@@ -193,7 +244,6 @@ export default function EventsPage() {
   const [eligibleManagersLoad, setEligibleManagersLoad] = useState<{ eventId: number; status: 'loading' | 'ready' | 'error' } | null>(null);
   const eligibleManagersRequest = React.useRef(0);
   const [filterPic, setFilterPic] = useState('');
-  const [currentAllowedEventIds, setCurrentAllowedEventIds] = useState<number[]>([]);
   
   // Excel Import states for Event Participants
   const [isImportParticipantsModalOpen, setIsImportParticipantsModalOpen] = useState(false);
@@ -201,13 +251,11 @@ export default function EventsPage() {
   const [importParticipantsProgress, setImportParticipantsProgress] = useState(0);
   const [isImportingParticipants, setIsImportingParticipants] = useState(false);
 
-  const [isEngagementModalOpen, setIsEngagementModalOpen] = useState(false);
   const [selectedEngagementParticipant, setSelectedEngagementParticipant] = useState<EventParticipant | null>(null);
   const [isManagePicsModalOpen, setIsManagePicsModalOpen] = useState(false);
 
   const handleOpenEngagementModal = (participant: EventParticipant) => {
     setSelectedEngagementParticipant(participant);
-    setIsEngagementModalOpen(true);
   };
 
   const handleManagePicsSaved = async () => {
@@ -217,17 +265,8 @@ export default function EventsPage() {
     ]);
     setUsersList(freshUsers);
     if (selectedEvent) {
-      await loadParticipantsForEvent(selectedEvent, activeTab);
+      refreshParticipants();
     }
-  };
-
-  useEffect(() => {
-    setCurrentAllowedEventIds(Array.isArray(user?.allowedEventIds) ? user.allowedEventIds : []);
-  }, [user?.id, user?.allowedEventIds]);
-
-  const hasEventAccess = (eventId: number) => {
-    if (isAdmin) return true;
-    return currentAllowedEventIds.includes(eventId);
   };
 
   const eligiblePicUsers = eligibleManagers.filter((candidate) => {
@@ -240,50 +279,98 @@ export default function EventsPage() {
 
   const isAllowedPicName = (picName?: string | null) => {
     if (!picName) return false;
-    return eligiblePicNames.some((name) => name.toLowerCase() === picName.trim().toLowerCase());
+    return eligiblePicNames.some((name) => name.trim().toLowerCase() === picName.trim().toLowerCase());
   };
 
-  const getParticipantQueryParams = (overrides?: Partial<{
-    page: number;
-    size: number;
-    tab: string;
-  }>, options?: {
-    includeImplicitPicFilter?: boolean;
-  }) => {
-    const shouldApplyImplicitPicFilter = options?.includeImplicitPicFilter !== false;
-    const effectivePicFilter = shouldApplyImplicitPicFilter && !isAdmin && !isViewer && user && activeTab !== 'request'
-      ? (user.fullName || user.username)
-      : filterPic || undefined;
+  const eventId = selectedEvent?.id;
+  const scopedPic = !isAdmin && !isViewer && user && activeTab !== 'request'
+    ? (user.fullName || user.username)
+    : filterPic || undefined;
+  const eventFilters = React.useMemo(() => ({
+    tab: activeTab,
+    company: filterCompany || undefined,
+    position: filterPosition || undefined,
+    industry: filterIndustry || undefined,
+    confirmationStatus: filterConfirmationStatus || undefined,
+    remarks: activeTab === 'pre_event' ? filterRemarks || undefined : undefined,
+    reminderH7: activeTab === 'reminder' ? filterReminderH7 || undefined : undefined,
+    reminderH3: activeTab === 'reminder' ? filterReminderH3 || undefined : undefined,
+    reminderH1: activeTab === 'reminder' ? filterReminderH1 || undefined : undefined,
+    reminderHariH: filterReminderHariH || undefined,
+    search: participantSearch || undefined,
+  }), [activeTab, filterCompany, filterPosition, filterIndustry, filterConfirmationStatus, filterRemarks,
+    filterReminderH7, filterReminderH3, filterReminderH1, filterReminderHariH, participantSearch]);
+  const statisticsQuery = { ...eventFilters, pic: isAdmin ? filterPic || undefined : undefined };
+  const filterScope = JSON.stringify([eventIdParam, eventFilters, scopedPic]);
+  const currentPage = participantPage.scope === filterScope ? participantPage.page : 1;
 
-    return {
-      tab: overrides?.tab || activeTab,
-      pic: effectivePicFilter,
-      company: filterCompany || undefined,
-      position: filterPosition || undefined,
-      industry: filterIndustry || undefined,
-      confirmationStatus: filterConfirmationStatus || undefined,
-      remarks: (overrides?.tab || activeTab) === 'pre_event' ? filterRemarks || undefined : undefined,
-      reminderH7: (overrides?.tab || activeTab) === 'reminder' ? filterReminderH7 || undefined : undefined,
-      reminderH3: (overrides?.tab || activeTab) === 'reminder' ? filterReminderH3 || undefined : undefined,
-      reminderH1: (overrides?.tab || activeTab) === 'reminder' ? filterReminderH1 || undefined : undefined,
-      reminderHariH: filterReminderHariH || undefined,
-      search: participantSearchQuery || undefined,
-      page: overrides?.page ?? currentPage,
-      size: overrides?.size ?? pageSize
-    };
+  const setCurrentPage = (value: React.SetStateAction<number>) => {
+    setParticipantPage({ scope: filterScope, page: typeof value === 'function' ? value(currentPage) : value });
+  };
+  const setEventListPage = (value: (current: number) => number) => {
+    setEventPage({ search: eventSearch, page: value(eventListPage) });
   };
 
-  const loadEligibleManagers = async (eventId: number) => {
+  const getParticipantQueryParams = () => ({ ...eventFilters, pic: scopedPic, page: currentPage, size: pageSize });
+  const listParams = { search: eventSearch || undefined, page: eventListPage, size: eventListPageSize };
+  const list = useEventLookup(session, eventIdParam ? null : JSON.stringify(listParams), eventListRevision,
+    signal => crmService.getEventsList(listParams, signal), 'Failed to load events');
+  const events = list.data?.items || [];
+  const eventListTotal = list.data?.total || 0;
+  const eventListTotalPages = list.data?.totalPages || 1;
+  const eventListSummary = list.data?.summary || { total: 0, upcoming: 0, ongoing: 0, past: 0 };
+  const loading = authLoading || (eventIdParam ? !selectedEvent : list.loading);
+  const tableParams = getParticipantQueryParams();
+  const tableKey = eventId ? JSON.stringify([eventId, tableParams]) : null;
+  const statisticsKey = eventId ? JSON.stringify([eventId, statisticsQuery]) : null;
+  const table = useEventLookup(session, tableKey, participantRevision,
+    signal => crmService.getEventParticipantsByEvent(eventId!, tableParams, signal), 'Failed to fetch participants for this event');
+  const statistics = useEventLookup(session, statisticsKey, participantRevision,
+    signal => crmService.getEventStatistics(eventId!, statisticsQuery, signal), '');
+  const filterOptions = useEventLookup(session, statisticsKey, participantRevision,
+    signal => crmService.getEventParticipantFilterOptions(eventId!, statisticsQuery, signal), '');
+  const participants = React.useMemo(() => [...(table.data?.items || [])].sort((a, b) => a.id - b.id), [table.data]);
+  const participantsTotal = table.data?.total || 0;
+  const loadingParticipants = table.loading;
+  const eventStatistics = statistics.data;
+  const participantFilterOptions = filterOptions.data;
+  const declinedCount = (isAdmin || isViewer ? eventStatistics?.scopes?.all : eventStatistics?.scopes?.mine)?.declinedCount || 0;
+
+  const loadWorkspaceParticipants = React.useCallback(async (all: boolean, signal: AbortSignal) => {
+    if (!eventId) return [];
+    const params = { ...eventFilters, pic: all ? filterPic || undefined : scopedPic, size: 500 };
+    const first = await crmService.getEventParticipantsByEvent(eventId, { ...params, page: 1 }, signal);
+    const items = [...first.items];
+    for (let page = 2; page <= first.totalPages; page++) {
+      const result = await crmService.getEventParticipantsByEvent(eventId, { ...params, page }, signal);
+      items.push(...result.items);
+    }
+    if (items.length !== first.total || new Set(items.map(participant => participant.id)).size !== items.length) {
+      throw new Error('Participant list changed while loading');
+    }
+    return items;
+  }, [eventId, eventFilters, scopedPic, filterPic, session]);
+
+  const refreshParticipants = () => {
+    setParticipantRevision(revision => revision + 1);
+    setEventListRevision(revision => revision + 1);
+  };
+  const loadData = () => {
+    if (selectedEvent) refreshParticipants();
+    else setEventListRevision(revision => revision + 1);
+  };
+
+  const loadEligibleManagers = async (eventId: number, signal?: AbortSignal) => {
     const request = ++eligibleManagersRequest.current;
     setEligibleManagers([]);
     setEligibleManagersLoad({ eventId, status: 'loading' });
     try {
-      const data = await crmService.getEligibleManagersForEvent(eventId);
-      if (request !== eligibleManagersRequest.current) return;
+      const data = await crmService.getEligibleManagersForEvent(eventId, signal);
+      if (signal?.aborted || request !== eligibleManagersRequest.current) return;
       setEligibleManagers(Array.isArray(data) ? data : []);
       setEligibleManagersLoad({ eventId, status: 'ready' });
     } catch {
-      if (request !== eligibleManagersRequest.current) return;
+      if (signal?.aborted || request !== eligibleManagersRequest.current) return;
       setEligibleManagers([]);
       setEligibleManagersLoad({ eventId, status: 'error' });
     }
@@ -291,219 +378,63 @@ export default function EventsPage() {
 
   const adminUser = usersList.find(u => u.roles?.includes('ADMIN'));
   const adminName = adminUser ? (adminUser.fullName || adminUser.username) : 'Admin';
-  const getConfirmationStatus = (p: EventParticipant) => p.confirmationStatus?.trim().toLowerCase() || 'pending';
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated || !user) {
-      setLoading(false);
-      setEvents([]);
-      setEventListTotal(0);
-      setEventListTotalPages(1);
-      setEventListSummary({ total: 0, upcoming: 0, ongoing: 0, past: 0 });
-      setDatabases([]);
+    if (!session) {
       setUsersList([]);
-      setSelectedEvent(null);
-      setParticipants([]);
-      setStatsParticipants([]);
-      setAllStatsParticipants([]);
-      setParticipantsSummary(null);
-      setAllParticipantsSummary(null);
-      setEventStatistics(null);
-      setParticipantFilterOptions(null);
-      setParticipantsTotal(0);
-      setEligibleManagers([]);
       return;
     }
-  }, [authLoading, isAuthenticated, user?.id]);
+    let cancelled = false;
+    void crmService.getUsers().then(users => { if (!cancelled) setUsersList(users || []); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [session]);
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !user) return;
-    void loadData();
-  }, [authLoading, isAuthenticated, user?.id, searchQuery, eventListPage, isAdmin]);
-
-  useEffect(() => {
-    const syncSelectedEvent = async () => {
-      if (authLoading || !isAuthenticated || !user) {
-        setSelectedEvent(null);
-        setParticipants([]);
-        setStatsParticipants([]);
-        setAllStatsParticipants([]);
-        setParticipantsSummary(null);
-        setAllParticipantsSummary(null);
-        setEventStatistics(null);
-        setParticipantFilterOptions(null);
-        setEligibleManagers([]);
-        return;
-      }
-
-      if (events.length === 0 && !eventIdParam) return;
-
-      if (eventIdParam) {
-        let matched = events.find((ev) => ev.id === eventIdParam);
-        if (!matched && selectedEvent && selectedEvent.id === eventIdParam) {
-          return;
-        }
-        if (!matched) {
-          try {
-            matched = await crmService.getEventById(Number(eventIdParam));
-          } catch {}
-        }
-        if (matched) {
-          if (!hasEventAccess(matched.id)) {
-            toast.error("You don't have access to this event.");
-            setSelectedEvent(null);
-            setParticipants([]);
-            setStatsParticipants([]);
-            setAllStatsParticipants([]);
-            setParticipantsSummary(null);
-            setAllParticipantsSummary(null);
-            setEventStatistics(null);
-            setParticipantFilterOptions(null);
-            setEligibleManagers([]);
-            router.push('/dashboard/events');
-          } else if (!selectedEvent || selectedEvent.id !== matched.id) {
-            await loadEligibleManagers(matched.id);
-            await loadParticipantsForEvent(matched);
-          }
-        } else {
-          setSelectedEvent(null);
-          setParticipants([]);
-          setStatsParticipants([]);
-          setAllStatsParticipants([]);
-          setParticipantsSummary(null);
-          setAllParticipantsSummary(null);
-          setEventStatistics(null);
-          setParticipantFilterOptions(null);
-          setEligibleManagers([]);
-        }
-      } else {
-        setSelectedEvent(null);
-        setParticipants([]);
-        setStatsParticipants([]);
-        setAllStatsParticipants([]);
-        setParticipantsSummary(null);
-        setAllParticipantsSummary(null);
-        setEventStatistics(null);
-        setParticipantFilterOptions(null);
-        setEligibleManagers([]);
-      }
-    };
-
-    void syncSelectedEvent();
-  }, [authLoading, isAuthenticated, user?.id, eventIdParam, events, currentAllowedEventIds, router]);
-
-  useEffect(() => {
-    setEventListPage(1);
-  }, [searchQuery]);
-
-  async function loadData() {
-    const sessionToken = isAuthenticated;
-    if (authLoading) return;
-    if (!sessionToken || !user) {
-      setLoading(false);
+    if (!session || !eventIdParam) {
+      setLoadedEvent(null);
       return;
     }
+    const controller = new AbortController();
+    handleResetFilters();
+    setSelectedEngagementParticipant(null);
+    setActiveParticipant(null);
+    void crmService.getEventById(Number(eventIdParam), controller.signal).then(event => {
+      if (!controller.signal.aborted) setLoadedEvent({ session, event });
+    }).catch(() => {
+      if (controller.signal.aborted) return;
+      toast.error('Failed to open this event');
+      router.replace('/dashboard/events');
+    });
+    return () => controller.abort();
+  }, [session, eventIdParam, router]);
 
-    setLoading(true);
-    try {
-      const freshUser = user && !isAdmin ? await refreshUser() : user;
-      const [eventListResponse, cList, uList] = await Promise.all([
-        crmService.getEventsList({
-          search: searchQuery || undefined,
-          page: eventListPage,
-          size: eventListPageSize
-        }),
-        crmService.getDatabases(),
-        crmService.getUsers().catch(() => [])
-      ]);
-      const eventItems = eventListResponse?.items || [];
-      setEvents(eventItems);
-      setEventListTotal(eventListResponse?.total || 0);
-      setEventListTotalPages(eventListResponse?.totalPages || 1);
-      setEventListSummary(eventListResponse?.summary || { total: 0, upcoming: 0, ongoing: 0, past: 0 });
-      setDatabases(cList.filter(c => c.isActive)); // only active databases
-      setUsersList(uList);
+  useEffect(() => {
+    if (!session || !eventId) return;
+    const controller = new AbortController();
+    void loadEligibleManagers(eventId, controller.signal);
+    return () => controller.abort();
+  }, [session, eventId]);
 
-      if (!isAdmin && user) {
-        let currentAllowed: number[] | undefined;
+  useEffect(() => {
+    setEventPage(current => current.search === eventSearch ? current : { search: eventSearch, page: 1 });
+  }, [eventSearch]);
 
-        if (Array.isArray(freshUser?.allowedEventIds)) {
-          currentAllowed = freshUser.allowedEventIds;
-        }
+  useEffect(() => {
+    setParticipantPage(current => current.scope === filterScope ? current : { scope: filterScope, page: 1 });
+  }, [filterScope]);
 
-        if (!Array.isArray(currentAllowed)) {
-          const listedUser = uList.find((u: any) => u.id === user.id);
-          if (Array.isArray(listedUser?.allowedEventIds)) {
-            currentAllowed = listedUser.allowedEventIds;
-          }
-        }
+  useEffect(() => {
+    setSelectedParticipantIds(current => current.length ? [] : current);
+  }, [session, tableKey]);
 
-        if (!Array.isArray(currentAllowed)) {
-          try {
-            const directUser = await crmService.getUserById(user.id);
-            if (Array.isArray(directUser?.allowedEventIds)) {
-              currentAllowed = directUser.allowedEventIds;
-            }
-          } catch {}
-        }
-
-        const resolvedAllowed = Array.isArray(currentAllowed) ? currentAllowed : [];
-        setCurrentAllowedEventIds(resolvedAllowed);
-
-        try {
-          if (!tagtogSsoEnabled) {
-          const saved = JSON.parse(localStorage.getItem('user') || '{}');
-          saved.allowedEventIds = resolvedAllowed;
-          localStorage.setItem('user', JSON.stringify(saved));
-          localStorage.setItem(`user_allowed_events_${user.id}`, JSON.stringify(resolvedAllowed));
-          localStorage.setItem(`viewer_allowed_events_${user.id}`, JSON.stringify(resolvedAllowed));
-          }
-        } catch {}
-      }
-
-      // Check URL query parameters for eventId or id
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlEventId = crmEventIdFromQuery(urlParams);
-        if (urlEventId) {
-          let matchedEvent = eventItems.find((ev) => ev.id === urlEventId);
-          if (!matchedEvent) {
-            try {
-              matchedEvent = await crmService.getEventById(Number(urlEventId));
-            } catch {}
-          }
-          if (matchedEvent) {
-            setSelectedEvent(matchedEvent);
-            await loadEligibleManagers(matchedEvent.id);
-            await loadParticipantsForEvent(matchedEvent);
-            return;
-          }
-        }
-      }
-
-      if (selectedEvent) {
-        let updatedSel = eventItems.find((ev) => ev.id === selectedEvent.id);
-        if (!updatedSel) {
-          try {
-            updatedSel = await crmService.getEventById(selectedEvent.id);
-          } catch {}
-        }
-        if (updatedSel) {
-          setSelectedEvent(updatedSel);
-          await loadEligibleManagers(updatedSel.id);
-          await loadParticipantsForEvent(updatedSel);
-        }
-      }
-    } catch (err) {
-      const latestSessionToken = isAuthenticated;
-      if (latestSessionToken) {
-        toast.error('Failed to load events or databases');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    if (!table.data) return;
+    const visible = new Set(table.data.items.map(participant => participant.id));
+    setSelectedParticipantIds(current => {
+      const next = current.filter(id => visible.has(id));
+      return next.length === current.length ? current : next;
+    });
+  }, [table.data]);
 
   const handleSyncPmsEvents = () => {
     if (tagtogSsoEnabled) { openTagtogDataSync(); return; }
@@ -614,9 +545,8 @@ export default function EventsPage() {
       toast.success('Event updated successfully!');
       setIsEditEventModalOpen(false);
       setEditingEvent(null);
-      setSelectedEvent(updated);
-      await loadParticipantsForEvent(updated);
-      loadData();
+      setLoadedEvent(current => current?.session === session && current.event.id === updated.id ? { session, event: updated } : current);
+      refreshParticipants();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update event');
     } finally {
@@ -637,9 +567,9 @@ export default function EventsPage() {
       toast.success('Event deleted successfully!');
       setIsDeleteEventConfirmOpen(false);
       setDeletingEvent(null);
-      setSelectedEvent(null);
-      setParticipants([]);
-      loadData();
+      setLoadedEvent(current => current?.event.id === deletingEvent.id ? null : current);
+      setEventListRevision(revision => revision + 1);
+      if (eventIdParam === String(deletingEvent.id)) router.push('/dashboard/events');
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete event');
     } finally {
@@ -657,79 +587,29 @@ export default function EventsPage() {
     handleResetFilters();
   };
 
-  const loadParticipantsForEvent = async (event: Event, targetTab?: EventTab) => {
-    const request = ++participantsRequest.current;
-    if (selectedEvent?.id !== event.id) {
-      setFilterRemarks(''); setFilterReminderH7(''); setFilterReminderH3(''); setFilterReminderH1('');
-    }
-    setSelectedEvent(event);
-    setLoadingParticipants(true);
-    setSelectedParticipantIds([]); // reset selection
-    const effectiveTab = targetTab || activeTab;
-    try {
-      const remarks = effectiveTab === 'pre_event' && selectedEvent?.id === event.id ? filterRemarks || undefined : undefined;
-      const reminderFilters = {
-        reminderH7: effectiveTab === 'reminder' && selectedEvent?.id === event.id ? filterReminderH7 || undefined : undefined,
-        reminderH3: effectiveTab === 'reminder' && selectedEvent?.id === event.id ? filterReminderH3 || undefined : undefined,
-        reminderH1: effectiveTab === 'reminder' && selectedEvent?.id === event.id ? filterReminderH1 || undefined : undefined,
-      };
-      const tableQuery = { ...getParticipantQueryParams({ tab: effectiveTab }), remarks, ...reminderFilters };
-      const statsQuery = { ...tableQuery, page: 1, size: 5000 };
-      const statisticsQuery = {
-        tab: effectiveTab,
-        pic: isAdmin ? filterPic || undefined : undefined,
-        company: filterCompany || undefined,
-        position: filterPosition || undefined,
-        industry: filterIndustry || undefined,
-        confirmationStatus: filterConfirmationStatus || undefined,
-        remarks,
-        ...reminderFilters,
-        reminderHariH: filterReminderHariH || undefined,
-        search: participantSearchQuery || undefined
-      };
-      const allStatsQuery = { ...getParticipantQueryParams(
-        { tab: effectiveTab, page: 1, size: 5000 },
-        { includeImplicitPicFilter: false }
-      ), remarks, ...reminderFilters };
+  const handleEventActivityLogged = refreshParticipants;
 
-      const [tableResponse, statsResponse, summaryResponse, allStatsResponse, allSummaryResponse, statisticsResponse, filterOptionsResponse] = await Promise.all([
-        crmService.getEventParticipantsByEvent(event.id, tableQuery),
-        crmService.getEventParticipantsByEvent(event.id, statsQuery),
-        crmService.getEventParticipantsSummary(event.id, statsQuery),
-        crmService.getEventParticipantsByEvent(event.id, allStatsQuery),
-        crmService.getEventParticipantsSummary(event.id, allStatsQuery),
-        crmService.getEventStatistics(event.id, statisticsQuery),
-        crmService.getEventParticipantFilterOptions(event.id, statisticsQuery)
-      ]);
-      if (request !== participantsRequest.current) return;
-
-      const tableParticipants = tableResponse?.items || [];
-      const filteredStatsParticipants = statsResponse?.items || [];
-      const allFilteredParticipants = allStatsResponse?.items || [];
-
-      setParticipantsSorted(tableParticipants);
-      setStatsParticipantsSorted(filteredStatsParticipants);
-      setParticipantsSummary(summaryResponse || null);
-      setAllStatsParticipantsSorted(allFilteredParticipants);
-      setAllParticipantsSummary(allSummaryResponse || null);
-      setEventStatistics(statisticsResponse || null);
-      setParticipantFilterOptions(filterOptionsResponse || null);
-      setParticipantsTotal(tableResponse?.total || 0);
-    } catch (err) {
-      if (request === participantsRequest.current) toast.error('Failed to fetch participants for this event');
-    } finally {
-      if (request === participantsRequest.current) setLoadingParticipants(false);
-    }
+  const handleEventContactUpdated = (database: Database) => {
+    const updateContact = (participant: EventParticipant) => participant.database.id === database.id
+      ? { ...participant, database: { ...participant.database, ...database } } : participant;
+    table.update(current => ({ ...current, items: current.items.map(updateContact) }));
+    setActiveParticipant(current => current && updateContact(current));
+    setSelectedEngagementParticipant(current => current && updateContact(current));
+    handleEventActivityLogged();
   };
 
-  const handleSelectEvent = async (event: Event) => {
+  const handleEventNotesUpdated = (participantId: number, notes: string) => {
+    table.update(current => ({ ...current, items: current.items.map(participant => participant.id === participantId ? { ...participant, notes } : participant) }));
+    setSelectedEngagementParticipant(current => current?.id === participantId ? { ...current, notes } : current);
+    handleEventActivityLogged();
+  };
+
+  const handleSelectEvent = (event: Event) => {
     router.push(`/dashboard/events?eventId=${event.id}`);
-    await loadEligibleManagers(event.id);
-    await loadParticipantsForEvent(event, 'request');
   };
 
   const handleExportParticipants = async () => {
-    if (!selectedEvent || statsParticipants.length === 0) {
+    if (!selectedEvent || participantsTotal === 0) {
       toast.error("Tidak ada data lead untuk di-export.");
       return;
     }
@@ -765,7 +645,7 @@ export default function EventsPage() {
         toast.success(`Berhasil mengupdate status attendance ${result.updatedCount} participants!`);
       }
       if (selectedEvent) {
-        await loadParticipantsForEvent(selectedEvent);
+        refreshParticipants();
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update attendance in bulk');
@@ -790,7 +670,7 @@ export default function EventsPage() {
         toast.success(`Berhasil mengupdate lead status ${result.updatedCount} participants!`);
       }
       if (selectedEvent) {
-        await loadParticipantsForEvent(selectedEvent);
+        refreshParticipants();
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update participant status in bulk');
@@ -815,7 +695,7 @@ export default function EventsPage() {
         toast.success(`Berhasil mengupdate status konfirmasi ${result.updatedCount} participants!`);
       }
       if (selectedEvent) {
-        await loadParticipantsForEvent(selectedEvent);
+        refreshParticipants();
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update confirmation status in bulk');
@@ -840,7 +720,7 @@ export default function EventsPage() {
         toast.success(`Berhasil mengupdate Pre Event approval ${result.updatedCount} participants!`);
       }
       if (selectedEvent) {
-        await loadParticipantsForEvent(selectedEvent, activeTab);
+        refreshParticipants();
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update pre-event approval in bulk');
@@ -865,7 +745,7 @@ export default function EventsPage() {
         toast.success(`Berhasil mengupdate status Hari H ${result.updatedCount} participants!`);
       }
       if (selectedEvent) {
-        await loadParticipantsForEvent(selectedEvent);
+        refreshParticipants();
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update Hari H in bulk');
@@ -899,7 +779,7 @@ export default function EventsPage() {
       toast.success(`Berhasil menghapus ${successCount} participants dari event!`);
     }
 
-    await loadParticipantsForEvent(selectedEvent, activeTab);
+    refreshParticipants();
   };
 
   const handleResetFilters = () => {
@@ -938,7 +818,7 @@ export default function EventsPage() {
       setIsAddParticipantModalOpen(false);
       
       // Reload participants & statistics immediately
-      await loadParticipantsForEvent(selectedEvent);
+      refreshParticipants();
     } catch (err: any) {
       toast.error(err.message || 'Failed to add database(s) to event');
     } finally {
@@ -1020,32 +900,36 @@ export default function EventsPage() {
     }
   };
 
-  const handleBatchAssignPic = async (picName: string) => {
-    if (selectedParticipantIds.length === 0) return;
-    if (!isAllowedPicName(picName)) {
+  const changeParticipantPic = async (participantIds: number[], picName: string | null) => {
+    if (!selectedEvent || isViewer || participantIds.length === 0) return false;
+    if (picName !== null && !isAllowedPicName(picName)) {
       toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
-      return;
+      return false;
     }
     setIsBatchUpdating(true);
     try {
       const result = await crmService.bulkUpdateEventParticipants({
-        participantIds: selectedParticipantIds,
-        picName
+        participantIds,
+        ...(picName === null ? { releasePic: true } : { picName }),
       });
-
-      setSelectedParticipantIds([]);
-      if ((result?.skippedCount || 0) > 0) {
-        toast.warning(`Berhasil menugaskan ${result.updatedCount} participants ke ${picName}, gagal ${result.skippedCount} participants.`);
-      } else {
-        toast.success(`Berhasil menugaskan ${result.updatedCount} participants ke ${picName}!`);
-      }
-      if (selectedEvent) {
-        await loadParticipantsForEvent(selectedEvent, activeTab);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to assign PIC in bulk');
+      const updated = result?.updatedCount ?? 0;
+      const skipped = result?.skippedCount ?? 0;
+      const message = picName === null ? `PIC dilepas dari ${updated} peserta.` : `${updated} peserta dialihkan ke ${picName}.`;
+      if (skipped > 0) toast.warning(`${message} ${skipped} peserta dilewati.`);
+      else if (updated > 0) toast.success(message);
+      if (updated > 0 || skipped > 0) refreshParticipants();
+      return updated > 0;
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memperbarui PIC peserta.');
+      return false;
     } finally {
       setIsBatchUpdating(false);
+    }
+  };
+
+  const handleBatchAssignPic = async (picName: string) => {
+    if (await changeParticipantPic(selectedParticipantIds, picName)) {
+      setSelectedParticipantIds([]);
     }
   };
 
@@ -1072,8 +956,13 @@ export default function EventsPage() {
   }) => {
     if (!selectedEvent || !activeParticipant) return;
 
-    const nextPicName = extractPicFromNotes(data.notes).pic;
-    if (!isAllowedPicName(nextPicName)) {
+    const currentPicName = activeParticipant.notes?.match(/\[PIC:\s*([^\]]*)\]/i)?.[1].trim().toLowerCase() || '';
+    const nextPicName = data.notes.match(/^\[PIC:\s*([^\]]*)\]/i)?.[1].trim() || '';
+    if (!nextPicName && currentPicName && currentPicName !== 'not set') {
+      toast.error('Gunakan tombol Lepas PIC untuk melepas penanggung jawab.');
+      return;
+    }
+    if (nextPicName && nextPicName.toLowerCase() !== currentPicName && !isAllowedPicName(nextPicName)) {
       toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
       return;
     }
@@ -1088,7 +977,7 @@ export default function EventsPage() {
         activeParticipant.id,
         data.participantStatus,
         data.attendanceStatus,
-        nextNotes || undefined,
+        nextNotes,
         undefined, // participantCategory (removed)
         data.callStatus || undefined,
         data.emailStatus || undefined,
@@ -1117,7 +1006,7 @@ export default function EventsPage() {
       setActiveParticipant(null);
       
       // Reload participants
-      await loadParticipantsForEvent(selectedEvent);
+      refreshParticipants();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update lead');
     } finally {
@@ -1173,7 +1062,7 @@ export default function EventsPage() {
 
       // Reload participants list
       if (selectedEvent) {
-        await loadParticipantsForEvent(selectedEvent, activeTab);
+        refreshParticipants();
       }
     } catch (err: any) {
       toast.error(err.message || `Failed to toggle ${type} status`);
@@ -1241,7 +1130,7 @@ export default function EventsPage() {
         );
         toast.success('Registration status updated successfully!');
         if (selectedEvent) {
-          await loadParticipantsForEvent(selectedEvent, activeTab);
+          refreshParticipants();
         }
         return;
       }
@@ -1259,7 +1148,7 @@ export default function EventsPage() {
         });
         toast.success('Pre Event approval updated successfully!');
         if (selectedEvent) {
-          await loadParticipantsForEvent(selectedEvent, activeTab);
+          refreshParticipants();
         }
         return;
       }
@@ -1306,7 +1195,7 @@ export default function EventsPage() {
 
       // Reload participants list
       if (selectedEvent) {
-        await loadParticipantsForEvent(selectedEvent, activeTab);
+        refreshParticipants();
       }
     } catch (err: any) {
       toast.error(err.message || `Failed to update ${field}`);
@@ -1389,43 +1278,6 @@ export default function EventsPage() {
   };
 
   const filteredEvents = events;
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    selectedEvent?.id,
-    activeTab,
-    participantSearchQuery,
-    filterCompany,
-    filterPosition,
-    filterIndustry,
-    filterConfirmationStatus,
-    filterRemarks,
-    filterReminderHariH,
-    filterReminderH7, filterReminderH3, filterReminderH1,
-    filterPic
-  ]);
-
-  useEffect(() => {
-    if (selectedEvent && selectedEvent.id === eventIdParam) {
-      loadParticipantsForEvent(selectedEvent, activeTab);
-    }
-  }, [
-    selectedEvent?.id,
-    eventIdParam,
-    activeTab,
-    participantSearchQuery,
-    filterCompany,
-    filterPosition,
-    filterIndustry,
-    filterConfirmationStatus,
-    filterRemarks,
-    filterReminderHariH,
-    filterReminderH7, filterReminderH3, filterReminderH1,
-    filterPic,
-    currentPage,
-    pageSize
-  ]);
 
   const totalPages = Math.ceil(participantsTotal / pageSize) || 1;
   const indexOfLastItem = Math.min(currentPage * pageSize, participantsTotal);
@@ -1689,7 +1541,7 @@ export default function EventsPage() {
                 ) : (
                   <span>Target: <strong className="text-slate-400">Not Set</strong></span>
                 )}
-                {(allParticipantsSummary?.registeredCount || 0) >= (selectedEvent.targetParticipants || 0) && selectedEvent.targetParticipants && selectedEvent.targetParticipants > 0 && (
+                {(eventStatistics?.scopes?.all?.registeredCount || 0) >= (selectedEvent.targetParticipants || 0) && selectedEvent.targetParticipants && selectedEvent.targetParticipants > 0 && (
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-600">
                     Target Achieved
                   </span>
@@ -1786,15 +1638,9 @@ export default function EventsPage() {
                 }`}
               >
                 <span>Declined</span>
-                {statsParticipants.filter(p => {
-                  const status = getConfirmationStatus(p);
-                  return p.emsClientDeclineReviewRequired === true || status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
-                }).length > 0 && (
+                {declinedCount > 0 && (
                   <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-200 text-slate-600 rounded-full">
-                    {statsParticipants.filter(p => {
-                      const status = getConfirmationStatus(p);
-                      return p.emsClientDeclineReviewRequired === true || status === 'decline' || status === 'declined' || getPreEventApprovalStatus(p) === 'decline';
-                    }).length}
+                    {declinedCount}
                   </span>
                 )}
               </button>
@@ -1816,9 +1662,10 @@ export default function EventsPage() {
                   {tagtogSsoEnabled ? 'Sync melalui TAGTOG' : `Preview & Sync ${selectedEvent.emsSource === 'V2' ? 'EMS Baru' : 'EMS Lama'}`}
                 </button>
               )}
-              {statsParticipants.length > 0 && (
+              {participantsTotal > 0 && (
                 <button
                   onClick={handleExportParticipants}
+                  disabled={participantSearch !== participantSearchQuery.trim()}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-all"
                   title="Export current participant list to Excel"
                 >
@@ -1852,8 +1699,9 @@ export default function EventsPage() {
 
           <EventStatistics
             activeTab={activeTab}
-            participants={statsParticipants}
-            allParticipants={allStatsParticipants}
+            participants={participants}
+            loadWorkspaceParticipants={loadWorkspaceParticipants}
+            workspaceRevision={participantRevision}
             statistics={eventStatistics}
             usersList={eligiblePicUsers}
             isAdmin={isAdmin}
@@ -1879,48 +1727,17 @@ export default function EventsPage() {
                   managerIds
                 });
                 toast.success(`Berhasil membagi ${result.updatedCount} peserta ke ${result.managerCount} PIC.`);
-                await loadParticipantsForEvent(selectedEvent, activeTab);
+                refreshParticipants();
               } catch (err: any) {
                 toast.error(err.message || 'Failed to auto split assignments');
               } finally {
                 setIsBatchUpdating(false);
               }
             } : undefined}
-            onAssignPic={!isViewer ? async (ids, picName) => {
-              if (!isAllowedPicName(picName)) {
-                toast.error('PIC yang dipilih harus user yang punya akses ke event ini.');
-                return;
-              }
-              setIsBatchUpdating(true);
-              try {
-                await crmService.bulkUpdateEventParticipants({
-                  participantIds: ids,
-                  picName
-                });
-                if (selectedEvent) {
-                  await loadParticipantsForEvent(selectedEvent, activeTab);
-                }
-              } catch (err: any) {
-                toast.error(err.message || 'Failed to assign PIC');
-              } finally {
-                setIsBatchUpdating(false);
-              }
-            } : undefined}
+            onAssignPic={!isViewer ? async (ids, picName) => { await changeParticipantPic(ids, picName); } : undefined}
+            onReleasePic={!isViewer ? async ids => { await changeParticipantPic(ids, null); } : undefined}
             onOpenEngagementModal={!isViewer ? handleOpenEngagementModal : undefined}
-            participantFilters={{
-              tab: activeTab,
-              pic: isAdmin ? filterPic || undefined : undefined,
-              company: filterCompany || undefined,
-              position: filterPosition || undefined,
-              industry: filterIndustry || undefined,
-              confirmationStatus: filterConfirmationStatus || undefined,
-              remarks: activeTab === 'pre_event' ? filterRemarks || undefined : undefined,
-              reminderH7: activeTab === 'reminder' ? filterReminderH7 || undefined : undefined,
-              reminderH3: activeTab === 'reminder' ? filterReminderH3 || undefined : undefined,
-              reminderH1: activeTab === 'reminder' ? filterReminderH1 || undefined : undefined,
-              reminderHariH: filterReminderHariH || undefined,
-              search: participantSearchQuery || undefined
-            }}
+            participantFilters={statisticsQuery}
           />
 
           {/* Batch Actions Status Bar */}
@@ -1943,7 +1760,7 @@ export default function EventsPage() {
           {/* Toolbar with Search & Advanced Filters */}
           {selectedEvent && (
             <ParticipantToolbar
-              participants={statsParticipants}
+              participants={participants}
               usersList={eligiblePicUsers}
               searchQuery={participantSearchQuery}
               setSearchQuery={setParticipantSearchQuery}
@@ -2134,7 +1951,7 @@ export default function EventsPage() {
           setIsEmsSyncOpen(false);
           if (selectedEvent) openEditEventModal(selectedEvent);
         }}
-        onSynced={async () => { if (selectedEvent) await loadParticipantsForEvent(selectedEvent, activeTab); }}
+        onSynced={async () => { if (selectedEvent) refreshParticipants(); }}
       />
 
       <PmsSyncDialog
@@ -2147,7 +1964,7 @@ export default function EventsPage() {
       <EditEventModal
         isOpen={isEditEventModalOpen}
         editingEvent={editingEvent}
-        hasParticipants={Boolean(editingEvent && selectedEvent?.id === editingEvent.id && (participantsTotal > 0 || allStatsParticipants.length > 0))}
+        hasParticipants={Boolean(editingEvent && selectedEvent?.id === editingEvent.id && (participantsTotal > 0 || (eventStatistics?.scopes?.all?.participantCount || 0) > 0))}
         onClose={() => {
           setIsEditEventModalOpen(false);
           setEditingEvent(null);
@@ -2198,7 +2015,7 @@ export default function EventsPage() {
           isOpen={isAddParticipantModalOpen}
           onClose={() => setIsAddParticipantModalOpen(false)}
           selectedEvent={selectedEvent}
-          participants={statsParticipants}
+          participantCount={participantsTotal}
           onAddParticipant={handleAddParticipant}
           submittingParticipant={submittingParticipant}
         />
@@ -2223,15 +2040,12 @@ export default function EventsPage() {
           }}
           activeParticipant={activeParticipant}
           canEditContact={(isAdmin || isManager) && !isUser}
-          onContactUpdated={(database) => {
-            setActiveParticipant(current => current ? { ...current, database } : current);
-            setSelectedEngagementParticipant(current => current?.database.id === database.id ? { ...current, database } : current);
-            if (selectedEvent) void loadParticipantsForEvent(selectedEvent, activeTab);
-          }}
+          onContactUpdated={handleEventContactUpdated}
           activeTab={activeTab}
           usersList={eligiblePicUsers}
           onSubmit={handleUpdateParticipantStatus}
           submittingParticipantUpdate={submittingParticipantUpdate}
+          onReleasePic={!isViewer ? participantId => changeParticipantPic([participantId], null) : undefined}
           onFlagAsTikus={handleFlagAsTikus}
           onRequestTakeout={handleOpenTakeoutModal}
         />
@@ -2292,18 +2106,19 @@ export default function EventsPage() {
       />
 
       {/* Engagement History Modal */}
-      <EngagementModal
-        emsApprovalManaged={emsApprovalManaged}
-        isOpen={isEngagementModalOpen}
-        onClose={() => {
-          setIsEngagementModalOpen(false);
-          setSelectedEngagementParticipant(null);
-        }}
-        participant={selectedEngagementParticipant}
-        onActivityLogged={() => {
-          if (selectedEvent) loadParticipantsForEvent(selectedEvent);
-        }}
-      />
+      {selectedEngagementParticipant && (
+        <EngagementModal
+          key={selectedEngagementParticipant.id}
+          emsApprovalManaged={emsApprovalManaged}
+          isOpen
+          onClose={() => setSelectedEngagementParticipant(null)}
+          participant={selectedEngagementParticipant}
+          onContactUpdated={!isViewer ? handleEventContactUpdated : undefined}
+          onNotesUpdated={!isViewer ? handleEventNotesUpdated : undefined}
+          onActivityLogged={handleEventActivityLogged}
+          showLogForm={columnConfig.telemarketingLogs !== false}
+        />
+      )}
     </div>
   );
 }

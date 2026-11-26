@@ -390,21 +390,21 @@ export class CrmService extends ApiService {
     search?: string;
     page?: number;
     size?: number;
-  }): Promise<EventListResponse> {
+  }, signal?: AbortSignal): Promise<EventListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set('search', params.search);
     if (params?.page) searchParams.set('page', String(params.page));
     if (params?.size) searchParams.set('size', String(params.size));
     const query = searchParams.toString();
-    return this.get<EventListResponse>(`/api/events/list${query ? `?${query}` : ''}`);
+    return this.get<EventListResponse>(`/api/events/list${query ? `?${query}` : ''}`, { signal });
   }
 
   async getEventFilterOptions(): Promise<EventFilterOptionsResponse> {
     return this.get<EventFilterOptionsResponse>('/api/events/filter-options');
   }
 
-  async getEventById(id: number): Promise<Event> {
-    return this.get<Event>(`/api/events/${id}`);
+  async getEventById(id: number, signal?: AbortSignal): Promise<Event> {
+    return this.get<Event>(`/api/events/${id}`, { signal });
   }
 
   async getAvailableDatabasesForEvent(
@@ -416,7 +416,8 @@ export class CrmService extends ApiService {
       industry?: string;
       city?: string;
       invitedEventId?: string;
-    }
+    },
+    signal?: AbortSignal
   ): Promise<EventAvailableDatabasesResponse> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set('search', params.search);
@@ -426,11 +427,11 @@ export class CrmService extends ApiService {
     if (params?.city) searchParams.set('city', params.city);
     if (params?.invitedEventId) searchParams.set('invitedEventId', params.invitedEventId);
     const query = searchParams.toString();
-    return this.get<EventAvailableDatabasesResponse>(`/api/events/${eventId}/available-databases${query ? `?${query}` : ''}`);
+    return this.get<EventAvailableDatabasesResponse>(`/api/events/${eventId}/available-databases${query ? `?${query}` : ''}`, { signal });
   }
 
-  async getEligibleManagersForEvent(eventId: number): Promise<AppUser[]> {
-    return this.get<AppUser[]>(`/api/events/${eventId}/eligible-managers`);
+  async getEligibleManagersForEvent(eventId: number, signal?: AbortSignal): Promise<AppUser[]> {
+    return this.get<AppUser[]>(`/api/events/${eventId}/eligible-managers`, { signal });
   }
 
   async getEventParticipantsByEvent(
@@ -450,7 +451,8 @@ export class CrmService extends ApiService {
       search?: string;
       page?: number;
       size?: number;
-    }
+    },
+    signal?: AbortSignal
   ): Promise<{ eventId: number; page: number; size: number; total: number; totalPages: number; items: EventParticipant[] }> {
     const searchParams = new URLSearchParams();
     if (params?.tab) searchParams.set('tab', params.tab);
@@ -471,7 +473,7 @@ export class CrmService extends ApiService {
     if (params?.size) searchParams.set('size', String(params.size));
     const query = searchParams.toString();
     return this.get<{ eventId: number; page: number; size: number; total: number; totalPages: number; items: EventParticipant[] }>(
-      `/api/events/${eventId}/participants${query ? `?${query}` : ''}`
+      `/api/events/${eventId}/participants${query ? `?${query}` : ''}`, { signal }
     );
   }
 
@@ -490,7 +492,8 @@ export class CrmService extends ApiService {
       reminderH1?: string;
       reminderHariH?: string;
       search?: string;
-    }
+    },
+    signal?: AbortSignal
   ): Promise<any> {
     const searchParams = new URLSearchParams();
     if (params?.tab) searchParams.set('tab', params.tab);
@@ -508,7 +511,7 @@ export class CrmService extends ApiService {
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
-    return this.get<any>(`/api/events/${eventId}/participants/summary${query ? `?${query}` : ''}`);
+    return this.get<any>(`/api/events/${eventId}/participants/summary${query ? `?${query}` : ''}`, { signal });
   }
 
   async exportEventParticipants(
@@ -642,7 +645,8 @@ export class CrmService extends ApiService {
       reminderH1?: string;
       reminderHariH?: string;
       search?: string;
-    }
+    },
+    signal?: AbortSignal
   ): Promise<EventParticipantStatisticsResponse> {
     const searchParams = new URLSearchParams();
     if (params?.tab) searchParams.set('tab', params.tab);
@@ -660,7 +664,7 @@ export class CrmService extends ApiService {
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
-    return this.get<EventParticipantStatisticsResponse>(`/api/events/${eventId}/statistics${query ? `?${query}` : ''}`);
+    return this.get<EventParticipantStatisticsResponse>(`/api/events/${eventId}/statistics${query ? `?${query}` : ''}`, { signal });
   }
 
   async getEventParticipantFilterOptions(
@@ -678,7 +682,8 @@ export class CrmService extends ApiService {
       reminderH1?: string;
       reminderHariH?: string;
       search?: string;
-    }
+    },
+    signal?: AbortSignal
   ): Promise<EventParticipantFilterOptions> {
     const searchParams = new URLSearchParams();
     if (params?.tab) searchParams.set('tab', params.tab);
@@ -696,7 +701,7 @@ export class CrmService extends ApiService {
     if (params?.reminderHariH) searchParams.set('reminderHariH', params.reminderHariH);
     if (params?.search) searchParams.set('search', params.search);
     const query = searchParams.toString();
-    return this.get<EventParticipantFilterOptions>(`/api/events/${eventId}/participants/filter-options${query ? `?${query}` : ''}`);
+    return this.get<EventParticipantFilterOptions>(`/api/events/${eventId}/participants/filter-options${query ? `?${query}` : ''}`, { signal });
   }
 
   async autoSplitEventAssignments(
@@ -891,7 +896,7 @@ export class CrmService extends ApiService {
 
     appendParam('participantStatus', participantStatus);
     appendParam('attendanceStatus', attendanceStatus);
-    appendParam('notes', notes);
+    if (notes != null) params.append('notes', notes);
     appendParam('participantCategory', participantCategory);
     appendParam('callStatus', callStatus);
     appendParam('emailStatus', emailStatus);
@@ -1169,6 +1174,7 @@ export class CrmService extends ApiService {
     timeline?: string;
     notes?: string;
     picName?: string;
+    releasePic?: boolean;
   }): Promise<{ updatedCount: number; skippedCount: number; items: EventParticipant[] }> {
     return this.patch<{ updatedCount: number; skippedCount: number; items: EventParticipant[] }>(
       '/api/event-participants/bulk',
