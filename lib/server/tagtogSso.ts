@@ -45,14 +45,20 @@ function equal(left: string, right: string): boolean {
   return left.length === right.length && timingSafeEqual(Buffer.from(left), Buffer.from(right));
 }
 
-/** Next 14 may expose localhost in Request.url while preserving the actual loopback Host. */
-export function normalizeTagtogNextRequest(request: Request, callbackUrl: string): Request {
+/** The standalone listener can supply its loopback URL after the configured HTTPS proxy forwards a request. */
+export function normalizeTagtogNextRequest(request: Request, callbackUrl: string, trustedProxyPort?: string): Request {
   try {
     const callback = configuredUrl(callbackUrl, false), url = new URL(request.url);
     const loopback = ['127.0.0.1', 'localhost', '[::1]'];
-    if (url.origin !== callback.origin && callback.protocol === 'http:' && url.protocol === 'http:'
-      && loopback.includes(callback.hostname) && loopback.includes(url.hostname) && url.port === callback.port
-      && request.headers.get('host') === callback.host) {
+    if (url.origin === callback.origin || !['http:', 'https:'].includes(url.protocol) || !loopback.includes(url.hostname)
+      || request.headers.get('host') !== callback.host) return request;
+    const local = callback.protocol === 'http:' && url.protocol === 'http:'
+      && loopback.includes(callback.hostname) && url.port === callback.port;
+    const proxy = callback.protocol === 'https:' && trustedProxyPort !== undefined
+      && /^[1-9]\d{0,4}$/.test(trustedProxyPort) && Number(trustedProxyPort) <= 65535
+      && url.port === trustedProxyPort && request.headers.get('x-forwarded-host') === callback.host
+      && request.headers.get('x-forwarded-proto') === 'https';
+    if (local || proxy) {
       return new Request(callback.origin + url.pathname + url.search, request);
     }
   } catch { /* Invalid configuration remains unavailable in the core handler. */ }
@@ -299,7 +305,11 @@ function currentHandlers() {
     callbackUrl: process.env.CRM_TAGTOG_CALLBACK_URL || 'http://127.0.0.1:8188/api/tagtog/callback',
     apiBaseUrl: process.env.API_BASE_URL || 'http://127.0.0.1:8186', clientId: process.env.TAGTOG_CLIENT_ID || 'crm-local' }, { store });
 }
-function nextRequest(request: Request) { return normalizeTagtogNextRequest(request, process.env.CRM_TAGTOG_CALLBACK_URL || 'http://127.0.0.1:8188/api/tagtog/callback'); }
+function nextRequest(request: Request) {
+  return normalizeTagtogNextRequest(request,
+    process.env.CRM_TAGTOG_CALLBACK_URL || 'http://127.0.0.1:8188/api/tagtog/callback',
+    process.env.CRM_TAGTOG_TRUSTED_PROXY_PORT);
+}
 export function openTagtogWorkspace(request: Request) { return currentHandlers().workspace(nextRequest(request)); }
 export function openTagtogDataSync(request: Request) { return currentHandlers().dataSync(nextRequest(request)); }
 export function startTagtogSso(request: Request) { return currentHandlers().start(nextRequest(request)); }

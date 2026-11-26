@@ -70,6 +70,28 @@ test('returnTo resumes dashboard paths and rejects open redirects or encoded tri
   for (const value of ['https://example.test', '//example.test', '/dashboard-evil', '/dashboard/../../login', '/dashboard/%2f%2fevil', '/dashboard/\\evil', '/dashboard?x=%250a', '/login', '/dashboard#token', '/dashboard\n']) assert.equal(safeTagtogReturnTo(value), '/dashboard');
 });
 
+test('HTTPS reverse proxy normalization requires the configured loopback port and exact forwarded origin', () => {
+  const publicHost = 'crm-staging.example.test';
+  const callback = 'https://' + publicHost + '/api/tagtog/callback';
+  const route = '/api/tagtog/start?returnTo=%2Fdashboard';
+  const headers = { host: publicHost, 'x-forwarded-host': publicHost, 'x-forwarded-proto': 'https' };
+  const proxied = new Request('http://127.0.0.1:18058' + route, { headers });
+  assert.equal(normalizeTagtogNextRequest(proxied, callback, '18058').url, 'https://' + publicHost + route);
+  const tlsOrigin = new Request('https://127.0.0.1:18058' + route, { headers });
+  assert.equal(normalizeTagtogNextRequest(tlsOrigin, callback, '18058').url, 'https://' + publicHost + route);
+  assert.equal(normalizeTagtogNextRequest(proxied, callback).url, proxied.url);
+  assert.equal(normalizeTagtogNextRequest(proxied, callback, '18057').url, proxied.url);
+  for (const [host, changed] of [
+    ['127.0.0.1', { host: 'other.example.test' }],
+    ['127.0.0.1', { 'x-forwarded-host': publicHost + ', other.example.test' }],
+    ['127.0.0.1', { 'x-forwarded-proto': 'http' }],
+    ['other.example.test', {}],
+  ]) {
+    const request = new Request('http://' + host + ':18058' + route, {headers:{...headers,...changed}});
+    assert.equal(normalizeTagtogNextRequest(request, callback, '18058').url, request.url);
+  }
+});
+
 test('start uses browser-bound state, server-held verifier, exact callback and no-store', () => {
   const f = fixture(), tx = start(f);
   assert.equal(tx.authorize.origin, config.portalUrl);
